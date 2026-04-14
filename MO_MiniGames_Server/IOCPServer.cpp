@@ -119,7 +119,6 @@ bool CIOCPServer::Start()
     case ServerArchitectureType::EchoTest: std::cout << "EchoTest"; break;
     case ServerArchitectureType::Centralized: std::cout << "Centralized"; break;
     case ServerArchitectureType::Partitioned: std::cout << "Partitioned"; break;
-    case ServerArchitectureType::UnifiedStrand: std::cout << "UnifiedStrand"; break;
 
     default:
         break;
@@ -223,10 +222,13 @@ void CIOCPServer::Disconnect()
 
         for (auto& session : _sessions)
         {
-            if (session && session->_socket != INVALID_SOCKET)
+            if (session && session->_valid.exchange(false))  // exchange로 소유권 획득
             {
-                closesocket(session->_socket);
-                session->_valid.store(false);
+                if (session && session->_socket != INVALID_SOCKET)
+                {
+                    closesocket(session->_socket);
+                    session->_valid.store(false);
+                }
             }
         }
         
@@ -351,10 +353,6 @@ void CIOCPServer::ProcessAccept(SOCKET clientSocket)
         break;
     case ServerArchitectureType::Centralized: // 큐에 넣어서 별도 스레드로 전달
         PushNetworkEvent(NetworkEvent(NetworkEvent::Type::CONNECTED, sessionId));
-        break;
-
-    case ServerArchitectureType::UnifiedStrand: // 직접 처리 (하위 클래스에서 오버라이드된 메서드 호출)
-        //OnClientConnected(sessionId);
         break;
 
     default:
@@ -564,8 +562,8 @@ void CIOCPServer::ParsePackets(CSession* session)
             break; // 데이터 부족 - 다음 Recv 대기
         }
 
-        // 5. 완성된 패킷 추출
-        std::vector<char> packetBuffer(header.size);
+        // 5. 완성된 패킷 추출 (스택 버퍼 사용, heap 할당 회피)
+        std::array<char, MAX_PACKET_SIZE> packetBuffer;
         size_t dequeuedSize = session->_recvQ.Dequeue(packetBuffer.data(), header.size);
         if (dequeuedSize != header.size)
         {
@@ -578,16 +576,11 @@ void CIOCPServer::ParsePackets(CSession* session)
         switch (_architectureType)
         {
         case ServerArchitectureType::EchoTest:
-            EchoTestSend(session, packetBuffer.data(), packetBuffer.size());
-                // 따로 전달 없음
+            EchoTestSend(session, packetBuffer.data(), header.size);
                 break;
         case ServerArchitectureType::Centralized: // 큐에 넣어서 별도 스레드로 전달
             PushNetworkEvent(NetworkEvent(NetworkEvent::Type::RECEIVED, 
-                session->_sessionId, packetBuffer.data(), packetBuffer.size()));
-            break;
-
-        case ServerArchitectureType::UnifiedStrand: // 직접 처리 (하위 클래스에서 오버라이드된 메서드 호출)
-            //OnDataReceived(session->_sessionId, packetBuffer.data(), packetBuffer.size());
+                session->_sessionId, packetBuffer.data(), header.size));
             break;
 
         default:
@@ -682,7 +675,7 @@ void CIOCPServer::PostSend(CSession* session)
 
 
     // 사이즈 체크보다 플래그 변경처리가 우선되어야 함
-    https://www.notion.so/IOCP-2e216a0b9f5980718fbbe6d70d9d537f?source=copy_link#2e216a0b9f5980e0bff1d298912f7b60
+    // https://www.notion.so/IOCP-2e216a0b9f5980718fbbe6d70d9d537f?source=copy_link#2e216a0b9f5980e0bff1d298912f7b60
     if (true == session->_sending.exchange(true))
         return;
 
@@ -824,8 +817,6 @@ bool CIOCPServer::DisconnectSessionInternal(CSession* session)
     case ServerArchitectureType::Centralized:
             PushNetworkEvent(NetworkEvent(NetworkEvent::Type::DISCONNECTED, session->_sessionId));
         break;
-    case ServerArchitectureType::UnifiedStrand:
-        break;
 
     default:
         break;
@@ -836,25 +827,6 @@ bool CIOCPServer::DisconnectSessionInternal(CSession* session)
 
 
 
-// 다이렉트 모드용 기본 구현 (하위 클래스에서 오버라이드 가능)
-// (UnifiedStrand)
-//void CIOCPServer::OnClientConnected(int64_t sessionId)
-//{
-//    // 기본 동작: 에코 테스트용 환영 메시지
-//    std::string welcomeMsg = "Welcome! (Direct mode)";
-//    RequestSendMsg(sessionId, welcomeMsg.c_str(), static_cast<int>(welcomeMsg.size()));
-//}
-//
-//void CIOCPServer::OnClientDisconnected(int64_t sessionId)
-//{
-//    // 기본 동작: 아무것도 하지 않음
-//}
-//
-//void CIOCPServer::OnDataReceived(int64_t sessionId, const char* data, size_t length)
-//{
-//    // 기본 동작: 에코백
-//    RequestSendMsg(sessionId, data, static_cast<int>(length));
-//}
 
 // 게임 로직 레이어가 사용할 인터페이스
 bool CIOCPServer::RequestDisconnectSession(int64_t sessionId)

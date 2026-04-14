@@ -19,7 +19,7 @@
 
 #pragma comment(lib, "ws2_32.lib")
 
-constexpr size_t MAX_PACKET_SIZE = 65536;  // 최대 패킷 크기 (64KB)
+constexpr size_t MAX_PACKET_SIZE = 65535;  // 최대 패킷 크기 (64KB)
 constexpr size_t MIN_PACKET_SIZE = sizeof(MsgHeader);  // 최소 패킷 크기
 
 enum class IOOperation
@@ -35,7 +35,6 @@ enum class ServerArchitectureType
     EchoTest,       // 에코 테스트용 (최소 기능)
     Centralized,    // 중앙 집중형 - 별도 스레드에서 이벤트 처리
     Partitioned,    // 분산형 - 여러 스레드/큐로 분리 처리
-    UnifiedStrand   // 통합 스트랜드 - IOCP 워커가 게임 로직까지 직접 처리
 };
 
 class CSession
@@ -206,12 +205,6 @@ public:
 private:
     bool DisconnectSessionInternal(CSession* session);
 
-protected:
-    // 다이렉트 모드용(UnifiedStrand) - 하위 클래스에서 오버라이드
-    //virtual void OnClientConnected(int64_t sessionId);
-    //virtual void OnClientDisconnected(int64_t sessionId);
-    //virtual void OnDataReceived(int64_t sessionId, const char* data, size_t length);
-
 private:
 
     void EchoTestSend(CSession* session, const char* data, size_t length);
@@ -251,7 +244,7 @@ private:
 
     std::vector<std::unique_ptr<CSession>> _sessions;  // Index 기반 접근가능
     std::queue<uint16_t> _availableIndices;  // 재사용 가능한 인덱스 큐
-    std::stack<uint64_t> _pendingDisconStack; // 종료 대기 중인 세션ID 스택
+    std::stack<uint64_t> _pendingDisconStack; // 종료 대기 중인 세션ID 스택 // TODO : 락프리구조로 바꿔야함
 
     // 레이어 간 통신 큐 (QUEUE_BASED 모드용)
     ThreadSafeQueue<NetworkEvent> _eventQueue;    // 네트워크 -> 게임 로직

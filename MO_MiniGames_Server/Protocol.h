@@ -28,7 +28,7 @@ enum class MsgType : uint16_t
 struct MsgHeader
 {
     uint16_t size;        // 패킷 전체 크기 (헤더 포함)
-    //MsgType type;         // 패킷 타입
+    //MsgType type;         // 패킷 타입 // TODO : 라이브러리 에코테스트 검증으로 인해 잠시 주석처리 
 };
 
 // 방 정보 (목록용)

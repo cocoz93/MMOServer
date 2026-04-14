@@ -30,7 +30,7 @@ template<typename LockPolicy = NoLock>
 class CRingBufferT
 {
 public:
-    explicit CRingBufferT(size_t capacity = 65536)
+    explicit CRingBufferT(size_t capacity = 65535)
         : _capacity(capacity)
         , _readPos(0)
         , _writePos(0)
@@ -300,7 +300,7 @@ template<>
 class CRingBufferT<MutexLock>
 {
 public:
-    explicit CRingBufferT(size_t capacity = 65536)
+    explicit CRingBufferT(size_t capacity = 65535)
         : _capacity(capacity)
         , _readPos(0)
         , _writePos(0)
