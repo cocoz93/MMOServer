@@ -246,6 +246,8 @@ private:
     std::queue<uint16_t> _availableIndices;  // 재사용 가능한 인덱스 큐
     std::stack<uint64_t> _pendingDisconStack; // 종료 대기 중인 세션ID 스택 // TODO : 락프리구조로 바꿔야함
 
+    std::mutex _pendingDisconMtx; //_pendingDisconStack 전용 mutex
+
     // 레이어 간 통신 큐 (QUEUE_BASED 모드용)
     ThreadSafeQueue<NetworkEvent> _eventQueue;    // 네트워크 -> 게임 로직
 };

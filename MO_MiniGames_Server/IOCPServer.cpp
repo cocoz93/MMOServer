@@ -190,6 +190,7 @@ bool CIOCPServer::BindIOCP(SOCKET socket, ULONG_PTR completionKey)
 
 void CIOCPServer::ReleaseSession()
 {
+    std::lock_guard<std::mutex> lock(_pendingDisconMtx);
     while (!_pendingDisconStack.empty())
     {
         uint64_t sessionid = _pendingDisconStack.top();
@@ -785,7 +786,8 @@ ServerArchitectureType CIOCPServer::GetArchitectureType() const
     return _architectureType;
 }
 
-// 실제 할당, 해제는 acceptthread에서
+// 실제 할당, 해제는 acceptthread에서.
+// 결국 모든 세션해제는 이함수를 통함
 bool CIOCPServer::DisconnectSessionInternal(CSession* session)
 {
     if (!session)
@@ -805,7 +807,10 @@ bool CIOCPServer::DisconnectSessionInternal(CSession* session)
     session->_sending.store(false);
 
     // AcceptThread에서 세션 객체 정리 (인덱스 반환)
-    _pendingDisconStack.push(session->_sessionId);
+    {
+        std::lock_guard<std::mutex> lock(_pendingDisconMtx);
+        _pendingDisconStack.push(session->_sessionId);
+    }
 
     // 해제요청이 끝났다면 컨텐츠 쪽에 전달해준다.
     switch (_architectureType)
