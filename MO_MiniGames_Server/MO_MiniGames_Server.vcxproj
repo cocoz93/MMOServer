@@ -137,6 +137,10 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="IOCPServer.h" />
+    <ClInclude Include="LockFree\ExternalTlsFreeList.h" />
+    <ClInclude Include="LockFree\InternalFreeList.h" />
+    <ClInclude Include="LockFree\LockFreeQueue.h" />
+    <ClInclude Include="LockFree\LockFreeStack.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="Protocol.h" />
     <ClInclude Include="RingBuffer.h" />

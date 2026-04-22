@@ -18,12 +18,9 @@ void CSession::Initialize(SOCKET socket, int64_t sessionId)
     _recvQ.Clear();
     _sendQ.Clear();
 
-    _recvOverlapped.operation = IOOperation::RECV;
-    _recvOverlapped.sessionId = sessionId;
-    _sendOverlapped.operation = IOOperation::SEND;
-    _sendOverlapped.sessionId = sessionId;
-
-    ZeroMemory(&_recvOverlapped.overlapped, sizeof(OVERLAPPED));
+    // Per-IO 풀 방식: IO 요청마다 풀에서 할당하므로 여기서는 nullptr로 초기화만
+    _recvOverlapped = nullptr;
+    _sendOverlapped = nullptr;
 }
 
 CSession::~CSession()
@@ -385,40 +382,62 @@ void CIOCPServer::WorkerThread()
         {
             if (overlapped != nullptr)
             {
+                auto overlappedEx = reinterpret_cast<CSession::OverlappedEx*>(overlapped);
                 auto session = reinterpret_cast<CSession*>(completionKey);
-                if (session)
+
+                if (session && overlappedEx->sessionId == session->_sessionId)
                 {
+                    // Per-IO 풀 방식: overlappedEx는 독립 메모리이므로 sessionId 검증이 정확하게 동작함
+                    // → 구 세션의 취소 완료가 새 세션으로 오인될 일이 없음 (Socket ABA 해결)
+                    if (overlappedEx->operation == IOOperation::RECV)
+                        session->_recvOverlapped = nullptr;
+                    else if (overlappedEx->operation == IOOperation::SEND)
+                        session->_sendOverlapped = nullptr;
+
                     DisconnectSessionInternal(session);
                 }
+                // sessionId 불일치: 구 세션의 취소 완료 → 현재 세션과 무관, 무시
+
+                FreeOverlappedEx(overlappedEx); // 항상 풀에 반환
             }
             continue;
         }
 
         auto overlappedEx = reinterpret_cast<CSession::OverlappedEx*>(overlapped);
         auto session = reinterpret_cast<CSession*>(completionKey);
-
-        //overlappedEx, session이 nullptr인 상황은 있을 수 없음
-        if(overlappedEx == nullptr || session == nullptr)
+         
+        // overlappedEx, session이 nullptr인 상황은 있을 수 없음
+        if (overlappedEx == nullptr || session == nullptr)
         {
             std::cerr << "[Error] Invalid overlappedEx or session pointer in WorkerThread" << std::endl;
             continue;
         }
 
-        // 이미 연결이 끊긴 세션 
+        // 이미 연결이 끊긴 세션
         if (!session->_valid.load())
         {
+            FreeOverlappedEx(overlappedEx);
             continue;
         }
 
-        // ABA 방지: 세션ID 일치 여부 확인
+        // ABA 방지: Per-IO 풀의 overlappedEx는 독립 메모리이므로
+        // 세션 슬롯이 재사용되어도 sessionId가 덮어써지지 않음 → 정확한 검증 가능
         if (overlappedEx->sessionId != session->_sessionId)
         {
-            // 세션이 재사용된 경우, 해당 I/O 무시
+            FreeOverlappedEx(overlappedEx);
             continue;
         }
 
+        // 세션 포인터 클리어 후 풀 반환, 이후 Process에서 새 overlappedEx 할당
+        IOOperation op = overlappedEx->operation;
+        if (op == IOOperation::RECV)
+            session->_recvOverlapped = nullptr;
+        else if (op == IOOperation::SEND)
+            session->_sendOverlapped = nullptr;
 
-        switch (overlappedEx->operation)
+        FreeOverlappedEx(overlappedEx);
+
+        switch (op)
         {
         case IOOperation::RECV:
             ProcessRecv(session, bytesTransferred);
@@ -427,7 +446,7 @@ void CIOCPServer::WorkerThread()
             ProcessSend(session, bytesTransferred);
             break;
         default:
-            break;  
+            break;
         }
     }
 }
@@ -465,31 +484,35 @@ void CIOCPServer::ProcessRecv(CSession* session, DWORD bytesTransferred)
 void CIOCPServer::PostRecv(CSession* session)
 {
     if (!session || !session->_valid.load())
+        return;
+
+    // Per-IO 풀에서 OverlappedEx 할당
+    CSession::OverlappedEx* ex = AllocOverlappedEx();
+    if (!ex)
     {
+        std::cerr << "[Error] OverlappedEx pool exhausted (Recv) - SessionId: " << session->_sessionId << std::endl;
+        DisconnectSessionInternal(session);
         return;
     }
 
-    // OverlappedEx 초기화
-    ZeroMemory(&session->_recvOverlapped.overlapped, sizeof(OVERLAPPED));
-    session->_recvOverlapped.sessionId = session->_sessionId;
-    session->_recvOverlapped.operation = IOOperation::RECV;
+    ZeroMemory(&ex->overlapped, sizeof(OVERLAPPED));
+    ex->sessionId = session->_sessionId; // IO 요청 시점의 sessionId 고정 (독립 메모리)
+    ex->operation = IOOperation::RECV;
+    session->_recvOverlapped = ex;
 
     // 링버퍼에서 쓰기 가능한 공간 확보
     char* writePtr = session->_recvQ.GetWritePtr();
     size_t directWriteSize = session->_recvQ.GetDirectWriteSize();
 
-    // 지역 WSABUF 배열 선언
     WSABUF wsaBuf[2];
     int bufCount = 0;
 
-    // 첫 번째 버퍼: 쓰기 포인터부터 버퍼 끝까지
     if (directWriteSize > 0)
     {
         wsaBuf[bufCount].buf = writePtr;
         wsaBuf[bufCount].len = static_cast<ULONG>(directWriteSize);
         bufCount++;
 
-        // 두 번째 버퍼: 버퍼가 랩되는 경우
         size_t freeSize = session->_recvQ.GetFreeSize();
         if (freeSize > directWriteSize)
         {
@@ -502,8 +525,9 @@ void CIOCPServer::PostRecv(CSession* session)
 
     if (bufCount == 0)
     {
-        // 링버퍼가 가득 찬 경우 - 연결 종료
         std::cerr << "[Error] Recv buffer full - SessionId: " << session->_sessionId << std::endl;
+        session->_recvOverlapped = nullptr;
+        FreeOverlappedEx(ex);
         DisconnectSessionInternal(session);
         return;
     }
@@ -512,11 +536,17 @@ void CIOCPServer::PostRecv(CSession* session)
     DWORD recvBytes = 0;
 
     int result = WSARecv(session->_socket, wsaBuf, bufCount, &recvBytes, &flags,
-        &session->_recvOverlapped.overlapped, NULL);
+        &ex->overlapped, NULL);
 
     if (result == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING)
     {
+        // 무시할 에러
+        if (WSAGetLastError() == 10054 /*즉시 종료 : SO_LINGER */)
+            return;
+
         std::cerr << "[Error] WSARecv failed: " << WSAGetLastError() << " - SessionId: " << session->_sessionId << std::endl;
+        session->_recvOverlapped = nullptr;
+        FreeOverlappedEx(ex);
         DisconnectSessionInternal(session);
     }
 }
@@ -609,15 +639,26 @@ void CIOCPServer::ProcessSend(CSession* session, DWORD bytesTransferred)
         return;
     }
 
-    // ★ 수정: 남은 데이터 확인 후 연속 송신 또는 플래그 해제
+    // 남은 데이터 확인 후 연속 송신 또는 플래그 해제
     auto sendInfo = session->_sendQ.GetSendInfo();
-    
+
     if (sendInfo.dataSize > 0)
     {
         // 남은 데이터가 있으면 _sending = true 유지한 채 바로 WSASend
-        ZeroMemory(&session->_sendOverlapped.overlapped, sizeof(OVERLAPPED));
-        session->_sendOverlapped.sessionId = session->_sessionId;
-        session->_sendOverlapped.operation = IOOperation::SEND;
+        // WorkerThread에서 이전 overlappedEx는 이미 반환됨 → 새로 할당
+        CSession::OverlappedEx* ex = AllocOverlappedEx();
+        if (!ex)
+        {
+            std::cerr << "[Error] OverlappedEx pool exhausted (ProcessSend) - SessionId: " << session->_sessionId << std::endl;
+            session->_sending.store(false);
+            DisconnectSessionInternal(session);
+            return;
+        }
+
+        ZeroMemory(&ex->overlapped, sizeof(OVERLAPPED));
+        ex->sessionId = session->_sessionId;
+        ex->operation = IOOperation::SEND;
+        session->_sendOverlapped = ex;
 
         WSABUF wsaBuf[2];
         int bufCount = 0;
@@ -641,17 +682,22 @@ void CIOCPServer::ProcessSend(CSession* session, DWORD bytesTransferred)
         {
             DWORD sendBytes = 0;
             int result = WSASend(session->_socket, wsaBuf, bufCount, &sendBytes, 0,
-                &session->_sendOverlapped.overlapped, NULL);
+                &ex->overlapped, NULL);
 
             if (result == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING)
             {
                 std::cerr << "[Error] WSASend failed: " << WSAGetLastError()
                           << " - SessionId: " << session->_sessionId << std::endl;
+                session->_sendOverlapped = nullptr;
+                FreeOverlappedEx(ex);
                 session->_sending.store(false);
                 DisconnectSessionInternal(session);
             }
             return;
         }
+
+        session->_sendOverlapped = nullptr;
+        FreeOverlappedEx(ex);
     }
 
     // 보낼 데이터가 없을 때만 플래그 해제
@@ -674,24 +720,33 @@ void CIOCPServer::PostSend(CSession* session)
     if (!session || !session->_valid.load())
         return;
 
-
     // 사이즈 체크보다 플래그 변경처리가 우선되어야 함
     // https://www.notion.so/IOCP-2e216a0b9f5980718fbbe6d70d9d537f?source=copy_link#2e216a0b9f5980e0bff1d298912f7b60
     if (true == session->_sending.exchange(true))
         return;
 
-    // ★ 한 번의 락으로 일관된 상태 획득
     auto sendInfo = session->_sendQ.GetSendInfo();
-    
+
     if (sendInfo.dataSize == 0)
     {
         session->_sending.store(false);
         return;
     }
 
-    ZeroMemory(&session->_sendOverlapped.overlapped, sizeof(OVERLAPPED));
-    session->_sendOverlapped.sessionId = session->_sessionId;
-    session->_sendOverlapped.operation = IOOperation::SEND;
+    // Per-IO 풀에서 OverlappedEx 할당
+    CSession::OverlappedEx* ex = AllocOverlappedEx();
+    if (!ex)
+    {
+        std::cerr << "[Error] OverlappedEx pool exhausted (PostSend) - SessionId: " << session->_sessionId << std::endl;
+        session->_sending.store(false);
+        DisconnectSessionInternal(session);
+        return;
+    }
+
+    ZeroMemory(&ex->overlapped, sizeof(OVERLAPPED));
+    ex->sessionId = session->_sessionId;
+    ex->operation = IOOperation::SEND;
+    session->_sendOverlapped = ex;
 
     WSABUF wsaBuf[2];
     int bufCount = 0;
@@ -713,27 +768,22 @@ void CIOCPServer::PostSend(CSession* session)
 
     if (bufCount == 0)
     {
-        // 데이터가 없는 경우 (방어 코드)
-        // TODO : 이쪽으로 들어오는 경우는 없는지 확인
-
+        session->_sendOverlapped = nullptr;
+        FreeOverlappedEx(ex);
         session->_sending.store(false);
         return;
     }
 
     DWORD sendBytes = 0;
-    if (wsaBuf[0].len == 0 && wsaBuf[1].len == 0)
-    {
-        session->_sending.store(false);
-        return;
-    }
-
     int result = WSASend(session->_socket, wsaBuf, bufCount, &sendBytes, 0,
-        &session->_sendOverlapped.overlapped, NULL);
+        &ex->overlapped, NULL);
 
     if (result == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING)
     {
-        std::cerr << "[Error] WSASend failed: " << WSAGetLastError() 
+        std::cerr << "[Error] WSASend failed: " << WSAGetLastError()
                   << " - SessionId: " << session->_sessionId << std::endl;
+        session->_sendOverlapped = nullptr;
+        FreeOverlappedEx(ex);
         session->_sending.store(false);
         DisconnectSessionInternal(session);
     }
@@ -832,6 +882,19 @@ bool CIOCPServer::DisconnectSessionInternal(CSession* session)
 
 
 
+
+CSession::OverlappedEx* CIOCPServer::AllocOverlappedEx()
+{
+    // hot path: DCAS 1회로 NODE에서 OverlappedEx 직접 반환
+    // cold path: LFH 힙에서 NODE 신규 할당 (동적 성장)
+    return _overlappedPool.Alloc();
+}
+
+void CIOCPServer::FreeOverlappedEx(CSession::OverlappedEx* ex)
+{
+    // DataToNode(포인터 산술) + CAS 1회
+    _overlappedPool.Free(ex);
+}
 
 // 게임 로직 레이어가 사용할 인터페이스
 bool CIOCPServer::RequestDisconnectSession(int64_t sessionId)

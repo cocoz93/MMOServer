@@ -16,6 +16,7 @@
 
 #include "RingBuffer.h"
 #include "Protocol.h"
+#include "LockFree/InternalFreeList.h"
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -85,8 +86,9 @@ public:
     CRingBufferST _recvQ; // 한 스레드에서만 접근
     CRingBufferMT _sendQ; // 다중 스레드에서 접근
 
-    OverlappedEx _recvOverlapped;
-    OverlappedEx _sendOverlapped;
+    // Per-IO 풀에서 할당된 포인터. IO 요청 시 세팅, 완료 시 nullptr
+    OverlappedEx* _recvOverlapped;
+    OverlappedEx* _sendOverlapped;
 };
 
 // 게임 로직 레이어로 전달할 네트워크 이벤트
@@ -224,10 +226,14 @@ private:
     void ProcessSend(CSession* session, DWORD bytesTransferred);
 
     void PostRecv(CSession* session);
-    void PostSend(CSession* session); // 송신 요청 함수 추가
+    void PostSend(CSession* session);
     void ParsePackets(CSession* session);
 
     CSession* FindSession(int64_t sessionId);
+
+    // Per-IO Overlapped 풀
+    CSession::OverlappedEx* AllocOverlappedEx();
+    void FreeOverlappedEx(CSession::OverlappedEx* ex);
 
 private:
     int _port;
@@ -247,6 +253,9 @@ private:
     std::stack<uint64_t> _pendingDisconStack; // 종료 대기 중인 세션ID 스택 // TODO : 락프리구조로 바꿔야함
 
     std::mutex _pendingDisconMtx; //_pendingDisconStack 전용 mutex
+
+    // Per-IO Overlapped 풀: OverlappedEx를 NODE에 내장, DCAS/CAS로 Alloc/Free
+    LockFree::CInternalFreeList<CSession::OverlappedEx> _overlappedPool;
 
     // 레이어 간 통신 큐 (QUEUE_BASED 모드용)
     ThreadSafeQueue<NetworkEvent> _eventQueue;    // 네트워크 -> 게임 로직
