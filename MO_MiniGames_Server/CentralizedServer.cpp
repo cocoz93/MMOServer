@@ -1,6 +1,7 @@
 //
 #include "CentralizedServer.h"
 #include "RoomManager.h"
+#include "../Shared/Common/ErrorLog.h"
 #include <iostream>
 #include <cstring>
 
@@ -94,7 +95,7 @@ void CCentralizedServer::DispatchClientDisconnected(int64_t sessionId)
     auto player = GetPlayer(sessionId);
     if (!player)
     {
-        std::cerr << "[CentralizedServer] Player not found for SessionId: " << sessionId << std::endl;
+        LOG_ERROR_STREAM("[CentralizedServer] Player not found for SessionId: " << sessionId);
         return;
     }
 
@@ -111,13 +112,13 @@ void CCentralizedServer::DispatchDataReceived(int64_t sessionId, const char* dat
     auto player = GetPlayer(sessionId);
     if (!player)
     {
-        std::cerr << "[CentralizedServer] Player not found for SessionId: " << sessionId << std::endl;
+        LOG_ERROR_STREAM("[CentralizedServer] Player not found for SessionId: " << sessionId);
         return;
     }
 
     if (length < sizeof(MsgHeader))
     {
-        std::cerr << "[CentralizedServer] Invalid msg size from SessionId: " << sessionId << std::endl;
+        LOG_ERROR_STREAM("[CentralizedServer] Invalid msg size from SessionId: " << sessionId);
         return;
     }
 
@@ -126,7 +127,7 @@ void CCentralizedServer::DispatchDataReceived(int64_t sessionId, const char* dat
     // 패킷 크기 검증
     if (header->size != length)
     {
-        std::cerr << "[CentralizedServer] Msg size mismatch from SessionId: " << sessionId << std::endl;
+        LOG_ERROR_STREAM("[CentralizedServer] Msg size mismatch from SessionId: " << sessionId);
         return;
     }
 
@@ -159,8 +160,7 @@ void CCentralizedServer::DispatchDataReceived(int64_t sessionId, const char* dat
         break;
 
     default:
-        std::cerr << "[CentralizedServer] Unknown msg type: " 
-                  << static_cast<int>(header->type) << std::endl;
+        LOG_ERROR_STREAM("[CentralizedServer] Unknown msg type: " << static_cast<int>(header->type));
         break;
     }
 }

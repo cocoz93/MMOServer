@@ -1,5 +1,6 @@
 //
 #include "GameInstance.h"
+#include "../Shared/Common/ErrorLog.h"
 #include <iostream>
 
 int main()
@@ -8,7 +9,7 @@ int main()
 
     if (!game.Initialize())
     {
-        std::cerr << "Failed to initialize game." << std::endl;
+        LOG_ERROR_STREAM("Failed to initialize game.");
         return 1;
     }
 

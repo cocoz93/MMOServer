@@ -1,6 +1,7 @@
 ﻿//
 #include "ClientNetwork.h"
 #include "GameInstance.h"
+#include "../Shared/Common/ErrorLog.h"
 #include <cstring>
 #include <iostream>
 
@@ -22,14 +23,15 @@ bool CClientNetwork::Connect(const std::string& serverIp, int port)
     WSADATA wsaData;
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
     {
-        std::wcerr << L"WSAStartup failed" << std::endl;
+        WLOG_ERROR_STREAM(L"WSAStartup failed");
         return false;
     }
 
     _socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (_socket == INVALID_SOCKET)
     {
-        std::wcerr << L"socket creation failed: " << WSAGetLastError() << std::endl;
+        const int wsaErr = WSAGetLastError();
+        WLOG_WSA_ERROR_STREAM(L"socket creation failed: ", wsaErr);
         WSACleanup();
         return false;
     }
@@ -42,7 +44,8 @@ bool CClientNetwork::Connect(const std::string& serverIp, int port)
 
     if (connect(_socket, (SOCKADDR*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR)
     {
-        std::wcerr << L"connect failed: " << WSAGetLastError() << std::endl;
+        const int wsaErr = WSAGetLastError();
+        WLOG_WSA_ERROR_STREAM(L"connect failed: ", wsaErr);
         closesocket(_socket);
         WSACleanup();
         return false;
@@ -99,7 +102,7 @@ void CClientNetwork::RecvThread()
         {
             if (_running)
             {
-                std::wcerr << L"\nConnection lost." << std::endl;
+                WLOG_ERROR_STREAM(L"\nConnection lost.");
             }
             _connected = false;
             _running = false;
@@ -120,7 +123,8 @@ bool CClientNetwork::SendPacket(const char* data, size_t length)
     int bytesSent = send(_socket, data, static_cast<int>(length), 0);
     if (bytesSent == SOCKET_ERROR)
     {
-        std::wcerr << L"send failed: " << WSAGetLastError() << std::endl;
+        const int wsaErr = WSAGetLastError();
+        WLOG_WSA_ERROR_STREAM(L"send failed: ", wsaErr);
         return false;
     }
 
@@ -180,7 +184,7 @@ void CClientNetwork::HandleServerMessage(const char* data, size_t length)
 
     if (length < sizeof(MsgHeader))
     {
-        std::wcerr << L"Invalid message size" << std::endl;
+        WLOG_ERROR_STREAM(L"Invalid message size");
         return;
     }
 
@@ -188,7 +192,7 @@ void CClientNetwork::HandleServerMessage(const char* data, size_t length)
 
     if (header->size > length)
     {
-        std::wcerr << L"Message size mismatch" << std::endl;
+        WLOG_ERROR_STREAM(L"Message size mismatch");
         return;
     }
 
@@ -230,7 +234,7 @@ void CClientNetwork::HandleServerMessage(const char* data, size_t length)
         break;
 
     default:
-        std::wcerr << L"Unknown message type: " << static_cast<int>(header->type) << std::endl;
+        WLOG_ERROR_STREAM(L"Unknown message type: " << static_cast<int>(header->type));
         break;
     }
 }

@@ -1,4 +1,5 @@
 ﻿#include "GameInstance.h"
+#include "../Shared/Common/ErrorLog.h"
 #include <iostream>
 #define NOMINMAX
 #include <Windows.h>
@@ -80,7 +81,7 @@ void CGameInstance::Run()
 
     if (!ConnectToServer(std::string(serverIp.begin(), serverIp.end()), port))
     {
-        std::wcerr << L"Failed to connect to server." << std::endl;
+        WLOG_ERROR_STREAM(L"Failed to connect to server.");
         return;
     }
 

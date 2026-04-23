@@ -1,4 +1,5 @@
 #include "IOCPServer.h"
+#include "../Shared/Common/ErrorLog.h"
 #include <iostream>
 
 extern void SignalProcessShutdown(); // main쪽에 정의된 함수
@@ -77,7 +78,7 @@ bool CIOCPServer::Start()
     WSADATA wsaData;
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
     {
-        std::cerr << "WSAStartup failed" << std::endl;
+        LOG_ERROR_STREAM("WSAStartup failed");
         return false;
     }
 
@@ -130,7 +131,8 @@ bool CIOCPServer::CreateListenSocket()
     _listenSocket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
     if (_listenSocket == INVALID_SOCKET)
     {
-        std::cerr << "WSASocket failed: " << WSAGetLastError() << std::endl;
+        const int wsaErr = WSAGetLastError();
+        LOG_WSA_ERROR_STREAM("WSASocket failed: ", wsaErr);
         return false;
     }
 
@@ -142,14 +144,16 @@ bool CIOCPServer::CreateListenSocket()
 
     if (bind(_listenSocket, (SOCKADDR*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR)
     {
-        std::cerr << "bind failed: " << WSAGetLastError() << std::endl;
+        const int wsaErr = WSAGetLastError();
+        LOG_WSA_ERROR_STREAM("bind failed: ", wsaErr);
         closesocket(_listenSocket);
         return false;
     }
 
     if (listen(_listenSocket, SOMAXCONN) == SOCKET_ERROR)
     {
-        std::cerr << "listen failed: " << WSAGetLastError() << std::endl;
+        const int wsaErr = WSAGetLastError();
+        LOG_WSA_ERROR_STREAM("listen failed: ", wsaErr);
         closesocket(_listenSocket);
         return false;
     }
@@ -179,7 +183,7 @@ bool CIOCPServer::BindIOCP(SOCKET socket, ULONG_PTR completionKey)
     auto handle = CreateIoCompletionPort((HANDLE)socket, _iocpHandle, completionKey, 0);
     if (handle == NULL)
     {
-        std::cerr << "BindIOCP failed: " << GetLastError() << std::endl;
+        LOG_ERROR_STREAM("BindIOCP failed: " << GetLastError());
         return false;
     }
     return true;
@@ -300,7 +304,8 @@ void CIOCPServer::AcceptThread()
         {
             if (_running)
             {
-                std::cerr << "accept failed: " << WSAGetLastError() << std::endl;
+                const int wsaErr = WSAGetLastError();
+                LOG_WSA_ERROR_STREAM("accept failed: ", wsaErr);
             }
             continue;
         }
@@ -315,7 +320,7 @@ void CIOCPServer::ProcessAccept(SOCKET clientSocket)
     // 빈 인덱스 확인 (여유가 없다면 동접 max)
     if (_availableIndices.empty())
     {
-        std::cerr << "[Error] No free session index available" << std::endl;
+        LOG_ERROR_STREAM("[Error] No free session index available");
         closesocket(clientSocket);
         return;
     }
@@ -336,7 +341,7 @@ void CIOCPServer::ProcessAccept(SOCKET clientSocket)
     // IOCP의 CompletionKey는 단순 식별자 역할이므로, 세션 소유권을 갖지 않는다.
     if (!BindIOCP(clientSocket, (ULONG_PTR)_sessions[index].get()))
     {
-        std::cerr << "Failed to bind client socket to IOCP" << std::endl;
+        LOG_ERROR_STREAM("Failed to bind client socket to IOCP");
         _sessions[index]->Close();
         _availableIndices.push(index);
         closesocket(clientSocket);
@@ -409,7 +414,7 @@ void CIOCPServer::WorkerThread()
         // overlappedEx, session이 nullptr인 상황은 있을 수 없음
         if (overlappedEx == nullptr || session == nullptr)
         {
-            std::cerr << "[Error] Invalid overlappedEx or session pointer in WorkerThread" << std::endl;
+            LOG_ERROR_STREAM("[Error] Invalid overlappedEx or session pointer in WorkerThread");
             continue;
         }
 
@@ -457,7 +462,7 @@ void CIOCPServer::ProcessRecv(CSession* session, DWORD bytesTransferred)
     // 방어 로직
     if (bytesTransferred == 0)
     {
-        std::cerr << "[Warning] ProcessRecv called with bytesTransferred == 0 - SessionId: " << session->_sessionId << std::endl;
+        LOG_ERROR_STREAM("[Warning] ProcessRecv called with bytesTransferred == 0 - SessionId: " << session->_sessionId);
         DisconnectSessionInternal(session);
         return;
     }
@@ -466,8 +471,8 @@ void CIOCPServer::ProcessRecv(CSession* session, DWORD bytesTransferred)
     size_t movedSize = session->_recvQ.MoveWritePtr(bytesTransferred);
     if (movedSize != bytesTransferred)
     {
-        std::cerr << "[Error] Recv buffer overflow - SessionId: " << session->_sessionId 
-                  << ", Expected: " << bytesTransferred << ", Moved: " << movedSize << std::endl;
+        LOG_ERROR_STREAM("[Error] Recv buffer overflow - SessionId: " << session->_sessionId
+            << ", Expected: " << bytesTransferred << ", Moved: " << movedSize);
         DisconnectSessionInternal(session);
         return;
     }
@@ -490,7 +495,7 @@ void CIOCPServer::PostRecv(CSession* session)
     CSession::OverlappedEx* ex = AllocOverlappedEx();
     if (!ex)
     {
-        std::cerr << "[Error] OverlappedEx pool exhausted (Recv) - SessionId: " << session->_sessionId << std::endl;
+        LOG_ERROR_STREAM("[Error] OverlappedEx pool exhausted (Recv) - SessionId: " << session->_sessionId);
         DisconnectSessionInternal(session);
         return;
     }
@@ -525,7 +530,7 @@ void CIOCPServer::PostRecv(CSession* session)
 
     if (bufCount == 0)
     {
-        std::cerr << "[Error] Recv buffer full - SessionId: " << session->_sessionId << std::endl;
+        LOG_ERROR_STREAM("[Error] Recv buffer full - SessionId: " << session->_sessionId);
         session->_recvOverlapped = nullptr;
         FreeOverlappedEx(ex);
         DisconnectSessionInternal(session);
@@ -538,13 +543,19 @@ void CIOCPServer::PostRecv(CSession* session)
     int result = WSARecv(session->_socket, wsaBuf, bufCount, &recvBytes, &flags,
         &ex->overlapped, NULL);
 
-    if (result == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING)
+    if (result == SOCKET_ERROR)
     {
+        const int wsaErr = WSAGetLastError();
+        if (wsaErr == WSA_IO_PENDING)
+        {
+            return;
+        }
+
         // 무시할 에러
-        if (WSAGetLastError() == 10054 /*즉시 종료 : SO_LINGER */)
+        if (wsaErr == 10054 /*즉시 종료 : SO_LINGER */)
             return;
 
-        std::cerr << "[Error] WSARecv failed: " << WSAGetLastError() << " - SessionId: " << session->_sessionId << std::endl;
+        LOG_WSA_ERROR_STREAM("[Error] WSARecv failed - SessionId: " << session->_sessionId << ", WSAError: ", wsaErr);
         session->_recvOverlapped = nullptr;
         FreeOverlappedEx(ex);
         DisconnectSessionInternal(session);
@@ -581,8 +592,8 @@ void CIOCPServer::ParsePackets(CSession* session)
         // 3. 패킷 크기 검증
         if (header.size < MIN_PACKET_SIZE || header.size > MAX_PACKET_SIZE)
         {
-            std::cerr << "[Error] Invalid packet size: " << header.size 
-                      << " - SessionId: " << session->_sessionId << std::endl;
+            LOG_ERROR_STREAM("[Error] Invalid packet size: " << header.size
+                << " - SessionId: " << session->_sessionId);
             DisconnectSessionInternal(session);
             return;
         }
@@ -598,7 +609,7 @@ void CIOCPServer::ParsePackets(CSession* session)
         size_t dequeuedSize = session->_recvQ.Dequeue(packetBuffer.data(), header.size);
         if (dequeuedSize != header.size)
         {
-            std::cerr << "[Error] Packet dequeue failed - SessionId: " << session->_sessionId << std::endl;
+            LOG_ERROR_STREAM("[Error] Packet dequeue failed - SessionId: " << session->_sessionId);
             DisconnectSessionInternal(session);
             return;
         }
@@ -633,8 +644,8 @@ void CIOCPServer::ProcessSend(CSession* session, DWORD bytesTransferred)
     size_t consumed = session->_sendQ.Consume(bytesTransferred);
     if (consumed != bytesTransferred)
     {
-        std::cerr << "[Error] Send consume mismatch - SessionId: " << session->_sessionId
-                  << ", Expected: " << bytesTransferred << ", Consumed: " << consumed << std::endl;
+        LOG_ERROR_STREAM("[Error] Send consume mismatch - SessionId: " << session->_sessionId
+            << ", Expected: " << bytesTransferred << ", Consumed: " << consumed);
         DisconnectSessionInternal(session);
         return;
     }
@@ -649,7 +660,7 @@ void CIOCPServer::ProcessSend(CSession* session, DWORD bytesTransferred)
         CSession::OverlappedEx* ex = AllocOverlappedEx();
         if (!ex)
         {
-            std::cerr << "[Error] OverlappedEx pool exhausted (ProcessSend) - SessionId: " << session->_sessionId << std::endl;
+            LOG_ERROR_STREAM("[Error] OverlappedEx pool exhausted (ProcessSend) - SessionId: " << session->_sessionId);
             session->_sending.store(false);
             DisconnectSessionInternal(session);
             return;
@@ -684,10 +695,16 @@ void CIOCPServer::ProcessSend(CSession* session, DWORD bytesTransferred)
             int result = WSASend(session->_socket, wsaBuf, bufCount, &sendBytes, 0,
                 &ex->overlapped, NULL);
 
-            if (result == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING)
+            if (result == SOCKET_ERROR)
             {
-                std::cerr << "[Error] WSASend failed: " << WSAGetLastError()
-                          << " - SessionId: " << session->_sessionId << std::endl;
+                const int wsaErr = WSAGetLastError();
+                if (wsaErr == WSA_IO_PENDING)
+                {
+                    return;
+                }
+
+                LOG_WSA_ERROR_STREAM("[Error] WSASend failed - SessionId: " << session->_sessionId
+                    << ", WSAError: ", wsaErr);
                 session->_sendOverlapped = nullptr;
                 FreeOverlappedEx(ex);
                 session->_sending.store(false);
@@ -737,7 +754,7 @@ void CIOCPServer::PostSend(CSession* session)
     CSession::OverlappedEx* ex = AllocOverlappedEx();
     if (!ex)
     {
-        std::cerr << "[Error] OverlappedEx pool exhausted (PostSend) - SessionId: " << session->_sessionId << std::endl;
+        LOG_ERROR_STREAM("[Error] OverlappedEx pool exhausted (PostSend) - SessionId: " << session->_sessionId);
         session->_sending.store(false);
         DisconnectSessionInternal(session);
         return;
@@ -778,10 +795,16 @@ void CIOCPServer::PostSend(CSession* session)
     int result = WSASend(session->_socket, wsaBuf, bufCount, &sendBytes, 0,
         &ex->overlapped, NULL);
 
-    if (result == SOCKET_ERROR && WSAGetLastError() != WSA_IO_PENDING)
+    if (result == SOCKET_ERROR)
     {
-        std::cerr << "[Error] WSASend failed: " << WSAGetLastError()
-                  << " - SessionId: " << session->_sessionId << std::endl;
+        const int wsaErr = WSAGetLastError();
+        if (wsaErr == WSA_IO_PENDING)
+        {
+            return;
+        }
+
+        LOG_WSA_ERROR_STREAM("[Error] WSASend failed - SessionId: " << session->_sessionId
+            << ", WSAError: ", wsaErr);
         session->_sendOverlapped = nullptr;
         FreeOverlappedEx(ex);
         session->_sending.store(false);
@@ -803,8 +826,8 @@ void CIOCPServer::RequestSendMsg(int64_t sessionId, const char* data, int length
     size_t enqueued = session->_sendQ.Enqueue(data, length);
     if (enqueued != length)
     {
-        std::cerr << "[Error] Send buffer overflow - SessionId: " << sessionId 
-                  << ", Requested: " << length << ", Enqueued: " << enqueued << std::endl;
+        LOG_ERROR_STREAM("[Error] Send buffer overflow - SessionId: " << sessionId
+            << ", Requested: " << length << ", Enqueued: " << enqueued);
         DisconnectSessionInternal(session);
         return;
     }
