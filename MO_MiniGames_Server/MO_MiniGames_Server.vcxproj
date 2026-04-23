@@ -137,6 +137,7 @@
     <ClCompile Include="RoomManager.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\Shared\Common\ErrorLog.h" />
     <ClInclude Include="CentralizedServer.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </ClInclude>
