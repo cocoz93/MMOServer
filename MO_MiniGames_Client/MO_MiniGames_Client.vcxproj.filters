@@ -19,7 +19,7 @@
       <Filter>소스 파일</Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Protocol.h">
+    <ClInclude Include="..\Shared\Protocol\Protocol.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
     <ClInclude Include="ClientNetwork.h">
