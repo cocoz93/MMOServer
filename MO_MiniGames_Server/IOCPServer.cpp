@@ -551,8 +551,8 @@ void CIOCPServer::PostRecv(CSession* session)
             return;
         }
 
-        // 무시할 에러
-        if (wsaErr == 10054 /*즉시 종료 : SO_LINGER */)
+        // 무시할 에러 (클라이언트 연결 끊김 등 빈번한 에러)
+        if (shared::ShouldIgnoreWsaError(wsaErr))
             return;
 
         LOG_WSA_ERROR_STREAM("[Error] WSARecv failed - SessionId: " << session->_sessionId << ", WSAError: ", wsaErr);

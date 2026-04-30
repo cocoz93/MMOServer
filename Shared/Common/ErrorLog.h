@@ -10,7 +10,9 @@ inline bool ShouldIgnoreWsaError(int errorCode)
 {
     switch (errorCode)
     {
-    case 10054: // WSAECONNRESET: 상대의 정상 종료/강제 종료에서 자주 발생
+    case 10053: // WSAECONNABORTED: 소프트웨어적으로 연결 중단 (타임아웃, 프로토콜 오류 등)
+    case 10054: // WSAECONNRESET: 상대방이 연결을 강제로 끊음 (RST 수신)
+    case 10064: // WSAEHOSTDOWN: 상대 호스트가 다운됨
         return true;
     default:
         return false;
