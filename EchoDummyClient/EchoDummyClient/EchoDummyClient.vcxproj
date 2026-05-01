@@ -23,7 +23,9 @@
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{775ca4e5-1482-4a73-8d1c-f6bcb634c55e}</ProjectGuid>
-    <RootNamespace>EchoDummy</RootNamespace>
+    <ProjectName>EchoDummyClient</ProjectName>
+    <RootNamespace>EchoDummyClient</RootNamespace>
+    <TargetName>EchoDummyClient</TargetName>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
