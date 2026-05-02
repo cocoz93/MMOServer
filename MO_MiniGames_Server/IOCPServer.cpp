@@ -561,11 +561,12 @@ void CIOCPServer::PostRecv(CSession* session)
             return;
         }
 
-        // 무시할 에러 (클라이언트 연결 끊김 등 빈번한 에러)
-        if (shared::ShouldIgnoreWsaError(wsaErr))
-            return;
-
-        LOG_WSA_ERROR_STREAM("[Error] WSARecv failed - SessionId: " << session->_sessionId << ", WSAError: ", wsaErr);
+        // 빈번한 에러(클라이언트 연결 끊김 등)는 로그 생략, 그 외는 로그 출력
+        // 어떤 에러든 동기 실패 시 IOCP completion이 오지 않으므로 반드시 정리해야 함
+        if (!shared::ShouldIgnoreWsaError(wsaErr))
+        {
+            LOG_WSA_ERROR_STREAM("[Error] WSARecv failed - SessionId: " << session->_sessionId << ", WSAError: ", wsaErr);
+        }
         session->_recvOverlapped = nullptr;
         FreeOverlappedEx(ex);
         DisconnectSessionInternal(session);
@@ -832,8 +833,11 @@ void CIOCPServer::PostSend(CSession* session)
             return;
         }
 
-        LOG_WSA_ERROR_STREAM("[Error] WSASend failed - SessionId: " << session->_sessionId
-            << ", WSAError: ", wsaErr);
+        if (!shared::ShouldIgnoreWsaError(wsaErr))
+        {
+            LOG_WSA_ERROR_STREAM("[Error] WSASend failed - SessionId: " << session->_sessionId
+                << ", WSAError: ", wsaErr);
+        }
         session->_sendOverlapped = nullptr;
         FreeOverlappedEx(ex);
         session->_sending.store(false);
