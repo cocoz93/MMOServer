@@ -426,8 +426,9 @@ void CIOCPServer::WorkerThread()
             continue;
         }
 
-        // ABA 방지: Per-IO 풀의 overlappedEx는 독립 메모리이므로
-        // 세션 슬롯이 재사용되어도 sessionId가 덮어써지지 않음 → 정확한 검증 가능
+        // [IO 완료 시점 검증] 세션 슬롯 재사용 방어 (제출 직전 검증과 쌍으로 동작)
+        // Per-IO 풀의 overlappedEx는 독립 메모리이므로 sessionId가 덮어써지지 않음
+        // → 구 세션의 IO 완�� 통지가 신 세션에 처리되는 것을 방지
         if (overlappedEx->sessionId != session->_sessionId)
         {
             FreeOverlappedEx(overlappedEx);
@@ -504,7 +505,6 @@ void CIOCPServer::PostRecv(CSession* session)
     ZeroMemory(&ex->overlapped, sizeof(OVERLAPPED));
     ex->sessionId = session->_sessionId; // IO 요청 시점의 sessionId 고정 (독립 메모리)
     ex->operation = IOOperation::RECV;
-    session->_recvOverlapped = ex;
 
     // 링버퍼에서 쓰기 가능한 공간 확보
     char* writePtr = session->_recvQ.GetWritePtr();
@@ -532,11 +532,20 @@ void CIOCPServer::PostRecv(CSession* session)
     if (bufCount == 0)
     {
         LOG_ERROR_STREAM("[Error] Recv buffer full - SessionId: " << session->_sessionId);
-        session->_recvOverlapped = nullptr;
         FreeOverlappedEx(ex);
         DisconnectSessionInternal(session);
         return;
     }
+
+    // [IO 제출 직전 검증] 세션 슬롯 재사용 방어 (IO 완료 시점 검증과 쌍으로 동작)
+    // WSABUF 준비 ~ IO 제출 사이에 세션이 disconnect → 재사용되면
+    // 구 세션의 데이터가 신 세션의 소켓으로 전송되는 것을 방지
+    if (ex->sessionId != session->_sessionId)
+    {
+        FreeOverlappedEx(ex);
+        return;
+    }
+    session->_recvOverlapped = ex;
 
     DWORD flags = 0;
     DWORD recvBytes = 0;
@@ -670,7 +679,6 @@ void CIOCPServer::ProcessSend(CSession* session, DWORD bytesTransferred)
         ZeroMemory(&ex->overlapped, sizeof(OVERLAPPED));
         ex->sessionId = session->_sessionId;
         ex->operation = IOOperation::SEND;
-        session->_sendOverlapped = ex;
 
         WSABUF wsaBuf[2];
         int bufCount = 0;
@@ -692,6 +700,17 @@ void CIOCPServer::ProcessSend(CSession* session, DWORD bytesTransferred)
 
         if (bufCount > 0)
         {
+            // [IO 제출 직전 검증] 세션 슬롯 재사용 방어 (IO 완료 시점 검증과 쌍으로 동작)
+            // WSABUF 준비 ~ IO 제출 사이에 세션이 disconnect → 재사용되면
+            // 구 세션의 데이터가 신 세션의 소켓으로 전송되는 것을 방지
+            if (ex->sessionId != session->_sessionId)
+            {
+                FreeOverlappedEx(ex);
+                session->_sending.store(false);
+                return;
+            }
+            session->_sendOverlapped = ex;
+
             DWORD sendBytes = 0;
             int result = WSASend(session->_socket, wsaBuf, bufCount, &sendBytes, 0,
                 &ex->overlapped, NULL);
@@ -764,7 +783,6 @@ void CIOCPServer::PostSend(CSession* session)
     ZeroMemory(&ex->overlapped, sizeof(OVERLAPPED));
     ex->sessionId = session->_sessionId;
     ex->operation = IOOperation::SEND;
-    session->_sendOverlapped = ex;
 
     WSABUF wsaBuf[2];
     int bufCount = 0;
@@ -786,11 +804,21 @@ void CIOCPServer::PostSend(CSession* session)
 
     if (bufCount == 0)
     {
-        session->_sendOverlapped = nullptr;
         FreeOverlappedEx(ex);
         session->_sending.store(false);
         return;
     }
+
+    // [IO 제출 직전 검증] 세션 슬롯 재사용 방어 (IO 완료 시점 검증과 쌍으로 동작)
+    // WSABUF 준비 ~ IO 제출 사이에 세션이 disconnect → 재사용되면
+    // 구 세션의 데이터가 신 세션의 소켓으로 전송되는 것을 방지
+    if (ex->sessionId != session->_sessionId)
+    {
+        FreeOverlappedEx(ex);
+        session->_sending.store(false);
+        return;
+    }
+    session->_sendOverlapped = ex;
 
     DWORD sendBytes = 0;
     int result = WSASend(session->_socket, wsaBuf, bufCount, &sendBytes, 0,
