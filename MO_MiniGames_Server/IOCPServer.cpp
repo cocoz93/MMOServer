@@ -31,7 +31,8 @@ CSession::~CSession()
 
 void CSession::Close()
 {
-    // 소캣만 종료하고, 나머지는 할당할떄 초기화한다.
+    // 소켓만 종료하고, 버퍼 등 나머지 상태는 Initialize()에서 초기화한다.
+    // Close() ~ Initialize() 사이에는 _valid==false, sessionId 체크 (ABA 식별용으로 의도적 잔존)
     if (_socket != INVALID_SOCKET)
     {
         closesocket(_socket);
@@ -861,6 +862,11 @@ ServerArchitectureType CIOCPServer::GetArchitectureType() const
 
 // 실제 할당, 해제는 acceptthread에서.
 // 결국 모든 세션해제는 이함수를 통함
+//
+// [ABA 안전성] 이 함수 ~ ReleaseSession() 사이에 워커 스레드가 해당 세션에 접근하더라도
+// 1) _valid == false 체크로 즉시 skip
+// 2) 슬롯 재사용 시에도 overlappedEx->sessionId != session->_sessionId 로 skip
+// 따라서 deferred cleanup 구간에서 실제 처리로 진입하는 경로는 없음
 bool CIOCPServer::DisconnectSessionInternal(CSession* session)
 {
     if (!session)
