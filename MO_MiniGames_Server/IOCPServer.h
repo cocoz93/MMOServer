@@ -33,7 +33,7 @@ enum class IOOperation
 // 서버 아키텍처 타입
 enum class ServerArchitectureType
 {
-    EchoTest,       // 에코 테스트용 (최소 기능)
+    GameCodiEchoTest, // 에코 테스트용 (최소 기능)
     Centralized,    // 중앙 집중형 - 별도 스레드에서 이벤트 처리
     Partitioned,    // 분산형 - 여러 스레드/큐로 분리 처리
 };

@@ -114,7 +114,7 @@ bool CIOCPServer::Start()
 
     switch (_architectureType)
     {
-    case ServerArchitectureType::EchoTest: std::cout << "EchoTest"; break;
+    case ServerArchitectureType::GameCodiEchoTest: std::cout << "GameCodiEchoTest"; break;
     case ServerArchitectureType::Centralized: std::cout << "Centralized"; break;
     case ServerArchitectureType::Partitioned: std::cout << "Partitioned"; break;
 
@@ -351,7 +351,7 @@ void CIOCPServer::ProcessAccept(SOCKET clientSocket)
     // 컨텐츠쪽 전달 
     switch (_architectureType)
     {
-    case ServerArchitectureType::EchoTest:
+    case ServerArchitectureType::GameCodiEchoTest:
         // 따로 전달 없음
         break;
     case ServerArchitectureType::Centralized: // 큐에 넣어서 별도 스레드로 전달
@@ -584,7 +584,7 @@ void CIOCPServer::ParsePackets(CSession* session)
         }
 
         // 에코 테스트 전용
-        if (_architectureType == ServerArchitectureType::EchoTest)
+        if (_architectureType == ServerArchitectureType::GameCodiEchoTest)
         {
             header.size += sizeof(MsgHeader); // 에코 테스트용 보정
         }
@@ -617,7 +617,7 @@ void CIOCPServer::ParsePackets(CSession* session)
         // 6. 컨텐츠쪽 전달 또는 처리
         switch (_architectureType)
         {
-        case ServerArchitectureType::EchoTest:
+        case ServerArchitectureType::GameCodiEchoTest:
             EchoTestSend(session, packetBuffer.data(), header.size);
                 break;
         case ServerArchitectureType::Centralized: // 큐에 넣어서 별도 스레드로 전달
@@ -888,7 +888,7 @@ bool CIOCPServer::DisconnectSessionInternal(CSession* session)
     // 해제요청이 끝났다면 컨텐츠 쪽에 전달해준다.
     switch (_architectureType)
     {
-    case ServerArchitectureType::EchoTest:
+    case ServerArchitectureType::GameCodiEchoTest:
         // 따로 전달 없음
         break;
 
