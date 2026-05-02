@@ -661,88 +661,10 @@ void CIOCPServer::ProcessSend(CSession* session, DWORD bytesTransferred)
         return;
     }
 
-    // 남은 데이터 확인 후 연속 송신 또는 플래그 해제
-    auto sendInfo = session->_sendQ.GetSendInfo();
-
-    if (sendInfo.dataSize > 0)
-    {
-        // 남은 데이터가 있으면 _sending = true 유지한 채 바로 WSASend
-        // WorkerThread에서 이전 overlappedEx는 이미 반환됨 → 새로 할당
-        CSession::OverlappedEx* ex = AllocOverlappedEx();
-        if (!ex)
-        {
-            LOG_ERROR_STREAM("[Error] OverlappedEx pool exhausted (ProcessSend) - SessionId: " << session->_sessionId);
-            session->_sending.store(false);
-            DisconnectSessionInternal(session);
-            return;
-        }
-
-        ZeroMemory(&ex->overlapped, sizeof(OVERLAPPED));
-        ex->sessionId = session->_sessionId;
-        ex->operation = IOOperation::SEND;
-
-        WSABUF wsaBuf[2];
-        int bufCount = 0;
-
-        if (sendInfo.directReadSize > 0)
-        {
-            wsaBuf[bufCount].buf = sendInfo.readPtr;
-            wsaBuf[bufCount].len = static_cast<ULONG>(sendInfo.directReadSize);
-            bufCount++;
-
-            if (sendInfo.dataSize > sendInfo.directReadSize)
-            {
-                size_t wrapSize = sendInfo.dataSize - sendInfo.directReadSize;
-                wsaBuf[bufCount].buf = session->_sendQ._buffer;
-                wsaBuf[bufCount].len = static_cast<ULONG>(wrapSize);
-                bufCount++;
-            }
-        }
-
-        if (bufCount > 0)
-        {
-            // [IO 제출 직전 검증] 세션 슬롯 재사용 방어 (IO 완료 시점 검증과 쌍으로 동작)
-            // WSABUF 준비 ~ IO 제출 사이에 세션이 disconnect → 재사용되면
-            // 구 세션의 데이터가 신 세션의 소켓으로 전송되는 것을 방지
-            if (ex->sessionId != session->_sessionId)
-            {
-                FreeOverlappedEx(ex);
-                session->_sending.store(false);
-                return;
-            }
-            session->_sendOverlapped = ex;
-
-            DWORD sendBytes = 0;
-            int result = WSASend(session->_socket, wsaBuf, bufCount, &sendBytes, 0,
-                &ex->overlapped, NULL);
-
-            if (result == SOCKET_ERROR)
-            {
-                const int wsaErr = WSAGetLastError();
-                if (wsaErr == WSA_IO_PENDING)
-                {
-                    return;
-                }
-
-                LOG_WSA_ERROR_STREAM("[Error] WSASend failed - SessionId: " << session->_sessionId
-                    << ", WSAError: ", wsaErr);
-                session->_sendOverlapped = nullptr;
-                FreeOverlappedEx(ex);
-                session->_sending.store(false);
-                DisconnectSessionInternal(session);
-            }
-            return;
-        }
-
-        session->_sendOverlapped = nullptr;
-        FreeOverlappedEx(ex);
-    }
-
-    // 보낼 데이터가 없을 때만 플래그 해제
+    // 플래그 해제 후 PostSend에서 남은 데이터 확인 및 연속 송신
     session->_sending.store(false);
-    
+
     // Double-check: 플래그 해제 직후 다시 확인 (다른 스레드가 Enqueue했을 수 있음)
-    // https://www.notion.so/IOCP-2e216a0b9f5980718fbbe6d70d9d537f?source=copy_link#2e216a0b9f5980259bece18c0876edf8
     if (session->_sendQ.GetDataSize() > 0)
     {
         PostSend(session);
@@ -759,7 +681,6 @@ void CIOCPServer::PostSend(CSession* session)
         return;
 
     // 사이즈 체크보다 플래그 변경처리가 우선되어야 함
-    // https://www.notion.so/IOCP-2e216a0b9f5980718fbbe6d70d9d537f?source=copy_link#2e216a0b9f5980e0bff1d298912f7b60
     if (true == session->_sending.exchange(true))
         return;
 
