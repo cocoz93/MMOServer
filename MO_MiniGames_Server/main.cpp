@@ -43,7 +43,7 @@ int main()
     }
 
     // 서버 종료
-    gameServer->Disconnect();
+    gameServer->ShutdownServer();
 
     std::cout << "Server shutdown complete" << std::endl;
     return 0;

@@ -75,7 +75,7 @@ CIOCPServer::CIOCPServer(int port, int maxClients, ServerArchitectureType type)
 
 CIOCPServer::~CIOCPServer()
 {
-    Disconnect();
+    ShutdownServer();
     SignalProcessShutdown(); // 메인 스레드 종료
 }
 
@@ -227,13 +227,26 @@ bool CIOCPServer::BindIOCP(SOCKET socket, ULONG_PTR completionKey)
 
 
 // 새 I/O 제출을 막고 pending I/O 완료를 유도한다. 실제 closesocket은 IOCount 0에서 수행한다.
-void CIOCPServer::Disconnect()
+void CIOCPServer::ShutdownServer()
 {
     if (!_running.exchange(false, std::memory_order_acq_rel))
     {
         return;
     }
 
+    // 1. Listen 소켓 닫기 — 새 연결 차단 (AcceptThread 깨움)
+    if (_listenSocket != INVALID_SOCKET)
+    {
+        closesocket(_listenSocket);
+        _listenSocket = INVALID_SOCKET;
+    }
+
+    if (_acceptThread.joinable())
+    {
+        _acceptThread.join();
+    }
+
+    // 2. 모든 세션에 종료 유도 — CancelIoEx로 pending IO 완료를 촉진
     for (auto& session : _sessions)
     {
         if (session)
@@ -242,15 +255,20 @@ void CIOCPServer::Disconnect()
         }
     }
 
-
-    // Listen 소켓도 닫음 (정상적으로 닫아도 무방)
-    if (_listenSocket != INVALID_SOCKET)
+    // 3. 모든 세션의 IOCount가 0이 될 때까지 대기
+    //    워커 스레드가 cancelled IO 완료 통지를 처리하여 IOCount를 감소시킨다.
+    for (auto& session : _sessions)
     {
-        closesocket(_listenSocket);
-        _listenSocket = INVALID_SOCKET;
+        if (!session)
+            continue;
+
+        while (session->_ioCount > 0)
+        {
+            Sleep(1);
+        }
     }
 
-    // IOCP 워커 스레드 깨우기
+    // 4. 모든 IO 정리 완료 — 워커 스레드 종료
     if (_iocpHandle != NULL)
     {
         for (size_t i = 0; i < _workerThreads.size(); ++i)
@@ -259,18 +277,12 @@ void CIOCPServer::Disconnect()
         }
     }
 
-    // 스레드 종료 대기
     for (auto& thread : _workerThreads)
     {
         if (thread.joinable())
         {
             thread.join();
         }
-    }
-
-    if (_acceptThread.joinable())
-    {
-        _acceptThread.join();
     }
 
     if (_iocpHandle != NULL)

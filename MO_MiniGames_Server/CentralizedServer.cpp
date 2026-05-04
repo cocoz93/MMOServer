@@ -16,7 +16,7 @@ CCentralizedServer::CCentralizedServer(int port, int maxClients, int mainlogicTi
 CCentralizedServer::~CCentralizedServer()
 {
     Stop();
-    _networkServer->Disconnect();
+    _networkServer->ShutdownServer();
 }
 
 bool CCentralizedServer::Start()

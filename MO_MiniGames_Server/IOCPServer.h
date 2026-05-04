@@ -196,7 +196,7 @@ public:
     virtual ~CIOCPServer();
 
     bool Start();
-    void Disconnect();
+    void ShutdownServer();
 
     // 게임 로직 레이어가 사용할 인터페이스 (직접 호출)
     // thread-safe하다면 굳이 큐방식으로 부하를 줄 필요가 없음.
