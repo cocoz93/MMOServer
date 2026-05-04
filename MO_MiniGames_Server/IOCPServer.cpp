@@ -1,27 +1,43 @@
-#include "IOCPServer.h"
+﻿#include "IOCPServer.h"
 #include "../Shared/Common/ErrorLog.h"
 #include <iostream>
 
-extern void SignalProcessShutdown(); // main쪽에 정의된 함수
+extern void SignalProcessShutdown(); // main 쪽에 정의된 종료 알림 함수
+
 
 // CSession Implementation
 CSession::CSession()
+    : _ioCount(0)
+    , _disconnecting(FALSE)
+    , _socket(INVALID_SOCKET)
+    , _sessionId(0)
+    , _sending(FALSE)
 {
-    Initialize(INVALID_SOCKET, 0);
+    ZeroMemory(&_recvOverlapped.overlapped, sizeof(OVERLAPPED));
+    _recvOverlapped.operation = IOOperation::RECV;
+    ZeroMemory(&_sendOverlapped.overlapped, sizeof(OVERLAPPED));
+    _sendOverlapped.operation = IOOperation::SEND;
 }
 
 void CSession::Initialize(SOCKET socket, int64_t sessionId)
 {
     _socket = socket;
     _sessionId = sessionId;
-    _valid.store(true); // 유효한 세션
-    _sending.store(false);
+    _disconnecting = FALSE;
+    _sending = FALSE;
     _recvQ.Clear();
     _sendQ.Clear();
 
-    // Per-IO 풀 방식: IO 요청마다 풀에서 할당하므로 여기서는 nullptr로 초기화만
-    _recvOverlapped = nullptr;
-    _sendOverlapped = nullptr;
+    // 세션 고정 Overlapped 방식: IO 요청마다 재사용하므로 요청 전 OVERLAPPED만 초기화한다.
+    ZeroMemory(&_recvOverlapped.overlapped, sizeof(OVERLAPPED));
+    _recvOverlapped.operation = IOOperation::RECV;
+    ZeroMemory(&_sendOverlapped.overlapped, sizeof(OVERLAPPED));
+    _sendOverlapped.operation = IOOperation::SEND;
+
+    // _ioCount를 마지막에 설정 — 첫 번째 Recv IO의 ref (base ref 아님).
+    // InterlockedExchange가 full barrier를 제공하므로 위의 모든 쓰기가 이 시점 전에 완료된다.
+    // 이 시점부터 세션이 외부에 공개된다.
+    InterlockedExchange(&_ioCount, 1);
 }
 
 CSession::~CSession()
@@ -31,12 +47,16 @@ CSession::~CSession()
 
 void CSession::Close()
 {
-    // 소켓만 종료하고, 버퍼 등 나머지 상태는 Initialize()에서 초기화한다.
-    // Close() ~ Initialize() 사이에는 _valid==false, sessionId 체크 (ABA 식별용으로 의도적 잔존)
-    if (_socket != INVALID_SOCKET)
+    // 소켓과 세션 상태를 정리한다. 버퍼 등 나머지는 Initialize()에서 초기화한다.
+    // IOCount=0 시점에 단일 스레드에서만 호출되므로 Interlocked 불필요.
+    _sending = FALSE;
+    _sessionId = 0;
+
+    SOCKET socket = _socket;
+    _socket = INVALID_SOCKET;
+    if (socket != INVALID_SOCKET)
     {
-        closesocket(_socket);
-        _socket = INVALID_SOCKET;
+        closesocket(socket);
     }
 }
 
@@ -56,13 +76,20 @@ CIOCPServer::CIOCPServer(int port, int maxClients, ServerArchitectureType type)
 CIOCPServer::~CIOCPServer()
 {
     Disconnect();
-    SignalProcessShutdown(); //메인 스레드 종료
+    SignalProcessShutdown(); // 메인 스레드 종료
 }
 
 
 bool CIOCPServer::Start()
 {
-    // Vector 초기화 및 Session 동접자만큼 확보
+    if (_maxClients <= 0 || _maxClients > CSession::SESSION_MAX_COUNT)
+    {
+        LOG_ERROR_STREAM("[Error] maxClients(" << _maxClients << ") out of range. valid: 1~" << CSession::SESSION_MAX_COUNT);
+        return false;
+    }
+
+    // 세션 객체는 서버 시작 시 동접자 수만큼 고정 생성하고 이후 index만 재사용한다.
+
     _sessions.resize(_maxClients);
     for (uint16_t i = 0; i < _maxClients; ++i)
     {
@@ -70,10 +97,17 @@ bool CIOCPServer::Start()
         _sessions[i] = std::make_unique<CSession>();
     }
 
-    // 빈 인덱스 큐 초기화 (0번부터 maxClients-1까지)
+
+    // Start 재호출 시 이전 lock-free 스택에 남은 index를 비운다.
+    uint16_t staleIndex = 0;
+    while (_availableIndices.Pop(&staleIndex))
+    {
+    }
+
+    // 빈 인덱스 스택 초기화 (0번부터 maxClients-1까지)
     for (uint16_t i = 0; i < _maxClients; ++i)
     {
-        _availableIndices.push(i);
+        _availableIndices.Push(i);
     }
 
     WSADATA wsaData;
@@ -162,6 +196,7 @@ bool CIOCPServer::CreateListenSocket()
     return true;
 }
 
+
 // 대부분 연결별 동작에 영향을 주는 옵션은 accept후에 설정해야한다.
 bool CIOCPServer::SetSocketOptions(SOCKET socket)
 {
@@ -190,62 +225,23 @@ bool CIOCPServer::BindIOCP(SOCKET socket, ULONG_PTR completionKey)
     return true;
 }
 
-void CIOCPServer::ReleaseSession()
-{
-    std::lock_guard<std::mutex> lock(_pendingDisconMtx);
-    while (!_pendingDisconStack.empty())
-    {
-        uint64_t sessionid = _pendingDisconStack.top();
-        _pendingDisconStack.pop();
 
-        auto session = FindSession(sessionid);
-        if (session)
-        {
-            session->Close();
-            _availableIndices.push(CSession::ExtractIndex(sessionid));
-        }
-    }
-}
-
-// 즉시 RST 전송(강제 종료)
+// 새 I/O 제출을 막고 pending I/O 완료를 유도한다. 실제 closesocket은 IOCount 0에서 수행한다.
 void CIOCPServer::Disconnect()
 {
-    if (!_running)
+    if (!_running.exchange(false, std::memory_order_acq_rel))
     {
         return;
     }
 
-    _running = false;
-
-    // 모든 세션 강제 종료 (SO_LINGER{on,0} -> abortive close (RST))
+    for (auto& session : _sessions)
     {
-        LINGER lingerOpt;
-        lingerOpt.l_onoff = 1;
-        lingerOpt.l_linger = 0;
-
-        for (auto& session : _sessions)
+        if (session)
         {
-            if (session && session->_valid.exchange(false))  // exchange로 소유권 획득
-            {
-                if (session && session->_socket != INVALID_SOCKET)
-                {
-                    closesocket(session->_socket);
-                    session->_valid.store(false);
-                }
-            }
-        }
-        
-        // Vector 초기화
-        //std::fill(_sessions.begin(), _sessions.end(), nullptr);
-        
-        // 빈 인덱스 큐 재초기화
-        std::queue<uint16_t> empty;
-        std::swap(_availableIndices, empty);
-        for (uint16_t i = 0; i < _maxClients; ++i)
-        {
-            _availableIndices.push(i);
+            RequestDisconnectSession(session.get());
         }
     }
+
 
     // Listen 소켓도 닫음 (정상적으로 닫아도 무방)
     if (_listenSocket != INVALID_SOCKET)
@@ -286,8 +282,10 @@ void CIOCPServer::Disconnect()
     WSACleanup();
 }
 
+
+
 // 윈도우 accept에는 timeout 기능이 없음.
-// (그럴일은 없겠지만) 무한히 block걸려도 문제없음
+// listen socket close로 accept를 깨운다.
 void CIOCPServer::AcceptThread()
 {
     while (_running)
@@ -296,9 +294,6 @@ void CIOCPServer::AcceptThread()
         int addrLen = sizeof(clientAddr);
 
         SOCKET clientSocket = accept(_listenSocket, (SOCKADDR*)&clientAddr, &addrLen);
-
-        // 깨어났으면 해제할 세션있는지 체크
-        ReleaseSession();
 
 
         if (clientSocket == INVALID_SOCKET)
@@ -319,43 +314,40 @@ void CIOCPServer::AcceptThread()
 void CIOCPServer::ProcessAccept(SOCKET clientSocket)
 {
     // 빈 인덱스 확인 (여유가 없다면 동접 max)
-    if (_availableIndices.empty())
+    uint16_t index = 0;
+    if (!_availableIndices.Pop(&index))
     {
         LOG_ERROR_STREAM("[Error] No free session index available");
         closesocket(clientSocket);
         return;
     }
 
-    // 빈 인덱스 가져오기
-    uint16_t index = _availableIndices.front();
-    _availableIndices.pop();
-
     // 고유 ID 생성 (하위 48비트만 사용)
     int64_t uniqueId = (_sessionIdCounter.fetch_add(1)) & CSession::SESSION_UNIQUE_MASK;
-    
+
     // SessionID 생성 [16bit Index][48bit UniqueID]
     int64_t sessionId = CSession::MakeSessionId(index, uniqueId);
 
     // session 초기화. 사용가능한 상태가 됨
     _sessions[index]->Initialize(clientSocket, sessionId);
-    
+
     // IOCP의 CompletionKey는 단순 식별자 역할이므로, 세션 소유권을 갖지 않는다.
     if (!BindIOCP(clientSocket, (ULONG_PTR)_sessions[index].get()))
     {
         LOG_ERROR_STREAM("Failed to bind client socket to IOCP");
-        _sessions[index]->Close();
-        _availableIndices.push(index);
-        closesocket(clientSocket);
+        // RequestDisconnectSession → ReleaseSession(IOCount→0)으로 정리
+        RequestDisconnectSession(_sessions[index].get());
+        IOCountDecrement(_sessions[index].get());
         return;
     }
 
-    // 컨텐츠쪽 전달 
+    // 컨텐츠쪽 전달
     switch (_architectureType)
     {
     case ServerArchitectureType::GameCodiEchoTest:
         // 따로 전달 없음
         break;
-    case ServerArchitectureType::Centralized: // 큐에 넣어서 별도 스레드로 전달
+    case ServerArchitectureType::Centralized:
         PushNetworkEvent(NetworkEvent(NetworkEvent::Type::CONNECTED, sessionId));
         break;
 
@@ -363,15 +355,14 @@ void CIOCPServer::ProcessAccept(SOCKET clientSocket)
         break;
     }
 
-    //std::cout << "Client connected - SessionId: " << sessionId << " (Index: " << index << ", UniqueID: " << uniqueId << ")" << std::endl;
-
-    // 첫 Recv 요청
-    PostRecv(_sessions[index].get());
+    // 첫 Recv — Initialize의 IOCount=1이 이 IO의 ref. AcquireSession 불필요.
+    PostRecv(_sessions[index].get(), true);
 }
 
+// 완료 통지 처리. IOCount 감소는 ProcessRecv/ProcessSend 이후에만 수행한다.
 void CIOCPServer::WorkerThread()
 {
-    while (_running)
+    while (true)
     {
         DWORD bytesTransferred = 0;
         ULONG_PTR completionKey = 0;
@@ -380,81 +371,46 @@ void CIOCPServer::WorkerThread()
         BOOL result = GetQueuedCompletionStatus(_iocpHandle, &bytesTransferred,
             &completionKey, &overlapped, INFINITE);
 
-        if (!_running)
-            break;
-
-        // 에러 또는 연결 종료 (에러와 연결종료 상황을 분류하지 않음)
-        if (result == FALSE || bytesTransferred == 0)
+        if (overlapped == nullptr)
         {
-            if (overlapped != nullptr)
-            {
-                auto overlappedEx = reinterpret_cast<CSession::OverlappedEx*>(overlapped);
-                auto session = reinterpret_cast<CSession*>(completionKey);
-
-                if (session && overlappedEx->sessionId == session->_sessionId)
-                {
-                    // Per-IO 풀 방식: overlappedEx는 독립 메모리이므로 sessionId 검증이 정확하게 동작함
-                    // → 구 세션의 취소 완료가 새 세션으로 오인될 일이 없음 (Socket ABA 해결)
-                    if (overlappedEx->operation == IOOperation::RECV)
-                        session->_recvOverlapped = nullptr;
-                    else if (overlappedEx->operation == IOOperation::SEND)
-                        session->_sendOverlapped = nullptr;
-
-                    DisconnectSessionInternal(session);
-                }
-                // sessionId 불일치: 구 세션의 취소 완료 → 현재 세션과 무관, 무시
-
-                FreeOverlappedEx(overlappedEx); // 항상 풀에 반환
-            }
+            if (!_running.load(std::memory_order_acquire))
+                break;
             continue;
         }
 
         auto overlappedEx = reinterpret_cast<CSession::OverlappedEx*>(overlapped);
         auto session = reinterpret_cast<CSession*>(completionKey);
-         
-        // overlappedEx, session이 nullptr인 상황은 있을 수 없음
+
         if (overlappedEx == nullptr || session == nullptr)
         {
             LOG_ERROR_STREAM("[Error] Invalid overlappedEx or session pointer in WorkerThread");
             continue;
         }
 
-        // 이미 연결이 끊긴 세션
-        if (!session->_valid.load())
-        {
-            FreeOverlappedEx(overlappedEx);
-            continue;
-        }
-
-        // [IO 완료 시점 검증] 세션 슬롯 재사용 방어 (제출 직전 검증과 쌍으로 동작)
-        // Per-IO 풀의 overlappedEx는 독립 메모리이므로 sessionId가 덮어써지지 않음
-        // → 구 세션의 IO 완�� 통지가 신 세션에 처리되는 것을 방지
-        if (overlappedEx->sessionId != session->_sessionId)
-        {
-            FreeOverlappedEx(overlappedEx);
-            continue;
-        }
-
-        // 세션 포인터 클리어 후 풀 반환, 이후 Process에서 새 overlappedEx 할당
         IOOperation op = overlappedEx->operation;
-        if (op == IOOperation::RECV)
-            session->_recvOverlapped = nullptr;
-        else if (op == IOOperation::SEND)
-            session->_sendOverlapped = nullptr;
+        bool canProcess = (result != FALSE && bytesTransferred != 0 &&
+            session->_disconnecting == FALSE);
 
-        FreeOverlappedEx(overlappedEx);
-
-        switch (op)
+        if (canProcess)
         {
-        case IOOperation::RECV:
-            ProcessRecv(session, bytesTransferred);
-            break;
-        case IOOperation::SEND:
-            ProcessSend(session, bytesTransferred);
-            break;
-        default:
-            break;
+            switch (op)
+            {
+            case IOOperation::RECV:
+                ProcessRecv(session, bytesTransferred);
+                break;
+            case IOOperation::SEND:
+                ProcessSend(session, bytesTransferred);
+                break;
+            default:
+                break;
+            }
         }
+        else if (result == FALSE || bytesTransferred == 0)
+        {
+            RequestDisconnectSession(session);
+        }
+
+        IOCountDecrement(session);
     }
 }
 
@@ -465,20 +421,19 @@ void CIOCPServer::ProcessRecv(CSession* session, DWORD bytesTransferred)
     if (bytesTransferred == 0)
     {
         LOG_ERROR_STREAM("[Warning] ProcessRecv called with bytesTransferred == 0 - SessionId: " << session->_sessionId);
-        DisconnectSessionInternal(session);
+        RequestDisconnectSession(session);
         return;
     }
 
-    // 링버퍼 쓰기 포인터 이동 
+    // 링버퍼 쓰기 포인터 이동
     size_t movedSize = session->_recvQ.MoveWritePtr(bytesTransferred);
     if (movedSize != bytesTransferred)
     {
         LOG_ERROR_STREAM("[Error] Recv buffer overflow - SessionId: " << session->_sessionId
             << ", Expected: " << bytesTransferred << ", Moved: " << movedSize);
-        DisconnectSessionInternal(session);
+        RequestDisconnectSession(session);
         return;
     }
-
 
     // 패킷 파싱
     ParsePackets(session);
@@ -487,23 +442,24 @@ void CIOCPServer::ProcessRecv(CSession* session, DWORD bytesTransferred)
     PostRecv(session);
 }
 
-// PostRecv: 링버퍼 기반 WSARecv 요청
-void CIOCPServer::PostRecv(CSession* session)
+
+// Recv I/O 제출. 제출 전 IOCount로 세션을 pin한다.
+// skipAcquire=true: ProcessAccept에서 첫 Recv 시 Initialize의 IOCount=1을 그대로 사용.
+void CIOCPServer::PostRecv(CSession* session, bool skipAcquire)
 {
-    if (!session || !session->_valid.load())
+    if (!session)
         return;
 
-    // Per-IO 풀에서 OverlappedEx 할당
-    CSession::OverlappedEx* ex = AllocOverlappedEx();
-    if (!ex)
+    if (!skipAcquire)
     {
-        LOG_ERROR_STREAM("[Error] OverlappedEx pool exhausted (Recv) - SessionId: " << session->_sessionId);
-        DisconnectSessionInternal(session);
-        return;
+        if (!AcquireSession(session))
+            return;
     }
 
+    const int64_t sessionId = session->_sessionId;
+
+    CSession::OverlappedEx* ex = &session->_recvOverlapped;
     ZeroMemory(&ex->overlapped, sizeof(OVERLAPPED));
-    ex->sessionId = session->_sessionId; // IO 요청 시점의 sessionId 고정 (독립 메모리)
     ex->operation = IOOperation::RECV;
 
     // 링버퍼에서 쓰기 가능한 공간 확보
@@ -531,45 +487,53 @@ void CIOCPServer::PostRecv(CSession* session)
 
     if (bufCount == 0)
     {
-        LOG_ERROR_STREAM("[Error] Recv buffer full - SessionId: " << session->_sessionId);
-        FreeOverlappedEx(ex);
-        DisconnectSessionInternal(session);
+        LOG_ERROR_STREAM("[Error] Recv buffer full - SessionId: " << sessionId);
+        RequestDisconnectSession(session);
+        IOCountDecrement(session);
         return;
     }
 
-    // [IO 제출 직전 검증] 세션 슬롯 재사용 방어 (IO 완료 시점 검증과 쌍으로 동작)
-    // WSABUF 준비 ~ IO 제출 사이에 세션이 disconnect → 재사용되면
-    // 구 세션의 데이터가 신 세션의 소켓으로 전송되는 것을 방지
-    if (ex->sessionId != session->_sessionId)
+    if (session->_disconnecting == TRUE)
     {
-        FreeOverlappedEx(ex);
+        // WSABUF 준비 ~ IO 제출 사이에 세션이 disconnect되면 제출하지 않는다.
+        IOCountDecrement(session);
         return;
     }
-    session->_recvOverlapped = ex;
+
+    SOCKET socket = session->_socket;
+    if (socket == INVALID_SOCKET)
+    {
+        RequestDisconnectSession(session);
+        IOCountDecrement(session);
+        return;
+    }
 
     DWORD flags = 0;
     DWORD recvBytes = 0;
 
-    int result = WSARecv(session->_socket, wsaBuf, bufCount, &recvBytes, &flags,
+    int result = WSARecv(socket, wsaBuf, bufCount, &recvBytes, &flags,
         &ex->overlapped, NULL);
 
     if (result == SOCKET_ERROR)
     {
         const int wsaErr = WSAGetLastError();
-        if (wsaErr == WSA_IO_PENDING)
+        if (wsaErr != WSA_IO_PENDING)
         {
+            if (!shared::ShouldIgnoreWsaError(wsaErr))
+            {
+                LOG_WSA_ERROR_STREAM("[Error] WSARecv failed - SessionId: " << sessionId << ", WSAError: ", wsaErr);
+            }
+            RequestDisconnectSession(session);
+            IOCountDecrement(session);
             return;
         }
+    }
 
-        // 빈번한 에러(클라이언트 연결 끊김 등)는 로그 생략, 그 외는 로그 출력
-        // 어떤 에러든 동기 실패 시 IOCP completion이 오지 않으므로 반드시 정리해야 함
-        if (!shared::ShouldIgnoreWsaError(wsaErr))
-        {
-            LOG_WSA_ERROR_STREAM("[Error] WSARecv failed - SessionId: " << session->_sessionId << ", WSAError: ", wsaErr);
-        }
-        session->_recvOverlapped = nullptr;
-        FreeOverlappedEx(ex);
-        DisconnectSessionInternal(session);
+    // Post-check: pre-check ~ WSARecv 사이에 끼어든 disconnect race 회수.
+    // CancelIoEx가 먼저 지나간 뒤 WSARecv가 늦게 걸린 IO를 취소한다.
+    if (session->_disconnecting == TRUE)
+    {
+        CancelIoEx(reinterpret_cast<HANDLE>(socket), &ex->overlapped);
     }
 }
 
@@ -605,7 +569,7 @@ void CIOCPServer::ParsePackets(CSession* session)
         {
             LOG_ERROR_STREAM("[Error] Invalid packet size: " << header.size
                 << " - SessionId: " << session->_sessionId);
-            DisconnectSessionInternal(session);
+            RequestDisconnectSession(session);
             return;
         }
 
@@ -621,7 +585,7 @@ void CIOCPServer::ParsePackets(CSession* session)
         if (dequeuedSize != header.size)
         {
             LOG_ERROR_STREAM("[Error] Packet dequeue failed - SessionId: " << session->_sessionId);
-            DisconnectSessionInternal(session);
+            RequestDisconnectSession(session);
             return;
         }
 
@@ -631,22 +595,22 @@ void CIOCPServer::ParsePackets(CSession* session)
         case ServerArchitectureType::GameCodiEchoTest:
             EchoTestSend(session, packetBuffer.data(), header.size);
                 break;
-        case ServerArchitectureType::Centralized: // 큐에 넣어서 별도 스레드로 전달
-            PushNetworkEvent(NetworkEvent(NetworkEvent::Type::RECEIVED, 
+        case ServerArchitectureType::Centralized:
+            PushNetworkEvent(NetworkEvent(NetworkEvent::Type::RECEIVED,
                 session->_sessionId, packetBuffer.data(), header.size));
             break;
 
         default:
             break;
         }
-        
+
     }
 }
 
 // Send 완료 통지 처리
 void CIOCPServer::ProcessSend(CSession* session, DWORD bytesTransferred)
 {
-    if (!session || !session->_valid.load())
+    if (!session || session->_disconnecting == TRUE)
     {
         return;
     }
@@ -657,12 +621,12 @@ void CIOCPServer::ProcessSend(CSession* session, DWORD bytesTransferred)
     {
         LOG_ERROR_STREAM("[Error] Send consume mismatch - SessionId: " << session->_sessionId
             << ", Expected: " << bytesTransferred << ", Consumed: " << consumed);
-        DisconnectSessionInternal(session);
+        RequestDisconnectSession(session);
         return;
     }
 
     // 플래그 해제 후 PostSend에서 남은 데이터 확인 및 연속 송신
-    session->_sending.store(false);
+    session->_sending = FALSE;
 
     // Double-check: 플래그 해제 직후 다시 확인 (다른 스레드가 Enqueue했을 수 있음)
     if (session->_sendQ.GetDataSize() > 0)
@@ -674,36 +638,34 @@ void CIOCPServer::ProcessSend(CSession* session, DWORD bytesTransferred)
 // Send는 1회로 제한
 // https://www.notion.so/C-IOCP-2e216a0b9f5980718fbbe6d70d9d537f?source=copy_link#2e216a0b9f5980a183ecccce201aff54
 
-// PostSend: SendQ에서 데이터를 꺼내 WSASend 호출
+// Send I/O 제출. 제출 전 IOCount로 세션을 pin한다.
 void CIOCPServer::PostSend(CSession* session)
 {
-    if (!session || !session->_valid.load())
+    if (!session)
         return;
 
-    // 사이즈 체크보다 플래그 변경처리가 우선되어야 함
-    if (true == session->_sending.exchange(true))
+    if (!AcquireSession(session))
         return;
+
+    const int64_t sessionId = session->_sessionId;
+
+    if (InterlockedExchange(&session->_sending, TRUE) == TRUE)
+    {
+        IOCountDecrement(session);
+        return;
+    }
 
     auto sendInfo = session->_sendQ.GetSendInfo();
 
     if (sendInfo.dataSize == 0)
     {
-        session->_sending.store(false);
+        session->_sending = FALSE;
+        IOCountDecrement(session);
         return;
     }
 
-    // Per-IO 풀에서 OverlappedEx 할당
-    CSession::OverlappedEx* ex = AllocOverlappedEx();
-    if (!ex)
-    {
-        LOG_ERROR_STREAM("[Error] OverlappedEx pool exhausted (PostSend) - SessionId: " << session->_sessionId);
-        session->_sending.store(false);
-        DisconnectSessionInternal(session);
-        return;
-    }
-
+    CSession::OverlappedEx* ex = &session->_sendOverlapped;
     ZeroMemory(&ex->overlapped, sizeof(OVERLAPPED));
-    ex->sessionId = session->_sessionId;
     ex->operation = IOOperation::SEND;
 
     WSABUF wsaBuf[2];
@@ -726,43 +688,53 @@ void CIOCPServer::PostSend(CSession* session)
 
     if (bufCount == 0)
     {
-        FreeOverlappedEx(ex);
-        session->_sending.store(false);
+        session->_sending = FALSE;
+        IOCountDecrement(session);
         return;
     }
 
-    // [IO 제출 직전 검증] 세션 슬롯 재사용 방어 (IO 완료 시점 검증과 쌍으로 동작)
-    // WSABUF 준비 ~ IO 제출 사이에 세션이 disconnect → 재사용되면
-    // 구 세션의 데이터가 신 세션의 소켓으로 전송되는 것을 방지
-    if (ex->sessionId != session->_sessionId)
+    if (session->_disconnecting == TRUE)
     {
-        FreeOverlappedEx(ex);
-        session->_sending.store(false);
+        // WSABUF 준비 ~ IO 제출 사이에 세션이 disconnect되면 제출하지 않는다.
+        session->_sending = FALSE;
+        IOCountDecrement(session);
         return;
     }
-    session->_sendOverlapped = ex;
+
+    SOCKET socket = session->_socket;
+    if (socket == INVALID_SOCKET)
+    {
+        session->_sending = FALSE;
+        RequestDisconnectSession(session);
+        IOCountDecrement(session);
+        return;
+    }
 
     DWORD sendBytes = 0;
-    int result = WSASend(session->_socket, wsaBuf, bufCount, &sendBytes, 0,
+    int result = WSASend(socket, wsaBuf, bufCount, &sendBytes, 0,
         &ex->overlapped, NULL);
 
     if (result == SOCKET_ERROR)
     {
         const int wsaErr = WSAGetLastError();
-        if (wsaErr == WSA_IO_PENDING)
+        if (wsaErr != WSA_IO_PENDING)
         {
+            if (!shared::ShouldIgnoreWsaError(wsaErr))
+            {
+                LOG_WSA_ERROR_STREAM("[Error] WSASend failed - SessionId: " << sessionId
+                    << ", WSAError: ", wsaErr);
+            }
+            session->_sending = FALSE;
+            RequestDisconnectSession(session);
+            IOCountDecrement(session);
             return;
         }
+    }
 
-        if (!shared::ShouldIgnoreWsaError(wsaErr))
-        {
-            LOG_WSA_ERROR_STREAM("[Error] WSASend failed - SessionId: " << session->_sessionId
-                << ", WSAError: ", wsaErr);
-        }
-        session->_sendOverlapped = nullptr;
-        FreeOverlappedEx(ex);
-        session->_sending.store(false);
-        DisconnectSessionInternal(session);
+    // Post-check: pre-check ~ WSASend 사이에 끼어든 disconnect race 회수.
+    if (session->_disconnecting == TRUE)
+    {
+        CancelIoEx(reinterpret_cast<HANDLE>(socket), &ex->overlapped);
     }
 }
 
@@ -770,9 +742,21 @@ void CIOCPServer::PostSend(CSession* session)
 // 송신 요청: SendQ에 데이터 Enqueue 후 송신 시작
 void CIOCPServer::RequestSendMsg(int64_t sessionId, const char* data, int length)
 {
+    // 3단계 Session ABA 검증
+    // 1단계: sessionId의 상위 16비트(index)로 세션을 찾고, 저장된 sessionId가 일치하는지 확인
     auto session = FindSession(sessionId);
-    if (!session || !session->_valid.load())
+    if (!session)
+        return;
+
+    // 2단계: IOCount를 증가시켜 세션을 pin. 해제 진행 중이면 실패한다.
+    if (!AcquireSession(session))
+        return;
+
+    // 3단계: pin 성공 후 sessionId 재확인. FindSession ~ AcquireSession 사이에
+    //        세션이 해제되고 같은 index에 재할당되었을 경우를 검출한다.
+    if (session->_sessionId != sessionId)
     {
+        IOCountDecrement(session);
         return;
     }
 
@@ -782,18 +766,19 @@ void CIOCPServer::RequestSendMsg(int64_t sessionId, const char* data, int length
     {
         LOG_ERROR_STREAM("[Error] Send buffer overflow - SessionId: " << sessionId
             << ", Requested: " << length << ", Enqueued: " << enqueued);
-        DisconnectSessionInternal(session);
+        RequestDisconnectSession(session);
+        IOCountDecrement(session);
         return;
     }
 
     PostSend(session);
+    IOCountDecrement(session);
 }
-
 
 void CIOCPServer::EchoTestSend(CSession* session, const char* data, size_t length)
 {
     // 에코 테스트: 받은 패킷을 그대로 돌려보냄
-    RequestSendMsg(session->_sessionId, data, length);
+    RequestSendMsg(session->_sessionId, data, static_cast<int>(length));
 }
 
 // ParsePackets 쪽에서 호출
@@ -813,96 +798,154 @@ ServerArchitectureType CIOCPServer::GetArchitectureType() const
     return _architectureType;
 }
 
-// 실제 할당, 해제는 acceptthread에서.
-// 결국 모든 세션해제는 이함수를 통함
-//
-// [ABA 안전성] 이 함수 ~ ReleaseSession() 사이에 워커 스레드가 해당 세션에 접근하더라도
-// 1) _valid == false 체크로 즉시 skip
-// 2) 슬롯 재사용 시에도 overlappedEx->sessionId != session->_sessionId 로 skip
-// 따라서 deferred cleanup 구간에서 실제 처리로 진입하는 경로는 없음
-bool CIOCPServer::DisconnectSessionInternal(CSession* session)
+// 순수 종료 유도 — releaseFlag 설정 + CancelIoEx로 pending IO 취소.
+// 추가 IO를 막아 IOCount가 0이되어 ReleaseSession 호출을 유도
+bool CIOCPServer::RequestDisconnectSession(CSession* session)
 {
     if (!session)
         return false;
 
-    // 이미 해제 진행중이거나 해제된 세션
-    if (!session->_valid.exchange(false))
+    // 다른스레드에서 이미 처리중인 경우 
+    if (InterlockedExchange(&session->_disconnecting, TRUE) == TRUE)
         return false;
 
-    // closesocket
-    if (session->_socket != INVALID_SOCKET)
+    // CancelIoEx로 pending IO를 즉시 완료(에러)시켜 IOCount가 0으로 수렴하게 한다.
+    // INVALID_SOCKET이면 ERROR_INVALID_HANDLE로 실패할 뿐, 부작용 없음.
+    CancelIoEx(reinterpret_cast<HANDLE>(session->_socket), nullptr);
+
+    return true;
+}
+
+// 세션 포인터의 lifetime만 pin한다. SessionID 검증은 외부 진입점에서 별도로 수행한다.
+// CAS로 IOCount가 0인 세션(해제 완료/진행 중)은 절대 증가시키지 않는다.
+bool CIOCPServer::AcquireSession(CSession* session)
+{
+    if (!session)
+        return false;
+
+    if (session->_disconnecting == TRUE)
+        return false;
+
+    // CAS 루프: IOCount > 0일 때만 +1. 0이면 즉시 실패.
+    while (true)
     {
-        closesocket(session->_socket);
-        session->_socket = INVALID_SOCKET;
+        LONG current = session->_ioCount;
+        if (current <= 0)
+            return false;
+
+        if (InterlockedCompareExchange(&session->_ioCount, current + 1, current) == current)
+            break;
     }
 
-    session->_sending.store(false);
-
-    // AcceptThread에서 세션 객체 정리 (인덱스 반환)
+    // CAS 성공 후 releaseFlag 재확인.
+    // IOCount >= 2이므로 세션 해제/재할당 불가
+    if (session->_disconnecting == TRUE)
     {
-        std::lock_guard<std::mutex> lock(_pendingDisconMtx);
-        _pendingDisconStack.push(session->_sessionId);
-    }
-
-    // 해제요청이 끝났다면 컨텐츠 쪽에 전달해준다.
-    switch (_architectureType)
-    {
-    case ServerArchitectureType::GameCodiEchoTest:
-        // 따로 전달 없음
-        break;
-
-    case ServerArchitectureType::Centralized:
-            PushNetworkEvent(NetworkEvent(NetworkEvent::Type::DISCONNECTED, session->_sessionId));
-        break;
-
-    default:
-        break;
+        IOCountDecrement(session);
+        return false;
     }
 
     return true;
 }
 
-
-
-
-CSession::OverlappedEx* CIOCPServer::AllocOverlappedEx()
+// IOCount를 1 감소시킨다. 0이 되면 ReleaseSession을 호출한다.
+// AcquireSession의 CAS가 IOCount=0 세션 증가를 차단하므로, 0 도달 스레드는 유일하다.
+void CIOCPServer::IOCountDecrement(CSession* session)
 {
-    // hot path: DCAS 1회로 NODE에서 OverlappedEx 직접 반환
-    // cold path: LFH 힙에서 NODE 신규 할당 (동적 성장)
-    return _overlappedPool.Alloc();
+    if (!session)
+        return;
+
+    const LONG count = InterlockedDecrement(&session->_ioCount);
+    if (count < 0)
+    {
+        // 언더플로 복구 — 0으로 리셋하지만 release 로직은 실행하지 않으므로
+        // 이 세션의 인덱스는 영구히 반환되지 않는다 (세션 누수).
+        // TODO: 크래시 로직 도입 후 여기서 즉시 중단하는 것이 안전함
+        InterlockedExchange(&session->_ioCount, 0);
+        LOG_ERROR_STREAM("[Error] IOCount underflow - SessionId: " << session->_sessionId);
+        return;
+    }
+
+    if (count == 0)
+    {
+        ReleaseSession(session);
+    }
 }
 
-void CIOCPServer::FreeOverlappedEx(CSession::OverlappedEx* ex)
+// 세션 최종 정리 — IOCount==0 시점에 단일 스레드에서만 호출된다.
+// 컨텐츠 알림, 소켓 종료, 인덱스 반환을 수행한다.
+void CIOCPServer::ReleaseSession(CSession* session)
 {
-    // DataToNode(포인터 산술) + CAS 1회
-    _overlappedPool.Free(ex);
+    // RequestDisconnectSession을 거치지 않고 IOCount==0에 도달한 비정상 경로 방어.
+    // releaseFlag를 강제 설정하여 이후 RequestDisconnectSession 재진입을 차단한다.
+    if (InterlockedExchange(&session->_disconnecting, TRUE) == FALSE)
+    {
+        LOG_ERROR_STREAM("[Error] ReleaseSession without RequestDisconnectSession - SessionId: " << session->_sessionId);
+    }
+
+    const int64_t sessionId = session->_sessionId;
+
+    // 컨텐츠 알림 — IOCount==0이므로 이후 RECEIVED 이벤트 불가. 이벤트 순서 보장.
+    // 서버 종료 중(_running==false)에는 알림 생략.
+    if (sessionId != 0 && _running.load(std::memory_order_acquire))
+    {
+        switch (_architectureType)
+        {
+        case ServerArchitectureType::Centralized:
+            PushNetworkEvent(NetworkEvent(NetworkEvent::Type::DISCONNECTED, sessionId));
+            break;
+
+        default:
+            break;
+        }
+    }
+
+    session->Close();
+
+    if (sessionId != 0)
+    {
+        _availableIndices.Push(CSession::ExtractIndex(sessionId));
+    }
 }
 
-// 게임 로직 레이어가 사용할 인터페이스
 bool CIOCPServer::RequestDisconnectSession(int64_t sessionId)
 {
+    // 3단계 Session ABA 검증
+    // 1단계: index로 세션 조회 + sessionId 일치 확인
     auto session = FindSession(sessionId);
     if (!session)
         return false;
 
-    if (!DisconnectSessionInternal(session))
+    // 2단계: IOCount pin
+    if (!AcquireSession(session))
         return false;
 
-    return true;
+    // 3단계: pin 후 sessionId 재확인 (FindSession ~ AcquireSession 사이 재할당 검출)
+    if (session->_sessionId != sessionId)
+    {
+        IOCountDecrement(session);
+        return false;
+    }
+
+    const bool disconnected = RequestDisconnectSession(session);
+    IOCountDecrement(session);
+    return disconnected;
 }
 
-// 여러 스레드에서 접근가능 !!!
-// session객체 건드릴때 주의
+// 여러 스레드에서 접근가능 — ref를 잡지 않으므로 반환된 포인터는 잠정적이다.
+// 반드시 AcquireSession + sessionId 재확인 후 사용해야 한다.
 CSession* CIOCPServer::FindSession(int64_t sessionId)
 {
     uint16_t index = CSession::ExtractIndex(sessionId);
-    int64_t uniqueId = CSession::ExtractUniqueId(sessionId);
 
     if (index >= _sessions.size())
         return nullptr;
 
     auto& session = _sessions[index];
-    if (session && CSession::ExtractUniqueId(session->_sessionId) == uniqueId)
+    if (!session)
+        return nullptr;
+
+    if (session->_disconnecting == FALSE && session->_sessionId == sessionId)
         return session.get();
 
     return nullptr;

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <WinSock2.h>
 #include <WS2tcpip.h>
@@ -11,24 +11,25 @@
 #include <unordered_map>
 #include <queue>
 #include <functional>
-#include <stack>
 #include <array>
 
 #include "RingBuffer.h"
 #include "Protocol.h"
-#include "LockFree/InternalFreeList.h"
+#include "LockFree/LockFreeStack.h"
 
 #pragma comment(lib, "ws2_32.lib")
 
 constexpr size_t MAX_PACKET_SIZE = 65535;  // 최대 패킷 크기 (64KB)
 constexpr size_t MIN_PACKET_SIZE = sizeof(MsgHeader);  // 최소 패킷 크기
 
+// I/O 작업 종류
 enum class IOOperation
 {
     RECV,
     SEND,
     ACCEPT
 };
+
 
 // 서버 아키텍처 타입
 enum class ServerArchitectureType
@@ -41,11 +42,11 @@ enum class ServerArchitectureType
 class CSession
 {
 public:
-    // 내부 I/O 관리용 확장 OVERLAPPED 구조체
+
+    // 세션에 고정 보관되는 OVERLAPPED 확장 구조체
     struct OverlappedEx
     {
         OVERLAPPED overlapped;      // 반드시 첫 번째 멤버
-        int64_t sessionId;          // I/O 요청 시점의 세션ID (ABA 방지)
         IOOperation operation;      // I/O 타입 (RECV, SEND, ACCEPT 등)
     };
 
@@ -55,8 +56,10 @@ public:
     void Initialize(SOCKET socket, int64_t sessionId);
     void Close();
 
-    // SessionID 구조 헬퍼 (static 멤버로 이동)
+
+    // SessionID 구조 헬퍼
     static constexpr int SESSION_INDEX_BITS = 16;
+    static constexpr int SESSION_MAX_COUNT = 0xFFFF; // index 0~65534, 65535(0xFFFF)는 예약
     static constexpr int64_t SESSION_INDEX_MASK = 0xFFFF000000000000LL;
     static constexpr int64_t SESSION_UNIQUE_MASK = 0x0000FFFFFFFFFFFFLL;
 
@@ -75,23 +78,24 @@ public:
         return (static_cast<int64_t>(index) << 48) | (uniqueId & SESSION_UNIQUE_MASK);
     }
 
-    // 변경: 연결 상태 확인 함수
-
-public: 
-    SOCKET _socket;
-    int64_t _sessionId;
-    std::atomic<bool> _valid; // 유효성
-    std::atomic<bool> _sending; // 송신 중 플래그
+public:
+    volatile LONG _ioCount;         // CAS로 0→증가 방지. pending I/O 개수 (base ref 없음)
+    volatile LONG _disconnecting;   // 종료 진행 플래그. InterlockedExchange로 1회만 설정
+    volatile SOCKET _socket;
+    volatile int64_t _sessionId;    // Initialize에서 설정, IOCount>0 동안 유효
+    volatile LONG _sending;         // 송신 중 플래그 (InterlockedExchange 사용)
 
     CRingBufferST _recvQ; // 한 스레드에서만 접근
     CRingBufferMT _sendQ; // 다중 스레드에서 접근
 
-    // Per-IO 풀에서 할당된 포인터. IO 요청 시 세팅, 완료 시 nullptr
-    OverlappedEx* _recvOverlapped;
-    OverlappedEx* _sendOverlapped;
+
+    // IOCount가 0이 되어 세션이 재사용되기 전까지 OVERLAPPED 주소는 유지된다.
+    OverlappedEx _recvOverlapped;
+    OverlappedEx _sendOverlapped;
 };
 
-// 게임 로직 레이어로 전달할 네트워크 이벤트
+
+// 네트워크 레이어에서 게임 로직으로 전달하는 이벤트
 struct NetworkEvent
 {
     enum class Type
@@ -115,6 +119,7 @@ struct NetworkEvent
     {
     }
 };
+
 
 // 게임 로직에서 네트워크 레이어로 보낼 명령
 struct NetworkCommand
@@ -145,6 +150,7 @@ struct NetworkCommand
     {
     }
 };
+
 
 // 스레드 안전한 큐
 template<typename T>
@@ -182,7 +188,7 @@ private:
 
 //TODO: 아키텍쳐별 설계..
 
-// 네트워크 I/O 처리 레이어
+// IOCP 기반 네트워크 서버
 class CIOCPServer
 {
 public:
@@ -205,11 +211,13 @@ public:
 
     // 내부에서 사용할 함수
 private:
-    bool DisconnectSessionInternal(CSession* session);
+    bool RequestDisconnectSession(CSession* session);
+    void ReleaseSession(CSession* session);
 
 private:
 
     void EchoTestSend(CSession* session, const char* data, size_t length);
+
     // 게임 로직으로 이벤트 전달 (QUEUE_BASED 모드용)
     void PushNetworkEvent(NetworkEvent&& event);
 
@@ -219,21 +227,20 @@ private:
     bool CreateListenSocket();
     bool SetSocketOptions(SOCKET socket);
     bool BindIOCP(SOCKET socket, ULONG_PTR completionKey);
-    void ReleaseSession();
 
     void ProcessAccept(SOCKET clientSocket);
     void ProcessRecv(CSession* session, DWORD bytesTransferred);
     void ProcessSend(CSession* session, DWORD bytesTransferred);
 
-    void PostRecv(CSession* session);
+    void PostRecv(CSession* session, bool skipAcquire = false);
     void PostSend(CSession* session);
     void ParsePackets(CSession* session);
 
     CSession* FindSession(int64_t sessionId);
 
-    // Per-IO Overlapped 풀
-    CSession::OverlappedEx* AllocOverlappedEx();
-    void FreeOverlappedEx(CSession::OverlappedEx* ex);
+    // 세션 재사용 방지용 pin/ref 인터페이스
+    bool AcquireSession(CSession* session);
+    void IOCountDecrement(CSession* session);
 
 private:
     int _port;
@@ -249,13 +256,7 @@ private:
     std::thread _acceptThread;
 
     std::vector<std::unique_ptr<CSession>> _sessions;  // Index 기반 접근가능
-    std::queue<uint16_t> _availableIndices;  // 재사용 가능한 인덱스 큐
-    std::stack<uint64_t> _pendingDisconStack; // 종료 대기 중인 세션ID 스택 // TODO : 락프리구조로 바꿔야함
-
-    std::mutex _pendingDisconMtx; //_pendingDisconStack 전용 mutex
-
-    // Per-IO Overlapped 풀: OverlappedEx를 NODE에 내장, DCAS/CAS로 Alloc/Free
-    LockFree::CInternalFreeList<CSession::OverlappedEx> _overlappedPool;
+    LockFree::CLockFreeStack<uint16_t> _availableIndices;  // 재사용 가능한 인덱스 스택
 
     // 레이어 간 통신 큐 (QUEUE_BASED 모드용)
     ThreadSafeQueue<NetworkEvent> _eventQueue;    // 네트워크 -> 게임 로직
