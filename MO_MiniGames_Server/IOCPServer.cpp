@@ -2,6 +2,8 @@
 #include "../Shared/Common/ErrorLog.h"
 #include <iostream>
 
+#pragma comment(lib, "winmm.lib")
+
 extern void SignalProcessShutdown(); // main 쪽에 정의된 종료 알림 함수
 
 
@@ -135,6 +137,13 @@ bool CIOCPServer::Start()
 
     _running = true;
 
+    // 시스템 타이머 해상도를 1ms로 설정 (Sleep, WaitForSingleObject 등 정밀도 향상)
+    timeBeginPeriod(1);
+
+    // 타이밍 휠 생성 및 시작
+    _timingWheel = std::make_unique<CTimingWheel>(_maxClients, SESSION_TIMEOUT_SEC, TIMER_TICK_INTERVAL_MS);
+    _timingWheel->Start(OnSessionTimeout, this);
+
     // 워커 스레드 생성 (CPU 코어 * 2)
     int threadCount = std::thread::hardware_concurrency() * 2;
     for (int i = 0; i < threadCount; ++i)
@@ -246,6 +255,12 @@ void CIOCPServer::ShutdownServer()
         _acceptThread.join();
     }
 
+    // 타이밍 휠 정지 (더 이상 타임아웃 disconnect 발생하지 않음)
+    if (_timingWheel)
+    {
+        _timingWheel->Stop();
+    }
+
     // 2. 모든 세션에 종료 유도 — CancelIoEx로 pending IO 완료를 촉진
     for (auto& session : _sessions)
     {
@@ -292,6 +307,9 @@ void CIOCPServer::ShutdownServer()
     }
 
     WSACleanup();
+
+    // 타이머 해상도 복원
+    timeEndPeriod(1);
 }
 
 
@@ -367,6 +385,9 @@ void CIOCPServer::ProcessAccept(SOCKET clientSocket)
         break;
     }
 
+    // 타이밍 휠에 세션 등록 (타임아웃 카운트 시작)
+    _timingWheel->RequestRegister(index, CSession::ExtractUniqueId(sessionId));
+
     // 첫 Recv — Initialize의 IOCount=1이 이 IO의 ref. AcquireSession 불필요.
     PostRecv(_sessions[index].get(), true);
 }
@@ -436,6 +457,9 @@ void CIOCPServer::ProcessRecv(CSession* session, DWORD bytesTransferred)
         RequestDisconnectSession(session);
         return;
     }
+
+    // 타이밍 휠 수명 갱신 (데이터 수신 = 세션 활성 상태)
+    _timingWheel->RequestRefresh(CSession::ExtractIndex(session->_sessionId), CSession::ExtractUniqueId(session->_sessionId));
 
     // 링버퍼 쓰기 포인터 이동
     size_t movedSize = session->_recvQ.MoveWritePtr(bytesTransferred);
@@ -918,6 +942,9 @@ void CIOCPServer::ReleaseSession(CSession* session)
         }
     }
 
+    // 타이밍 휠에서 세션 제거 (이중 만료 방지)
+    _timingWheel->RequestUnregister(CSession::ExtractIndex(sessionId), CSession::ExtractUniqueId(sessionId));
+
     session->Close();
 
     if (sessionId != 0)
@@ -948,6 +975,26 @@ bool CIOCPServer::RequestDisconnectSession(int64_t sessionId)
     const bool disconnected = RequestDisconnectSession(session);
     IOCountDecrement(session);
     return disconnected;
+}
+
+// 타이밍 휠 타임아웃 콜백 — 타이머 스레드에서 호출된다.
+// RequestDisconnectSession(CSession*)은 InterlockedExchange로 보호되므로 스레드 안전.
+void CIOCPServer::OnSessionTimeout(void* context, uint16_t sessionIndex)
+{
+    auto* server = static_cast<CIOCPServer*>(context);
+
+    if (sessionIndex >= server->_sessions.size())
+        return;
+
+    CSession* session = server->_sessions[sessionIndex].get();
+    if (!session)
+        return;
+
+    // 이미 종료 진행 중이면 무시
+    if (session->_disconnecting == TRUE)
+        return;
+
+    server->RequestDisconnectSession(session);
 }
 
 // 여러 스레드에서 접근가능 — ref를 잡지 않으므로 반환된 포인터는 잠정적이다.

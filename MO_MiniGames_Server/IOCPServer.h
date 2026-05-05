@@ -16,6 +16,7 @@
 #include "RingBuffer.h"
 #include "Protocol.h"
 #include "LockFree/LockFreeStack.h"
+#include "TimingWheel.h"
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -260,4 +261,13 @@ private:
 
     // 레이어 간 통신 큐 (QUEUE_BASED 모드용)
     ThreadSafeQueue<NetworkEvent> _eventQueue;    // 네트워크 -> 게임 로직
+
+    // 세션 무활동 타임아웃 (타이밍 휠)
+    static constexpr int SESSION_TIMEOUT_SEC = 30;
+    static constexpr int TIMER_TICK_INTERVAL_MS = 1000;
+    static_assert(SESSION_TIMEOUT_SEC * 1000 % TIMER_TICK_INTERVAL_MS == 0,
+        "timeout must be evenly divisible by tick interval");
+    std::unique_ptr<CTimingWheel> _timingWheel;
+
+    static void OnSessionTimeout(void* context, uint16_t sessionIndex);
 };
