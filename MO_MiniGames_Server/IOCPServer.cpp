@@ -552,64 +552,70 @@ void CIOCPServer::PostRecv(CSession* session, bool skipAcquire)
 // ParsePackets: 링버퍼에서 완성된 패킷 추출 및 처리
 void CIOCPServer::ParsePackets(CSession* session)
 {
+    // 특정 더미타입에 맞게 헤더사이즈 조정
+    const size_t headerSize = (_architectureType == ServerArchitectureType::GameCodiEchoTest)
+        ? sizeof(EchoMsgHeader)  // 2byte (size만, 페이로드 크기)
+        : sizeof(MsgHeader);     // 4byte (size + type, 전체 크기)
+
     while (true)
     {
         size_t dataSize = session->_recvQ.GetDataSize();
 
         // 1. 헤더 크기 체크
-        if (dataSize < sizeof(MsgHeader))
+        if (dataSize < headerSize)
         {
             break; // 데이터 부족
         }
 
-        // 2. 헤더 peek
-        MsgHeader header;
-        size_t peekedSize = session->_recvQ.Peek(&header, sizeof(MsgHeader));
-        if (peekedSize != sizeof(MsgHeader))
+        // 2. 헤더에서 size 필드 peek (size는 항상 첫 2byte)
+        uint16_t packetSize = 0;
+        size_t peekedSize = session->_recvQ.Peek(&packetSize, sizeof(uint16_t));
+        if (peekedSize != sizeof(uint16_t))
         {
             break; // peek 실패
         }
 
-        // 에코 테스트 전용
-        if (_architectureType == ServerArchitectureType::GameCodiEchoTest)
-        {
-            header.size += sizeof(MsgHeader); // 에코 테스트용 보정
-        }
+        // 3. 전체 패킷 크기 계산
+        // GameCodiEchoTest: size = 페이로드 크기 → 헤더 크기를 더해야 전체 크기
+        // 그 외: size = 전체 크기 (헤더 포함) → 그대로 사용
+        size_t totalPacketSize = (_architectureType == ServerArchitectureType::GameCodiEchoTest)
+            ? static_cast<size_t>(packetSize) + sizeof(EchoMsgHeader)
+            : static_cast<size_t>(packetSize);
 
-        // 3. 패킷 크기 검증
-        if (header.size < MIN_PACKET_SIZE || header.size > MAX_PACKET_SIZE)
+        // 4. 패킷 크기 검증
+        if (totalPacketSize < headerSize || totalPacketSize > MAX_PACKET_SIZE)
         {
-            LOG_ERROR_STREAM("[Error] Invalid packet size: " << header.size
+            LOG_ERROR_STREAM("[Error] Invalid packet size: " << totalPacketSize
                 << " - SessionId: " << session->_sessionId);
             RequestDisconnectSession(session);
             return;
         }
 
-        // 4. 전체 패킷이 수신되었는지 확인
-        if (dataSize < header.size)
+        // 5. 전체 패킷이 수신되었는지 확인
+        if (dataSize < totalPacketSize)
         {
             break; // 데이터 부족 - 다음 Recv 대기
         }
 
-        // 5. 완성된 패킷 추출 (스택 버퍼 사용, heap 할당 회피)
+        // 6. 완성된 패킷 추출 (스택 버퍼 사용, heap 할당 회피)
         std::array<char, MAX_PACKET_SIZE> packetBuffer;
-        size_t dequeuedSize = session->_recvQ.Dequeue(packetBuffer.data(), header.size);
-        if (dequeuedSize != header.size)
+        size_t dequeuedSize = session->_recvQ.Dequeue(packetBuffer.data(), totalPacketSize);
+        if (dequeuedSize != totalPacketSize)
         {
             LOG_ERROR_STREAM("[Error] Packet dequeue failed - SessionId: " << session->_sessionId);
             RequestDisconnectSession(session);
             return;
         }
 
-        // 6. 컨텐츠쪽 전달 또는 처리
+        // 7. 컨텐츠쪽 전달 또는 처리
         switch (_architectureType)
         {
         case ServerArchitectureType::GameCodiEchoTest:
-            EchoTestSend(session, packetBuffer.data(), header.size);
-                break;
+            EchoTestSend(session, packetBuffer.data(), totalPacketSize);
+            break;
         case ServerArchitectureType::Centralized:
             PushNetworkEvent(NetworkEvent(NetworkEvent::Type::RECEIVED,
-                session->_sessionId, packetBuffer.data(), header.size));
+                session->_sessionId, packetBuffer.data(), totalPacketSize));
             break;
 
         default:

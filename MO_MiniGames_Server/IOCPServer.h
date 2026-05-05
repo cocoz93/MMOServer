@@ -20,7 +20,7 @@
 #pragma comment(lib, "ws2_32.lib")
 
 constexpr size_t MAX_PACKET_SIZE = 65535;  // 최대 패킷 크기 (64KB)
-constexpr size_t MIN_PACKET_SIZE = sizeof(MsgHeader);  // 최소 패킷 크기
+constexpr size_t MIN_PACKET_SIZE = sizeof(EchoMsgHeader);  // 최소 패킷 크기 (가장 작은 헤더 기준)
 
 // I/O 작업 종류
 enum class IOOperation
@@ -34,9 +34,9 @@ enum class IOOperation
 // 서버 아키텍처 타입
 enum class ServerArchitectureType
 {
-    GameCodiEchoTest, // 에코 테스트용 (최소 기능)
-    Centralized,    // 중앙 집중형 - 별도 스레드에서 이벤트 처리
-    Partitioned,    // 분산형 - 여러 스레드/큐로 분리 처리
+    GameCodiEchoTest, // 에코 테스트용 (최소 기능) - 헤더: EchoMsgHeader(2byte), size=페이로드크기
+    Centralized,    // 중앙 집중형 - 헤더: MsgHeader(4byte), size=전체크기(헤더포함)
+    Partitioned,    // 분산형 - 헤더: MsgHeader(4byte), size=전체크기(헤더포함)
 };
 
 class CSession
