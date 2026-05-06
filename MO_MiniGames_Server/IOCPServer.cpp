@@ -100,6 +100,13 @@ bool CIOCPServer::Start()
     }
 
 
+    // 인덱스 스택 초기화 (maxClients만큼 사전 할당)
+    if (!_availableIndices.Init(_maxClients))
+    {
+        printf("[Error] Failed to init available indices stack\n");
+        return false;
+    }
+
     // Start 재호출 시 이전 lock-free 스택에 남은 index를 비운다.
     uint16_t staleIndex = 0;
     while (_availableIndices.Pop(&staleIndex))
@@ -141,7 +148,12 @@ bool CIOCPServer::Start()
     timeBeginPeriod(1);
 
     // 타이밍 휠 생성 및 시작
-    _timingWheel = std::make_unique<CTimingWheel>(_maxClients, SESSION_TIMEOUT_SEC, TIMER_TICK_INTERVAL_MS);
+    _timingWheel = std::make_unique<CTimingWheel>();
+    if (!_timingWheel->Init(_maxClients, SESSION_TIMEOUT_SEC, TIMER_TICK_INTERVAL_MS))
+    {
+        printf("[TimingWheel] Init failed\n");
+        return false;
+    }
     _timingWheel->Start(OnSessionTimeout, this);
 
     // 워커 스레드 생성 (CPU 코어 * 2)
@@ -386,7 +398,7 @@ void CIOCPServer::ProcessAccept(SOCKET clientSocket)
     }
 
     // 타이밍 휠에 세션 등록 (타임아웃 카운트 시작)
-    _timingWheel->RequestRegister(index, CSession::ExtractUniqueId(sessionId));
+    _timingWheel->RequestRegister(CSession::ExtractIndex(sessionId), sessionId);
 
     // 첫 Recv — Initialize의 IOCount=1이 이 IO의 ref. AcquireSession 불필요.
     PostRecv(_sessions[index].get(), true);
@@ -459,7 +471,7 @@ void CIOCPServer::ProcessRecv(CSession* session, DWORD bytesTransferred)
     }
 
     // 타이밍 휠 수명 갱신 (데이터 수신 = 세션 활성 상태)
-    _timingWheel->RequestRefresh(CSession::ExtractIndex(session->_sessionId), CSession::ExtractUniqueId(session->_sessionId));
+    _timingWheel->RequestRefresh(CSession::ExtractIndex(session->_sessionId), session->_sessionId);
 
     // 링버퍼 쓰기 포인터 이동
     size_t movedSize = session->_recvQ.MoveWritePtr(bytesTransferred);
@@ -943,7 +955,7 @@ void CIOCPServer::ReleaseSession(CSession* session)
     }
 
     // 타이밍 휠에서 세션 제거 (이중 만료 방지)
-    _timingWheel->RequestUnregister(CSession::ExtractIndex(sessionId), CSession::ExtractUniqueId(sessionId));
+    _timingWheel->RequestUnregister(CSession::ExtractIndex(sessionId), sessionId);
 
     session->Close();
 
@@ -978,23 +990,11 @@ bool CIOCPServer::RequestDisconnectSession(int64_t sessionId)
 }
 
 // 타이밍 휠 타임아웃 콜백 — 타이머 스레드에서 호출된다.
-// RequestDisconnectSession(CSession*)은 InterlockedExchange로 보호되므로 스레드 안전.
-void CIOCPServer::OnSessionTimeout(void* context, uint16_t sessionIndex)
+// sessionId를 통해 ABA-safe 경로(FindSession → AcquireSession → sessionId 재검증)를 사용한다.
+void CIOCPServer::OnSessionTimeout(void* context, int64_t sessionId)
 {
     auto* server = static_cast<CIOCPServer*>(context);
-
-    if (sessionIndex >= server->_sessions.size())
-        return;
-
-    CSession* session = server->_sessions[sessionIndex].get();
-    if (!session)
-        return;
-
-    // 이미 종료 진행 중이면 무시
-    if (session->_disconnecting == TRUE)
-        return;
-
-    server->RequestDisconnectSession(session);
+    server->RequestDisconnectSession(sessionId);
 }
 
 // 여러 스레드에서 접근가능 — ref를 잡지 않으므로 반환된 포인터는 잠정적이다.

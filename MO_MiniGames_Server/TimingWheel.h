@@ -4,6 +4,7 @@
 #include <thread>
 #include <atomic>
 #include <cstdint>
+#include <chrono>
 #include <Windows.h>
 
 #include "LockFree/LockFreeQueue.h"
@@ -22,8 +23,8 @@
 class CTimingWheel
 {
 public:
-    // 타임아웃 콜백 시그니처: index를 넘겨받아 disconnect 처리
-    using TimeoutCallback = void(*)(void* context, uint16_t index);
+    // 타임아웃 콜백 시그니처: sessionId를 넘겨받아 disconnect 처리
+    using TimeoutCallback = void(*)(void* context, int64_t sessionId);
 
     //-------------------------------------------------------------------------
     // 외부에서 전달하는 요청 타입
@@ -39,7 +40,7 @@ public:
     {
         RequestType type;
         uint16_t index;
-        int64_t generation;
+        int64_t sessionId;
     };
 
 private:
@@ -50,7 +51,7 @@ private:
     {
         uint16_t sessionIndex;
         int slotIndex;          // 현재 소속 슬롯 (-1이면 미등록)
-        int64_t generation;     // 등록 시점의 uniqueId (ABA 방지)
+        int64_t sessionId;      // 등록 시점의 sessionId (ABA 방지)
         WheelNode* prev;
         WheelNode* next;
     };
@@ -74,22 +75,46 @@ private:
     };
 
 public:
-    //-------------------------------------------------------------------------
-    // 생성자
-    // - maxSessions: 최대 동시 세션 수
-    // - timeoutSec: 무활동 타임아웃 (초)
-    // - tickIntervalMs: tick 주기 (밀리초)
-    //-------------------------------------------------------------------------
-    CTimingWheel(int maxSessions, int timeoutSec, int tickIntervalMs = 1000)
-        : _maxSessions(maxSessions)
-        , _timeoutSec(timeoutSec)
-        , _tickIntervalMs(tickIntervalMs)
-        , _slotCount(timeoutSec * 1000 / tickIntervalMs)  // 슬롯 수 = 타임아웃 / tick주기
-        , _cursor(0)
+    CTimingWheel()
+        : _maxSessions(0)
+        , _timeoutSec(0)
+        , _tickIntervalMs(0)
+        , _slotCount(0)
+        , _cursor(-1)
         , _running(false)
         , _callback(nullptr)
         , _callbackContext(nullptr)
     {
+    }
+
+    // 복사/이동 금지
+    CTimingWheel(const CTimingWheel&) = delete;
+    CTimingWheel& operator=(const CTimingWheel&) = delete;
+    CTimingWheel(CTimingWheel&&) = delete;
+    CTimingWheel& operator=(CTimingWheel&&) = delete;
+
+    //-------------------------------------------------------------------------
+    // Init
+    // - maxSessions: 최대 동시 세션 수
+    // - timeoutSec: 무활동 타임아웃 (초)
+    // - tickIntervalMs: tick 주기 (밀리초)
+    // 반환값: 초기화 성공 여부
+    //-------------------------------------------------------------------------
+    bool Init(int maxSessions, int timeoutSec, int tickIntervalMs = 1000)
+    {
+        if (maxSessions <= 0 || timeoutSec <= 0 || tickIntervalMs <= 0)
+            return false;
+
+        int slotCount = timeoutSec * 1000 / tickIntervalMs;
+        if (slotCount <= 0)
+            return false;
+
+        _maxSessions = maxSessions;
+        _timeoutSec = timeoutSec;
+        _tickIntervalMs = tickIntervalMs;
+        _slotCount = slotCount;
+        _cursor = slotCount - 1;
+
         // 슬롯 배열 생성 (재할당 불가 — 내부 sentinel 포인터 안정성 보장)
         _slots = std::make_unique<Slot[]>(_slotCount);
 
@@ -99,10 +124,17 @@ public:
         {
             _nodes[i].sessionIndex = static_cast<uint16_t>(i);
             _nodes[i].slotIndex = -1;
-            _nodes[i].generation = 0;
+            _nodes[i].sessionId = 0;
             _nodes[i].prev = nullptr;
             _nodes[i].next = nullptr;
         }
+
+        // 요청 큐 초기화 및 사전 할당: 세션당 최대 3건(Register+Refresh+Unregister)이
+        // drain 사이에 동시 적재될 수 있으므로 maxSessions * 3을 확보한다.
+        if (!_requestQueue.Init(maxSessions * 3))
+            return false;
+
+        return true;
     }
 
     ~CTimingWheel()
@@ -134,19 +166,19 @@ public:
     // 외부 스레드용 인터페이스 (lock-free 큐에 push)
     // 워커/Accept 스레드에서 호출한다.
     //-------------------------------------------------------------------------
-    void RequestRegister(uint16_t index, int64_t generation)
+    void RequestRegister(uint16_t index, int64_t sessionId)
     {
-        _requestQueue.Enqueue({ RequestType::REGISTER, index, generation });
+        _requestQueue.Enqueue({ RequestType::REGISTER, index, sessionId });
     }
 
-    void RequestRefresh(uint16_t index, int64_t generation)
+    void RequestRefresh(uint16_t index, int64_t sessionId)
     {
-        _requestQueue.Enqueue({ RequestType::REFRESH, index, generation });
+        _requestQueue.Enqueue({ RequestType::REFRESH, index, sessionId });
     }
 
-    void RequestUnregister(uint16_t index, int64_t generation)
+    void RequestUnregister(uint16_t index, int64_t sessionId)
     {
-        _requestQueue.Enqueue({ RequestType::UNREGISTER, index, generation });
+        _requestQueue.Enqueue({ RequestType::UNREGISTER, index, sessionId });
     }
 
 private:
@@ -155,9 +187,16 @@ private:
     //-------------------------------------------------------------------------
     void TimerThreadProc()
     {
+        // 절대 시각 기준 tick 보정 — Sleep 후 처리 시간만큼 다음 Sleep을 줄여
+        // tick 간격이 누적으로 밀리지 않도록 한다.
+        auto nextTick = std::chrono::steady_clock::now();
+
         while (_running.load(std::memory_order_acquire))
         {
-            Sleep(_tickIntervalMs);
+            nextTick += std::chrono::milliseconds(_tickIntervalMs);
+            auto now = std::chrono::steady_clock::now();
+            if (nextTick > now)
+                Sleep(static_cast<DWORD>(std::chrono::duration_cast<std::chrono::milliseconds>(nextTick - now).count()));
 
             // 1. lock-free 큐에서 요청 처리 (drain)
             DrainRequests();
@@ -178,13 +217,13 @@ private:
             switch (req.type)
             {
             case RequestType::REGISTER:
-                RegisterInternal(req.index, req.generation);
+                RegisterInternal(req.index, req.sessionId);
                 break;
             case RequestType::REFRESH:
-                RefreshInternal(req.index, req.generation);
+                RefreshInternal(req.index, req.sessionId);
                 break;
             case RequestType::UNREGISTER:
-                UnregisterInternal(req.index, req.generation);
+                UnregisterInternal(req.index, req.sessionId);
                 break;
             }
         }
@@ -211,10 +250,10 @@ private:
             node->prev = nullptr;
             node->next = nullptr;
 
-            // 타임아웃 콜백 호출
+            // 타임아웃 콜백 호출 (sessionId 전달로 ABA 방지)
             if (_callback)
             {
-                _callback(_callbackContext, node->sessionIndex);
+                _callback(_callbackContext, node->sessionId);
             }
 
             node = next;
@@ -230,7 +269,7 @@ private:
     //-------------------------------------------------------------------------
 
     // 세션을 휠에 등록 — 현재 cursor 기준 한 바퀴 뒤 슬롯에 삽입
-    void RegisterInternal(uint16_t index, int64_t generation)
+    void RegisterInternal(uint16_t index, int64_t sessionId)
     {
         if (index >= _maxSessions)
             return;
@@ -241,20 +280,20 @@ private:
         if (node.slotIndex != -1)
             RemoveFromSlot(node);
 
-        node.generation = generation;
+        node.sessionId = sessionId;
         InsertToTimeoutSlot(node);
     }
 
     // 수명 갱신 — 기존 슬롯에서 빼고 한 바퀴 뒤 슬롯으로 이동
-    void RefreshInternal(uint16_t index, int64_t generation)
+    void RefreshInternal(uint16_t index, int64_t sessionId)
     {
         if (index >= _maxSessions)
             return;
 
         WheelNode& node = _nodes[index];
 
-        // 미등록이거나 다른 세대의 세션이면 무시 (ABA 방지)
-        if (node.slotIndex == -1 || node.generation != generation)
+        // 미등록이거나 다른 세션이면 무시 (ABA 방지)
+        if (node.slotIndex == -1 || node.sessionId != sessionId)
             return;
 
         RemoveFromSlot(node);
@@ -262,15 +301,15 @@ private:
     }
 
     // 세션을 휠에서 제거 (정상 종료 시)
-    void UnregisterInternal(uint16_t index, int64_t generation)
+    void UnregisterInternal(uint16_t index, int64_t sessionId)
     {
         if (index >= _maxSessions)
             return;
 
         WheelNode& node = _nodes[index];
 
-        // 같은 세대의 세션만 제거 (ABA 방지)
-        if (node.slotIndex != -1 && node.generation == generation)
+        // 같은 세션만 제거 (ABA 방지)
+        if (node.slotIndex != -1 && node.sessionId == sessionId)
             RemoveFromSlot(node);
     }
 

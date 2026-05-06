@@ -269,5 +269,5 @@ private:
         "timeout must be evenly divisible by tick interval");
     std::unique_ptr<CTimingWheel> _timingWheel;
 
-    static void OnSessionTimeout(void* context, uint16_t sessionIndex);
+    static void OnSessionTimeout(void* context, int64_t sessionId);
 };
