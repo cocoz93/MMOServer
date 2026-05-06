@@ -105,15 +105,19 @@ public:
         if (maxSessions <= 0 || timeoutSec <= 0 || tickIntervalMs <= 0)
             return false;
 
-        int slotCount = timeoutSec * 1000 / tickIntervalMs;
+        // 올림 나눗셈: 나머지가 있으면 몫+1, 나누어떨어지면 그대로
+        int slotCount = (timeoutSec * 1000 + tickIntervalMs - 1) / tickIntervalMs;
         if (slotCount <= 0)
             return false;
 
+        // DrainRequests와 Tick이 같은 루프에서 수행되므로, 삽입 직후의
+        // tick은 다른 슬롯을 처리한다. cursor가 다시 돌아오려면
+        // slotCount-1 tick만 필요하므로, 슬롯 1개를 추가하여 정확한 timeout을 보장한다.
         _maxSessions = maxSessions;
         _timeoutSec = timeoutSec;
         _tickIntervalMs = tickIntervalMs;
-        _slotCount = slotCount;
-        _cursor = slotCount - 1;
+        _slotCount = slotCount + 1;
+        _cursor = _slotCount - 1;
 
         // 슬롯 배열 생성 (재할당 불가 — 내부 sentinel 포인터 안정성 보장)
         _slots = std::make_unique<Slot[]>(_slotCount);
@@ -129,9 +133,7 @@ public:
             _nodes[i].next = nullptr;
         }
 
-        // 요청 큐 초기화 및 사전 할당: 세션당 최대 3건(Register+Refresh+Unregister)이
-        // drain 사이에 동시 적재될 수 있으므로 maxSessions * 3을 확보한다.
-        if (!_requestQueue.Init(maxSessions * 3))
+        if (!_requestQueue.Init())
             return false;
 
         return true;

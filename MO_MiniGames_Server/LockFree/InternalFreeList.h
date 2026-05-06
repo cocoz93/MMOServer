@@ -215,7 +215,11 @@ namespace LockFree
 				// TODO : 더 최적화하고자 한다면 virtualAlloc
 				NODE* rNode = (NODE*)HeapAlloc(this->hHeap, FALSE, sizeof(NODE));
 				if (rNode == nullptr)
-					return nullptr;
+				{
+					// 메모리 할당 실패는 프로세스 수준의 비정상 상태 — 즉시 중단
+					int* crash = nullptr;
+					*crash = 0;
+				}
 
 				new(&rNode->Data) T;
 				rNode->pNextNode = nullptr;
