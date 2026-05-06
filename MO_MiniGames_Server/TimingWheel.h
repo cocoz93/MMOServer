@@ -97,12 +97,15 @@ public:
     // Init
     // - maxSessions: 최대 동시 세션 수
     // - timeoutSec: 무활동 타임아웃 (초)
-    // - tickIntervalMs: tick 주기 (밀리초)
-    // 반환값: 초기화 성공 여부
+    // - tickIntervalMs: tick 주기 (밀리초, 기본 5000ms)
+    // 
+    //   세션 타임아웃은 수십 초 단위이므로 고해상도 tick 불필요
+    //   해상도를 5초로 잡고 메모리-CPU부담을 줄이고 하트비트 2회분 대비 충분한 여유(최악 -5초) 확보
+    //   반환값: 초기화 성공 여부
     //-------------------------------------------------------------------------
-    bool Init(int maxSessions, int timeoutSec, int tickIntervalMs = 1000)
+    bool Init(uint16_t maxSessions, int timeoutSec, int tickIntervalMs = 5000)
     {
-        if (maxSessions <= 0 || timeoutSec <= 0 || tickIntervalMs <= 0)
+        if (maxSessions == 0 || timeoutSec <= 0 || tickIntervalMs <= 0)
             return false;
 
         // 올림 나눗셈: 나머지가 있으면 몫+1, 나누어떨어지면 그대로
@@ -124,9 +127,9 @@ public:
 
         // 세션별 노드 사전 할당 (인덱스 기반 O(1) 접근)
         _nodes = std::make_unique<WheelNode[]>(maxSessions);
-        for (int i = 0; i < maxSessions; ++i)
+        for (uint16_t i = 0; i < maxSessions; ++i)
         {
-            _nodes[i].sessionIndex = static_cast<uint16_t>(i);
+            _nodes[i].sessionIndex = i;
             _nodes[i].slotIndex = -1;
             _nodes[i].sessionId = 0;
             _nodes[i].prev = nullptr;
@@ -149,6 +152,9 @@ public:
     //-------------------------------------------------------------------------
     void Start(TimeoutCallback callback, void* context)
     {
+        if (_running.load(std::memory_order_acquire))
+            return;
+
         _callback = callback;
         _callbackContext = context;
         _running.store(true, std::memory_order_release);
@@ -260,10 +266,6 @@ private:
 
             node = next;
         }
-
-        // 슬롯 초기화 (sentinel만 남김)
-        slot.head.next = &slot.head;
-        slot.head.prev = &slot.head;
     }
 
     //-------------------------------------------------------------------------
@@ -348,7 +350,7 @@ private:
     }
 
 private:
-    int _maxSessions;
+    uint16_t _maxSessions;
     int _timeoutSec;
     int _tickIntervalMs;
     int _slotCount;         // 전체 슬롯 수
