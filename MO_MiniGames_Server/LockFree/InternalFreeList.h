@@ -218,7 +218,7 @@ namespace LockFree
 				if (rNode == nullptr)
 				{
 					// 메모리 할당 실패는 프로세스 수준의 비정상 상태 — 즉시 중단
-					CCrashDump::Crash();
+					CRASH("HeapAlloc failed - out of memory");
 				}
 
 				new(&rNode->Data) T;

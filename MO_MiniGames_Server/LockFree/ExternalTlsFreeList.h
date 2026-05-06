@@ -61,6 +61,7 @@ public:
 		}
 
 	public:
+
 		// FreeCount는 multi-thread 접근 → 독립 캐시 라인 분리 (false sharing 방지)
 		// NOTE: alignas(64)는 struct 내 오프셋만 보장. HeapAlloc은 16바이트 정렬까지만 지원하므로
 		//       인스턴스 절대 주소의 64바이트 정렬은 미보장. 다만 ChunkNODE 크기가 수십~수백KB이므로

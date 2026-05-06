@@ -5,7 +5,6 @@
 #include <signal.h>		//signal, SIGABRT
 #include <new.h>		//_set_new_handler
 #include <windows.h>
-#include <Psapi.h>		//PROCESS_MEMORY_COUNTERS
 #include <DbgHelp.h>	//_MINIDUMP_EXCEPTION_INFORMATION
 #include <crtdbg.h>		//_CrtSetReportMode
 
@@ -13,6 +12,9 @@
 class CCrashDump
 {
 public:
+	// 크래시 사유 저장 — 덤프에서 조회 가능
+	inline static const wchar_t* _CrashReason = nullptr;
+
 	CCrashDump()
 	{
 		//밑 구문들은 CRT오류 메시지표시를 중단하기 위함.
@@ -56,6 +58,9 @@ public:
 		// kernel32.dll의 SetUnhandledExceptionFilter 진입점 첫 바이트를 ret으로 패치한다.
 		DisableSetUnhandledExceptionFilter();
 
+		// 덤프 저장 디렉토리 사전 생성 (실행 파일 옆 CrashDump 폴더)
+		CreateDumpDirectory();
+
 		//-------------------------------------------------------------------------------
 	}
 
@@ -63,7 +68,7 @@ public:
 	CCrashDump& operator=(const CCrashDump&) = delete;
 
 
-	// 의도적 크래시. __debugbreak()는 컴파일러가 제거하지 않는 인트린직.
+	// 의도적 크래시 — CRASH() 매크로 사용을 권장 (사유 기록)
 	static void Crash(void)
 	{
 		__debugbreak();
@@ -80,99 +85,126 @@ public:
 	그럼 예외발생시 이 인자로 자동으로 들어올 것이다.
 	우리는 여기서 덤프를 여기서 뺀다.
 	*/
-	static LONG WINAPI MyExceptionFilter(__in PEXCEPTION_POINTERS pExceptionPointer)
+	/*------------------------------------------------------------------
+	  2차 크래시 안전성 원칙
+	  ─────────────────────
+	  1) CRT 함수 사용 금지 (힙 손상 시 2차 크래시/데드락 유발)
+	     → wsprintfW/A(kernel32), WriteFile, Win32 API만 사용
+
+	  2) 작업 순서: 덤프 생성 → 콘솔 출력
+	     → 출력 중 2차 예외가 나도 덤프는 이미 확보
+
+	  3) __try/__except로 필터 전체를 감싼다
+	     → 필터 내부 2차 예외 시 OS가 프로세스를 즉시 죽이는 것을 방지
+	     → 어떤 상황에서든 TerminateProcess까지 도달 보장
+	------------------------------------------------------------------*/
+	static LONG WINAPI MyExceptionFilter(PEXCEPTION_POINTERS pExceptionPointer)
 	{
 		long DumpCount = InterlockedIncrement(&_DumpCount);
 
 		// 동시 다발 크래시 시 첫 번째 스레드만 덤프를 생성한다.
-		// 나머지 스레드는 덤프 완료 후 프로세스 종료를 대기.
+		// 나머지 스레드는 프로세스 종료를 대기.
 		if (DumpCount > 1)
 		{
 			Sleep(INFINITE);
 			return EXCEPTION_EXECUTE_HANDLER;
 		}
 
-
-		//----------------------------------------------------------
-		// 현재 프로세스 메모리 정보
-		//----------------------------------------------------------
-		PROCESS_MEMORY_COUNTERS pmc;
-		int WorkingMemoryMB = 0;
-
-		if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, sizeof(pmc)))
+		// 필터 내부 2차 예외 방어: 어떤 예외가 나도 TerminateProcess까지 도달
+		__try
 		{
-			WorkingMemoryMB = (int)(pmc.WorkingSetSize / 1024 / 1024);
-		}
+			//----------------------------------------------------------
+			// 덤프 파일명 생성 (wsprintfW = kernel32, CRT 미사용으로 안전)
+			//----------------------------------------------------------
+			SYSTEMTIME st;
+			GetLocalTime(&st);
+
+			WCHAR filename[MAX_PATH];
+			wsprintfW(filename, L"%sDump_%d%02d%02d_%02d.%02d.%02d.dmp",
+				_dumpDir,
+				st.wYear, st.wMonth, st.wDay,
+				st.wHour, st.wMinute, st.wSecond);
 
 
-		//----------------------------------------------------------
-		// 현재 날짜와 시간을 알아온다.
-		//----------------------------------------------------------
-		SYSTEMTIME NowTime;
-		WCHAR filename[MAX_PATH];
-
-		GetLocalTime(&NowTime);
-		swprintf_s(filename, MAX_PATH, L"Dump_%d%02d%02d_%02d.%02d.%02d_%d.dmp",
-			NowTime.wYear, NowTime.wMonth, NowTime.wDay,
-			NowTime.wHour, NowTime.wMinute, NowTime.wSecond, DumpCount);
-
-		wprintf(L"\n\n\n!!! Crash Error!!! %d.%d.%d/%d:%d:%d  (WorkingSet: %dMB)\n",
-			NowTime.wYear, NowTime.wMonth, NowTime.wDay,
-			NowTime.wHour, NowTime.wMinute, NowTime.wSecond, WorkingMemoryMB);
-		wprintf(L"Now Save dump file...\n");
-
-		HANDLE hDumpFile = CreateFile
-		(
-			filename,
-			GENERIC_WRITE,
-			FILE_SHARE_WRITE,		//쓰기모드
-			NULL,
-			CREATE_ALWAYS,
-			FILE_ATTRIBUTE_NORMAL, NULL
-		);
-
-
-		if (hDumpFile != INVALID_HANDLE_VALUE)
-		{
-			//덤프파일 정보 설정
-			_MINIDUMP_EXCEPTION_INFORMATION MinidumpExceptionInformation;
-
-			MinidumpExceptionInformation.ThreadId = ::GetCurrentThreadId();
-			MinidumpExceptionInformation.ExceptionPointers = pExceptionPointer;	 //인자로 들어온 예외포인터
-			MinidumpExceptionInformation.ClientPointers = FALSE;
-			//msdn상에서는 외부디버거에서 해당 덤프를 뺄때 설정이라고 명시되어있음.
-			//TRUE/FALSE에 대한 차이점을 찾지못함.
-
-
-			/*
-			MiniDumpWriteDump는 실질적으로 메인이 되는 함수로,
-			호출 시 전달된 파일(핸들)을 대상으로 write가 시작된다.
-			*/
-			MINIDUMP_TYPE dumpType = (MINIDUMP_TYPE)(
-				MiniDumpWithFullMemory          |	// 전체 프로세스 메모리
-				MiniDumpWithFullMemoryInfo       |	// 메모리 영역별 상세 정보 (주소, 크기, 보호 속성)
-				MiniDumpWithHandleData           |	// 열린 핸들 목록 (파일, 소켓, 이벤트 등)
-				MiniDumpWithThreadInfo           |	// 스레드 시작 주소, 선호도, 우선순위 등
-				MiniDumpWithUnloadedModules      |	// 언로드된 DLL 목록 (DLL 언로드 후 해당 코드 크래시 추적용)
-				MiniDumpWithProcessThreadData);		// TLS, PEB, TEB 등 프로세스/스레드 내부 데이터
-
-			MiniDumpWriteDump
-			(
-				GetCurrentProcess(),
-				GetCurrentProcessId(),
-				hDumpFile,
-				dumpType,
-				&MinidumpExceptionInformation, //우리가 정의한 미니덤프의 예외정보. 
+			//----------------------------------------------------------
+			// [최우선] 덤프 파일 생성 — 이후 어떤 실패가 와도 덤프는 확보
+			//----------------------------------------------------------
+			HANDLE hDumpFile = CreateFileW(
+				filename,
+				GENERIC_WRITE,
+				0,
 				NULL,
-				NULL
-			);
-			CloseHandle(hDumpFile);
-			wprintf(L"CrashDumpSaveFinish!");
+				CREATE_ALWAYS,
+				FILE_ATTRIBUTE_NORMAL, NULL);
+
+			if (hDumpFile != INVALID_HANDLE_VALUE)
+			{
+				_MINIDUMP_EXCEPTION_INFORMATION mei;
+				mei.ThreadId = GetCurrentThreadId();
+				mei.ExceptionPointers = pExceptionPointer;
+				mei.ClientPointers = FALSE;
+
+				MINIDUMP_TYPE dumpType = (MINIDUMP_TYPE)(
+					MiniDumpWithFullMemory          |	// 전체 프로세스 메모리
+					MiniDumpWithFullMemoryInfo       |	// 메모리 영역별 상세 정보 (주소, 크기, 보호 속성)
+					MiniDumpWithHandleData           |	// 열린 핸들 목록 (파일, 소켓, 이벤트 등)
+					MiniDumpWithThreadInfo           |	// 스레드 시작 주소, 선호도, 우선순위 등
+					MiniDumpWithUnloadedModules      |	// 언로드된 DLL 목록 (DLL 언로드 후 해당 코드 크래시 추적용)
+					MiniDumpWithProcessThreadData);		// TLS, PEB, TEB 등 프로세스/스레드 내부 데이터
+
+				MiniDumpWriteDump(
+					GetCurrentProcess(),
+					GetCurrentProcessId(),
+					hDumpFile,
+					dumpType,
+					&mei,
+					NULL,
+					NULL);
+
+				CloseHandle(hDumpFile);
+			}
+
+
+			//----------------------------------------------------------
+			// 콘솔 출력 (WriteFile + wsprintfA = CRT 완전 우회)
+			// 덤프는 이미 저장됐으므로, 여기서 실패해도 문제없음
+			//----------------------------------------------------------
+			HANDLE hStdErr = GetStdHandle(STD_ERROR_HANDLE);
+			if (hStdErr != INVALID_HANDLE_VALUE)
+			{
+				char msg[512];
+				DWORD written;
+				int len;
+
+				len = wsprintfA(msg,
+					"\r\n\r\n!!! Crash Error !!! %d.%02d.%02d / %02d:%02d:%02d\r\n",
+					st.wYear, st.wMonth, st.wDay,
+					st.wHour, st.wMinute, st.wSecond);
+				WriteFile(hStdErr, msg, len, &written, NULL);
+
+				if (_CrashReason != nullptr)
+				{
+					char reasonBuf[256];
+					int converted = WideCharToMultiByte(CP_UTF8, 0,
+						_CrashReason, -1, reasonBuf, sizeof(reasonBuf) - 1, NULL, NULL);
+					if (converted > 0)
+					{
+						len = wsprintfA(msg, "Crash Reason: %s\r\n", reasonBuf);
+						WriteFile(hStdErr, msg, len, &written, NULL);
+					}
+				}
+			}
 		}
+		__except (EXCEPTION_EXECUTE_HANDLER)
+		{
+			// 2차 예외 발생 — 덤프가 저장됐든 안 됐든 여기로 온다.
+			// 아무것도 하지 않고 아래 TerminateProcess로 낙하.
+		}
+
+		// 어떤 경로든 반드시 프로세스 종료
+		TerminateProcess(GetCurrentProcess(), 1);
 
 		return EXCEPTION_EXECUTE_HANDLER;
-		//파일에 덤프를 모두 저장 후 리턴.
-		//해당값을 리턴해 예외처리가 끝났다고 알려, 예외창이 뜨는것을 막는다.
 	}
 
 
@@ -221,26 +253,44 @@ private:
 			return;
 
 		DWORD dwOldProtect;
-#ifdef _WIN64
+#if defined(_WIN64)
 		// x64: xor eax, eax (31 C0) + ret (C3) = 3바이트
-		constexpr BYTE patchBytes[] = { 0x31, 0xC0, 0xC3 };
-		constexpr SIZE_T patchSize = sizeof(patchBytes);
+		BYTE patch[] = { 0x31, 0xC0, 0xC3 };
 #else
 		// x86 __stdcall: mov eax, 0 (B8 00 00 00 00) + ret 4 (C2 04 00) = 8바이트
-		constexpr BYTE patchBytes[] = { 0xB8, 0x00, 0x00, 0x00, 0x00, 0xC2, 0x04, 0x00 };
-		constexpr SIZE_T patchSize = sizeof(patchBytes);
+		BYTE patch[] = { 0xB8, 0x00, 0x00, 0x00, 0x00, 0xC2, 0x04, 0x00 };
 #endif
 
-		if (VirtualProtect(pFunc, patchSize, PAGE_EXECUTE_READWRITE, &dwOldProtect))
+		if (VirtualProtect(pFunc, sizeof(patch), PAGE_EXECUTE_READWRITE, &dwOldProtect))
 		{
-			memcpy(pFunc, patchBytes, patchSize);
-			VirtualProtect(pFunc, patchSize, dwOldProtect, &dwOldProtect);
+			memcpy(pFunc, patch, sizeof(patch));
+			VirtualProtect(pFunc, sizeof(patch), dwOldProtect, &dwOldProtect);
 		}
+	}
+
+	// 실행 파일 옆에 CrashDump 디렉토리를 생성하고 경로를 저장
+	static void CreateDumpDirectory()
+	{
+		GetModuleFileNameW(NULL, _dumpDir, MAX_PATH);
+		WCHAR* lastSlash = wcsrchr(_dumpDir, L'\\');
+		if (lastSlash)
+			*(lastSlash + 1) = L'\0';
+		wcscat_s(_dumpDir, L"CrashDump\\");
+		CreateDirectoryW(_dumpDir, NULL);
 	}
 
 
 	inline static long _DumpCount = 0;
+	inline static WCHAR _dumpDir[MAX_PATH] = {};
 };
 
 // 전역 인스턴스. inline으로 다중 TU에서 include해도 단일 정의 보장 (C++17)
 inline CCrashDump CrashDump;
+
+// 의도적 크래시 매크로: 사유만 기록하고 __debugbreak()
+// 콘솔 출력은 MyExceptionFilter가 안전하게 처리 (CRT 미사용)
+#define CRASH(reason)                                           \
+    do {                                                        \
+        CCrashDump::_CrashReason = L##reason;                   \
+        __debugbreak();                                         \
+    } while(0)

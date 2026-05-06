@@ -13,6 +13,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="소스 파일\LockFree">
+      <UniqueIdentifier>{7828f4da-cf6a-43ef-9a6c-42e0753771fd}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\CrashDump">
+      <UniqueIdentifier>{ffc3d9f2-543f-4923-a02c-837f969a95c6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IOCPServer.cpp">
@@ -56,23 +62,26 @@
     <ClInclude Include="RingBuffer.h">
       <Filter>소스 파일</Filter>
     </ClInclude>
-    <ClInclude Include="LockFree\ExternalTlsFreeList.h">
-      <Filter>소스 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="LockFree\InternalFreeList.h">
-      <Filter>소스 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="LockFree\LockFreeQueue.h">
-      <Filter>소스 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="LockFree\LockFreeStack.h">
-      <Filter>소스 파일</Filter>
-    </ClInclude>
     <ClInclude Include="..\Shared\Common\ErrorLog.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="TimingWheel.h">
       <Filter>소스 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="LockFree\LockFreeQueue.h">
+      <Filter>소스 파일\LockFree</Filter>
+    </ClInclude>
+    <ClInclude Include="LockFree\LockFreeStack.h">
+      <Filter>소스 파일\LockFree</Filter>
+    </ClInclude>
+    <ClInclude Include="LockFree\InternalFreeList.h">
+      <Filter>소스 파일\LockFree</Filter>
+    </ClInclude>
+    <ClInclude Include="LockFree\ExternalTlsFreeList.h">
+      <Filter>소스 파일\LockFree</Filter>
+    </ClInclude>
+    <ClInclude Include="Crash\CrashDump.h">
+      <Filter>소스 파일\CrashDump</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
