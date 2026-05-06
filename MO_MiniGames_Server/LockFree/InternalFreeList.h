@@ -10,6 +10,7 @@
 #include <atomic>
 #include <cassert>
 #include <intrin.h>
+#include "../Crash/CrashDump.h"
 
 #define IDENT_VAL 0x6659
 
@@ -217,8 +218,7 @@ namespace LockFree
 				if (rNode == nullptr)
 				{
 					// 메모리 할당 실패는 프로세스 수준의 비정상 상태 — 즉시 중단
-					int* crash = nullptr;
-					*crash = 0;
+					CCrashDump::Crash();
 				}
 
 				new(&rNode->Data) T;
