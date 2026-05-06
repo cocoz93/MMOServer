@@ -8,6 +8,7 @@
 #include <windows.h>
 #include <new>
 #include <atomic>
+#include <cassert>
 #include <intrin.h>
 
 #define IDENT_VAL 0x6659
@@ -68,12 +69,10 @@ namespace LockFree
 			{
 				this->_pTopNode = nullptr;
 				hHeap = nullptr;
-				this->_Initialized = false;
+				this->_bInit = false;
 				this->_AllocCount = 0;
 				if constexpr (UseApproxSize)
 					_FreeListSize.store(0, std::memory_order_relaxed);
-
-				Init();
 			}
 
 			CInternalFreeList(const CInternalFreeList&) = delete;
@@ -81,9 +80,9 @@ namespace LockFree
 			CInternalFreeList(CInternalFreeList&&) = delete;
 			CInternalFreeList& operator=(CInternalFreeList&&) = delete;
 
-			bool Init()
+			bool Init(int initialCapacity = 0)
 			{
-				if (this->_Initialized)
+				if (this->_bInit)
 					return true;
 
 				this->_pTopNode = (TopNODE*)_aligned_malloc(64, 64);
@@ -106,13 +105,23 @@ namespace LockFree
 				HeapSetInformation(hHeap, HeapCompatibilityInformation,
 					&HeapInformationValue, sizeof(HeapInformationValue));
 
-				this->_Initialized = true;
+				this->_bInit = true;
+
+				// 초기 용량만큼 노드를 사전 할당하여 free list에 적재
+				for (int i = 0; i < initialCapacity; ++i)
+				{
+					T* data = AllocNewNode();
+					if (data == nullptr)
+						return false;
+					Free(data);
+				}
+
 				return true;
 			}
 
 			~CInternalFreeList()
 			{
-				if (this->_Initialized == false)
+				if (this->_bInit == false)
 					return;
 
 				NODE* pfNode = nullptr;		//DeleteNode
@@ -136,7 +145,8 @@ namespace LockFree
 		public:
 			bool Free(T* Data)
 			{
-				if (this->_Initialized == false)
+				assert(this->_bInit);
+				if (this->_bInit == false)
 					return false;
 
 				if (Data == nullptr)
@@ -199,7 +209,7 @@ namespace LockFree
 
 			__declspec(noinline) T* AllocNewNode()
 			{
-				if (this->_Initialized == false)
+				if (this->_bInit == false)
 					return nullptr;
 
 				// TODO : 더 최적화하고자 한다면 virtualAlloc
@@ -215,7 +225,8 @@ namespace LockFree
 
 			T* Alloc()
 			{
-				if (this->_Initialized == false)
+				assert(this->_bInit);
+				if (this->_bInit == false)
 					return nullptr;
 
 				TopNODE bTopNode;
@@ -281,7 +292,7 @@ namespace LockFree
 		private:
 			TopNODE* _pTopNode;		//_allinge_malloc()
 			HANDLE hHeap;
-			bool _Initialized;
+			bool _bInit;
 
 			alignas(64) volatile INT64	_AllocCount;	// HeapAlloc된 전체 노드 수
 			alignas(64) std::atomic<INT64> _FreeListSize; // FreeList가 가지고있는 size

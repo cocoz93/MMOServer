@@ -3,6 +3,7 @@
 #ifndef ____EXTERNAL_TLS_FREE_LIST_H____
 #define ____EXTERNAL_TLS_FREE_LIST_H____
 
+#include <cassert>
 #include "InternalFreeList.h"
 //#include "SListFreeList.h"
 
@@ -80,15 +81,12 @@ public:
 		// ChunkNode의 생성 및 생성자 여부결정
 		// Config와 this(찾아갈주소)는 한번 박아놓으면 바뀔일 없으므로 PlacementNew = false (기본값)
 		this->_ChunkFreeList = nullptr;
-		//this->_ChunkFreeList = new CSListFreeList<ChunkNODE>;
 
 		// <T>자료형 자체에 대한 생성자 호출 여부
 		this->_IsPlacementNew = IsPlacementNew;
 
 		this->TlsIndex = TLS_OUT_OF_INDEXES;
-		this->_Initialized = false;
-
-		Init();
+		this->_bInit = false;
 	}
 
 	~CExternalTlsFreeList()
@@ -99,29 +97,32 @@ public:
 		delete this->_ChunkFreeList;
 	}
 
-	bool Init()
+	// initialCapacity: 사전 할당할 원소 수 (내부적으로 청크 단위로 올림 변환)
+	bool Init(int initialCapacity = 0)
 	{
-		if (this->_Initialized)
+		if (this->_bInit)
 			return true;
 
 		this->_ChunkFreeList = new CInternalFreeList<ChunkNODE>;
 		if (this->_ChunkFreeList == nullptr)
 			return false;
 
+		int chunkCount = (initialCapacity > 0)
+			? (initialCapacity + CHUNK_SIZE - 1) / CHUNK_SIZE
+			: 0;
+
+		if (!this->_ChunkFreeList->Init(chunkCount))
+		{
+			delete this->_ChunkFreeList;
+			this->_ChunkFreeList = nullptr;
+			return false;
+		}
+
 		this->TlsIndex = TlsAlloc();
 		if (this->TlsIndex == TLS_OUT_OF_INDEXES)
 			return false;
 
-		// 저단편화를 막아보자
-		ChunkNODE* pChunkNode[16];
-
-		for (int i = 0; i < _countof(pChunkNode); ++i)
-			pChunkNode[i] = this->_ChunkFreeList->Alloc();
-
-		for (int i = 0; i < _countof(pChunkNode); ++i)
-			this->_ChunkFreeList->Free(pChunkNode[i]);
-
-		this->_Initialized = true;
+		this->_bInit = true;
 		return true;
 	}
 
@@ -130,7 +131,8 @@ public:
 	//DataAlloc
 	T* Alloc()
 	{
-		if (this->_Initialized == false)
+		assert(this->_bInit);
+		if (this->_bInit == false)
 			return nullptr;
 
 		//Tls->Map Debug
@@ -207,7 +209,7 @@ private:
 private:
 	int TlsIndex;
 	bool _IsPlacementNew;		// 데이터 <T>에 대한 생성자 여부결정
-	bool _Initialized;
+	bool _bInit;
 };
 
 template<typename T>

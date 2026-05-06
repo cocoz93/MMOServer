@@ -6,6 +6,7 @@
 #define ____LOCKFREE_STACK_H____
 
 #include <atomic>
+#include <cassert>
 #include "InternalFreeList.h"
 
 namespace LockFree
@@ -53,11 +54,9 @@ public:
 	{
 		_pFreeList = nullptr;
 		_pTopNode = nullptr;
-		_Initialized = false;
+		_bInit = false;
 		if constexpr (UseApproxSize)
 			_UseSize.store(0, std::memory_order_relaxed);
-
-		Init();
 	}
 
 	CLockFreeStack(const CLockFreeStack&) = delete;
@@ -65,14 +64,21 @@ public:
 	CLockFreeStack(CLockFreeStack&&) = delete;
 	CLockFreeStack& operator=(CLockFreeStack&&) = delete;
 
-	bool Init()
+	bool Init(int initialCapacity = 0)
 	{
-		if (_Initialized)
+		if (_bInit)
 			return true;
 
 		_pFreeList = new(std::nothrow) CInternalFreeList<NODE>;
 		if (_pFreeList == nullptr)
 			return false;
+
+		if (!_pFreeList->Init(initialCapacity))
+		{
+			delete _pFreeList;
+			_pFreeList = nullptr;
+			return false;
+		}
 
 		_pTopNode = (TopNODE*)_aligned_malloc(64, 64);
 		if (_pTopNode == nullptr)
@@ -85,13 +91,13 @@ public:
 		_pTopNode->pNode = nullptr;
 		_pTopNode->UniqueCount = 0;
 
-		_Initialized = true;
+		_bInit = true;
 		return true;
 	}
 
 	~CLockFreeStack(void)
 	{
-		if (_Initialized == false)
+		if (_bInit == false)
 			return;
 
 		NODE* pfNode;
@@ -126,7 +132,9 @@ public:
 
 	bool Push(const T& Data)
 	{
-		// NewNode 
+		assert(_bInit);
+
+		// NewNode
 		NODE* nNode = _pFreeList->Alloc();
 		if (nullptr == nNode)
 			return false;
@@ -212,6 +220,8 @@ public:
 
 	bool Pop(T* pOutData)
 	{
+		assert(_bInit);
+
 		TopNODE bTopNode;
 		CASBackoff backoff;
 
@@ -261,7 +271,7 @@ public:
 private:
 	CInternalFreeList<NODE>*	_pFreeList;
 	TopNODE*			_pTopNode;
-	bool				_Initialized;
+	bool				_bInit;
 	alignas(64) std::atomic<INT64> _UseSize;
 };
 }

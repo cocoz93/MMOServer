@@ -5,6 +5,7 @@
 #define ____LOCKFREE_QUEUE_H____
 
 #include <atomic>
+#include <cassert>
 #include "InternalFreeList.h"
 
 namespace LockFree
@@ -51,19 +52,16 @@ class CLockFreeQueue
 
 
 public:
-	//최초 더미생성
 	explicit CLockFreeQueue()
 	{
 		_pFreeList = nullptr;
 		_phead = nullptr;
 		_ptail = nullptr;
-		_Initialized = false;
+		_bInit = false;
 		if constexpr (UseApproxSize)
 			_UseSize.store(0, std::memory_order_relaxed);
 		_HeadUniqueCount = 0;
 		_TailUniqueCount = 0;
-
-		Init();
 	}
 
 	CLockFreeQueue(const CLockFreeQueue&) = delete;
@@ -71,14 +69,21 @@ public:
 	CLockFreeQueue(CLockFreeQueue&&) = delete;
 	CLockFreeQueue& operator=(CLockFreeQueue&&) = delete;
 
-	bool Init()
+	bool Init(int initialCapacity = 0)
 	{
-		if (_Initialized)
+		if (_bInit)
 			return true;
 
 		_pFreeList = new(std::nothrow) CInternalFreeList<NODE, PlacementNew>();
 		if (_pFreeList == nullptr)
 			return false;
+
+		if (!_pFreeList->Init(initialCapacity))
+		{
+			delete _pFreeList;
+			_pFreeList = nullptr;
+			return false;
+		}
 
 		_phead = (TopNODE*)_aligned_malloc(64, 64);
 		if (_phead == nullptr)
@@ -122,13 +127,13 @@ public:
 		_HeadUniqueCount = 0;
 		_TailUniqueCount = 0;
 
-		_Initialized = true;
+		_bInit = true;
 		return true;
 	}
 
 	~CLockFreeQueue()
 	{
-		if (_Initialized == false)
+		if (_bInit == false)
 			return;
 
 		Clear();
@@ -143,7 +148,7 @@ public:
 
 	void Clear(void)
 	{
-		if (_Initialized == false)
+		if (_bInit == false)
 			return;
 
 		//모든 노드 삭제
@@ -172,7 +177,7 @@ public:
 		if constexpr (UseApproxSize)
 			return (_UseSize.load(std::memory_order_relaxed) == 0);
 
-		if (_Initialized == false || _phead == nullptr)
+		if (_bInit == false || _phead == nullptr)
 			return true;
 
 		return (_phead->pNode->pNextNode == nullptr);
@@ -190,6 +195,8 @@ public:
 
 	bool Enqueue(const T& Data)
 	{
+		assert(_bInit);
+
 		TopNODE bTopTailNode;						// backup TailTopNode;
 		NODE* pbTailNextNode;						// backupTailNext Node;
 		NODE* pnNode = this->_pFreeList->Alloc();	// NewNode;
@@ -275,6 +282,8 @@ public:
 
 	bool Dequeue(T* pOutData)
 	{
+		assert(_bInit);
+
 		INT64 lHeadUniqueCount = InterlockedIncrement64(&this->_HeadUniqueCount);
 		INT64 lTailUniqueCount;
 
@@ -371,7 +380,7 @@ private:
 	CInternalFreeList<NODE, PlacementNew>* _pFreeList;
 	volatile TopNODE* _phead;
 	volatile TopNODE* _ptail;
-	bool _Initialized;
+	bool _bInit;
 	alignas(64) std::atomic<INT64> _UseSize;
 	alignas(64) volatile INT64 _HeadUniqueCount;
 	alignas(64) volatile INT64 _TailUniqueCount;
