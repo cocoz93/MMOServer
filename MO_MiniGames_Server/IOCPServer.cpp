@@ -206,7 +206,7 @@ bool CIOCPServer::CreateListenSocket()
         return false;
     }
 
-    if (listen(_listenSocket, SOMAXCONN) == SOCKET_ERROR)
+    if (listen(_listenSocket, SOMAXCONN_HINT(1024)) == SOCKET_ERROR)
     {
         const int wsaErr = WSAGetLastError();
         LOG_WSA_ERROR_STREAM("listen failed: ", wsaErr);
