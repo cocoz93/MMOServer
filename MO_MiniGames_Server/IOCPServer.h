@@ -6,7 +6,6 @@
 #include <vector>
 #include <memory>
 #include <thread>
-#include <atomic>
 #include <mutex>
 #include <unordered_map>
 #include <queue>
@@ -247,8 +246,8 @@ private:
     int _port;
     int _maxClients;
     ServerArchitectureType _architectureType;
-    std::atomic<bool> _running;
-    std::atomic<int64_t> _sessionIdCounter;  // 고유 ID용 (하위 48비트)
+    volatile LONG _running;
+    volatile LONGLONG _sessionIdCounter;  // 고유 ID용 (하위 48비트)
 
     SOCKET _listenSocket;
     HANDLE _iocpHandle;

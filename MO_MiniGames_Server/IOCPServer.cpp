@@ -67,7 +67,7 @@ CIOCPServer::CIOCPServer(int port, int maxClients, ServerArchitectureType type)
     : _port(port)
     , _maxClients(maxClients)
     , _architectureType(type)
-    , _running(false)
+    , _running(FALSE)
     , _sessionIdCounter(1)  // 0은 사용하지 않음
     , _listenSocket(INVALID_SOCKET)
     , _iocpHandle(NULL)
@@ -142,7 +142,7 @@ bool CIOCPServer::Start()
         return false;
     }
 
-    _running = true;
+    InterlockedExchange(&_running, TRUE);
 
     // 시스템 타이머 해상도를 1ms로 설정 (Sleep, WaitForSingleObject 등 정밀도 향상)
     timeBeginPeriod(1);
@@ -250,7 +250,7 @@ bool CIOCPServer::BindIOCP(SOCKET socket, ULONG_PTR completionKey)
 // 새 I/O 제출을 막고 pending I/O 완료를 유도한다. 실제 closesocket은 IOCount 0에서 수행한다.
 void CIOCPServer::ShutdownServer()
 {
-    if (!_running.exchange(false, std::memory_order_acq_rel))
+    if (InterlockedExchange(&_running, FALSE) == FALSE)
     {
         return;
     }
@@ -330,7 +330,7 @@ void CIOCPServer::ShutdownServer()
 // listen socket close로 accept를 깨운다.
 void CIOCPServer::AcceptThread()
 {
-    while (_running)
+    while (_running == TRUE)
     {
         SOCKADDR_IN clientAddr;
         int addrLen = sizeof(clientAddr);
@@ -340,7 +340,7 @@ void CIOCPServer::AcceptThread()
 
         if (clientSocket == INVALID_SOCKET)
         {
-            if (_running)
+            if (_running == TRUE)
             {
                 const int wsaErr = WSAGetLastError();
                 LOG_WSA_ERROR_STREAM("accept failed: ", wsaErr);
@@ -365,7 +365,7 @@ void CIOCPServer::ProcessAccept(SOCKET clientSocket)
     }
 
     // 고유 ID 생성 (하위 48비트만 사용)
-    int64_t uniqueId = (_sessionIdCounter.fetch_add(1)) & CSession::SESSION_UNIQUE_MASK;
+    int64_t uniqueId = InterlockedIncrement64(&_sessionIdCounter) & CSession::SESSION_UNIQUE_MASK;
 
     // SessionID 생성 [16bit Index][48bit UniqueID]
     int64_t sessionId = CSession::MakeSessionId(index, uniqueId);
@@ -418,7 +418,7 @@ void CIOCPServer::WorkerThread()
 
         if (overlapped == nullptr)
         {
-            if (!_running.load(std::memory_order_acquire))
+            if (_running == FALSE)
                 break;
             continue;
         }
@@ -680,7 +680,7 @@ void CIOCPServer::ProcessSend(CSession* session, DWORD bytesTransferred)
     }
 
     // 플래그 해제 후 PostSend에서 남은 데이터 확인 및 연속 송신
-    session->_sending = FALSE;
+    InterlockedExchange(&session->_sending, FALSE);
 
     // Double-check: 플래그 해제 직후 다시 확인 (다른 스레드가 Enqueue했을 수 있음)
     if (session->_sendQ.GetDataSize() > 0)
@@ -713,7 +713,7 @@ void CIOCPServer::PostSend(CSession* session)
 
     if (sendInfo.dataSize == 0)
     {
-        session->_sending = FALSE;
+        InterlockedExchange(&session->_sending, FALSE);
         IOCountDecrement(session);
         return;
     }
@@ -742,7 +742,7 @@ void CIOCPServer::PostSend(CSession* session)
 
     if (bufCount == 0)
     {
-        session->_sending = FALSE;
+        InterlockedExchange(&session->_sending, FALSE);
         IOCountDecrement(session);
         return;
     }
@@ -750,7 +750,7 @@ void CIOCPServer::PostSend(CSession* session)
     if (session->_disconnecting == TRUE)
     {
         // WSABUF 준비 ~ IO 제출 사이에 세션이 disconnect되면 제출하지 않는다.
-        session->_sending = FALSE;
+        InterlockedExchange(&session->_sending, FALSE);
         IOCountDecrement(session);
         return;
     }
@@ -758,7 +758,7 @@ void CIOCPServer::PostSend(CSession* session)
     SOCKET socket = session->_socket;
     if (socket == INVALID_SOCKET)
     {
-        session->_sending = FALSE;
+        InterlockedExchange(&session->_sending, FALSE);
         RequestDisconnectSession(session);
         IOCountDecrement(session);
         return;
@@ -778,7 +778,7 @@ void CIOCPServer::PostSend(CSession* session)
                 LOG_WSA_ERROR_STREAM("[Error] WSASend failed - SessionId: " << sessionId
                     << ", WSAError: ", wsaErr);
             }
-            session->_sending = FALSE;
+            InterlockedExchange(&session->_sending, FALSE);
             RequestDisconnectSession(session);
             IOCountDecrement(session);
             return;
@@ -941,7 +941,7 @@ void CIOCPServer::ReleaseSession(CSession* session)
 
     // 컨텐츠 알림 — IOCount==0이므로 이후 RECEIVED 이벤트 불가. 이벤트 순서 보장.
     // 서버 종료 중(_running==false)에는 알림 생략.
-    if (sessionId != 0 && _running.load(std::memory_order_acquire))
+    if (sessionId != 0 && _running == TRUE)
     {
         switch (_architectureType)
         {
