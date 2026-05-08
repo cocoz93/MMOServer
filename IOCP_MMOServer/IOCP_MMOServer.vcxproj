@@ -22,7 +22,7 @@
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
     <ProjectGuid>{e225f2ad-3c54-4cb6-93ee-a4300c9b5d53}</ProjectGuid>
-    <RootNamespace>MOMiniGamesServer</RootNamespace>
+    <RootNamespace>IOCPMMOServer</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
