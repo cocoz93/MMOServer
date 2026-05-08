@@ -27,6 +27,7 @@ bool CCentralizedServer::Start()
 
     _gameThread = std::thread(&CCentralizedServer::GameLogicThread, this);
     std::cout << "[CentralizedServer] Game logic thread started" << std::endl;
+    return true;
 }
 
 void CCentralizedServer::Stop()
