@@ -78,7 +78,6 @@ CIOCPServer::CIOCPServer(int port, int maxClients, ServerArchitectureType type)
 CIOCPServer::~CIOCPServer()
 {
     ShutdownServer();
-    SignalProcessShutdown(); // 메인 스레드 종료
 }
 
 
@@ -322,6 +321,9 @@ void CIOCPServer::ShutdownServer()
 
     // 타이머 해상도 복원
     timeEndPeriod(1);
+
+    // 네트워크 종료 완료 → 프로세스 종료 알림
+    SignalProcessShutdown();
 }
 
 
@@ -709,6 +711,9 @@ void CIOCPServer::PostSend(CSession* session)
         return;
     }
 
+    // GetSendInfo() 이후 다른 스레드가 Enqueue해도 문제없다.
+    // 이번 WSASend는 캡처 시점의 dataSize만 전송하고,
+    // 나머지는 ProcessSend의 double-check에서 PostSend를 재호출하여 처리한다.
     auto sendInfo = session->_sendQ.GetSendInfo();
 
     if (sendInfo.dataSize == 0)
