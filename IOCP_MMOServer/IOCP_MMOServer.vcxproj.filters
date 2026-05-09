@@ -42,7 +42,7 @@
     <ClCompile Include="Player.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="Msg.cpp">
+    <ClCompile Include="SerialBuffer.cpp">
       <Filter>소스 파일\Msg</Filter>
     </ClCompile>
   </ItemGroup>
@@ -89,7 +89,7 @@
     <ClInclude Include="Crash\CrashDump.h">
       <Filter>소스 파일\CrashDump</Filter>
     </ClInclude>
-    <ClInclude Include="Msg.h">
+    <ClInclude Include="SerialBuffer.h">
       <Filter>소스 파일\Msg</Filter>
     </ClInclude>
   </ItemGroup>

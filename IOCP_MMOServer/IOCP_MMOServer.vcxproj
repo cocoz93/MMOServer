@@ -139,7 +139,7 @@
     </ClCompile>
     <ClCompile Include="IOCPServer.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="Msg.cpp" />
+    <ClCompile Include="SerialBuffer.cpp" />
     <ClCompile Include="Player.cpp" />
     <ClCompile Include="Room.cpp" />
     <ClCompile Include="RoomManager.cpp" />
@@ -158,7 +158,7 @@
     <ClInclude Include="LockFree\InternalFreeList.h" />
     <ClInclude Include="LockFree\LockFreeQueue.h" />
     <ClInclude Include="LockFree\LockFreeStack.h" />
-    <ClInclude Include="Msg.h" />
+    <ClInclude Include="SerialBuffer.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="..\Shared\Protocol\Protocol.h" />
     <ClInclude Include="RingBuffer.h" />
