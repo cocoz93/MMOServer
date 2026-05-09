@@ -692,8 +692,6 @@ void CIOCPServer::ProcessSend(CSession* session, DWORD bytesTransferred)
 }
 
 // Send는 1회로 제한
-// https://www.notion.so/C-IOCP-2e216a0b9f5980718fbbe6d70d9d537f?source=copy_link#2e216a0b9f5980a183ecccce201aff54
-
 // Send I/O 제출. 제출 전 IOCount로 세션을 pin한다.
 void CIOCPServer::PostSend(CSession* session)
 {

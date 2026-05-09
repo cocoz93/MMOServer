@@ -19,7 +19,7 @@
 
 #pragma comment(lib, "ws2_32.lib")
 
-constexpr size_t MAX_PACKET_SIZE = 65535;  // 최대 패킷 크기 (64KB)
+constexpr size_t MAX_PACKET_SIZE = 4096;  // 최대 패킷 크기 (4KB)
 constexpr size_t MIN_PACKET_SIZE = sizeof(EchoMsgHeader);  // 최소 패킷 크기 (가장 작은 헤더 기준)
 
 // I/O 작업 종류
