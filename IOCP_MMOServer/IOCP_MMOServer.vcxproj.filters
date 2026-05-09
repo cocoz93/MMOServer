@@ -19,6 +19,9 @@
     <Filter Include="소스 파일\CrashDump">
       <UniqueIdentifier>{ffc3d9f2-543f-4923-a02c-837f969a95c6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="소스 파일\Msg">
+      <UniqueIdentifier>{ca417068-59d8-485b-9acf-e481e4de0872}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="IOCPServer.cpp">
@@ -38,6 +41,9 @@
     </ClCompile>
     <ClCompile Include="Player.cpp">
       <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="Msg.cpp">
+      <Filter>소스 파일\Msg</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -82,6 +88,9 @@
     </ClInclude>
     <ClInclude Include="Crash\CrashDump.h">
       <Filter>소스 파일\CrashDump</Filter>
+    </ClInclude>
+    <ClInclude Include="Msg.h">
+      <Filter>소스 파일\Msg</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
