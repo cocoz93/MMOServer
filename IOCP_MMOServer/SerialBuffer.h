@@ -4,9 +4,6 @@
 
 #pragma once
 
-#ifndef ____MSG_H____
-#define ____MSG_H____
-
 #include "LockFree/ExternalTlsFreeList.h"
 
 static constexpr int MSG_DEFAULT_SIZE = 1400;
@@ -23,6 +20,10 @@ public:
 	static void Free(CSerialBuffer* msg);
 	void AddRef();
 	void SubRef();
+
+	// 쓰기 완료 후 호출. 봉인 이후 SetData/GetData 차단
+	// 멀티스레드 브로드캐스트 시 내부 상태(_front, _rear) 보호 목적
+	void Seal();
 
 
 public:
@@ -127,6 +128,3 @@ public:
 };
 
 // 8 + 4 + 4 + 4 + 4 + 4
-
-
-#endif// ____MSG_H____

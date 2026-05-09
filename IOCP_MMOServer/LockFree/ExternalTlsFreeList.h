@@ -1,8 +1,5 @@
 ﻿#pragma once
 
-#ifndef ____EXTERNAL_TLS_FREE_LIST_H____
-#define ____EXTERNAL_TLS_FREE_LIST_H____
-
 #include <cassert>
 #include "InternalFreeList.h"
 //#include "SListFreeList.h"
@@ -224,9 +221,7 @@ using CTLS_LockFree_FreeList = CExternalTlsFreeList<T>;
 
 }
 
-#endif //____EXTERNAL_TLS_FREE_LIST_H____
-
-
+using LockFree::CExternalTlsFreeList;
 
 
 // 

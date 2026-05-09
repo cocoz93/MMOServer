@@ -1,10 +1,6 @@
 ﻿// 원본
 #pragma once
 
-
-#ifndef ____LOCKFREE_STACK_H____
-#define ____LOCKFREE_STACK_H____
-
 #include <atomic>
 #include <cassert>
 #include "InternalFreeList.h"
@@ -275,5 +271,3 @@ private:
 	alignas(64) std::atomic<INT64> _UseSize;
 };
 }
-
-#endif

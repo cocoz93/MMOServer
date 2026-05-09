@@ -1,10 +1,5 @@
 ﻿#pragma once
 
-
-#ifndef ____INTERNAL_FREE_LIST_H____
-#define ____INTERNAL_FREE_LIST_H____
-
-
 #include <windows.h>
 #include <new>
 #include <atomic>
@@ -310,4 +305,3 @@ namespace LockFree
 
 }
 
-#endif //____INTERNAL_FREE_LIST_H____

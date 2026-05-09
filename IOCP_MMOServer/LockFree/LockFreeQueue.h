@@ -1,9 +1,5 @@
 ﻿#pragma once
 
-
-#ifndef ____LOCKFREE_QUEUE_H____
-#define ____LOCKFREE_QUEUE_H____
-
 #include <atomic>
 #include <cassert>
 #include "InternalFreeList.h"
@@ -389,4 +385,3 @@ private:
 }
 
 
-#endif
