@@ -53,10 +53,16 @@ void CSerialBuffer::Free(CSerialBuffer* msg)
 
 
 
+// 참조 카운트만 증가. Seal()과 독립적으로 동작
 void CSerialBuffer::AddRef()
 {
-	_Sealed = true;
 	InterlockedIncrement64(&_RefCount);
+}
+
+// Alloc() → operator<< → Seal() → AddRef(N) → WSASend × N → SubRef()
+void CSerialBuffer::Seal()
+{
+	_Sealed = true;
 }
 
 
@@ -295,7 +301,7 @@ CSerialBuffer& CSerialBuffer::operator>>(DWORD& Value)
 CSerialBuffer& CSerialBuffer::operator>>(float& Value)
 {
 	if (0 == GetData((char*)&Value, sizeof(Value)))
-		Value = 0;
+		Value = 0.0f;
 	return *this;
 }
 
@@ -316,7 +322,7 @@ CSerialBuffer& CSerialBuffer::operator>>(UINT64& Value)
 CSerialBuffer& CSerialBuffer::operator>>(double& Value)
 {
 	if (0 == GetData((char*)&Value, sizeof(Value)))
-		Value = 0;
+		Value = 0.0;
 	return *this;
 }
 
