@@ -123,8 +123,7 @@ private:
 	int			_rear = 0;
 	bool		_Sealed = false;
 
+	// 여러 워커스레드에서 동시 Interlocked 접근 → 별도 캐시라인으로 격리하여 false sharing 방지
 public:
-	LONG64		_RefCount;
+	alignas(64) LONG64 _RefCount;
 };
-
-// 8 + 4 + 4 + 4 + 4 + 4

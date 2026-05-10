@@ -180,6 +180,8 @@ CSerialBuffer& CSerialBuffer::operator=(const CSerialBuffer& SrcMsg)
 CSerialBuffer& CSerialBuffer::operator<<(const char* Value)
 {
 	short Len = (short)strlen(Value);
+	if (IsFull(sizeof(Len) + Len))
+		return *this;
 	SetData((char*)&Len, sizeof(Len));
 	SetData((char*)Value, Len);
 	return *this;
@@ -188,6 +190,8 @@ CSerialBuffer& CSerialBuffer::operator<<(const char* Value)
 CSerialBuffer& CSerialBuffer::operator<<(const WCHAR* Value)
 {
 	short Len = (short)(wcslen(Value) * sizeof(WCHAR));
+	if (IsFull(sizeof(Len) + Len))
+		return *this;
 	SetData((char*)&Len, sizeof(Len));
 	SetData((char*)Value, Len);
 	return *this;
@@ -195,61 +199,91 @@ CSerialBuffer& CSerialBuffer::operator<<(const WCHAR* Value)
 
 CSerialBuffer& CSerialBuffer::operator<<(BYTE Value)
 {
-	SetData((char*)&Value, sizeof(Value));
+	if (_Sealed || IsFull(sizeof(Value))) return *this;
+	*(BYTE*)(_Buff + HEADER_SIZE + _rear) = Value;
+	_rear += sizeof(Value);
+	_DataSize += sizeof(Value);
 	return *this;
 }
 
 CSerialBuffer& CSerialBuffer::operator<<(char Value)
 {
-	SetData((char*)&Value, sizeof(Value));
+	if (_Sealed || IsFull(sizeof(Value))) return *this;
+	*(_Buff + HEADER_SIZE + _rear) = Value;
+	_rear += sizeof(Value);
+	_DataSize += sizeof(Value);
 	return *this;
 }
 
 CSerialBuffer& CSerialBuffer::operator<<(short Value)
 {
-	SetData((char*)&Value, sizeof(Value));
+	if (_Sealed || IsFull(sizeof(Value))) return *this;
+	*(short*)(_Buff + HEADER_SIZE + _rear) = Value;
+	_rear += sizeof(Value);
+	_DataSize += sizeof(Value);
 	return *this;
 }
 
 CSerialBuffer& CSerialBuffer::operator<<(WORD Value)
 {
-	SetData((char*)&Value, sizeof(Value));
+	if (_Sealed || IsFull(sizeof(Value))) return *this;
+	*(WORD*)(_Buff + HEADER_SIZE + _rear) = Value;
+	_rear += sizeof(Value);
+	_DataSize += sizeof(Value);
 	return *this;
 }
 
 CSerialBuffer& CSerialBuffer::operator<<(int Value)
 {
-	SetData((char*)&Value, sizeof(Value));
+	if (_Sealed || IsFull(sizeof(Value))) return *this;
+	*(int*)(_Buff + HEADER_SIZE + _rear) = Value;
+	_rear += sizeof(Value);
+	_DataSize += sizeof(Value);
 	return *this;
 }
 
 CSerialBuffer& CSerialBuffer::operator<<(DWORD Value)
 {
-	SetData((char*)&Value, sizeof(Value));
+	if (_Sealed || IsFull(sizeof(Value))) return *this;
+	*(DWORD*)(_Buff + HEADER_SIZE + _rear) = Value;
+	_rear += sizeof(Value);
+	_DataSize += sizeof(Value);
 	return *this;
 }
 
 CSerialBuffer& CSerialBuffer::operator<<(float Value)
 {
-	SetData((char*)&Value, sizeof(Value));
+	if (_Sealed || IsFull(sizeof(Value))) return *this;
+	*(float*)(_Buff + HEADER_SIZE + _rear) = Value;
+	_rear += sizeof(Value);
+	_DataSize += sizeof(Value);
 	return *this;
 }
 
 CSerialBuffer& CSerialBuffer::operator<<(INT64 Value)
 {
-	SetData((char*)&Value, sizeof(Value));
+	if (_Sealed || IsFull(sizeof(Value))) return *this;
+	*(INT64*)(_Buff + HEADER_SIZE + _rear) = Value;
+	_rear += sizeof(Value);
+	_DataSize += sizeof(Value);
 	return *this;
 }
 
 CSerialBuffer& CSerialBuffer::operator<<(UINT64 Value)
 {
-	SetData((char*)&Value, sizeof(Value));
+	if (_Sealed || IsFull(sizeof(Value))) return *this;
+	*(UINT64*)(_Buff + HEADER_SIZE + _rear) = Value;
+	_rear += sizeof(Value);
+	_DataSize += sizeof(Value);
 	return *this;
 }
 
 CSerialBuffer& CSerialBuffer::operator<<(double Value)
 {
-	SetData((char*)&Value, sizeof(Value));
+	if (_Sealed || IsFull(sizeof(Value))) return *this;
+	*(double*)(_Buff + HEADER_SIZE + _rear) = Value;
+	_rear += sizeof(Value);
+	_DataSize += sizeof(Value);
 	return *this;
 }
 
@@ -258,74 +292,96 @@ CSerialBuffer& CSerialBuffer::operator<<(double Value)
 
 CSerialBuffer& CSerialBuffer::operator>>(BYTE& Value)
 {
-	if (0 == GetData((char*)&Value, sizeof(Value)))
-		Value = 0;
+	if (_Sealed || IsEmpty(sizeof(Value))) { Value = 0; return *this; }
+	Value = *(BYTE*)(_Buff + HEADER_SIZE + _front);
+	_front += sizeof(Value);
+	_DataSize -= sizeof(Value);
 	return *this;
 }
 
 CSerialBuffer& CSerialBuffer::operator>>(char& Value)
 {
-	if (0 == GetData((char*)&Value, sizeof(Value)))
-		Value = 0;
+	if (_Sealed || IsEmpty(sizeof(Value))) { Value = 0; return *this; }
+	Value = *(_Buff + HEADER_SIZE + _front);
+	_front += sizeof(Value);
+	_DataSize -= sizeof(Value);
 	return *this;
 }
 
 CSerialBuffer& CSerialBuffer::operator>>(short& Value)
 {
-	if (0 == GetData((char*)&Value, sizeof(Value)))
-		Value = 0;
+	if (_Sealed || IsEmpty(sizeof(Value))) { Value = 0; return *this; }
+	Value = *(short*)(_Buff + HEADER_SIZE + _front);
+	_front += sizeof(Value);
+	_DataSize -= sizeof(Value);
 	return *this;
 }
 
 CSerialBuffer& CSerialBuffer::operator>>(WORD& Value)
 {
-	if (0 == GetData((char*)&Value, sizeof(Value)))
-		Value = 0;
+	if (_Sealed || IsEmpty(sizeof(Value))) { Value = 0; return *this; }
+	Value = *(WORD*)(_Buff + HEADER_SIZE + _front);
+	_front += sizeof(Value);
+	_DataSize -= sizeof(Value);
 	return *this;
 }
 
 CSerialBuffer& CSerialBuffer::operator>>(int& Value)
 {
-	if (0 == GetData((char*)&Value, sizeof(Value)))
-		Value = 0;
+	if (_Sealed || IsEmpty(sizeof(Value))) { Value = 0; return *this; }
+	Value = *(int*)(_Buff + HEADER_SIZE + _front);
+	_front += sizeof(Value);
+	_DataSize -= sizeof(Value);
 	return *this;
 }
 
 CSerialBuffer& CSerialBuffer::operator>>(DWORD& Value)
 {
-	if (0 == GetData((char*)&Value, sizeof(Value)))
-		Value = 0;
+	if (_Sealed || IsEmpty(sizeof(Value))) { Value = 0; return *this; }
+	Value = *(DWORD*)(_Buff + HEADER_SIZE + _front);
+	_front += sizeof(Value);
+	_DataSize -= sizeof(Value);
 	return *this;
 }
 
 CSerialBuffer& CSerialBuffer::operator>>(float& Value)
 {
-	if (0 == GetData((char*)&Value, sizeof(Value)))
-		Value = 0.0f;
+	if (_Sealed || IsEmpty(sizeof(Value))) { Value = 0.0f; return *this; }
+	Value = *(float*)(_Buff + HEADER_SIZE + _front);
+	_front += sizeof(Value);
+	_DataSize -= sizeof(Value);
 	return *this;
 }
 
 CSerialBuffer& CSerialBuffer::operator>>(INT64& Value)
 {
-	if (0 == GetData((char*)&Value, sizeof(Value)))
-		Value = 0;
+	if (_Sealed || IsEmpty(sizeof(Value))) { Value = 0; return *this; }
+	Value = *(INT64*)(_Buff + HEADER_SIZE + _front);
+	_front += sizeof(Value);
+	_DataSize -= sizeof(Value);
 	return *this;
 }
 
 CSerialBuffer& CSerialBuffer::operator>>(UINT64& Value)
 {
-	if (0 == GetData((char*)&Value, sizeof(Value)))
-		Value = 0;
+	if (_Sealed || IsEmpty(sizeof(Value))) { Value = 0; return *this; }
+	Value = *(UINT64*)(_Buff + HEADER_SIZE + _front);
+	_front += sizeof(Value);
+	_DataSize -= sizeof(Value);
 	return *this;
 }
 
 CSerialBuffer& CSerialBuffer::operator>>(double& Value)
 {
-	if (0 == GetData((char*)&Value, sizeof(Value)))
-		Value = 0.0;
+	if (_Sealed || IsEmpty(sizeof(Value))) { Value = 0.0; return *this; }
+	Value = *(double*)(_Buff + HEADER_SIZE + _front);
+	_front += sizeof(Value);
+	_DataSize -= sizeof(Value);
 	return *this;
 }
 
+// _Sealed 체크: 정상 흐름에서는 항상 false → 분기 예측 적중으로 실질 비용 0
+// Release에서도 유지하여 Seal 이후 읽기/쓰기 시도에 대한 안전성 보장
 int CSerialBuffer::GetData(char* Dest, int size)
 {
 	if (_Sealed || IsEmpty(size))
@@ -346,6 +402,8 @@ int CSerialBuffer::PeekData(char* Dest, int size)
 	return size;
 }
 
+// _Sealed 체크: 정상 흐름에서는 항상 false → 분기 예측 적중으로 실질 비용 0
+// Release에서도 유지하여 Seal 이후 읽기/쓰기 시도에 대한 안전성 보장
 int CSerialBuffer::SetData(char* Src, int size)
 {
 	if (_Sealed || IsFull(size))
