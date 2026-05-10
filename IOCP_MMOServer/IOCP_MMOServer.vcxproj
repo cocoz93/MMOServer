@@ -141,8 +141,6 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="SerialBuffer.cpp" />
     <ClCompile Include="Player.cpp" />
-    <ClCompile Include="Room.cpp" />
-    <ClCompile Include="RoomManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Shared\Common\ErrorLog.h" />
@@ -162,8 +160,6 @@
     <ClInclude Include="Player.h" />
     <ClInclude Include="..\Shared\Protocol\Protocol.h" />
     <ClInclude Include="RingBuffer.h" />
-    <ClInclude Include="Room.h" />
-    <ClInclude Include="RoomManager.h" />
     <ClInclude Include="TimingWheel.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
