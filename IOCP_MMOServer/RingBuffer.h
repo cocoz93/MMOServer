@@ -30,21 +30,30 @@ template<typename LockPolicy = NoLock>
 class CRingBufferT
 {
 public:
-    explicit CRingBufferT(size_t capacity = 65535)
-        : _capacity(capacity)
+    explicit CRingBufferT()
+        : _capacity(0)
         , _readPos(0)
         , _writePos(0)
         , _buffer(nullptr)
     {
-        if (capacity <= 0)
-            return;
-
-        _buffer = new (std::nothrow) char[_capacity];
     }
 
     ~CRingBufferT()
     {
         delete[] _buffer;
+    }
+
+    bool Init(size_t capacity = 65535)
+    {
+        if (capacity <= 0)
+            return false;
+
+        _buffer = new (std::nothrow) char[capacity];
+        if (_buffer == nullptr)
+            return false;
+
+        _capacity = capacity;
+        return true;
     }
 
     bool IsValid() const
@@ -300,21 +309,30 @@ template<>
 class CRingBufferT<MutexLock>
 {
 public:
-    explicit CRingBufferT(size_t capacity = 65535)
-        : _capacity(capacity)
+    explicit CRingBufferT()
+        : _capacity(0)
         , _readPos(0)
         , _writePos(0)
         , _buffer(nullptr)
     {
-        if (capacity <= 0)
-            return;
-
-        _buffer = new (std::nothrow) char[_capacity];
     }
 
     ~CRingBufferT()
     {
         delete[] _buffer;
+    }
+
+    bool Init(size_t capacity = 65535)
+    {
+        if (capacity <= 0)
+            return false;
+
+        _buffer = new (std::nothrow) char[capacity];
+        if (_buffer == nullptr)
+            return false;
+
+        _capacity = capacity;
+        return true;
     }
 
     bool IsValid() const

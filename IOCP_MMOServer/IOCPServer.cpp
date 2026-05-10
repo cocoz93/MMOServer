@@ -91,11 +91,17 @@ bool CIOCPServer::Start()
 
     // 세션 객체는 서버 시작 시 동접자 수만큼 고정 생성하고 이후 index만 재사용한다.
 
+    // 세션 객체는 서버 시작 시 동접자 수만큼 고정 생성하고 이후 index만 재사용한다.
     _sessions.resize(_maxClients);
     for (uint16_t i = 0; i < _maxClients; ++i)
     {
         // INVALID_SOCKET과 0 세션ID로 미리 생성
         _sessions[i] = std::make_unique<CSession>();
+        if (!_sessions[i]->_recvQ.Init() || !_sessions[i]->_sendQ.Init())
+        {
+            LOG_ERROR_STREAM("Failed to init session RingBuffer [index=" << i << "]");
+            return false;
+        }
     }
 
 
