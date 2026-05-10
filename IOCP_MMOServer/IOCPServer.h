@@ -13,6 +13,7 @@
 #include <array>
 
 #include "RingBuffer.h"
+#include "SerialBuffer.h"
 #include "Protocol.h"
 #include "LockFree/LockFreeStack.h"
 #include "TimingWheel.h"

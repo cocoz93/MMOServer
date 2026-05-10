@@ -99,6 +99,15 @@ bool CIOCPServer::Start()
     }
 
 
+    // SerialBuffer 메모리풀 초기화
+    // 클라이언트당 동시 송신 대기 버퍼 1~2개 가정, 부족 시 청크 자동 증가
+    CSerialBuffer::_TlsMsgFreeList = new CExternalTlsFreeList<CSerialBuffer>();
+    if (!CSerialBuffer::_TlsMsgFreeList->Init(_maxClients * 2))
+    {
+        LOG_ERROR_STREAM("Failed to init SerialBuffer FreeList");
+        return false;
+    }
+
     // 인덱스 스택 초기화 (maxClients만큼 사전 할당)
     if (!_availableIndices.Init(_maxClients))
     {
