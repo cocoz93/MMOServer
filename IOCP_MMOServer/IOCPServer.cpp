@@ -602,7 +602,7 @@ void CIOCPServer::PostRecv(CSession* session, bool skipAcquire)
     }
 }
 
-// ParsePackets: 링버퍼에서 완성된 패킷 추출 및 처리
+// ParsePackets: 링버퍼에서 완성된 패킷 추출 → CSerialBuffer에 적재
 void CIOCPServer::ParsePackets(CSession* session)
 {
     // 특정 더미타입에 맞게 헤더사이즈 조정
@@ -650,28 +650,35 @@ void CIOCPServer::ParsePackets(CSession* session)
             break; // 데이터 부족 - 다음 Recv 대기
         }
 
-        // 6. 완성된 패킷 추출 (스택 버퍼 사용, heap 할당 회피)
-        std::array<char, MAX_PACKET_SIZE> packetBuffer;
-        size_t dequeuedSize = session->_recvQ.Dequeue(packetBuffer.data(), totalPacketSize);
+        // 6. CSerialBuffer에 패킷 전체 적재 (헤더 포함)
+        CSerialBuffer* pMsg = CSerialBuffer::Alloc();
+        size_t dequeuedSize = session->_recvQ.Dequeue(pMsg->GetWriteBufferPtr(), totalPacketSize);
         if (dequeuedSize != totalPacketSize)
         {
             LOG_ERROR_STREAM("[Error] Packet dequeue failed - SessionId: " << session->_sessionId);
+            CSerialBuffer::Free(pMsg);
             RequestDisconnectSession(session);
             return;
         }
+        pMsg->MoveWritePos(static_cast<int>(totalPacketSize));
+
+        // 수신 버퍼는 단일 소비자(GameLogicThread)이므로 Seal 불필요
+        // Seal하면 operator>>/GetData가 차단되어 역직렬화 불가
+        pMsg->AddRef();
 
         // 7. 컨텐츠쪽 전달 또는 처리
         switch (_architectureType)
         {
         case ServerArchitectureType::GameCodiEchoTest:
-            EchoTestSend(session, packetBuffer.data(), totalPacketSize);
+            EchoTestSend(session, pMsg);
             break;
         case ServerArchitectureType::Centralized:
             PushNetworkEvent(NetworkEvent(NetworkEvent::Type::RECEIVED,
-                session->_sessionId, packetBuffer.data(), totalPacketSize));
+                session->_sessionId, pMsg));
             break;
 
         default:
+            pMsg->SubRef();
             break;
         }
 
@@ -847,10 +854,20 @@ void CIOCPServer::RequestSendMsg(int64_t sessionId, const char* data, int length
     IOCountDecrement(session);
 }
 
-void CIOCPServer::EchoTestSend(CSession* session, const char* data, size_t length)
+void CIOCPServer::EchoTestSend(CSession* session, CSerialBuffer* pMsg)
 {
     // 에코 테스트: 받은 패킷을 그대로 돌려보냄
-    RequestSendMsg(session->_sessionId, data, static_cast<int>(length));
+    RequestSendMsg(session->_sessionId, pMsg);
+}
+
+// TODO: 송신 최적화 단계별 적용 예정
+// 1단계(현재): CSerialBuffer → sendQ(RingBuffer) memcpy → WSASend (버퍼 복사)
+// 2단계: sendQ를 CSerialBuffer* 포인터 큐로 교체 (데이터 복사 제거)
+// 3단계: SO_SNDBUF=0 적용 (커널 복사까지 제거, 진정한 zero-copy)
+void CIOCPServer::RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg)
+{
+    RequestSendMsg(sessionId, pMsg->GetReadBufferPtr(), pMsg->GetDataSize());
+    pMsg->SubRef();
 }
 
 // ParsePackets 쪽에서 호출

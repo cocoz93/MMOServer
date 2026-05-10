@@ -108,15 +108,15 @@ struct NetworkEvent
 
     Type type;
     int64_t sessionId;
-    std::vector<char> data;
+    CSerialBuffer* pMsg;
 
     NetworkEvent(Type t, int64_t id)
-        : type(t), sessionId(id)
+        : type(t), sessionId(id), pMsg(nullptr)
     {
     }
 
-    NetworkEvent(Type t, int64_t id, const char* buffer, size_t length)
-        : type(t), sessionId(id), data(buffer, buffer + length)
+    NetworkEvent(Type t, int64_t id, CSerialBuffer* msg)
+        : type(t), sessionId(id), pMsg(msg)
     {
     }
 };
@@ -202,6 +202,7 @@ public:
     // 게임 로직 레이어가 사용할 인터페이스 (직접 호출)
     // thread-safe하다면 굳이 큐방식으로 부하를 줄 필요가 없음.
     void RequestSendMsg(int64_t sessionId, const char* data, int length);
+    void RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg);
     bool RequestDisconnectSession(int64_t sessionId);
 
     // 게임 로직 레이어로 전달할 이벤트 가져오기 (QUEUE_BASED 모드용)
@@ -217,7 +218,7 @@ private:
 
 private:
 
-    void EchoTestSend(CSession* session, const char* data, size_t length);
+    void EchoTestSend(CSession* session, CSerialBuffer* pMsg);
 
     // 게임 로직으로 이벤트 전달 (QUEUE_BASED 모드용)
     void PushNetworkEvent(NetworkEvent&& event);
