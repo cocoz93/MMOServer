@@ -6,6 +6,8 @@
 
 #include "LockFree/ExternalTlsFreeList.h"
 
+// TCP MSS(1460) 이하로 맞춰 세그먼트 분할 없이 패킷 하나가 단일 세그먼트에 수용되도록 함
+// 초과 시 세그먼트당 IP+TCP 헤더(40B) 오버헤드가 추가 발생
 static constexpr int MSG_DEFAULT_SIZE = 1400;
 static constexpr int HEADER_SIZE = 2;
 
