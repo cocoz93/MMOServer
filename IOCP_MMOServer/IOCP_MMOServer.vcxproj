@@ -141,6 +141,10 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="SerialBuffer.cpp" />
     <ClCompile Include="Player.cpp" />
+    <ClCompile Include="SectorManager.cpp" />
+    <ClCompile Include="Zone.cpp" />
+    <ClCompile Include="ZoneManager.cpp" />
+    <ClCompile Include="GameServer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Shared\Common\ErrorLog.h" />
@@ -158,6 +162,10 @@
     <ClInclude Include="LockFree\LockFreeStack.h" />
     <ClInclude Include="SerialBuffer.h" />
     <ClInclude Include="Player.h" />
+    <ClInclude Include="SectorManager.h" />
+    <ClInclude Include="Zone.h" />
+    <ClInclude Include="ZoneManager.h" />
+    <ClInclude Include="GameServer.h" />
     <ClInclude Include="..\Shared\Protocol\Protocol.h" />
     <ClInclude Include="RingBuffer.h" />
     <ClInclude Include="TimingWheel.h" />
