@@ -22,64 +22,43 @@
     <Filter Include="소스 파일\SerialBuffer">
       <UniqueIdentifier>{ca417068-59d8-485b-9acf-e481e4de0872}</UniqueIdentifier>
     </Filter>
+    <Filter Include="소스 파일\TimingWheel">
+      <UniqueIdentifier>{4dd23d0b-db78-4c27-82ec-a38ca8230767}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\ServerLib">
+      <UniqueIdentifier>{a537d98a-8077-4054-ab95-efbc350fad96}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\GameServer">
+      <UniqueIdentifier>{ba03b050-3b04-4a3c-a788-703acc5dc608}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="IOCPServer.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="main.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="CentralizedServer.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="Player.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
-    <ClCompile Include="SectorManager.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="SerialBuffer.cpp">
       <Filter>소스 파일\SerialBuffer</Filter>
     </ClCompile>
-    <ClCompile Include="Zone.cpp">
-      <Filter>소스 파일</Filter>
+    <ClCompile Include="IOCPServer.cpp">
+      <Filter>소스 파일\ServerLib</Filter>
     </ClCompile>
-    <ClCompile Include="ZoneManager.cpp">
-      <Filter>소스 파일</Filter>
+    <ClCompile Include="main.cpp">
+      <Filter>소스 파일\ServerLib</Filter>
     </ClCompile>
     <ClCompile Include="GameServer.cpp">
-      <Filter>소스 파일</Filter>
+      <Filter>소스 파일\GameServer</Filter>
+    </ClCompile>
+    <ClCompile Include="Player.cpp">
+      <Filter>소스 파일\GameServer</Filter>
+    </ClCompile>
+    <ClCompile Include="SectorManager.cpp">
+      <Filter>소스 파일\GameServer</Filter>
+    </ClCompile>
+    <ClCompile Include="Zone.cpp">
+      <Filter>소스 파일\GameServer</Filter>
+    </ClCompile>
+    <ClCompile Include="ZoneManager.cpp">
+      <Filter>소스 파일\GameServer</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="IOCPServer.h">
-      <Filter>소스 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="CentralizedServer.h">
-      <Filter>소스 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Shared\Protocol\Protocol.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="Player.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="SectorManager.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="GameServer.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="RingBuffer.h">
-      <Filter>소스 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Shared\Common\ErrorLog.h">
-      <Filter>헤더 파일</Filter>
-    </ClInclude>
-    <ClInclude Include="TimingWheel.h">
-      <Filter>소스 파일</Filter>
-    </ClInclude>
     <ClInclude Include="LockFree\LockFreeQueue.h">
       <Filter>소스 파일\LockFree</Filter>
     </ClInclude>
@@ -98,11 +77,35 @@
     <ClInclude Include="SerialBuffer.h">
       <Filter>소스 파일\SerialBuffer</Filter>
     </ClInclude>
+    <ClInclude Include="TimingWheel.h">
+      <Filter>소스 파일\TimingWheel</Filter>
+    </ClInclude>
+    <ClInclude Include="IOCPServer.h">
+      <Filter>소스 파일\ServerLib</Filter>
+    </ClInclude>
     <ClInclude Include="Zone.h">
-      <Filter>소스 파일</Filter>
+      <Filter>소스 파일\GameServer</Filter>
     </ClInclude>
     <ClInclude Include="ZoneManager.h">
-      <Filter>소스 파일</Filter>
+      <Filter>소스 파일\GameServer</Filter>
+    </ClInclude>
+    <ClInclude Include="RingBuffer.h">
+      <Filter>소스 파일\ServerLib</Filter>
+    </ClInclude>
+    <ClInclude Include="Player.h">
+      <Filter>소스 파일\GameServer</Filter>
+    </ClInclude>
+    <ClInclude Include="GameServer.h">
+      <Filter>소스 파일\GameServer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Shared\Common\ErrorLog.h">
+      <Filter>소스 파일\GameServer</Filter>
+    </ClInclude>
+    <ClInclude Include="SectorManager.h">
+      <Filter>소스 파일\GameServer</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Shared\Protocol\Protocol.h">
+      <Filter>소스 파일\GameServer</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
