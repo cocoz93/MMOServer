@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <cstdint>
 
@@ -126,13 +126,13 @@ struct MSG_S2C_DELETE_PLAYER
 // 채팅
 //==================================================
 
-constexpr int32_t CHAT_MSG_MAX_LEN = 128;
+constexpr int32_t CHAT_MSG_MAX_LEN = 64; // wchar_t 기준 글자 수 (128바이트)
 
 // C2S: 채팅 메시지
 struct MSG_C2S_CHAT
 {
     MsgHeader header;
-    char message[CHAT_MSG_MAX_LEN];
+    wchar_t message[CHAT_MSG_MAX_LEN];
 };
 
 // S2C: 채팅 메시지 (발신자 정보 포함)
@@ -140,7 +140,7 @@ struct MSG_S2C_CHAT
 {
     MsgHeader header;
     int32_t playerId;     // 발신자
-    char message[CHAT_MSG_MAX_LEN];
+    wchar_t message[CHAT_MSG_MAX_LEN];
 };
 
 //==================================================

@@ -1,4 +1,4 @@
-#include "Player.h"
+﻿#include "Player.h"
 
 CPlayer::CPlayer(int64_t sessionId)
     : _sessionId(sessionId)

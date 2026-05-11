@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <cstdint>
 #include <string>
@@ -49,4 +49,4 @@ public:
     MoveState _moveState;
 
     int32_t _zoneId;      // 소속 존 ID (-1: 미배정)
-};
+};
