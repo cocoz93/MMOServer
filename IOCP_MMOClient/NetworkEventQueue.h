@@ -31,6 +31,7 @@ struct ClientNetworkEvent
     float y;
     uint8_t direction;
     uint8_t moveState;
+    int32_t speed;
 
     // 존 이동
     int32_t mapId;

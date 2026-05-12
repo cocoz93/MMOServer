@@ -121,8 +121,9 @@ struct MSG_S2C_CREATE_MY_PLAYER
     uint8_t direction;
     float x;
     float y;
+    int32_t speed;
 
-    MSG_S2C_CREATE_MY_PLAYER() : header{ sizeof(*this), TYPE }, playerId(0), direction(0), x(0), y(0) {}
+    MSG_S2C_CREATE_MY_PLAYER() : header{ sizeof(*this), TYPE }, playerId(0), direction(0), x(0), y(0), speed(0) {}
 };
 
 // S2C: 다른 캐릭터 생성 (시야 진입)
@@ -135,8 +136,9 @@ struct MSG_S2C_CREATE_OTHER_PLAYER
     uint8_t moveState;    // MoveState enum (진입 시 이동 중일 수 있음)
     float x;
     float y;
+    int32_t speed;
 
-    MSG_S2C_CREATE_OTHER_PLAYER() : header{ sizeof(*this), TYPE }, playerId(0), direction(0), moveState(0), x(0), y(0) {}
+    MSG_S2C_CREATE_OTHER_PLAYER() : header{ sizeof(*this), TYPE }, playerId(0), direction(0), moveState(0), x(0), y(0), speed(0) {}
 };
 
 // S2C: 캐릭터 삭제 (시야 이탈 / 퇴장)

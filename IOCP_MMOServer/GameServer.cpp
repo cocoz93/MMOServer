@@ -467,6 +467,7 @@ void CGameServer::SendCreateMyPlayer(int64_t sessionId, CPlayer* player)
     msg.direction = static_cast<uint8_t>(player->_direction);
     msg.x = player->_x;
     msg.y = player->_y;
+    msg.speed = player->_speed;
     SendPacket(sessionId, msg);
 }
 
@@ -478,6 +479,7 @@ void CGameServer::SendCreateOtherPlayer(int64_t sessionId, CPlayer* player)
     msg.moveState = static_cast<uint8_t>(player->_moveState);
     msg.x = player->_x;
     msg.y = player->_y;
+    msg.speed = player->_speed;
     SendPacket(sessionId, msg);
 }
 

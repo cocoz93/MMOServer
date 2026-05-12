@@ -65,6 +65,9 @@ void CGameInstance::Run()
         return;
     }
 
+    // IP/포트 입력 시 눌린 Enter 상태 소거 (첫 프레임 채팅 모드 진입 방지)
+    GetAsyncKeyState(VK_RETURN);
+
     // 게임 루프 진입
     GameLoop();
 }
@@ -143,7 +146,7 @@ void CGameInstance::ProcessNetworkEvents()
         case ClientNetworkEvent::Type::CREATE_MY_PLAYER:
             _playerManager.SetMyPlayer(
                 event.playerId, event.x, event.y,
-                static_cast<Direction>(event.direction));
+                static_cast<Direction>(event.direction), event.speed);
             AddChatMessage(L"[System] Connected to server.");
             break;
 
@@ -151,7 +154,7 @@ void CGameInstance::ProcessNetworkEvents()
             _playerManager.AddOtherPlayer(
                 event.playerId, event.x, event.y,
                 static_cast<Direction>(event.direction),
-                static_cast<MoveState>(event.moveState));
+                static_cast<MoveState>(event.moveState), event.speed);
             break;
 
         case ClientNetworkEvent::Type::DELETE_PLAYER:
@@ -216,10 +219,11 @@ void CGameInstance::ProcessNetworkEvents()
 
         case ClientNetworkEvent::Type::ZONE_CHANGE_OK:
         {
+            int32_t prevSpeed = _playerManager.HasMyPlayer()
+                ? _playerManager.GetMyPlayer()->speed : 50;
             _playerManager.Clear();
             _playerManager.SetMyPlayer(
-                event.playerId, event.x, event.y, Direction::NONE);
-
+                event.playerId, event.x, event.y, Direction::NONE, prevSpeed);
             wchar_t buf[128];
             swprintf_s(buf, L"[System] Zone changed: Map=%d Channel=%d",
                         event.mapId, event.channelIndex);
@@ -414,6 +418,7 @@ void CGameInstance::OnCreateMyPlayer(const MSG_S2C_CREATE_MY_PLAYER* msg)
     event.x = msg->x;
     event.y = msg->y;
     event.direction = msg->direction;
+    event.speed = msg->speed;
     _eventQueue.Push(std::move(event));
 }
 
@@ -426,6 +431,7 @@ void CGameInstance::OnCreateOtherPlayer(const MSG_S2C_CREATE_OTHER_PLAYER* msg)
     event.y = msg->y;
     event.direction = msg->direction;
     event.moveState = msg->moveState;
+    event.speed = msg->speed;
     _eventQueue.Push(std::move(event));
 }
 

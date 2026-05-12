@@ -107,13 +107,37 @@ void CConsoleRenderer::RenderGameView(const ClientPlayer* me,
         camY = me->y - VIEW_HEIGHT / 2.0f;
     }
 
-    // 빈 타일로 채우기
+    // 맵 경계 기반 타일 채우기
     for (int row = 0; row < VIEW_HEIGHT; ++row)
     {
         for (int col = 0; col < VIEW_WIDTH; ++col)
         {
-            _viewBuffer[row][col].Char.UnicodeChar = L'.';
-            _viewBuffer[row][col].Attributes = COLOR_TILE;
+            // 뷰포트 셀에 대응하는 월드 좌표
+            int worldX = static_cast<int>(camX + col);
+            int worldY = static_cast<int>(camY + row);
+
+            // 경계선 (맵 가장자리 1칸)
+            bool isBorderX = (worldX == -1 || worldX == MAP_WIDTH);
+            bool isBorderY = (worldY == -1 || worldY == MAP_HEIGHT);
+            bool isInsideX = (worldX >= 0 && worldX < MAP_WIDTH);
+            bool isInsideY = (worldY >= 0 && worldY < MAP_HEIGHT);
+
+            if ((isBorderX && (isInsideY || isBorderY)) ||
+                (isBorderY && (isInsideX || isBorderX)))
+            {
+                _viewBuffer[row][col].Char.UnicodeChar = L'\x2588';
+                _viewBuffer[row][col].Attributes = COLOR_WALL;
+            }
+            else if (isInsideX && isInsideY)
+            {
+                _viewBuffer[row][col].Char.UnicodeChar = L'.';
+                _viewBuffer[row][col].Attributes = COLOR_TILE;
+            }
+            else
+            {
+                _viewBuffer[row][col].Char.UnicodeChar = L' ';
+                _viewBuffer[row][col].Attributes = COLOR_OUTSIDE;
+            }
         }
     }
 

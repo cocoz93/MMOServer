@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include <random>
 
 // 4방향
 enum class Direction : uint8_t
@@ -23,8 +24,6 @@ enum class MoveState : uint8_t
 class CPlayer
 {
 public:
-    static constexpr float MOVE_SPEED = 5.0f;  // 초당 5타일 (25fps 기준 프레임당 0.2)
-
     explicit CPlayer(int64_t sessionId);
     ~CPlayer();
 
@@ -49,6 +48,7 @@ public:
 
     Direction _direction;
     MoveState _moveState;
+    int32_t _speed;
 
     int32_t _zoneId;      // 소속 존 ID (-1: 미배정)
 

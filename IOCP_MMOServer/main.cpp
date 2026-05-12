@@ -34,13 +34,13 @@ int main()
 
     // 맵 설정
     MapConfig maps[] = {
-        { 0, 200, 200, 20, 100 },  // 마을
+        { 0, 400, 400, 40, 100 },  // 마을
         { 1, 400, 400, 40, 100 },  // 필드A
         { 2, 400, 400, 40, 100 },  // 필드B
     };
 
     // * 모드 전환: ServerMode::EchoTest / ServerMode::GameServer
-    if (!server.Init(ServerMode::EchoTest, PORT, MAX_CLIENTS, maps, 3))
+    if (!server.Init(ServerMode::GameServer, PORT, MAX_CLIENTS, maps, 3))
     {
         std::cerr << "[Error] Server Init failed" << std::endl;
         return 1;
