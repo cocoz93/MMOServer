@@ -128,17 +128,18 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="ClientNetwork.cpp" />
+    <ClCompile Include="ConsoleRenderer.cpp" />
     <ClCompile Include="GameInstance.cpp" />
     <ClCompile Include="mainClient.cpp" />
-    <ClCompile Include="Room.cpp" />
-    <ClCompile Include="Tetris.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ClientNetwork.h" />
+    <ClInclude Include="ClientPlayer.h" />
+    <ClInclude Include="ConsoleRenderer.h" />
     <ClInclude Include="GameInstance.h" />
+    <ClInclude Include="NetworkEventQueue.h" />
+    <ClInclude Include="PlayerManager.h" />
     <ClInclude Include="..\Shared\Protocol\Protocol.h" />
-    <ClInclude Include="Room.h" />
-    <ClInclude Include="Tetris.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="CONTRIBUTING.md" />

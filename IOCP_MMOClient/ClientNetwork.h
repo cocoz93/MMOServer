@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 
 #include "Protocol.h"
 #include <WinSock2.h>
@@ -12,7 +12,7 @@
 
 #pragma comment(lib, "ws2_32.lib")
 
-class CGameInstance; // Àü¹æ ¼±¾ğ
+class CGameInstance; // ì „ë°© ì„ ì–¸
 
 class CClientNetwork
 {
@@ -24,24 +24,24 @@ public:
     void Disconnect();
     bool IsConnected() const { return _connected; }
 
-    // ÆĞÅ¶ Àü¼Û
+    // íŒ¨í‚· ì „ì†¡
     bool SendPacket(const char* data, size_t length);
 
-    // ¼­¹ö·Î ¿äÃ» Àü¼Û
-    void RequestRoomList();
-    void RequestCreateRoom(const std::string& title, int32_t maxPlayers);
-    void RequestJoinRoom(int32_t roomId);
-    void RequestLeaveRoom();
+    // C2S íŒ¨í‚· ì „ì†¡ í•¨ìˆ˜
+    void SendMoveStart(uint8_t direction);
+    void SendMoveStop(uint8_t direction, float x, float y);
+    void SendChat(const wchar_t* message);
+    void SendZoneChange(int32_t targetMapId);
 
-    // GameInstance ¼³Á¤ (ÆĞÅ¶ ÇÚµé·¯ Äİ¹é¿ë)
+    // GameInstance ì—°ê²° (íŒ¨í‚· í•¸ë“¤ëŸ¬ ì½œë°±ìš©)
     void SetGameInstance(CGameInstance* instance) { _gameInstance = instance; }
 
 private:
-    // ¼ö½Å ½º·¹µå
+    // ìˆ˜ì‹  ìŠ¤ë ˆë“œ
     void RecvThread();
 
-    // ¼­¹ö ÀÀ´ä Ã³¸®
-    void HandleServerMessage(const char* data, size_t length);
+    // ìˆ˜ì‹  íŒ¨í‚· ë””ìŠ¤íŒ¨ì¹˜
+    void DispatchPacket(const char* data, uint16_t size);
 
 private:
     SOCKET _socket;
@@ -49,5 +49,10 @@ private:
     std::atomic<bool> _running;
     std::thread _recvThread;
 
-    CGameInstance* _gameInstance; // ÆĞÅ¶ ¼ö½Å ½Ã Äİ¹é¿ë
+    CGameInstance* _gameInstance; // íŒ¨í‚· ìˆ˜ì‹  ì‹œ ì½œë°±
+
+    // TCP ìŠ¤íŠ¸ë¦¼ ì¡°ë¦½ìš© ëˆ„ì  ë²„í¼
+    static constexpr int RECV_BUFFER_SIZE = 8192;
+    char _recvBuffer[RECV_BUFFER_SIZE];
+    int _recvBufferUsed;
 };
