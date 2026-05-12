@@ -10,6 +10,7 @@ CGameInstance::CGameInstance()
     , _keyPressed{ false, false, false, false }
     , _enterPressed(false)
     , _chatMode(false)
+    , _heartbeatAccumMs(0)
 {
 }
 
@@ -104,10 +105,18 @@ void CGameInstance::GameLoop()
         else
             ProcessInput();
 
-        // 3) 클라이언트 예측 이동 갱신
+        // 3) 하트비트 송신 (20초 간격)
+        _heartbeatAccumMs += static_cast<int>(deltaTime * 1000.0f);
+        if (_heartbeatAccumMs >= HEARTBEAT_INTERVAL_MS)
+        {
+            _heartbeatAccumMs -= HEARTBEAT_INTERVAL_MS;
+            _network.SendHeartbeat();
+        }
+
+        // 4) 클라이언트 예측 이동 갱신
         _playerManager.UpdateMovingPlayers(deltaTime);
 
-        // 4) 렌더링
+        // 5) 렌더링
         _renderer.RenderFrame(
             _playerManager.GetMyPlayer(),
             _playerManager.GetOtherPlayers(),
@@ -115,7 +124,7 @@ void CGameInstance::GameLoop()
             _chatInput,
             _chatMode);
 
-        // 5) 프레임 제한
+        // 6) 프레임 제한
         auto frameEnd = Clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(frameEnd - frameStart);
         int sleepMs = FRAME_INTERVAL_MS - static_cast<int>(elapsed.count());

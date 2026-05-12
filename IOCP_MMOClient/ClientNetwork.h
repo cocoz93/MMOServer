@@ -32,6 +32,7 @@ public:
     void SendMoveStop(uint8_t direction, float x, float y);
     void SendChat(const wchar_t* message);
     void SendZoneChange(int32_t targetMapId);
+    void SendHeartbeat();
 
     // GameInstance 연결 (패킷 핸들러 콜백용)
     void SetGameInstance(CGameInstance* instance) { _gameInstance = instance; }

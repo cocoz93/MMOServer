@@ -228,6 +228,15 @@ void CClientNetwork::SendZoneChange(int32_t targetMapId)
     SendPacket(reinterpret_cast<const char*>(&msg), sizeof(msg));
 }
 
+void CClientNetwork::SendHeartbeat()
+{
+    MSG_C2S_HEARTBEAT msg;
+    msg.header.size = sizeof(MSG_C2S_HEARTBEAT);
+    msg.header.type = MsgType::C2S_HEARTBEAT;
+
+    SendPacket(reinterpret_cast<const char*>(&msg), sizeof(msg));
+}
+
 // ==========================================================================
 // 패킷 디스패치 — S2C 패킷 타입별 GameInstance 콜백 호출
 // ==========================================================================

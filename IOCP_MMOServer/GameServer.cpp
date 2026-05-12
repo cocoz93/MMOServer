@@ -332,6 +332,7 @@ uint16_t CGameServer::GetExpectedSize(MsgType type)
     case MsgType::C2S_MOVE_STOP:    return sizeof(MSG_C2S_MOVE_STOP);
     case MsgType::C2S_CHAT:         return sizeof(MSG_C2S_CHAT);
     case MsgType::C2S_ZONE_CHANGE:  return sizeof(MSG_C2S_ZONE_CHANGE);
+    case MsgType::C2S_HEARTBEAT:    return sizeof(MSG_C2S_HEARTBEAT);
     default:                        return 0;
     }
 }
@@ -693,11 +694,15 @@ bool CGameServer::ValidateMove(CZone* zone, CPlayer* player, float clientX, floa
     }
 
     // B. 이동 거리 검증 (스피드핵)
+    // 최대 허용 거리 = 속도 × 최악 2프레임 + 고정 여유값
+    float maxDist = player->_speed * (2.0f / FRAME_PER_SEC) + MOVE_TOLERANCE_BASE;
+    float toleranceSq = maxDist * maxDist;
+
     float dx = clientX - player->_x;
     float dy = clientY - player->_y;
     float distSq = dx * dx + dy * dy;
 
-    if (distSq > MOVE_TOLERANCE_SQ)
+    if (distSq > toleranceSq)
     {
         ++player->_cheatCount;
         SendSyncPosition(player->_sessionId, player);
