@@ -264,7 +264,7 @@ private:
     ThreadSafeQueue<NetworkEvent> _eventQueue;    // 네트워크 -> 게임 로직
 
     // 세션 무활동 타임아웃 (타이밍 휠)
-    static constexpr int SESSION_TIMEOUT_SEC = 30;
+    static constexpr int SESSION_TIMEOUT_SEC = 60;
     static constexpr int TIMER_TICK_INTERVAL_MS = 1000;
     std::unique_ptr<CTimingWheel> _timingWheel;
 

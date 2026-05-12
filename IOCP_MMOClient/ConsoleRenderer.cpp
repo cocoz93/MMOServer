@@ -75,8 +75,8 @@ void CConsoleRenderer::RenderStatusBar(const ClientPlayer* me)
         }
 
         swprintf_s(buf, CONSOLE_WIDTH + 1,
-            L" Player:%-4d  Pos:(%6.1f, %6.1f)  [%s %s]  | Arrow:Move  Enter:Chat  ESC:Quit",
-            me->playerId, me->x, me->y, stateStr, dirStr);
+            L" Player:%-4d  Pos:(%6.1f, %6.1f)  Speed:%-3d  [%s %s]  | Arrow:Move  Enter:Chat  ESC:Quit",
+            me->playerId, me->x, me->y, me->speed, stateStr, dirStr);
     }
     else
     {

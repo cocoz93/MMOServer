@@ -130,8 +130,7 @@ private:
     static constexpr int FRAME_INTERVAL_MS = 1000 / FRAME_PER_SEC;  // 40ms
 
     // 이동 검증 상수
-    static constexpr float MOVE_TOLERANCE = 2.0f;
-    static constexpr float MOVE_TOLERANCE_SQ = MOVE_TOLERANCE * MOVE_TOLERANCE;
+    static constexpr float MOVE_TOLERANCE_BASE = 2.0f;  // 고정 여유값
     static constexpr uint32_t CHEAT_KICK_THRESHOLD = 5;
     static constexpr int SYNC_INTERVAL_FRAMES = 25;  // 1초마다 동기화
     static constexpr int CLEANUP_INTERVAL_FRAMES = 25 * 30;  // 30초마다 빈 채널 정리

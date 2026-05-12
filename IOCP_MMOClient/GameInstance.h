@@ -70,4 +70,8 @@ private:
     // 프레임 설정 (서버 동일)
     static constexpr int FRAME_PER_SEC = 25;
     static constexpr int FRAME_INTERVAL_MS = 1000 / FRAME_PER_SEC;  // 40ms
+
+    // 하트비트 (서버 타임아웃 30초 대비 20초 간격)
+    static constexpr int HEARTBEAT_INTERVAL_MS = 20000;
+    int _heartbeatAccumMs;
 };
