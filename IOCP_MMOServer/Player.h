@@ -53,7 +53,5 @@ public:
     int32_t _zoneId;      // 소속 존 ID (-1: 미배정)
 
     // 이동 검증용
-    float _moveStartX;    // MOVE_START 수신 시 서버 좌표 스냅샷
-    float _moveStartY;
     uint32_t _cheatCount; // 위반 누적 카운터
 };

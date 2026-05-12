@@ -112,6 +112,9 @@ private:
     // 이동 검증
     bool ValidateMove(CZone* zone, CPlayer* player, float clientX, float clientY);
 
+    // 패킷 타입별 최소 크기 반환 (0이면 알 수 없는 타입)
+    static uint16_t GetExpectedSize(MsgType type);
+
 private:
     ServerMode _mode;
 

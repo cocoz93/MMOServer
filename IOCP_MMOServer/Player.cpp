@@ -11,8 +11,6 @@ CPlayer::CPlayer(int64_t sessionId)
     , _direction(Direction::NONE)
     , _moveState(MoveState::IDLE)
     , _zoneId(-1)
-    , _moveStartX(0.0f)
-    , _moveStartY(0.0f)
     , _cheatCount(0)
 {
 }

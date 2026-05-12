@@ -4,6 +4,7 @@
 #include "SerialBuffer.h"
 #include <iostream>
 #include <chrono>
+#include <cmath>
 
 CGameServer::CGameServer()
     : _mode(ServerMode::GameServer)
@@ -279,6 +280,14 @@ void CGameServer::OnReceived(int64_t sessionId, CSerialBuffer* pMsg)
     MsgHeader header;
     pMsg->PeekData(reinterpret_cast<char*>(&header), sizeof(header));
 
+    // 타입별 최소 패킷 크기 검증
+    uint16_t expectedSize = GetExpectedSize(header.type);
+    if (expectedSize == 0 || header.size < expectedSize)
+    {
+        CSerialBuffer::Free(pMsg);
+        return;
+    }
+
     switch (header.type)
     {
     case MsgType::C2S_MOVE_START:
@@ -303,6 +312,18 @@ void CGameServer::OnReceived(int64_t sessionId, CSerialBuffer* pMsg)
 
     // SerialBuffer 해제
     CSerialBuffer::Free(pMsg);
+}
+
+uint16_t CGameServer::GetExpectedSize(MsgType type)
+{
+    switch (type)
+    {
+    case MsgType::C2S_MOVE_START:   return sizeof(MSG_C2S_MOVE_START);
+    case MsgType::C2S_MOVE_STOP:    return sizeof(MSG_C2S_MOVE_STOP);
+    case MsgType::C2S_CHAT:         return sizeof(MSG_C2S_CHAT);
+    case MsgType::C2S_ZONE_CHANGE:  return sizeof(MSG_C2S_ZONE_CHANGE);
+    default:                        return 0;
+    }
 }
 
 // ==========================================================================
@@ -334,10 +355,6 @@ void CGameServer::RecvMoveStart(int64_t sessionId, CSerialBuffer* pMsg)
     // 플레이어 상태 갱신
     player->_direction = static_cast<Direction>(recvMsg.direction);
     player->_moveState = MoveState::MOVING;
-
-    // 이동 시작 시점 좌표 기록 (검증용)
-    player->_moveStartX = player->_x;
-    player->_moveStartY = player->_y;
 
     // 주변에 MOVE_START 브로드캐스트
     MSG_S2C_MOVE_START msg;
@@ -607,7 +624,19 @@ void CGameServer::SendZoneChangeFail(int64_t sessionId, uint8_t reason)
 
 bool CGameServer::ValidateMove(CZone* zone, CPlayer* player, float clientX, float clientY)
 {
-    // A. 맵 경계 검증 (텔레포트핵)
+    // A. NaN/INF 검증 — IEEE 754에서 NaN은 모든 비교가 false이므로 경계 검사를 우회함
+    if (!std::isfinite(clientX) || !std::isfinite(clientY))
+    {
+        ++player->_cheatCount;
+        SendSyncPosition(player->_sessionId, player);
+
+        if (player->_cheatCount >= CHEAT_KICK_THRESHOLD)
+            _network->RequestDisconnectSession(player->_sessionId);
+
+        return false;
+    }
+
+    // B. 맵 경계 검증 (텔레포트핵)
     int32_t mapW = zone->GetMapWidth();
     int32_t mapH = zone->GetMapHeight();
     if (clientX < 0.0f || clientX >= mapW || clientY < 0.0f || clientY >= mapH)
