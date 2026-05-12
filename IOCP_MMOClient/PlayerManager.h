@@ -8,19 +8,20 @@ class CPlayerManager
 {
 public:
     // 내 캐릭터 설정
-    void SetMyPlayer(int32_t playerId, float x, float y, Direction direction)
+    void SetMyPlayer(int32_t playerId, float x, float y, Direction direction, int32_t speed)
     {
         _myPlayer.playerId = playerId;
         _myPlayer.x = x;
         _myPlayer.y = y;
         _myPlayer.direction = direction;
         _myPlayer.moveState = MoveState::IDLE;
+        _myPlayer.speed = speed;
         _hasMyPlayer = true;
     }
 
     // 다른 플레이어 추가 (시야 진입)
     void AddOtherPlayer(int32_t playerId, float x, float y,
-                        Direction direction, MoveState moveState)
+                        Direction direction, MoveState moveState, int32_t speed)
     {
         ClientPlayer player;
         player.playerId = playerId;
@@ -28,6 +29,7 @@ public:
         player.y = y;
         player.direction = direction;
         player.moveState = moveState;
+        player.speed = speed;
         _otherPlayers[playerId] = player;
     }
 
@@ -83,7 +85,7 @@ private:
     // 방향별 좌표 이동 적용
     static void ApplyMovement(ClientPlayer& player, float deltaTime)
     {
-        float dist = ClientPlayer::MOVE_SPEED * deltaTime;
+        float dist = player.speed * deltaTime;
         switch (player.direction)
         {
         case Direction::UP:    player.y -= dist; break;

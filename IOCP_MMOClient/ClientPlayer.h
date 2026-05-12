@@ -22,11 +22,10 @@ enum class MoveState : uint8_t
 // 클라이언트용 플레이어 데이터
 struct ClientPlayer
 {
-    static constexpr float MOVE_SPEED = 5.0f;  // 초당 5타일 (서버 동일)
-
     int32_t playerId = 0;
     float x = 0.0f;
     float y = 0.0f;
     Direction direction = Direction::NONE;
     MoveState moveState = MoveState::IDLE;
+    int32_t speed = 50;
 };

@@ -78,15 +78,14 @@ void CZone::LeaveZone(int64_t sessionId)
 void CZone::Tick(float deltaTime, std::vector<SectorChangeInfo>& outSectorChanges,
                  std::vector<CPlayer*>& outClampedPlayers)
 {
-    float dist = CPlayer::MOVE_SPEED * deltaTime;
-
     for (auto& pair : _players)
     {
         CPlayer* player = pair.second;
         if (player->_moveState != MoveState::MOVING)
             continue;
 
-        // 방향에 따라 좌표 갱신
+        // 방향에 따라 좌표 갱신 (플레이어별 속도)
+        float dist = player->_speed * deltaTime;
         switch (player->_direction)
         {
         case Direction::UP:    player->_y -= dist; break;
