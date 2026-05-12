@@ -230,6 +230,10 @@ void CConsoleRenderer::RenderChatInput(const std::wstring& chatInput, bool chatM
         swprintf_s(buf, CONSOLE_WIDTH + 1, L" [Enter to chat]");
         WriteTextAt(0, CHAT_INPUT_ROW, buf, COLOR_BORDER, CONSOLE_WIDTH);
     }
+
+    // 커서를 채팅 입력줄 끝으로 이동 (에코 문자가 게임 뷰를 오염하지 않도록)
+    COORD cursorPos = { static_cast<SHORT>(3 + chatInput.size()), CHAT_INPUT_ROW };
+    SetConsoleCursorPosition(_hConsole, cursorPos);
 }
 
 // ==========================================================================

@@ -4,13 +4,11 @@
 #include <chrono>
 #define NOMINMAX
 #include <Windows.h>
-#include <fcntl.h>
-#include <io.h>
-#include <conio.h>
 
 CGameInstance::CGameInstance()
     : _running(false)
     , _keyPressed{ false, false, false, false }
+    , _enterPressed(false)
     , _chatMode(false)
 {
 }
@@ -24,10 +22,6 @@ bool CGameInstance::Initialize()
 {
     _network.SetGameInstance(this);
 
-    // 유니코드 출력 설정 (렌더러 Init 전에 설정)
-    _setmode(_fileno(stdout), _O_U16TEXT);
-    _setmode(_fileno(stderr), _O_U16TEXT);
-
     _renderer.Init();
 
     _running = true;
@@ -37,19 +31,19 @@ bool CGameInstance::Initialize()
 void CGameInstance::Run()
 {
     // IP/포트 입력
-    std::wstring serverIp;
+    std::string serverIp;
     int port;
 
-    std::wcout << L"Enter server IP (default: 127.0.0.1): ";
-    std::getline(std::wcin, serverIp);
+    std::cout << "Enter server IP (default: 127.0.0.1): ";
+    std::getline(std::cin, serverIp);
     if (serverIp.empty())
     {
-        serverIp = L"127.0.0.1";
+        serverIp = "127.0.0.1";
     }
 
-    std::wcout << L"Enter server port (default: 6000): ";
-    std::wstring portStr;
-    std::getline(std::wcin, portStr);
+    std::cout << "Enter server port (default: 6000): ";
+    std::string portStr;
+    std::getline(std::cin, portStr);
     if (portStr.empty())
     {
         port = 6000;
@@ -59,14 +53,14 @@ void CGameInstance::Run()
         port = std::stoi(portStr);
     }
 
-    if (!ConnectToServer(std::string(serverIp.begin(), serverIp.end()), port))
+    if (!ConnectToServer(serverIp, port))
     {
-        WLOG_ERROR_STREAM(L"Failed to connect to server.");
+        LOG_ERROR_STREAM("Failed to connect to server.");
         return;
     }
 
-    // IP/포트 입력 시 눌린 Enter 상태 소거 (첫 프레임 채팅 모드 진입 방지)
-    GetAsyncKeyState(VK_RETURN);
+    // 포트 입력 시 눌린 Enter 상태 반영 (첫 프레임 채팅 모드 진입 방지)
+    _enterPressed = (GetAsyncKeyState(VK_RETURN) & 0x8000) != 0;
 
     // 게임 루프 진입
     GameLoop();
@@ -274,8 +268,9 @@ void CGameInstance::ProcessInput()
         return;
     }
 
-    // Enter → 채팅 모드 진입
-    if (GetAsyncKeyState(VK_RETURN) & 0x0001)
+    // Enter → 채팅 모드 진입 (엣지 검출)
+    bool enterDown = (GetAsyncKeyState(VK_RETURN) & 0x8000) != 0;
+    if (enterDown && !_enterPressed)
     {
         // 이동 중이면 정지 후 진입
         ClientPlayer* me = _playerManager.GetMyPlayer();
@@ -290,10 +285,13 @@ void CGameInstance::ProcessInput()
         for (int i = 0; i < 4; ++i)
             _keyPressed[i] = false;
 
+        _enterPressed = enterDown;
         _chatMode = true;
         _chatInput.clear();
+        FlushConsoleInputBuffer(GetStdHandle(STD_INPUT_HANDLE));
         return;
     }
+    _enterPressed = enterDown;
 
     // 내 캐릭터가 아직 생성되지 않았으면 입력 무시
     if (!_playerManager.HasMyPlayer())
@@ -350,25 +348,29 @@ void CGameInstance::ProcessInput()
 
 void CGameInstance::ProcessChatInput()
 {
-    while (_kbhit())
+    HANDLE hInput = GetStdHandle(STD_INPUT_HANDLE);
+    INPUT_RECORD record;
+    DWORD numEvents;
+
+    while (PeekConsoleInputW(hInput, &record, 1, &numEvents) && numEvents > 0)
     {
-        int ch = _getch();
+        ReadConsoleInputW(hInput, &record, 1, &numEvents);
 
-        // 확장 키(방향키, F1~F12 등)는 2바이트 시퀀스 — 스캔코드 소비 후 무시
-        if (ch == 0 || ch == 0xE0)
-        {
-            _getch();
+        // 키 눌림 이벤트만 처리
+        if (record.EventType != KEY_EVENT || !record.Event.KeyEvent.bKeyDown)
             continue;
-        }
 
-        if (ch == 27) // ESC → 채팅 취소
+        WORD vk = record.Event.KeyEvent.wVirtualKeyCode;
+        wchar_t ch = record.Event.KeyEvent.uChar.UnicodeChar;
+
+        if (vk == VK_ESCAPE) // ESC → 채팅 취소
         {
             _chatMode = false;
             _chatInput.clear();
             return;
         }
 
-        if (ch == 13) // Enter → 전송
+        if (vk == VK_RETURN) // Enter → 전송
         {
             if (!_chatInput.empty())
             {
@@ -386,7 +388,7 @@ void CGameInstance::ProcessChatInput()
             return;
         }
 
-        if (ch == 8) // Backspace
+        if (vk == VK_BACK) // Backspace
         {
             if (!_chatInput.empty())
             {
@@ -395,13 +397,10 @@ void CGameInstance::ProcessChatInput()
             continue;
         }
 
-        // 일반 문자 입력 (ASCII 범위)
-        if (ch >= 32 && ch < 127)
+        // 일반 문자 입력 (유니코드)
+        if (ch >= 32 && _chatInput.size() < CHAT_MSG_MAX_LEN - 1)
         {
-            if (_chatInput.size() < CHAT_MSG_MAX_LEN - 1)
-            {
-                _chatInput += static_cast<wchar_t>(ch);
-            }
+            _chatInput += ch;
         }
     }
 }

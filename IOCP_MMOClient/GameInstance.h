@@ -57,8 +57,9 @@ private:
     CNetworkEventQueue _eventQueue;
     bool _running;
 
-    // 방향키 상태 추적 (키 누름/뗌 감지용)
+    // 키 상태 추적 (키 누름/뗌 감지용)
     bool _keyPressed[4]; // UP, DOWN, LEFT, RIGHT
+    bool _enterPressed;
 
     // 채팅
     std::vector<std::wstring> _chatLog;

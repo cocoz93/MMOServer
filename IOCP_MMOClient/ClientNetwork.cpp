@@ -24,7 +24,7 @@ bool CClientNetwork::Connect(const std::string& serverIp, int port)
     WSADATA wsaData;
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
     {
-        WLOG_ERROR_STREAM(L"WSAStartup failed");
+        LOG_ERROR_STREAM("WSAStartup failed");
         return false;
     }
 
@@ -32,7 +32,7 @@ bool CClientNetwork::Connect(const std::string& serverIp, int port)
     if (_socket == INVALID_SOCKET)
     {
         const int wsaErr = WSAGetLastError();
-        WLOG_WSA_ERROR_STREAM(L"socket creation failed: ", wsaErr);
+        LOG_WSA_ERROR_STREAM("socket creation failed: ", wsaErr);
         WSACleanup();
         return false;
     }
@@ -46,7 +46,7 @@ bool CClientNetwork::Connect(const std::string& serverIp, int port)
     if (connect(_socket, (SOCKADDR*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR)
     {
         const int wsaErr = WSAGetLastError();
-        WLOG_WSA_ERROR_STREAM(L"connect failed: ", wsaErr);
+        LOG_WSA_ERROR_STREAM("connect failed: ", wsaErr);
         closesocket(_socket);
         WSACleanup();
         return false;
@@ -59,9 +59,9 @@ bool CClientNetwork::Connect(const std::string& serverIp, int port)
     // 수신 스레드 시작
     _recvThread = std::thread(&CClientNetwork::RecvThread, this);
 
-    std::wcout << L"==================================" << std::endl;
-    std::wcout << L"Connected to server: " << serverIp.c_str() << L":" << port << std::endl;
-    std::wcout << L"==================================" << std::endl;
+    std::cout << "==================================" << std::endl;
+    std::cout << "Connected to server: " << serverIp << ":" << port << std::endl;
+    std::cout << "==================================" << std::endl;
 
     return true;
 }
@@ -89,7 +89,7 @@ void CClientNetwork::Disconnect()
 
     WSACleanup();
 
-    std::wcout << L"\nDisconnected from server." << std::endl;
+    std::cout << "\nDisconnected from server." << std::endl;
 }
 
 // ==========================================================================
@@ -103,7 +103,7 @@ void CClientNetwork::RecvThread()
         int space = RECV_BUFFER_SIZE - _recvBufferUsed;
         if (space <= 0)
         {
-            WLOG_ERROR_STREAM(L"Recv buffer overflow");
+            LOG_ERROR_STREAM("Recv buffer overflow");
             _connected = false;
             _running = false;
             break;
@@ -115,7 +115,7 @@ void CClientNetwork::RecvThread()
         {
             if (_running)
             {
-                WLOG_ERROR_STREAM(L"\nConnection lost.");
+                LOG_ERROR_STREAM("\nConnection lost.");
             }
             _connected = false;
             _running = false;
@@ -133,7 +133,7 @@ void CClientNetwork::RecvThread()
             // 유효성 검사
             if (packetSize < sizeof(MsgHeader) || packetSize > RECV_BUFFER_SIZE)
             {
-                WLOG_ERROR_STREAM(L"Invalid packet size: " << packetSize);
+                LOG_ERROR_STREAM("Invalid packet size: " << packetSize);
                 _connected = false;
                 _running = false;
                 return;
@@ -170,14 +170,14 @@ bool CClientNetwork::SendPacket(const char* data, size_t length)
     if (bytesSent == SOCKET_ERROR)
     {
         const int wsaErr = WSAGetLastError();
-        WLOG_WSA_ERROR_STREAM(L"send failed: ", wsaErr);
+        LOG_WSA_ERROR_STREAM("send failed: ", wsaErr);
         Disconnect();
         return false;
     }
 
     if (bytesSent < static_cast<int>(length))
     {
-        WLOG_ERROR_STREAM(L"Partial send: " << bytesSent << L"/" << length);
+        LOG_ERROR_STREAM("Partial send: " << bytesSent << "/" << length);
         Disconnect();
         return false;
     }
@@ -292,7 +292,7 @@ void CClientNetwork::DispatchPacket(const char* data, uint16_t size)
         break;
 
     default:
-        WLOG_ERROR_STREAM(L"Unknown message type: " << static_cast<int>(header->type));
+        LOG_ERROR_STREAM("Unknown message type: " << static_cast<int>(header->type));
         break;
     }
 }
