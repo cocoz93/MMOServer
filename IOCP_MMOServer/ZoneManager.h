@@ -58,6 +58,9 @@ public:
     void TickAll(float deltaTime, std::vector<SectorChangeInfo>& outSectorChanges,
                  std::vector<CPlayer*>& outClampedPlayers);
 
+    // 현재 맵을 제외한 랜덤 맵 ID 반환 (-1이면 선택 불가)
+    int32_t GetRandomMapId(int32_t excludeMapId) const;
+
     // 전체 존 순회
     const std::unordered_map<int32_t, std::unique_ptr<CZone>>& GetZones() const { return _zones; }
 

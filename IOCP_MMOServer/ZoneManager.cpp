@@ -1,4 +1,5 @@
 ﻿#include "ZoneManager.h"
+#include <cstdlib>
 
 CZoneManager::CZoneManager()
 {
@@ -101,6 +102,20 @@ void CZoneManager::TickAll(float deltaTime, std::vector<SectorChangeInfo>& outSe
     {
         pair.second->Tick(deltaTime, outSectorChanges, outClampedPlayers);
     }
+}
+
+int32_t CZoneManager::GetRandomMapId(int32_t excludeMapId) const
+{
+    std::vector<int32_t> candidates;
+    for (const auto& pair : _mapConfigs)
+    {
+        if (pair.first != excludeMapId)
+            candidates.push_back(pair.first);
+    }
+    if (candidates.empty())
+        return -1;
+
+    return candidates[rand() % candidates.size()];
 }
 
 int32_t CZoneManager::MakeZoneId(int32_t mapId, int32_t channelIndex)

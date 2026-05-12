@@ -77,7 +77,17 @@ void CGameServer::Stop()
         _gameThread.join();
 
     if (_network)
+    {
         _network->ShutdownServer();
+
+        // 미처리 이벤트의 CSerialBuffer 정리
+        NetworkEvent event(NetworkEvent::Type::CONNECTED, 0);
+        while (_network->PopNetworkEvent(event))
+        {
+            if (event.pMsg != nullptr)
+                CSerialBuffer::Free(event.pMsg);
+        }
+    }
 }
 
 // ==========================================================================
@@ -529,6 +539,18 @@ void CGameServer::RecvZoneChange(int64_t sessionId, CSerialBuffer* pMsg)
 
     int32_t targetMapId = recvMsg.targetMapId;
 
+    // 랜덤 맵 이동 요청 처리
+    if (targetMapId == -1)
+    {
+        int32_t currentMapId = CZoneManager::GetMapIdFromZoneId(oldZone->GetZoneId());
+        targetMapId = _zoneManager.GetRandomMapId(currentMapId);
+        if (targetMapId == -1)
+        {
+            SendZoneChangeFail(sessionId, 0);
+            return;
+        }
+    }
+
     // 대상 맵의 여유 채널 찾기
     CZone* newZone = _zoneManager.FindOrCreateChannel(targetMapId);
     if (newZone == nullptr)
@@ -561,7 +583,8 @@ void CGameServer::RecvZoneChange(int64_t sessionId, CSerialBuffer* pMsg)
     CPlayer* newPlayer = newZone->EnterZone(sessionId);
     if (newPlayer == nullptr)
     {
-        // 입장 실패 시 원래 존으로 복귀 시도
+        // 입장 실패 시 원래 맵의 여유 채널로 복귀 시도
+        // 참고: FindOrCreateChannel이므로 원래 채널이 아닌 같은 맵의 다른 채널에 배정될 수 있음
         CZone* fallback = _zoneManager.FindOrCreateChannel(CZoneManager::GetMapIdFromZoneId(oldZone->GetZoneId()));
         if (fallback != nullptr)
         {
@@ -570,6 +593,23 @@ void CGameServer::RecvZoneChange(int64_t sessionId, CSerialBuffer* pMsg)
             {
                 _zoneManager.RegisterSession(sessionId, fallback->GetZoneId());
                 SendZoneChangeFail(sessionId, 1);
+
+                // 복귀한 존에서 본인 + 주변 상호 통보 (OnConnected와 동일)
+                SendCreateMyPlayer(sessionId, fbPlayer);
+
+                aroundPlayers.clear();
+                fallback->GetSectorManager().GetAroundPlayers(
+                    fbPlayer->_sectorX, fbPlayer->_sectorY, aroundPlayers, fbPlayer);
+
+                for (CPlayer* other : aroundPlayers)
+                {
+                    SendCreateOtherPlayer(other->_sessionId, fbPlayer);
+                }
+                for (CPlayer* other : aroundPlayers)
+                {
+                    SendCreateOtherPlayer(sessionId, other);
+                }
+
                 return;
             }
         }
@@ -699,6 +739,9 @@ void CGameServer::ProcessSectorChange(CZone* zone, CPlayer* player,
         const auto& players = zone->GetSectorManager().GetSectorPlayers(pos.x, pos.y);
         for (CPlayer* other : players)
         {
+            if (other == player)
+                continue;  // 멀티섹터 점프 시 자기 자신 방지
+
             SendCreateOtherPlayer(other->_sessionId, player);  // 상대에게 나를 생성
             SendCreateOtherPlayer(player->_sessionId, other);   // 나에게 상대를 생성
         }
