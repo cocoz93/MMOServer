@@ -3,6 +3,29 @@
 #include <cstring>
 #include <algorithm>
 
+// 콘솔에서 2셀을 차지하는 fullwidth 문자 판정 (한글·CJK 등)
+static bool IsFullWidth(wchar_t ch)
+{
+    if (ch >= 0x1100 && ch <= 0x115F) return true;  // Hangul Jamo
+    if (ch >= 0x2E80 && ch <= 0x33BF) return true;  // CJK 기호·호환
+    if (ch >= 0x3400 && ch <= 0x4DBF) return true;  // CJK 확장 A
+    if (ch >= 0x4E00 && ch <= 0x9FFF) return true;  // CJK 통합 한자
+    if (ch >= 0xAC00 && ch <= 0xD7AF) return true;  // 한글 음절
+    if (ch >= 0xF900 && ch <= 0xFAFF) return true;  // CJK 호환 한자
+    if (ch >= 0xFF01 && ch <= 0xFF60) return true;  // 전각 형태
+    if (ch >= 0xFFE0 && ch <= 0xFFE6) return true;  // 전각 부호
+    return false;
+}
+
+// wchar_t 문자열의 콘솔 표시 폭 (셀 수) 계산
+static int GetDisplayWidth(const wchar_t* text, int charLen)
+{
+    int width = 0;
+    for (int i = 0; i < charLen; ++i)
+        width += IsFullWidth(text[i]) ? 2 : 1;
+    return width;
+}
+
 CConsoleRenderer::CConsoleRenderer()
     : _hConsole(INVALID_HANDLE_VALUE)
 {
@@ -23,18 +46,28 @@ void CConsoleRenderer::Init()
     cursorInfo.bVisible = FALSE;
     SetConsoleCursorInfo(_hConsole, &cursorInfo);
 
-    // 콘솔 크기 설정
-    COORD bufferSize = { CONSOLE_WIDTH, 40 };
-    SetConsoleScreenBufferSize(_hConsole, bufferSize);
+    // 콘솔 크기 설정 (채팅 입력줄 + 여유 1행)
+    static constexpr SHORT CONSOLE_HEIGHT = CHAT_INPUT_ROW + 2; // 49
 
-    SMALL_RECT windowSize = { 0, 0, CONSOLE_WIDTH - 1, 39 };
-    SetConsoleWindowInfo(_hConsole, TRUE, &windowSize);
+    // VT100 이스케이프 시퀀스로 창 크기 조정 (Windows Terminal 대응)
+    // \x1b[8;rows;colst — 터미널 창을 지정 크기로 리사이즈
+    DWORD mode;
+    GetConsoleMode(_hConsole, &mode);
+    SetConsoleMode(_hConsole, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+
+    char vtResize[32];
+    sprintf_s(vtResize, "\x1b[8;%d;%dt", CONSOLE_HEIGHT, CONSOLE_WIDTH);
+    WriteConsoleA(_hConsole, vtResize, static_cast<DWORD>(strlen(vtResize)), nullptr, nullptr);
+
+    // 버퍼 크기도 맞춤 (레거시 conhost 폴백)
+    COORD bufferSize = { CONSOLE_WIDTH, CONSOLE_HEIGHT };
+    SetConsoleScreenBufferSize(_hConsole, bufferSize);
 
     // 화면 초기화
     DWORD written;
     COORD origin = { 0, 0 };
-    FillConsoleOutputCharacterW(_hConsole, L' ', CONSOLE_WIDTH * 40, origin, &written);
-    FillConsoleOutputAttribute(_hConsole, COLOR_DEFAULT, CONSOLE_WIDTH * 40, origin, &written);
+    FillConsoleOutputCharacterW(_hConsole, L' ', CONSOLE_WIDTH * CONSOLE_HEIGHT, origin, &written);
+    FillConsoleOutputAttribute(_hConsole, COLOR_DEFAULT, CONSOLE_WIDTH * CONSOLE_HEIGHT, origin, &written);
 }
 
 // ==========================================================================
@@ -48,6 +81,7 @@ void CConsoleRenderer::RenderFrame(const ClientPlayer* me,
                                    bool chatMode)
 {
     RenderStatusBar(me);
+    RenderHelpBar();
     RenderGameView(me, others);
     RenderChatArea(chatLog);
     RenderChatInput(chatInput, chatMode);
@@ -67,15 +101,19 @@ void CConsoleRenderer::RenderStatusBar(const ClientPlayer* me)
         const wchar_t* dirStr = L"";
         switch (me->direction)
         {
-        case Direction::UP:    dirStr = L"UP";    break;
-        case Direction::DOWN:  dirStr = L"DOWN";  break;
-        case Direction::LEFT:  dirStr = L"LEFT";  break;
-        case Direction::RIGHT: dirStr = L"RIGHT"; break;
-        default:               dirStr = L"-";     break;
+        case Direction::UP:         dirStr = L"UP";    break;
+        case Direction::DOWN:       dirStr = L"DOWN";  break;
+        case Direction::LEFT:       dirStr = L"LEFT";  break;
+        case Direction::RIGHT:      dirStr = L"RIGHT"; break;
+        case Direction::UP_LEFT:    dirStr = L"UL";    break;
+        case Direction::UP_RIGHT:   dirStr = L"UR";    break;
+        case Direction::DOWN_LEFT:  dirStr = L"DL";    break;
+        case Direction::DOWN_RIGHT: dirStr = L"DR";    break;
+        default:                    dirStr = L"-";     break;
         }
 
         swprintf_s(buf, CONSOLE_WIDTH + 1,
-            L" Player:%-4d  Pos:(%6.1f, %6.1f)  Speed:%-3d  [%s %s]  | Arrow:Move  Enter:Chat  ESC:Quit",
+            L" Player:%-4d  Pos:(%6.1f,%6.1f)  Speed:%-3d  [%s %s]",
             me->playerId, me->x, me->y, me->speed, stateStr, dirStr);
     }
     else
@@ -93,7 +131,16 @@ void CConsoleRenderer::RenderStatusBar(const ClientPlayer* me)
 }
 
 // ==========================================================================
-// 게임 뷰 (Row 1~22) — WriteConsoleOutputW 단일 호출
+// 조작 안내 (Row 1)
+// ==========================================================================
+
+void CConsoleRenderer::RenderHelpBar()
+{
+    WriteTextAt(0, HELP_ROW, L" Arrow:Move  Enter:Chat  ESC:Quit", COLOR_BORDER, CONSOLE_WIDTH);
+}
+
+// ==========================================================================
+// 게임 뷰 (Row 2~22) — WriteConsoleOutputW 단일 호출
 // ==========================================================================
 
 void CConsoleRenderer::RenderGameView(const ClientPlayer* me,
@@ -232,7 +279,9 @@ void CConsoleRenderer::RenderChatInput(const std::wstring& chatInput, bool chatM
     }
 
     // 커서를 채팅 입력줄 끝으로 이동 (에코 문자가 게임 뷰를 오염하지 않도록)
-    COORD cursorPos = { static_cast<SHORT>(3 + chatInput.size()), CHAT_INPUT_ROW };
+    // fullwidth 문자(한글 등)는 2셀 차지하므로 표시 폭 기준으로 계산
+    int inputDisplayWidth = GetDisplayWidth(chatInput.c_str(), static_cast<int>(chatInput.size()));
+    COORD cursorPos = { static_cast<SHORT>(3 + inputDisplayWidth), CHAT_INPUT_ROW };
     SetConsoleCursorPosition(_hConsole, cursorPos);
 }
 
@@ -240,19 +289,29 @@ void CConsoleRenderer::RenderChatInput(const std::wstring& chatInput, bool chatM
 // 유틸리티
 // ==========================================================================
 
-void CConsoleRenderer::WriteTextAt(SHORT x, SHORT y, const wchar_t* text, WORD attr, int maxLen)
+void CConsoleRenderer::WriteTextAt(SHORT x, SHORT y, const wchar_t* text, WORD attr, int maxCells)
 {
     COORD pos = { x, y };
     DWORD written;
 
-    int len = static_cast<int>(wcslen(text));
-    if (len > maxLen) len = maxLen;
+    int charLen = static_cast<int>(wcslen(text));
+
+    // maxCells(콘솔 셀) 기준으로 출력할 문자 수 결정
+    int cells = 0;
+    int len = 0;
+    for (int i = 0; i < charLen; ++i)
+    {
+        int w = IsFullWidth(text[i]) ? 2 : 1;
+        if (cells + w > maxCells) break;
+        cells += w;
+        len = i + 1;
+    }
 
     WriteConsoleOutputCharacterW(_hConsole, text, len, pos, &written);
 
-    // 속성 배열
-    std::vector<WORD> attrs(len, attr);
-    WriteConsoleOutputAttribute(_hConsole, attrs.data(), len, pos, &written);
+    // 속성 배열 — fullwidth 문자는 2셀분 속성 필요
+    std::vector<WORD> attrs(cells, attr);
+    WriteConsoleOutputAttribute(_hConsole, attrs.data(), cells, pos, &written);
 }
 
 void CConsoleRenderer::ClearLine(SHORT y, WORD attr)

@@ -306,41 +306,45 @@ void CGameInstance::ProcessInput()
     if (!_playerManager.HasMyPlayer())
         return;
 
-    // 키 누름 감지
-    for (int i = 0; i < 4; ++i)
+    // 키 조합으로 8방향 결정
+    bool up    = currentKeys[0];
+    bool down  = currentKeys[1];
+    bool left  = currentKeys[2];
+    bool right = currentKeys[3];
+
+    // 상충 입력 상쇄
+    if (up && down)    { up = false; down = false; }
+    if (left && right) { left = false; right = false; }
+
+    Direction newDir = Direction::NONE;
+    if (up && left)        newDir = Direction::UP_LEFT;
+    else if (up && right)  newDir = Direction::UP_RIGHT;
+    else if (down && left)  newDir = Direction::DOWN_LEFT;
+    else if (down && right) newDir = Direction::DOWN_RIGHT;
+    else if (up)            newDir = Direction::UP;
+    else if (down)          newDir = Direction::DOWN;
+    else if (left)          newDir = Direction::LEFT;
+    else if (right)         newDir = Direction::RIGHT;
+
+    ClientPlayer* me = _playerManager.GetMyPlayer();
+    Direction curDir = (me->moveState == MoveState::MOVING) ? me->direction : Direction::NONE;
+
+    if (newDir != curDir)
     {
-        if (currentKeys[i] && !_keyPressed[i])
+        // 이동 중이었으면 정지 전송
+        if (me->moveState == MoveState::MOVING)
         {
-            ClientPlayer* me = _playerManager.GetMyPlayer();
-            if (me->moveState == MoveState::MOVING)
-            {
-                _network.SendMoveStop(
-                    static_cast<uint8_t>(me->direction), me->x, me->y);
-                me->moveState = MoveState::IDLE;
-            }
-
-            uint8_t dir = static_cast<uint8_t>(i + 1);
-            _network.SendMoveStart(dir);
-
-            me->direction = static_cast<Direction>(dir);
-            me->moveState = MoveState::MOVING;
+            _network.SendMoveStop(
+                static_cast<uint8_t>(me->direction), me->x, me->y);
+            me->moveState = MoveState::IDLE;
         }
-    }
 
-    // 키 뗌 감지
-    for (int i = 0; i < 4; ++i)
-    {
-        if (!currentKeys[i] && _keyPressed[i])
+        // 새 방향이 있으면 이동 시작
+        if (newDir != Direction::NONE)
         {
-            ClientPlayer* me = _playerManager.GetMyPlayer();
-            uint8_t dir = static_cast<uint8_t>(i + 1);
-
-            if (me->moveState == MoveState::MOVING &&
-                me->direction == static_cast<Direction>(dir))
-            {
-                _network.SendMoveStop(dir, me->x, me->y);
-                me->moveState = MoveState::IDLE;
-            }
+            _network.SendMoveStart(static_cast<uint8_t>(newDir));
+            me->direction = newDir;
+            me->moveState = MoveState::MOVING;
         }
     }
 
