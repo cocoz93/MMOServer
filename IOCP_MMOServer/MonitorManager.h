@@ -2,17 +2,18 @@
 // CMonitorManager — 서버 모니터링 지표 저장소
 //
 // [책임]
-//  - 서버 런타임 지표를 atomic 카운터/게이지/히스토그램으로 수집
+//  - 서버 런타임 지표를 Interlocked 카운터/게이지/히스토그램으로 수집
 //  - 워커 스레드, 게임 루프 스레드 등 다중 스레드에서 안전하게 기록
 //  - HTTP 엔드포인트(2단계)에서 읽어 Prometheus 형식으로 노출
 //
 // [소유권]
-//  - GameServer가 값으로 소유, IOCPServer는 포인터로 참조
+//  - main()이 값으로 소유, GameServer/IOCPServer는 레퍼런스로 참조
 // ==========================================================================
 #pragma once
 
+#include <WinSock2.h>
+#include <Windows.h>
 #include <cstdint>
-#include <atomic>
 
 class CMonitorManager
 {
@@ -26,18 +27,18 @@ public:
     // ══════════════════════════════════════════════════════════════
     // 카운터 (monotonically increasing)
     // ══════════════════════════════════════════════════════════════
-    std::atomic<int64_t> _recvPackets{0};       // 수신 패킷 누적
-    std::atomic<int64_t> _sendPackets{0};        // 송신 패킷 누적
-    std::atomic<int64_t> _recvBytes{0};          // 수신 바이트 누적
-    std::atomic<int64_t> _sendBytes{0};          // 송신 바이트 누적
-    std::atomic<int64_t> _sessionCreated{0};     // 세션 생성 누적
-    std::atomic<int64_t> _sessionDestroyed{0};   // 세션 소멸 누적
+    volatile LONG64 _recvPackets = 0;       // 수신 패킷 누적
+    volatile LONG64 _sendPackets = 0;       // 송신 패킷 누적
+    volatile LONG64 _recvBytes = 0;         // 수신 바이트 누적
+    volatile LONG64 _sendBytes = 0;         // 송신 바이트 누적
+    volatile LONG64 _sessionCreated = 0;    // 세션 생성 누적
+    volatile LONG64 _sessionDestroyed = 0;  // 세션 소멸 누적
 
     // ══════════════════════════════════════════════════════════════
     // 게이지 (up/down)
     // ══════════════════════════════════════════════════════════════
-    std::atomic<int32_t> _sessionCount{0};       // 현재 동접 수
-    std::atomic<int32_t> _eventQueueSize{0};     // 네트워크 이벤트 큐 길이
+    volatile LONG _sessionCount = 0;        // 현재 동접 수
+    volatile LONG _eventQueueSize = 0;      // 네트워크 이벤트 큐 길이
 
     // ══════════════════════════════════════════════════════════════
     // Tick 히스토그램 (게임 루프 전용)
@@ -51,28 +52,28 @@ public:
         1.0, 5.0, 10.0, 20.0, 40.0, 60.0, 80.0, 100.0, 200.0
     };
 
-    std::atomic<int64_t> _tickBuckets[TICK_BUCKET_COUNT]{};
-    std::atomic<int64_t> _tickSumUs{0};   // 합계 (마이크로초)
-    std::atomic<int64_t> _tickCount{0};   // 총 tick 수
+    volatile LONG64 _tickBuckets[TICK_BUCKET_COUNT] = {};
+    volatile LONG64 _tickSumUs = 0;   // 합계 (마이크로초)
+    volatile LONG64 _tickCount = 0;   // 총 tick 수
 
     // Tick 시간 기록 (밀리초 단위)
     void RecordTickTime(double ms)
     {
-        int64_t us = static_cast<int64_t>(ms * 1000.0);
-        _tickSumUs.fetch_add(us, std::memory_order_relaxed);
-        _tickCount.fetch_add(1, std::memory_order_relaxed);
+        LONG64 us = static_cast<LONG64>(ms * 1000.0);
+        InterlockedExchangeAdd64(&_tickSumUs, us);
+        InterlockedIncrement64(&_tickCount);
 
         // 해당 버킷에 1 증가
         for (int i = 0; i < TICK_BUCKET_COUNT - 1; ++i)
         {
             if (ms <= TICK_BUCKET_BOUNDS[i])
             {
-                _tickBuckets[i].fetch_add(1, std::memory_order_relaxed);
+                InterlockedIncrement64(&_tickBuckets[i]);
                 return;
             }
         }
         // 모든 경계 초과 → +Inf 버킷
-        _tickBuckets[TICK_BUCKET_COUNT - 1].fetch_add(1, std::memory_order_relaxed);
+        InterlockedIncrement64(&_tickBuckets[TICK_BUCKET_COUNT - 1]);
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -84,15 +85,15 @@ public:
 
     struct alignas(64) WorkerCounter
     {
-        std::atomic<int64_t> completionCount{0};
+        volatile LONG64 completionCount = 0;
     };
 
-    WorkerCounter _workerCounters[MAX_WORKER_THREADS]{};
-    std::atomic<int32_t> _workerThreadCount{0};
+    WorkerCounter _workerCounters[MAX_WORKER_THREADS] = {};
+    volatile LONG _workerThreadCount = 0;
 
     // 워커 스레드 시작 시 호출 → 슬롯 인덱스 반환
     int RegisterWorkerThread()
     {
-        return _workerThreadCount.fetch_add(1, std::memory_order_relaxed);
+        return static_cast<int>(InterlockedIncrement(&_workerThreadCount) - 1);
     }
 };
