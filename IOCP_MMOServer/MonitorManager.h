@@ -33,12 +33,19 @@ public:
     volatile LONG64 _sendBytes = 0;         // 송신 바이트 누적
     volatile LONG64 _sessionCreated = 0;    // 세션 생성 누적
     volatile LONG64 _sessionDestroyed = 0;  // 세션 소멸 누적
+    volatile LONG64 _acceptFailed = 0;      // Accept 거부 (인덱스 부족)
+    volatile LONG64 _sessionTimedOut = 0;   // 타이밍 휠 타임아웃 킥
+    volatile LONG64 _cheatDetected = 0;     // 이동 검증 실패 (치트 감지)
+    volatile LONG64 _packetErrors = 0;      // 패킷 에러 (크기 검증 실패, 알 수 없는 타입)
+    volatile LONG64 _sendQueueOverflow = 0; // SendQ 오버플로 (Enqueue 실패)
+    volatile LONG64 _recvBufferOverflow = 0; // RecvQ 오버플로 (수신 버퍼 가득 참)
+    volatile LONG64 _zoneChangeCount = 0;   // 존 이동 횟수
 
     // ══════════════════════════════════════════════════════════════
     // 게이지 (up/down)
     // ══════════════════════════════════════════════════════════════
     volatile LONG _sessionCount = 0;        // 현재 동접 수
-    volatile LONG _eventQueueSize = 0;      // 네트워크 이벤트 큐 길이
+    // 이벤트 큐 크기는 ThreadSafeQueue::GetSize()로 직접 조회
 
     // ══════════════════════════════════════════════════════════════
     // Tick 히스토그램 (게임 루프 전용)

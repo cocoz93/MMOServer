@@ -183,6 +183,12 @@ public:
         return _queue.empty();
     }
 
+    size_t GetSize() const
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        return _queue.size();
+    }
+
 private:
     std::queue<T> _queue;
     mutable std::mutex _mutex;

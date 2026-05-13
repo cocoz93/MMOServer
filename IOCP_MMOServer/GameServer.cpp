@@ -297,6 +297,7 @@ void CGameServer::OnReceived(int64_t sessionId, CSerialBuffer* pMsg)
     uint16_t expectedSize = GetExpectedSize(header.type);
     if (expectedSize == 0 || header.size < expectedSize)
     {
+        InterlockedIncrement64(&_monitor._packetErrors);
         CSerialBuffer::Free(pMsg);
         return;
     }
@@ -628,6 +629,7 @@ void CGameServer::RecvZoneChange(int64_t sessionId, CSerialBuffer* pMsg)
 
     // 세션 → 존 매핑 등록
     _zoneManager.RegisterSession(sessionId, newZone->GetZoneId());
+    InterlockedIncrement64(&_monitor._zoneChangeCount);
 
     // 본인에게 존 이동 성공 통보
     int32_t channelIndex = CZoneManager::GetChannelIndexFromZoneId(newZone->GetZoneId());
@@ -674,6 +676,7 @@ bool CGameServer::ValidateMove(CZone* zone, CPlayer* player, float clientX, floa
     if (!std::isfinite(clientX) || !std::isfinite(clientY))
     {
         ++player->_cheatCount;
+        InterlockedIncrement64(&_monitor._cheatDetected);
         SendSyncPosition(player->_sessionId, player);
 
         if (player->_cheatCount >= CHEAT_KICK_THRESHOLD)
@@ -688,6 +691,7 @@ bool CGameServer::ValidateMove(CZone* zone, CPlayer* player, float clientX, floa
     if (clientX < 0.0f || clientX >= mapW || clientY < 0.0f || clientY >= mapH)
     {
         ++player->_cheatCount;
+        InterlockedIncrement64(&_monitor._cheatDetected);
         SendSyncPosition(player->_sessionId, player);
 
         if (player->_cheatCount >= CHEAT_KICK_THRESHOLD)
@@ -696,7 +700,7 @@ bool CGameServer::ValidateMove(CZone* zone, CPlayer* player, float clientX, floa
         return false;
     }
 
-    // B. 이동 거리 검증 (스피드핵)
+    // C. 이동 거리 검증 (스피드핵)
     // 최대 허용 거리 = 속도 × 최악 2프레임 + 고정 여유값
     float maxDist = player->_speed * (2.0f / FRAME_PER_SEC) + MOVE_TOLERANCE_BASE;
     float toleranceSq = maxDist * maxDist;
@@ -708,6 +712,7 @@ bool CGameServer::ValidateMove(CZone* zone, CPlayer* player, float clientX, floa
     if (distSq > toleranceSq)
     {
         ++player->_cheatCount;
+        InterlockedIncrement64(&_monitor._cheatDetected);
         SendSyncPosition(player->_sessionId, player);
 
         if (player->_cheatCount >= CHEAT_KICK_THRESHOLD)
