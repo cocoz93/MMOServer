@@ -63,10 +63,12 @@ void CSession::Close()
 }
 
 // CIOCPServer Implementation
-CIOCPServer::CIOCPServer(int port, int maxClients, ServerArchitectureType type)
+CIOCPServer::CIOCPServer(int port, int maxClients, ServerArchitectureType type,
+                         CMonitorManager& monitor)
     : _port(port)
     , _maxClients(maxClients)
     , _architectureType(type)
+    , _monitor(monitor)
     , _running(FALSE)
     , _sessionIdCounter(1)  // 0은 사용하지 않음
     , _listenSocket(INVALID_SOCKET)
@@ -413,6 +415,10 @@ void CIOCPServer::ProcessAccept(SOCKET clientSocket)
     default:
         break;
     }
+
+    // 세션 지표 기록
+    _monitor._sessionCreated.fetch_add(1, std::memory_order_relaxed);
+    _monitor._sessionCount.fetch_add(1, std::memory_order_relaxed);
 
     // 타이밍 휠에 세션 등록 (타임아웃 카운트 시작)
     _timingWheel->RequestRegister(CSession::ExtractIndex(sessionId), sessionId);
@@ -996,6 +1002,10 @@ void CIOCPServer::ReleaseSession(CSession* session)
 
     if (sessionId != 0)
     {
+        // 세션 지표 기록
+        _monitor._sessionDestroyed.fetch_add(1, std::memory_order_relaxed);
+        _monitor._sessionCount.fetch_sub(1, std::memory_order_relaxed);
+
         _availableIndices.Push(CSession::ExtractIndex(sessionId));
     }
 }

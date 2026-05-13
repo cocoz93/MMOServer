@@ -9,6 +9,7 @@
 
 #include "GameServer.h"
 #include "ZoneManager.h"
+#include "MonitorManager.h"
 
 std::atomic<bool> running{true};
 std::mutex mtx;
@@ -30,7 +31,8 @@ int main()
     std::cout << "Port: " << PORT << std::endl;
     std::cout << "Max Clients: " << MAX_CLIENTS << std::endl;
 
-    CGameServer server;
+    CMonitorManager monitor;
+    CGameServer server(monitor);
 
     // 맵 설정
     MapConfig maps[] = {

@@ -25,6 +25,7 @@
 #include "IOCPServer.h"
 #include "ZoneManager.h"
 #include "Player.h"
+#include "MonitorManager.h"
 
 class CSerialBuffer;
 
@@ -38,7 +39,7 @@ enum class ServerMode
 class CGameServer
 {
 public:
-    CGameServer();
+    explicit CGameServer(CMonitorManager& monitor);
     ~CGameServer();
 
     // 에코 테스트 모드 초기화
@@ -118,6 +119,7 @@ private:
 private:
     ServerMode _mode;
 
+    CMonitorManager& _monitor;
     std::unique_ptr<CIOCPServer> _network;
     CZoneManager _zoneManager;
 
