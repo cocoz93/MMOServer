@@ -17,6 +17,7 @@
 #include "Protocol.h"
 #include "LockFree/LockFreeStack.h"
 #include "TimingWheel.h"
+#include "MonitorManager.h"
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -193,7 +194,8 @@ private:
 class CIOCPServer
 {
 public:
-    explicit CIOCPServer(int port, int maxClients, ServerArchitectureType type);
+    explicit CIOCPServer(int port, int maxClients, ServerArchitectureType type,
+                        CMonitorManager& monitor);
     virtual ~CIOCPServer();
 
     bool Start();
@@ -248,6 +250,7 @@ private:
     int _port;
     int _maxClients;
     ServerArchitectureType _architectureType;
+    CMonitorManager& _monitor;
     volatile LONG _running;
     volatile LONGLONG _sessionIdCounter;  // 고유 ID용 (하위 48비트)
 

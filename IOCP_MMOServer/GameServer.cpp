@@ -6,8 +6,9 @@
 #include <chrono>
 #include <cmath>
 
-CGameServer::CGameServer()
+CGameServer::CGameServer(CMonitorManager& monitor)
     : _mode(ServerMode::GameServer)
+    , _monitor(monitor)
     , _running(false)
 {
 }
@@ -32,7 +33,7 @@ bool CGameServer::Init(ServerMode mode, int port, int maxClients,
         ? ServerArchitectureType::GameCodiEchoTest
         : ServerArchitectureType::Centralized;
 
-    _network = std::make_unique<CIOCPServer>(port, maxClients, archType);
+    _network = std::make_unique<CIOCPServer>(port, maxClients, archType, _monitor);
 
     // 게임 서버 모드일 때만 맵 등록
     if (_mode == ServerMode::GameServer && maps != nullptr)
