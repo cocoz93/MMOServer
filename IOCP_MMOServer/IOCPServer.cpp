@@ -379,6 +379,7 @@ void CIOCPServer::ProcessAccept(SOCKET clientSocket)
     if (!_availableIndices.Pop(&index))
     {
         LOG_ERROR_STREAM("[Error] No free session index available");
+        InterlockedIncrement64(&_monitor._acceptFailed);
         closesocket(clientSocket);
         return;
     }
@@ -509,6 +510,7 @@ void CIOCPServer::ProcessRecv(CSession* session, DWORD bytesTransferred)
     size_t movedSize = session->_recvQ.MoveWritePtr(bytesTransferred);
     if (movedSize != bytesTransferred)
     {
+        InterlockedIncrement64(&_monitor._recvBufferOverflow);
         LOG_ERROR_STREAM("[Error] Recv buffer overflow - SessionId: " << session->_sessionId
             << ", Expected: " << bytesTransferred << ", Moved: " << movedSize);
         RequestDisconnectSession(session);
@@ -567,6 +569,7 @@ void CIOCPServer::PostRecv(CSession* session, bool skipAcquire)
 
     if (bufCount == 0)
     {
+        InterlockedIncrement64(&_monitor._recvBufferOverflow);
         LOG_ERROR_STREAM("[Error] Recv buffer full - SessionId: " << sessionId);
         RequestDisconnectSession(session);
         IOCountDecrement(session);
@@ -655,6 +658,7 @@ void CIOCPServer::ParsePackets(CSession* session)
         {
             LOG_ERROR_STREAM("[Error] Invalid packet size: " << totalPacketSize
                 << " - SessionId: " << session->_sessionId);
+            InterlockedIncrement64(&_monitor._packetErrors);
             RequestDisconnectSession(session);
             return;
         }
@@ -867,6 +871,7 @@ void CIOCPServer::RequestSendMsg(int64_t sessionId, const char* data, int length
     {
         LOG_ERROR_STREAM("[Error] Send buffer overflow - SessionId: " << sessionId
             << ", Requested: " << length << ", Enqueued: " << enqueued);
+        InterlockedIncrement64(&_monitor._sendQueueOverflow);
         RequestDisconnectSession(session);
         IOCountDecrement(session);
         return;
@@ -896,18 +901,12 @@ void CIOCPServer::RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg)
 void CIOCPServer::PushNetworkEvent(NetworkEvent&& event)
 {
     _eventQueue.Push(std::move(event));
-    InterlockedIncrement(&_monitor._eventQueueSize);
 }
 
 // GameLogicThread 쪽에서 호출
 bool CIOCPServer::PopNetworkEvent(NetworkEvent& event)
 {
-    if (_eventQueue.TryPop(event))
-    {
-        InterlockedDecrement(&_monitor._eventQueueSize);
-        return true;
-    }
-    return false;
+    return _eventQueue.TryPop(event);
 }
 
 ServerArchitectureType CIOCPServer::GetArchitectureType() const
@@ -1061,6 +1060,7 @@ bool CIOCPServer::RequestDisconnectSession(int64_t sessionId)
 void CIOCPServer::OnSessionTimeout(void* context, int64_t sessionId)
 {
     auto* server = static_cast<CIOCPServer*>(context);
+    InterlockedIncrement64(&server->_monitor._sessionTimedOut);
     server->RequestDisconnectSession(sessionId);
 }
 
