@@ -7,7 +7,6 @@
 
 CGameInstance::CGameInstance()
     : _running(false)
-    , _keyPressed{ false, false, false, false }
     , _enterPressed(false)
     , _chatMode(false)
     , _heartbeatAccumMs(0)
@@ -290,10 +289,6 @@ void CGameInstance::ProcessInput()
             me->moveState = MoveState::IDLE;
         }
 
-        // 키 상태 초기화 (채팅 모드 해제 시 잔여 상태 방지)
-        for (int i = 0; i < 4; ++i)
-            _keyPressed[i] = false;
-
         _enterPressed = enterDown;
         _chatMode = true;
         _chatInput.clear();
@@ -348,11 +343,6 @@ void CGameInstance::ProcessInput()
         }
     }
 
-    // 상태 갱신
-    for (int i = 0; i < 4; ++i)
-    {
-        _keyPressed[i] = currentKeys[i];
-    }
 }
 
 // ==========================================================================
@@ -532,7 +522,7 @@ void CGameInstance::AddChatMessage(const std::wstring& msg)
     _chatLog.push_back(msg);
 
     // 최대 라인 수 초과 시 오래된 메시지 제거
-    while (static_cast<int>(_chatLog.size()) > MAX_CHAT_LINES * 4)
+    while (static_cast<int>(_chatLog.size()) > MAX_CHAT_LOG)
     {
         _chatLog.erase(_chatLog.begin());
     }

@@ -57,15 +57,14 @@ private:
     CNetworkEventQueue _eventQueue;
     bool _running;
 
-    // 키 상태 추적 (키 누름/뗌 감지용)
-    bool _keyPressed[4]; // UP, DOWN, LEFT, RIGHT
+    // 키 상태 추적 (Enter 엣지 검출용)
     bool _enterPressed;
 
     // 채팅
     std::vector<std::wstring> _chatLog;
     std::wstring _chatInput;
     bool _chatMode;
-    static constexpr int MAX_CHAT_LINES = 14;
+    static constexpr int MAX_CHAT_LOG = 96; // 렌더러 표시 줄 수(24) × 4
 
     // 프레임 설정 (서버 동일)
     static constexpr int FRAME_PER_SEC = 25;
