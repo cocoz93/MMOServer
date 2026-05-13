@@ -169,10 +169,12 @@ void CGameServer::GameLoopThread()
             _zoneManager.CleanupEmptyChannels();
         }
 
-        // 6) 프레임 제한
+        // 6) Tick 시간 기록 + 프레임 제한
         auto frameEnd = Clock::now();
-        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(frameEnd - frameStart);
-        int sleepMs = FRAME_INTERVAL_MS - static_cast<int>(elapsed.count());
+        double tickMs = std::chrono::duration<double, std::milli>(frameEnd - frameStart).count();
+        _monitor.RecordTickTime(tickMs);
+
+        int sleepMs = FRAME_INTERVAL_MS - static_cast<int>(tickMs);
         if (sleepMs > 0)
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(sleepMs));

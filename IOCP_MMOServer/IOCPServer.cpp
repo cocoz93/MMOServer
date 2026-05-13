@@ -417,8 +417,8 @@ void CIOCPServer::ProcessAccept(SOCKET clientSocket)
     }
 
     // 세션 지표 기록
-    _monitor._sessionCreated.fetch_add(1, std::memory_order_relaxed);
-    _monitor._sessionCount.fetch_add(1, std::memory_order_relaxed);
+    InterlockedIncrement64(&_monitor._sessionCreated);
+    InterlockedIncrement(&_monitor._sessionCount);
 
     // 타이밍 휠에 세션 등록 (타임아웃 카운트 시작)
     _timingWheel->RequestRegister(CSession::ExtractIndex(sessionId), sessionId);
@@ -430,6 +430,8 @@ void CIOCPServer::ProcessAccept(SOCKET clientSocket)
 // 완료 통지 처리. IOCount 감소는 ProcessRecv/ProcessSend 이후에만 수행한다.
 void CIOCPServer::WorkerThread()
 {
+    int workerIndex = _monitor.RegisterWorkerThread();
+
     while (true)
     {
         DWORD bytesTransferred = 0;
@@ -479,6 +481,10 @@ void CIOCPServer::WorkerThread()
         }
 
         IOCountDecrement(session);
+
+        // 워커 스레드별 완료 통지 카운트
+        if (workerIndex < CMonitorManager::MAX_WORKER_THREADS)
+            InterlockedIncrement64(&_monitor._workerCounters[workerIndex].completionCount);
     }
 }
 
@@ -492,6 +498,9 @@ void CIOCPServer::ProcessRecv(CSession* session, DWORD bytesTransferred)
         RequestDisconnectSession(session);
         return;
     }
+
+    // 수신 바이트 지표 기록
+    InterlockedExchangeAdd64(&_monitor._recvBytes, static_cast<LONG64>(bytesTransferred));
 
     // 타이밍 휠 수명 갱신 (데이터 수신 = 세션 활성 상태)
     _timingWheel->RequestRefresh(CSession::ExtractIndex(session->_sessionId), session->_sessionId);
@@ -668,6 +677,9 @@ void CIOCPServer::ParsePackets(CSession* session)
         }
         pMsg->MoveWritePos(static_cast<int>(totalPacketSize));
 
+        // 수신 패킷 지표 기록
+        InterlockedIncrement64(&_monitor._recvPackets);
+
         // 수신 버퍼는 단일 소비자(GameLogicThread)이므로 Seal 불필요
         // Seal하면 operator>>/GetData가 차단되어 역직렬화 불가
         pMsg->AddRef();
@@ -698,6 +710,10 @@ void CIOCPServer::ProcessSend(CSession* session, DWORD bytesTransferred)
     {
         return;
     }
+
+    // 송신 지표 기록
+    InterlockedExchangeAdd64(&_monitor._sendBytes, static_cast<LONG64>(bytesTransferred));
+    InterlockedIncrement64(&_monitor._sendPackets);
 
     // SendQ에서 송신한 만큼 Consume
     size_t consumed = session->_sendQ.Consume(bytesTransferred);
@@ -880,12 +896,18 @@ void CIOCPServer::RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg)
 void CIOCPServer::PushNetworkEvent(NetworkEvent&& event)
 {
     _eventQueue.Push(std::move(event));
+    InterlockedIncrement(&_monitor._eventQueueSize);
 }
 
 // GameLogicThread 쪽에서 호출
 bool CIOCPServer::PopNetworkEvent(NetworkEvent& event)
 {
-    return _eventQueue.TryPop(event);
+    if (_eventQueue.TryPop(event))
+    {
+        InterlockedDecrement(&_monitor._eventQueueSize);
+        return true;
+    }
+    return false;
 }
 
 ServerArchitectureType CIOCPServer::GetArchitectureType() const
@@ -1003,8 +1025,8 @@ void CIOCPServer::ReleaseSession(CSession* session)
     if (sessionId != 0)
     {
         // 세션 지표 기록
-        _monitor._sessionDestroyed.fetch_add(1, std::memory_order_relaxed);
-        _monitor._sessionCount.fetch_sub(1, std::memory_order_relaxed);
+        InterlockedIncrement64(&_monitor._sessionDestroyed);
+        InterlockedDecrement(&_monitor._sessionCount);
 
         _availableIndices.Push(CSession::ExtractIndex(sessionId));
     }
