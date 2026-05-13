@@ -358,9 +358,9 @@ void CGameServer::RecvMoveStart(int64_t sessionId, CSerialBuffer* pMsg)
     if (player->_moveState == MoveState::MOVING)
         return;
 
-    // Direction 범위 검증
+    // Direction 범위 검증 (8방향)
     if (recvMsg.direction < static_cast<uint8_t>(Direction::UP) ||
-        recvMsg.direction > static_cast<uint8_t>(Direction::RIGHT))
+        recvMsg.direction > static_cast<uint8_t>(Direction::DOWN_RIGHT))
         return;
 
     // 플레이어 상태 갱신
@@ -393,9 +393,9 @@ void CGameServer::RecvMoveStop(int64_t sessionId, CSerialBuffer* pMsg)
     if (player->_moveState != MoveState::MOVING)
         return;
 
-    // Direction 범위 검증
+    // Direction 범위 검증 (8방향)
     if (recvMsg.direction < static_cast<uint8_t>(Direction::UP) ||
-        recvMsg.direction > static_cast<uint8_t>(Direction::RIGHT))
+        recvMsg.direction > static_cast<uint8_t>(Direction::DOWN_RIGHT))
         return;
 
     // 방향 갱신

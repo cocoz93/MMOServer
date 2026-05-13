@@ -26,6 +26,7 @@ public:
 private:
     // 개별 영역 렌더
     void RenderStatusBar(const ClientPlayer* me);
+    void RenderHelpBar();
     void RenderGameView(const ClientPlayer* me,
                         const std::unordered_map<int32_t, ClientPlayer>& others);
     void RenderChatArea(const std::vector<std::wstring>& chatLog);
@@ -42,15 +43,16 @@ private:
     static constexpr int MAP_WIDTH = 400;
     static constexpr int MAP_HEIGHT = 400;
     static constexpr int VIEW_WIDTH = 80;
-    static constexpr int VIEW_HEIGHT = 22;
+    static constexpr int VIEW_HEIGHT = 21;
 
     // 레이아웃 (행 번호)
     static constexpr SHORT STATUS_ROW = 0;
-    static constexpr SHORT VIEW_START_ROW = 1;
+    static constexpr SHORT HELP_ROW = 1;
+    static constexpr SHORT VIEW_START_ROW = 2;
     static constexpr SHORT CHAT_START_ROW = VIEW_START_ROW + VIEW_HEIGHT; // 23
-    static constexpr int MAX_CHAT_LINES = 14;
-    static constexpr SHORT CHAT_INPUT_ROW = CHAT_START_ROW + MAX_CHAT_LINES; // 37
-    static constexpr SHORT CONSOLE_WIDTH = 120;
+    static constexpr int MAX_CHAT_LINES = 24;
+    static constexpr SHORT CHAT_INPUT_ROW = CHAT_START_ROW + MAX_CHAT_LINES; // 47
+    static constexpr SHORT CONSOLE_WIDTH = 80;
 
     // 게임 뷰 버퍼 (WriteConsoleOutputW용)
     CHAR_INFO _viewBuffer[VIEW_HEIGHT][VIEW_WIDTH];

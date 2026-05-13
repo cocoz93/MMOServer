@@ -53,6 +53,7 @@ public:
         if (_hasMyPlayer && _myPlayer.moveState == MoveState::MOVING)
         {
             ApplyMovement(_myPlayer, deltaTime);
+            ClampToMap(_myPlayer);
         }
 
         for (auto& pair : _otherPlayers)
@@ -60,6 +61,7 @@ public:
             if (pair.second.moveState == MoveState::MOVING)
             {
                 ApplyMovement(pair.second, deltaTime);
+                ClampToMap(pair.second);
             }
         }
     }
@@ -82,16 +84,34 @@ public:
     }
 
 private:
+    // 맵 크기 (서버 Zone과 동일)
+    static constexpr int MAP_WIDTH = 400;
+    static constexpr int MAP_HEIGHT = 400;
+
+    // 맵 경계 클램핑 (서버 Zone::Tick과 동일 조건)
+    static void ClampToMap(ClientPlayer& player)
+    {
+        if (player.x < 0.0f)                         player.x = 0.0f;
+        if (player.x >= static_cast<float>(MAP_WIDTH))  player.x = static_cast<float>(MAP_WIDTH) - 1.0f;
+        if (player.y < 0.0f)                         player.y = 0.0f;
+        if (player.y >= static_cast<float>(MAP_HEIGHT)) player.y = static_cast<float>(MAP_HEIGHT) - 1.0f;
+    }
+
     // 방향별 좌표 이동 적용
     static void ApplyMovement(ClientPlayer& player, float deltaTime)
     {
+        static constexpr float DIAGONAL_FACTOR = 0.7071f; // 1/√2
         float dist = player.speed * deltaTime;
         switch (player.direction)
         {
-        case Direction::UP:    player.y -= dist; break;
-        case Direction::DOWN:  player.y += dist; break;
-        case Direction::LEFT:  player.x -= dist; break;
-        case Direction::RIGHT: player.x += dist; break;
+        case Direction::UP:         player.y -= dist; break;
+        case Direction::DOWN:       player.y += dist; break;
+        case Direction::LEFT:       player.x -= dist; break;
+        case Direction::RIGHT:      player.x += dist; break;
+        case Direction::UP_LEFT:    player.x -= dist * DIAGONAL_FACTOR; player.y -= dist * DIAGONAL_FACTOR; break;
+        case Direction::UP_RIGHT:   player.x += dist * DIAGONAL_FACTOR; player.y -= dist * DIAGONAL_FACTOR; break;
+        case Direction::DOWN_LEFT:  player.x -= dist * DIAGONAL_FACTOR; player.y += dist * DIAGONAL_FACTOR; break;
+        case Direction::DOWN_RIGHT: player.x += dist * DIAGONAL_FACTOR; player.y += dist * DIAGONAL_FACTOR; break;
         default: break;
         }
     }
