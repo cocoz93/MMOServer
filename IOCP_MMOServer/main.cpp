@@ -10,6 +10,7 @@
 #include "GameServer.h"
 #include "ZoneManager.h"
 #include "MonitorManager.h"
+#include "MonitorServer.h"
 
 std::atomic<bool> running{true};
 std::mutex mtx;
@@ -32,6 +33,7 @@ int main()
     std::cout << "Max Clients: " << MAX_CLIENTS << std::endl;
 
     CMonitorManager monitor;
+    CMonitorServer monitorSvr(monitor, 9090);
     CGameServer server(monitor);
 
     // 맵 설정
@@ -54,12 +56,15 @@ int main()
         return 1;
     }
 
+    monitorSvr.Start();
+
     // main 스레드는 condition_variable로 대기
     {
         std::unique_lock<std::mutex> lock(mtx);
         cv.wait(lock, [&] { return !running; });
     }
 
+    monitorSvr.Stop();
     server.Stop();
 
     std::cout << "Server shutdown complete" << std::endl;
