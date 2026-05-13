@@ -7,9 +7,12 @@ echo ============================================
 echo.
 
 REM === 1. Kill running processes ===
-echo [1/3] Killing running processes...
+echo [1/4] Killing running processes...
 taskkill /F /IM IOCP_MMOServer.exe 2>nul && echo   - Server killed || echo   - Server not running
 taskkill /F /IM IOCP_MMOClient.exe 2>nul && echo   - Client killed || echo   - Client not running
+taskkill /F /IM prometheus.exe 2>nul && echo   - Prometheus killed || echo   - Prometheus not running
+taskkill /F /IM windows_exporter.exe 2>nul && echo   - windows_exporter killed || echo   - windows_exporter not running
+taskkill /F /IM grafana.exe 2>nul && echo   - Grafana killed || echo   - Grafana not running
 echo.
 
 REM === 2. MSBuild path ===
@@ -21,9 +24,9 @@ if not exist "%MSBUILD%" (
 )
 
 REM === 3. Build ===
-echo [2/3] Building...
+echo [2/4] Building...
 echo   - Building Server...
-"%MSBUILD%" "%~dp0IOCP_MMOServer\IOCP_MMOServer.sln" /p:Configuration=Debug /p:Platform=x64 /m /nologo /v:minimal
+"%MSBUILD%" "%~dp0IOCP_MMOServer\IOCP_MMOServer.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
 if %ERRORLEVEL% NEQ 0 (
     echo [ERROR] Server build failed!
     pause
@@ -33,7 +36,7 @@ echo   - Server build OK
 echo.
 
 echo   - Building Client...
-"%MSBUILD%" "%~dp0IOCP_MMOClient\IOCP_MMOClient.sln" /p:Configuration=Debug /p:Platform=x64 /m /nologo /v:minimal
+"%MSBUILD%" "%~dp0IOCP_MMOClient\IOCP_MMOClient.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
 if %ERRORLEVEL% NEQ 0 (
     echo [ERROR] Client build failed!
     pause
@@ -42,18 +45,33 @@ if %ERRORLEVEL% NEQ 0 (
 echo   - Client build OK
 echo.
 
-REM === 4. Run ===
-echo [3/3] Starting...
-start "" "%~dp0IOCP_MMOServer\x64\Debug\IOCP_MMOServer.exe"
-echo   - Server started
+REM === 4. Run Monitoring ===
+echo [3/4] Starting monitoring...
+start "" "%~dp0Monitoring\windows_exporter.exe"
+echo   - windows_exporter started (:9182)
+
+start "" /D "%~dp0Monitoring\prometheus-3.4.1.windows-amd64" prometheus.exe --web.listen-address=":9091"
+echo   - Prometheus started (:9091)
+
+start "" /D "%~dp0Monitoring\grafana\bin" grafana-server.exe
+echo   - Grafana started (:3000)
+echo.
+
+REM === 5. Run Server / Client ===
+echo [4/4] Starting server and client...
+start "" "%~dp0IOCP_MMOServer\x64\Release\IOCP_MMOServer.exe"
+echo   - Server started (:6000, metrics :9090)
 
 timeout /t 2 /nobreak >nul
 
-start "" "%~dp0IOCP_MMOClient\x64\Debug\IOCP_MMOClient.exe"
+start "" "%~dp0IOCP_MMOClient\x64\Release\IOCP_MMOClient.exe"
 echo   - Client started
 echo.
 
 echo ============================================
-echo   Done! Server and Client are running.
+echo   Done! All services are running.
+echo   Prometheus UI: http://localhost:9091
+echo   Grafana:       http://localhost:3000
+echo   (Grafana login: admin / admin)
 echo ============================================
 pause

@@ -31,6 +31,12 @@
     <Filter Include="소스 파일\GameServer">
       <UniqueIdentifier>{ba03b050-3b04-4a3c-a788-703acc5dc608}</UniqueIdentifier>
     </Filter>
+    <Filter Include="소스 파일\Monitor">
+      <UniqueIdentifier>{d3a1f2b0-7e4c-4a9d-b8f5-1c2d3e4f5a6b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="소스 파일\ThirdParty">
+      <UniqueIdentifier>{e4b2c3d1-8f5a-4b0e-c9a6-2d3e4f5a6b7c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="SerialBuffer.cpp">
@@ -106,6 +112,15 @@
     </ClInclude>
     <ClInclude Include="..\Shared\Protocol\Protocol.h">
       <Filter>소스 파일\GameServer</Filter>
+    </ClInclude>
+    <ClInclude Include="MonitorManager.h">
+      <Filter>소스 파일\Monitor</Filter>
+    </ClInclude>
+    <ClInclude Include="MonitorServer.h">
+      <Filter>소스 파일\Monitor</Filter>
+    </ClInclude>
+    <ClInclude Include="ThirdParty\httplib.h">
+      <Filter>소스 파일\ThirdParty</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
