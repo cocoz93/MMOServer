@@ -1,8 +1,10 @@
 #include "DummyManager.h"
 #include <Windows.h>
 #include <algorithm>
+#include <timeapi.h>
 
 #pragma comment(lib, "ws2_32.lib")
+#pragma comment(lib, "winmm.lib")
 
 DummyManager::DummyManager(const Config& config)
     : _config(config)

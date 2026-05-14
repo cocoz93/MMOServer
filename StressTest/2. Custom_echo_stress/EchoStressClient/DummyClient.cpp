@@ -234,27 +234,29 @@ void DummyClient::ProcessPackets(Stats& stats, int reconnectDelayMs)
 void DummyClient::TrySend(int overSendCount, int reconnectDelayMs, Stats& stats)
 {
     if (!IsConnected()) return;
-    if (_pendingCount >= overSendCount) return;
 
-    _sentValue++;
-
-    char packet[ECHO_TOTAL_SIZE];
-    MsgHeader hdr;
-    hdr.size = ECHO_TOTAL_SIZE;
-    hdr.type = ECHO_MSG_TYPE;
-    std::memcpy(packet,                     &hdr,        sizeof(MsgHeader));
-    std::memcpy(packet + sizeof(MsgHeader), &_sentValue, sizeof(uint64_t));
-
-    if (_sendBuf.Enqueue(packet, ECHO_TOTAL_SIZE) == 0)
+    while (_pendingCount < overSendCount)
     {
-        // 송신 버퍼 가득참 - 이번 프레임 스킵
-        _sentValue--;
-        return;
-    }
+        _sentValue++;
 
-    _pendingCount++;
-    _sendTimes.push_back(NowMs());
-    stats.sendCount.fetch_add(1);
+        char packet[ECHO_TOTAL_SIZE];
+        MsgHeader hdr;
+        hdr.size = ECHO_TOTAL_SIZE;
+        hdr.type = ECHO_MSG_TYPE;
+        std::memcpy(packet,                     &hdr,        sizeof(MsgHeader));
+        std::memcpy(packet + sizeof(MsgHeader), &_sentValue, sizeof(uint64_t));
+
+        if (_sendBuf.Enqueue(packet, ECHO_TOTAL_SIZE) == 0)
+        {
+            // 송신 버퍼 가득참 - 다음 루프에서 재시도
+            _sentValue--;
+            return;
+        }
+
+        _pendingCount++;
+        _sendTimes.push_back(NowMs());
+        stats.sendCount.fetch_add(1);
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────

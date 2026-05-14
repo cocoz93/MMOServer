@@ -44,7 +44,7 @@ if %ERRORLEVEL% NEQ 0 (
 echo   - Server build OK
 
 echo   - Building EchoStressClient...
-"%MSBUILD%" "%~dp0..\StressTest\EchoStressClient\EchoStressClient.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
+"%MSBUILD%" "%~dp0..\StressTest\2. Custom_echo_stress\EchoStressClient.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
 if %ERRORLEVEL% NEQ 0 (
     echo [ERROR] EchoStressClient build failed!
     pause
