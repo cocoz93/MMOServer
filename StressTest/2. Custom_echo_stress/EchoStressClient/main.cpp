@@ -1,8 +1,6 @@
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #include <Windows.h>
-#include <iostream>
-#include <string>
 #include <cstdio>
 #include <conio.h>
 #include <io.h>
@@ -12,59 +10,6 @@
 #include "StatsDisplay.h"
 
 #pragma comment(lib, "ws2_32.lib")
-
-// ─────────────────────────────────────────────────────────────────
-// 설정 입력
-// ─────────────────────────────────────────────────────────────────
-static Config InputConfig()
-{
-    Config cfg;
-
-    wprintf(L"=== Custom Echo Stress 설정 ===\n");
-    wprintf(L"Server IP [127.0.0.1]: ");
-    {
-        std::string s;
-        std::getline(std::cin, s);
-        if (!s.empty()) cfg.serverIp = s;
-    }
-
-    wprintf(L"Port [6000]: ");
-    {
-        std::string s;
-        std::getline(std::cin, s);
-        if (!s.empty()) cfg.port = std::stoi(s);
-    }
-
-    wprintf(L"ClientCount (1/500/1000) [1000]: ");
-    {
-        std::string s;
-        std::getline(std::cin, s);
-        if (!s.empty()) cfg.clientCount = std::stoi(s);
-    }
-
-    wprintf(L"OverSendCount (1/100/200) [100]: ");
-    {
-        std::string s;
-        std::getline(std::cin, s);
-        if (!s.empty()) cfg.overSendCount = std::stoi(s);
-    }
-
-    wprintf(L"LoopDelayMs [1]: ");
-    {
-        std::string s;
-        std::getline(std::cin, s);
-        if (!s.empty()) cfg.loopDelayMs = std::stoi(s);
-    }
-
-    wprintf(L"DisconnectTest (0/1) [1]: ");
-    {
-        std::string s;
-        std::getline(std::cin, s);
-        if (!s.empty()) cfg.disconnectTest = (std::stoi(s) != 0);
-    }
-
-    return cfg;
-}
 
 // ─────────────────────────────────────────────────────────────────
 // 진입점
@@ -81,7 +26,8 @@ int main()
         return 1;
     }
 
-    Config cfg = InputConfig();
+    Config cfg;
+    cfg.Load();
 
         wprintf(L"\n[Custom Echo Stress] start. Server=%hs:%d, Clients=%d\n\n",
             cfg.serverIp.c_str(), cfg.port, cfg.clientCount);
