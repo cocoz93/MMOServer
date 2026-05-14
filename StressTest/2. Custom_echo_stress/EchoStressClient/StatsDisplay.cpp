@@ -79,7 +79,7 @@ void StatsDisplay::PrintStats(int64_t elapsedSec, int64_t sendPPS, int64_t recvP
     if (rttMin == LLONG_MAX) rttMin = -1;
 
     // 각 줄은 충분한 공백으로 끝내 이전 출력을 덮어씀
-        wprintf(L"[Echo Dummy Status]  Elapsed: %02lld:%02lld:%02lld                    \n",
+        wprintf(L"[Custom Echo Stress]  Elapsed: %02lld:%02lld:%02lld                    \n",
             hh, mm, ss);
         wprintf(L"-----------------------------------------------------\n");
         wprintf(L"Clients       : %d / %d (connected / total)         \n",

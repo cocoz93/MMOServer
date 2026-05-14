@@ -20,7 +20,7 @@ static Config InputConfig()
 {
     Config cfg;
 
-    wprintf(L"=== Echo Dummy Client 설정 ===\n");
+    wprintf(L"=== Custom Echo Stress 설정 ===\n");
     wprintf(L"Server IP [127.0.0.1]: ");
     {
         std::string s;
@@ -35,28 +35,28 @@ static Config InputConfig()
         if (!s.empty()) cfg.port = std::stoi(s);
     }
 
-    wprintf(L"ClientCount (1/50/100) [1]: ");
+    wprintf(L"ClientCount (1/500/1000) [1000]: ");
     {
         std::string s;
         std::getline(std::cin, s);
         if (!s.empty()) cfg.clientCount = std::stoi(s);
     }
 
-    wprintf(L"OverSendCount (1/100/200) [1]: ");
+    wprintf(L"OverSendCount (1/100/200) [100]: ");
     {
         std::string s;
         std::getline(std::cin, s);
         if (!s.empty()) cfg.overSendCount = std::stoi(s);
     }
 
-    wprintf(L"LoopDelayMs [100]: ");
+    wprintf(L"LoopDelayMs [1]: ");
     {
         std::string s;
         std::getline(std::cin, s);
         if (!s.empty()) cfg.loopDelayMs = std::stoi(s);
     }
 
-    wprintf(L"DisconnectTest (0/1) [0]: ");
+    wprintf(L"DisconnectTest (0/1) [1]: ");
     {
         std::string s;
         std::getline(std::cin, s);
@@ -83,7 +83,7 @@ int main()
 
     Config cfg = InputConfig();
 
-        wprintf(L"\n[Echo Dummy] start. Server=%hs:%d, Clients=%d\n\n",
+        wprintf(L"\n[Custom Echo Stress] start. Server=%hs:%d, Clients=%d\n\n",
             cfg.serverIp.c_str(), cfg.port, cfg.clientCount);
     Sleep(1000);
 
@@ -130,6 +130,6 @@ int main()
     SetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &cursorInfo);
 
     WSACleanup();
-    wprintf(L"\n[Echo Dummy] 종료 완료.\n");
+    wprintf(L"\n[Custom Echo Stress] 종료 완료.\n");
     return 0;
 }
