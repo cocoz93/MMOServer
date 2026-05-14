@@ -26,7 +26,7 @@ if not exist "%MSBUILD%" (
 REM === 3. Build ===
 echo [2/4] Building...
 echo   - Building Server...
-"%MSBUILD%" "%~dp0..\IOCP_Server\IOCP_Server.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
+"%MSBUILD%" "%~dp0..\MMOServer\IOCP_Server.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
 if %ERRORLEVEL% NEQ 0 (
     echo [ERROR] Server build failed!
     pause
