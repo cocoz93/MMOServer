@@ -5,7 +5,7 @@
 #include <deque>
 #include <string>
 #include "RingBuffer.h"
-#include "Protocol.h"
+#include "../../../Shared/Protocol/Protocol.h"
 
 struct Stats;
 

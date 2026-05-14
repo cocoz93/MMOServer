@@ -9,6 +9,11 @@ enum class MsgType : uint16_t
 	// S2C: Server to Client
 
     //--------------------------------------------------
+    // 에코 (NetWorkLib_EchoTest 모드 전용)
+    //--------------------------------------------------
+    ECHO = 0,
+
+    //--------------------------------------------------
     // 이동
     //--------------------------------------------------
     C2S_MOVE_START = 1000,  // 클라이언트 → 서버: 이동 시작
@@ -66,6 +71,10 @@ struct EchoMsgHeader
 {
     uint16_t size;        // 페이로드 크기 (헤더 미포함)
 };
+
+// NetWorkLib_EchoTest: MsgHeader(4byte) + uint64_t 에코 값
+constexpr uint16_t ECHO_BODY_SIZE  = static_cast<uint16_t>(sizeof(uint64_t));
+constexpr uint16_t ECHO_TOTAL_SIZE = static_cast<uint16_t>(sizeof(MsgHeader) + sizeof(uint64_t));
 
 //==================================================
 // 이동
