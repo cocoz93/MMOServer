@@ -26,7 +26,7 @@ if not exist "%MSBUILD%" (
 REM === 3. Build ===
 echo [2/4] Building...
 echo   - Building Server...
-"%MSBUILD%" "%~dp0IOCP_MMOServer\IOCP_MMOServer.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
+"%MSBUILD%" "%~dp0..\IOCP_MMOServer\IOCP_MMOServer.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
 if %ERRORLEVEL% NEQ 0 (
     echo [ERROR] Server build failed!
     pause
@@ -36,7 +36,7 @@ echo   - Server build OK
 echo.
 
 echo   - Building Client...
-"%MSBUILD%" "%~dp0IOCP_MMOClient\IOCP_MMOClient.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
+"%MSBUILD%" "%~dp0..\IOCP_MMOClient\IOCP_MMOClient.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
 if %ERRORLEVEL% NEQ 0 (
     echo [ERROR] Client build failed!
     pause
@@ -45,17 +45,17 @@ if %ERRORLEVEL% NEQ 0 (
 echo   - Client build OK
 echo.
 
-set "RUN_DIR=%~dp0Run"
+set "RUN_DIR=%~dp0"
 
 REM === 4. Run Monitoring ===
 echo [3/4] Starting monitoring...
-start "" "%~dp0Monitoring\windows_exporter.exe"
+start "" "%~dp0..\Monitoring\windows_exporter.exe"
 echo   - windows_exporter started (:9182)
 
-start "" /D "%~dp0Monitoring\prometheus-3.4.1.windows-amd64" prometheus.exe --web.listen-address=":9091"
+start "" /D "%~dp0..\Monitoring\prometheus-3.4.1.windows-amd64" prometheus.exe --web.listen-address=":9091"
 echo   - Prometheus started (:9091)
 
-start "" /D "%~dp0Monitoring\grafana\bin" grafana-server.exe
+start "" /D "%~dp0..\Monitoring\grafana\bin" grafana-server.exe
 echo   - Grafana started (:3000)
 
 REM Wait briefly for services to initialize, then open in browser
