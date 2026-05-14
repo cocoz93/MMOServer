@@ -24,9 +24,6 @@
     <ClCompile Include="DummyManager.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="StatsDisplay.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Config.h">
@@ -47,7 +44,7 @@
     <ClInclude Include="DummyManager.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="StatsDisplay.h">
+    <ClInclude Include="StressMonitorServer.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>
