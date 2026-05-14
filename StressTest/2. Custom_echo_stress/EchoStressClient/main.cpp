@@ -1,4 +1,4 @@
-#include <WinSock2.h>
+﻿#include <WinSock2.h>
 #include <WS2tcpip.h>
 #include <Windows.h>
 #include <cstdio>
@@ -7,7 +7,7 @@
 #include <fcntl.h>
 #include "Config.h"
 #include "DummyManager.h"
-#include "StatsDisplay.h"
+#include "StressMonitorServer.h"
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -29,21 +29,17 @@ int main()
     Config cfg;
     cfg.Load();
 
-        wprintf(L"\n[Custom Echo Stress] start. Server=%hs:%d, Clients=%d\n\n",
+        wprintf(L"\n[Custom Echo Stress] start. Server=%hs:%d, Clients=%d\n",
             cfg.serverIp.c_str(), cfg.port, cfg.clientCount);
+        wprintf(L"[Custom Echo Stress] Prometheus metrics on port %d\n\n",
+            cfg.monitorPort);
     Sleep(1000);
 
-    // 콘솔 커서 숨기기 (깜빡임 방지)
-    CONSOLE_CURSOR_INFO cursorInfo;
-    GetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &cursorInfo);
-    cursorInfo.bVisible = FALSE;
-    SetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &cursorInfo);
-
-    DummyManager  manager(cfg);
-    StatsDisplay  display(manager.GetStats(), cfg, cfg.clientCount);
+    DummyManager         manager(cfg);
+    StressMonitorServer  monitor(manager.GetStats(), cfg.monitorPort);
 
     manager.Start();
-    display.Start();
+    monitor.Start();
 
     // ── 종료 조건 대기 ──────────────────────────────────────────
     int64_t startMs = static_cast<int64_t>(GetTickCount64());
@@ -68,12 +64,8 @@ int main()
     }
 
     // ── 종료 ────────────────────────────────────────────────────
-    display.Stop();
+    monitor.Stop();
     manager.Stop();
-
-    // 커서 복원
-    cursorInfo.bVisible = TRUE;
-    SetConsoleCursorInfo(GetStdHandle(STD_OUTPUT_HANDLE), &cursorInfo);
 
     WSACleanup();
     wprintf(L"\n[Custom Echo Stress] 종료 완료.\n");

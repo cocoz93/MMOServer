@@ -194,16 +194,7 @@ void DummyClient::ProcessPackets(Stats& stats, int reconnectDelayMs)
                 _sendTimes.pop_front();
                 if (rtt < 0) rtt = 0;
 
-                stats.rttSumMs.fetch_add(rtt);
-                stats.rttSamples.fetch_add(1);
-
-                // atomic max
-                int64_t curMax = stats.rttMaxMs.load();
-                while (rtt > curMax && !stats.rttMaxMs.compare_exchange_weak(curMax, rtt)) {}
-
-                // atomic min
-                int64_t curMin = stats.rttMinMs.load();
-                while (rtt < curMin && !stats.rttMinMs.compare_exchange_weak(curMin, rtt)) {}
+                stats.RecordRtt(rtt);
             }
             _expectedRecv++;
             if (_pendingCount > 0) _pendingCount--;
