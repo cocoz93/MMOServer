@@ -45,7 +45,7 @@ if %ERRORLEVEL% NEQ 0 (
 echo   - Client build OK
 echo.
 
-set "RUN_DIR=%~dp0"
+set "BIN_DIR=%~dp0bin"
 
 REM === 4. Run Monitoring ===
 echo [3/4] Starting monitoring...
@@ -68,13 +68,13 @@ echo.
 
 REM === 5. Set GameServer mode ===
 echo [4/4] Setting GameServer mode...
-powershell -Command "(Get-Content '%RUN_DIR%\ServerConfig.ini') -replace '^Mode=.*', 'Mode=GameServer' | Set-Content '%RUN_DIR%\ServerConfig.ini'"
+powershell -Command "(Get-Content '%BIN_DIR%\ServerConfig.ini') -replace '^Mode=.*', 'Mode=GameServer' | Set-Content '%BIN_DIR%\ServerConfig.ini'"
 echo   - ServerConfig.ini updated (Mode=GameServer)
 echo.
 
 REM === 6. Run Server / Client ===
 echo Starting server and client...
-start "" /D "%RUN_DIR%" IOCP_MMOServer.exe
+start "" /D "%BIN_DIR%" IOCP_MMOServer.exe
 echo   - Server started (Run directory)
 
 echo   - Waiting for server to listen on port 6000...
@@ -86,13 +86,13 @@ if %ERRORLEVEL% NEQ 0 (
 )
 echo   - Server is ready
 
-start "" /D "%RUN_DIR%" IOCP_MMOClient.exe
+start "" /D "%BIN_DIR%" IOCP_MMOClient.exe
 echo   - Client started (Run directory)
 echo.
 
 echo ============================================
 echo   Done! All services are running.
-echo   Run directory : %RUN_DIR%
+echo   Run directory : %BIN_DIR%
 echo   Prometheus UI : http://localhost:9091
 echo   Grafana       : http://localhost:3000
 echo   (Grafana login: admin / admin)
