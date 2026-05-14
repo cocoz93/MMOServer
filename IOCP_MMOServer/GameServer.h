@@ -128,7 +128,7 @@ private:
     // 이동 검증 상수
     static constexpr float MOVE_TOLERANCE_BASE = 2.0f;  // 고정 여유값
     static constexpr uint32_t CHEAT_KICK_THRESHOLD = 5;
-    static constexpr int SYNC_INTERVAL_FRAMES = 25;  // 1초마다 동기화
+    static constexpr int SYNC_INTERVAL_FRAMES = 10;  // 400ms마다 동기화
     static constexpr int CLEANUP_INTERVAL_FRAMES = 25 * 30;  // 30초마다 빈 채널 정리
 
     int32_t _defaultMapId = 0;  // 최초 접속 시 입장할 맵
