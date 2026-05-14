@@ -59,7 +59,7 @@ if %ERRORLEVEL% NEQ 0 (
 )
 echo   - Server is ready
 
-start "" /D "%~dp0..\StressTest\GameCodiStressTest" LanServer_StressT12est_20191125.exe
+start "" /D "%~dp0..\StressTest\1. GameCodiStressTest" LanServer_StressT12est_20191125.exe
 echo   - StressTest started
 echo.
 
