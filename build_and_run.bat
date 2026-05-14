@@ -45,6 +45,8 @@ if %ERRORLEVEL% NEQ 0 (
 echo   - Client build OK
 echo.
 
+set "RUN_DIR=%~dp0Run"
+
 REM === 4. Run Monitoring ===
 echo [3/4] Starting monitoring...
 start "" "%~dp0Monitoring\windows_exporter.exe"
@@ -55,23 +57,31 @@ echo   - Prometheus started (:9091)
 
 start "" /D "%~dp0Monitoring\grafana\bin" grafana-server.exe
 echo   - Grafana started (:3000)
+
+REM Wait briefly for services to initialize, then open in browser
+timeout /t 3 /nobreak >nul
+start http://localhost:9091
+echo   - Prometheus UI opened in browser
+start http://localhost:3000
+echo   - Grafana UI opened in browser
 echo.
 
 REM === 5. Run Server / Client ===
 echo [4/4] Starting server and client...
-start "" "%~dp0IOCP_MMOServer\x64\Release\IOCP_MMOServer.exe"
-echo   - Server started (:6000, metrics :9090)
+start "" /D "%RUN_DIR%" IOCP_MMOServer.exe
+echo   - Server started (Run directory)
 
 timeout /t 2 /nobreak >nul
 
-start "" "%~dp0IOCP_MMOClient\x64\Release\IOCP_MMOClient.exe"
-echo   - Client started
+start "" /D "%RUN_DIR%" IOCP_MMOClient.exe
+echo   - Client started (Run directory)
 echo.
 
 echo ============================================
 echo   Done! All services are running.
-echo   Prometheus UI: http://localhost:9091
-echo   Grafana:       http://localhost:3000
+echo   Run directory : %RUN_DIR%
+echo   Prometheus UI : http://localhost:9091
+echo   Grafana       : http://localhost:3000
 echo   (Grafana login: admin / admin)
 echo ============================================
 pause
