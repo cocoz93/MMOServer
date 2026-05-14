@@ -154,6 +154,7 @@
     <ClInclude Include="Zone.h" />
     <ClInclude Include="ZoneManager.h" />
     <ClInclude Include="GameServer.h" />
+    <ClInclude Include="Common.h" />
     <ClInclude Include="..\Shared\Protocol\Protocol.h" />
     <ClInclude Include="RingBuffer.h" />
     <ClInclude Include="TimingWheel.h" />

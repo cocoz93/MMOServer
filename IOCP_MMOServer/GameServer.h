@@ -26,15 +26,9 @@
 #include "ZoneManager.h"
 #include "Player.h"
 #include "MonitorManager.h"
+#include "Common.h"
 
 class CSerialBuffer;
-
-// 서버 동작 모드
-enum class ServerMode
-{
-    EchoTest,       // 에코 더미 클라이언트 테스트용 (네트워크만)
-    GameServer      // MMO 게임 서버 (네트워크 + 게임 로직)
-};
 
 class CGameServer
 {

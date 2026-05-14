@@ -28,12 +28,7 @@ bool CGameServer::Init(ServerMode mode, int port, int maxClients,
 {
     _mode = mode;
 
-    // 모드에 따라 네트워크 아키텍처 타입 결정
-    ServerArchitectureType archType = (_mode == ServerMode::EchoTest)
-        ? ServerArchitectureType::GameCodiEchoTest
-        : ServerArchitectureType::Centralized;
-
-    _network = std::make_unique<CIOCPServer>(port, maxClients, archType, _monitor);
+    _network = std::make_unique<CIOCPServer>(port, maxClients, _mode, _monitor);
 
     // 게임 서버 모드일 때만 맵 등록
     if (_mode == ServerMode::GameServer && maps != nullptr)
@@ -64,7 +59,13 @@ bool CGameServer::Start()
         _gameThread = std::thread(&CGameServer::GameLoopThread, this);
     }
 
-    const char* modeName = (_mode == ServerMode::EchoTest) ? "EchoTest" : "GameServer";
+    const char* modeName = "Unknown";
+    switch (_mode)
+    {
+    case ServerMode::GameCodiEchoTest:    modeName = "GameCodiEchoTest";    break;
+    case ServerMode::NetWorkLib_EchoTest: modeName = "NetWorkLib_EchoTest"; break;
+    case ServerMode::GameServer:          modeName = "GameServer";          break;
+    }
     std::cout << "[GameServer] Started - Mode: " << modeName << std::endl;
 
     return true;

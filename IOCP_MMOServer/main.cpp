@@ -43,8 +43,8 @@ int main()
         { 2, 400, 400, 40, 100 },  // 필드B
     };
 
-    // * 모드 전환: ServerMode::EchoTest / ServerMode::GameServer
-    if (!server.Init(ServerMode::GameServer, PORT, MAX_CLIENTS, maps, 3))
+    // * 모드 전환: GameCodiEchoTest / NetWorkLib_EchoTest / GameServer
+    if (!server.Init(ServerMode::NetWorkLib_EchoTest, PORT, MAX_CLIENTS))
     {
         std::cerr << "[Error] Server Init failed" << std::endl;
         return 1;
