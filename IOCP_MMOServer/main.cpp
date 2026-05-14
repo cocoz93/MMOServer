@@ -11,6 +11,7 @@
 #include "ZoneManager.h"
 #include "MonitorManager.h"
 #include "MonitorServer.h"
+#include "ServerConfig.h"
 
 std::atomic<bool> running{true};
 std::mutex mtx;
@@ -25,26 +26,20 @@ void SignalProcessShutdown()
 
 int main()
 {
-    constexpr int PORT = 6000;
-    constexpr int MAX_CLIENTS = 1000;
+    // INI 설정 파일 로드
+    ServerConfig config;
+    config.Load();
 
     std::cout << "=== IOCP MMO Server ===" << std::endl;
-    std::cout << "Port: " << PORT << std::endl;
-    std::cout << "Max Clients: " << MAX_CLIENTS << std::endl;
+    std::cout << "Port: " << config.port << std::endl;
+    std::cout << "Max Clients: " << config.maxClients << std::endl;
 
     CMonitorManager monitor;
-    CMonitorServer monitorSvr(monitor, 9090);
+    CMonitorServer monitorSvr(monitor, config.monitorPort);
     CGameServer server(monitor);
 
-    // 맵 설정
-    MapConfig maps[] = {
-        { 0, 400, 400, 40, 100 },  // 마을
-        { 1, 400, 400, 40, 100 },  // 필드A
-        { 2, 400, 400, 40, 100 },  // 필드B
-    };
-
-    // * 모드 전환: GameCodiEchoTest / NetWorkLib_EchoTest / GameServer
-    if (!server.Init(ServerMode::NetWorkLib_EchoTest, PORT, MAX_CLIENTS))
+    if (!server.Init(config.mode, config.port, config.maxClients,
+                     config.maps.data(), static_cast<int32_t>(config.maps.size())))
     {
         std::cerr << "[Error] Server Init failed" << std::endl;
         return 1;
