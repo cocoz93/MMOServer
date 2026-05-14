@@ -242,7 +242,7 @@ void DummyClient::TrySend(int overSendCount, int reconnectDelayMs, Stats& stats)
         char packet[ECHO_TOTAL_SIZE];
         MsgHeader hdr;
         hdr.size = ECHO_TOTAL_SIZE;
-        hdr.type = ECHO_MSG_TYPE;
+        hdr.type = MsgType::ECHO;
         std::memcpy(packet,                     &hdr,        sizeof(MsgHeader));
         std::memcpy(packet + sizeof(MsgHeader), &_sentValue, sizeof(uint64_t));
 

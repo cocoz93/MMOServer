@@ -55,8 +55,8 @@ echo.
 
 REM === 4. Configure ===
 echo [3/5] Configuring...
-powershell -Command "(Get-Content '%~dp0bin\ServerConfig.ini') -replace '^Mode=.*', 'Mode=GameServer' -replace '^MonitorEnabled=.*', 'MonitorEnabled=1' | Set-Content '%~dp0bin\ServerConfig.ini'"
-echo   - ServerConfig.ini updated (Mode=GameServer, MonitorEnabled=1)
+powershell -Command "(Get-Content '%~dp0bin\ServerConfig.ini') -replace '^Mode=.*', 'Mode=NetWorkLib_EchoTest' -replace '^MonitorEnabled=.*', 'MonitorEnabled=1' | Set-Content '%~dp0bin\ServerConfig.ini'"
+echo   - ServerConfig.ini updated (Mode=NetWorkLib_EchoTest, MonitorEnabled=1)
 echo.
 
 REM === 5. Start Monitoring ===
