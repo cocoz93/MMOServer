@@ -7,10 +7,10 @@ echo ============================================
 echo.
 
 REM === 1. Kill running processes ===
-tasklist /FI "IMAGENAME eq IOCP_MMOServer.exe" | findstr /I "IOCP_MMOServer.exe" >nul
+tasklist /FI "IMAGENAME eq IOCP_Server.exe" | findstr /I "IOCP_Server.exe" >nul
 if %ERRORLEVEL% EQU 0 (
     echo [1/5] Killing running processes...
-    taskkill /F /IM IOCP_MMOServer.exe >nul 2>nul
+    taskkill /F /IM IOCP_Server.exe >nul 2>nul
     echo   - Server killed
     taskkill /F /IM EchoStressClient.exe >nul 2>nul
     echo   - EchoStressClient killed
@@ -35,7 +35,7 @@ if not exist "%MSBUILD%" (
 REM === 3. Build (Release x64) ===
 echo [2/5] Building...
 echo   - Building Server...
-"%MSBUILD%" "%~dp0..\IOCP_MMOServer\IOCP_MMOServer.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
+"%MSBUILD%" "%~dp0..\IOCP_Server\IOCP_Server.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
 if %ERRORLEVEL% NEQ 0 (
     echo [ERROR] Server build failed!
     pause
@@ -77,7 +77,7 @@ echo.
 
 REM === 6. Run ===
 echo [5/5] Starting...
-start "" /D "%~dp0bin" IOCP_MMOServer.exe
+start "" /D "%~dp0bin" IOCP_Server.exe
 echo   - Server started
 
 echo   - Waiting for server to listen on port 6000...

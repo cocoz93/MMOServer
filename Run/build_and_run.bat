@@ -8,8 +8,8 @@ echo.
 
 REM === 1. Kill running processes ===
 echo [1/4] Killing running processes...
-taskkill /F /IM IOCP_MMOServer.exe 2>nul && echo   - Server killed || echo   - Server not running
-taskkill /F /IM IOCP_MMOClient.exe 2>nul && echo   - Client killed || echo   - Client not running
+taskkill /F /IM IOCP_Server.exe 2>nul && echo   - Server killed || echo   - Server not running
+taskkill /F /IM GameClient.exe 2>nul && echo   - Client killed || echo   - Client not running
 taskkill /F /IM prometheus.exe 2>nul && echo   - Prometheus killed || echo   - Prometheus not running
 taskkill /F /IM windows_exporter.exe 2>nul && echo   - windows_exporter killed || echo   - windows_exporter not running
 taskkill /F /IM grafana.exe 2>nul && echo   - Grafana killed || echo   - Grafana not running
@@ -26,7 +26,7 @@ if not exist "%MSBUILD%" (
 REM === 3. Build ===
 echo [2/4] Building...
 echo   - Building Server...
-"%MSBUILD%" "%~dp0..\IOCP_MMOServer\IOCP_MMOServer.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
+"%MSBUILD%" "%~dp0..\IOCP_Server\IOCP_Server.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
 if %ERRORLEVEL% NEQ 0 (
     echo [ERROR] Server build failed!
     pause
@@ -36,7 +36,7 @@ echo   - Server build OK
 echo.
 
 echo   - Building Client...
-"%MSBUILD%" "%~dp0..\IOCP_MMOClient\IOCP_MMOClient.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
+"%MSBUILD%" "%~dp0..\GameClient\GameClient.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
 if %ERRORLEVEL% NEQ 0 (
     echo [ERROR] Client build failed!
     pause
@@ -74,7 +74,7 @@ echo.
 
 REM === 6. Run Server / Client ===
 echo Starting server and client...
-start "" /D "%BIN_DIR%" IOCP_MMOServer.exe
+start "" /D "%BIN_DIR%" IOCP_Server.exe
 echo   - Server started (Run directory)
 
 echo   - Waiting for server to listen on port 6000...
@@ -86,7 +86,7 @@ if %ERRORLEVEL% NEQ 0 (
 )
 echo   - Server is ready
 
-start "" /D "%BIN_DIR%" IOCP_MMOClient.exe
+start "" /D "%BIN_DIR%" GameClient.exe
 echo   - Client started (Run directory)
 echo.
 
