@@ -15,6 +15,7 @@ struct Config
     int         reconnectIntervalMs = 1000;      // 재접속 최소 대기 시간(ms). disconnectTest=true 시 사용. 실제 대기는 이 값 ~ 5배 사이 랜덤
     int         echoTimeoutMs   = 500;           // 에코 미응답 판정 기준 시간(ms). 이 시간 내 응답 없으면 EchoNotRecv 카운터 증가
     int         testDurationSec = 0;             // 테스트 지속 시간(초). 0이면 수동 종료까지 무한 실행
+    int         monitorPort     = 9092;          // Prometheus 메트릭 HTTP 포트
 
     // 실행 파일 경로 기준으로 StressConfig.ini 로드
     bool Load()
@@ -53,6 +54,7 @@ struct Config
         reconnectIntervalMs = GetPrivateProfileIntW(L"Stress", L"ReconnectIntervalMs", 1000, path);
         echoTimeoutMs       = GetPrivateProfileIntW(L"Stress", L"EchoTimeoutMs", 500, path);
         testDurationSec     = GetPrivateProfileIntW(L"Stress", L"TestDurationSec", 0, path);
+        monitorPort         = GetPrivateProfileIntW(L"Stress", L"MonitorPort", 9092, path);
 
         wprintf(L"[Config] Loaded from StressConfig.ini\n");
         PrintConfig();
@@ -71,5 +73,6 @@ private:
         wprintf(L"  ReconnectMs    : %d\n", reconnectIntervalMs);
         wprintf(L"  EchoTimeoutMs  : %d\n", echoTimeoutMs);
         wprintf(L"  TestDurationSec: %d\n", testDurationSec);
+        wprintf(L"  MonitorPort    : %d\n", monitorPort);
     }
 };
