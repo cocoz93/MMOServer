@@ -7,12 +7,12 @@ echo ============================================
 echo.
 
 REM === 1. Kill running processes ===
-tasklist /FI "IMAGENAME eq IOCP_MMOServer.exe" | findstr /I "IOCP_MMOServer.exe" >nul
+tasklist /FI "IMAGENAME eq IOCP_Server.exe" | findstr /I "IOCP_Server.exe" >nul
 if %ERRORLEVEL% EQU 0 (
     echo [1/4] Killing running processes...
-    taskkill /F /IM IOCP_MMOServer.exe >nul 2>nul
+    taskkill /F /IM IOCP_Server.exe >nul 2>nul
     echo   - Server killed
-    taskkill /F /IM IOCP_MMOClient.exe >nul 2>nul
+    taskkill /F /IM GameClient.exe >nul 2>nul
     echo   - Client killed
     echo.
 ) else (
@@ -31,7 +31,7 @@ if not exist "%MSBUILD%" (
 REM === 3. Build (Release x64) ===
 echo [2/4] Building...
 echo   - Building Server...
-"%MSBUILD%" "%~dp0..\IOCP_MMOServer\IOCP_MMOServer.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
+"%MSBUILD%" "%~dp0..\IOCP_Server\IOCP_Server.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
 if %ERRORLEVEL% NEQ 0 (
     echo [ERROR] Server build failed!
     pause
@@ -40,7 +40,7 @@ if %ERRORLEVEL% NEQ 0 (
 echo   - Server build OK
 
 echo   - Building Client...
-"%MSBUILD%" "%~dp0..\IOCP_MMOClient\IOCP_MMOClient.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
+"%MSBUILD%" "%~dp0..\GameClient\GameClient.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
 if %ERRORLEVEL% NEQ 0 (
     echo [ERROR] Client build failed!
     pause
@@ -57,7 +57,7 @@ echo.
 
 REM === 5. Run ===
 echo [4/4] Starting...
-start "" /D "%~dp0bin" IOCP_MMOServer.exe
+start "" /D "%~dp0bin" IOCP_Server.exe
 echo   - Server started
 
 echo   - Waiting for server to listen on port 6000...
@@ -69,9 +69,9 @@ if %ERRORLEVEL% NEQ 0 (
 )
 echo   - Server is ready
 
-start "" /D "%~dp0bin" IOCP_MMOClient.exe
+start "" /D "%~dp0bin" GameClient.exe
 echo   - Client 1 started
-start "" /D "%~dp0bin" IOCP_MMOClient.exe
+start "" /D "%~dp0bin" GameClient.exe
 echo   - Client 2 started
 echo.
 

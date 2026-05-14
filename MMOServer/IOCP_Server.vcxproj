@@ -21,8 +21,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{1cc54016-9e81-4321-88fc-9983c143862b}</ProjectGuid>
-    <RootNamespace>IOCPMMOClient</RootNamespace>
+    <ProjectGuid>{e225f2ad-3c54-4cb6-93ee-a4300c9b5d53}</ProjectGuid>
+    <RootNamespace>IOCPServer</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -81,6 +81,7 @@
       <AdditionalIncludeDirectories>..\Shared\Protocol;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -96,6 +97,7 @@
       <AdditionalIncludeDirectories>..\Shared\Protocol;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -109,6 +111,7 @@
       <AdditionalIncludeDirectories>..\Shared\Protocol;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -124,6 +127,7 @@
       <AdditionalIncludeDirectories>..\Shared\Protocol;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -131,23 +135,37 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="ClientNetwork.cpp" />
-    <ClCompile Include="ConsoleRenderer.cpp" />
-    <ClCompile Include="GameInstance.cpp" />
-    <ClCompile Include="mainClient.cpp" />
+    <ClCompile Include="IOCPServer.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="SerialBuffer.cpp" />
+    <ClCompile Include="Player.cpp" />
+    <ClCompile Include="SectorManager.cpp" />
+    <ClCompile Include="Zone.cpp" />
+    <ClCompile Include="ZoneManager.cpp" />
+    <ClCompile Include="GameServer.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ClientConfig.h" />
-    <ClInclude Include="ClientNetwork.h" />
-    <ClInclude Include="ClientPlayer.h" />
-    <ClInclude Include="ConsoleRenderer.h" />
-    <ClInclude Include="GameInstance.h" />
-    <ClInclude Include="NetworkEventQueue.h" />
-    <ClInclude Include="PlayerManager.h" />
+    <ClInclude Include="..\Shared\Common\ErrorLog.h" />
+    <ClInclude Include="Crash\CrashDump.h" />
+    <ClInclude Include="IOCPServer.h" />
+    <ClInclude Include="LockFree\ExternalTlsFreeList.h" />
+    <ClInclude Include="LockFree\InternalFreeList.h" />
+    <ClInclude Include="LockFree\LockFreeQueue.h" />
+    <ClInclude Include="LockFree\LockFreeStack.h" />
+    <ClInclude Include="SerialBuffer.h" />
+    <ClInclude Include="Player.h" />
+    <ClInclude Include="SectorManager.h" />
+    <ClInclude Include="Zone.h" />
+    <ClInclude Include="ZoneManager.h" />
+    <ClInclude Include="GameServer.h" />
+    <ClInclude Include="Common.h" />
     <ClInclude Include="..\Shared\Protocol\Protocol.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="CONTRIBUTING.md" />
+    <ClInclude Include="RingBuffer.h" />
+    <ClInclude Include="TimingWheel.h" />
+    <ClInclude Include="MonitorManager.h" />
+    <ClInclude Include="MonitorServer.h" />
+    <ClInclude Include="ServerConfig.h" />
+    <ClInclude Include="ThirdParty\httplib.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -1,16 +1,16 @@
-# 테스트 요청: IOCP_MMOClient
+# 테스트 요청: GameClient
 
 ## 프로젝트 개요
 - IOCP 기반 MMO 게임의 Windows 콘솔 클라이언트
 - C++ / WinSock2 / MSVC (.sln/.vcxproj)
-- 서버: IOCP_MMOServer (별도 프로젝트, 같은 리포지토리)
+- 서버: IOCP_Server (별도 프로젝트, 같은 리포지토리)
 - 프로토콜: TCP 스트림, 커스텀 바이너리 패킷 (Protocol.h 공유)
 
 ## 파일 구조
 
 ### 클라이언트 (검증 대상)
 ```
-IOCP_MMOClient/
+GameClient/
 ├── mainClient.cpp          — 진입점
 ├── GameInstance.h/cpp       — 게임 루프, 입력, 이벤트 처리, 채팅 커맨드
 ├── ClientNetwork.h/cpp      — WinSock 연결, TCP 스트림 조립, 패킷 송수신
@@ -22,7 +22,7 @@ IOCP_MMOClient/
 
 ### 서버 (비교 기준, 수정 대상 아님)
 ```
-IOCP_MMOServer/
+IOCP_Server/
 ├── Player.h                 — Direction/MoveState enum, MOVE_SPEED 정의
 ├── Zone.cpp                 — Tick() 이동 공식 (방향별 좌표 증감)
 ├── GameServer.cpp           — RecvMoveStart/Stop/Chat/ZoneChange 처리
@@ -84,9 +84,9 @@ Shared/Protocol/Protocol.h   — MsgHeader, C2S/S2C 패킷 구조체 전체
 
 ### 읽어야 할 파일
 - `Shared/Protocol/Protocol.h`
-- `IOCP_MMOClient/ClientNetwork.h`
-- `IOCP_MMOClient/ClientNetwork.cpp`
-- `IOCP_MMOClient/IOCP_MMOClient.vcxproj`
+- `GameClient/ClientNetwork.h`
+- `GameClient/ClientNetwork.cpp`
+- `GameClient/GameClient.vcxproj`
 
 ### 체크리스트
 
@@ -117,12 +117,12 @@ Shared/Protocol/Protocol.h   — MsgHeader, C2S/S2C 패킷 구조체 전체
 
 ### 읽어야 할 파일
 - `Shared/Protocol/Protocol.h`
-- `IOCP_MMOServer/Player.h` (비교 기준)
-- `IOCP_MMOServer/Zone.cpp` (비교 기준 — Tick 함수의 이동 공식)
-- `IOCP_MMOClient/ClientPlayer.h`
-- `IOCP_MMOClient/PlayerManager.h`
-- `IOCP_MMOClient/NetworkEventQueue.h`
-- `IOCP_MMOClient/GameInstance.cpp` (OnXxx 콜백 + ProcessNetworkEvents + ProcessInput)
+- `IOCP_Server/Player.h` (비교 기준)
+- `IOCP_Server/Zone.cpp` (비교 기준 — Tick 함수의 이동 공식)
+- `GameClient/ClientPlayer.h`
+- `GameClient/PlayerManager.h`
+- `GameClient/NetworkEventQueue.h`
+- `GameClient/GameInstance.cpp` (OnXxx 콜백 + ProcessNetworkEvents + ProcessInput)
 
 ### 체크리스트
 
@@ -155,12 +155,12 @@ Shared/Protocol/Protocol.h   — MsgHeader, C2S/S2C 패킷 구조체 전체
 ## 3회차: 존 이동 + 채팅 + 렌더링
 
 ### 읽어야 할 파일
-- `IOCP_MMOClient/GameInstance.h`
-- `IOCP_MMOClient/GameInstance.cpp` (ProcessChatInput + HandleChatCommand)
-- `IOCP_MMOClient/ConsoleRenderer.h`
-- `IOCP_MMOClient/ConsoleRenderer.cpp`
-- `IOCP_MMOServer/GameServer.cpp` (비교 기준 — RecvZoneChange)
-- `IOCP_MMOServer/ZoneManager.h` (비교 기준 — GetRandomMapId)
+- `GameClient/GameInstance.h`
+- `GameClient/GameInstance.cpp` (ProcessChatInput + HandleChatCommand)
+- `GameClient/ConsoleRenderer.h`
+- `GameClient/ConsoleRenderer.cpp`
+- `IOCP_Server/GameServer.cpp` (비교 기준 — RecvZoneChange)
+- `IOCP_Server/ZoneManager.h` (비교 기준 — GetRandomMapId)
 
 ### 체크리스트
 
