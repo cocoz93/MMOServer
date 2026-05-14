@@ -47,6 +47,9 @@ void DummyManager::NetworkLoop()
     const int   reconnectDelay  = _config.reconnectIntervalMs;
     const bool  disconnectTest  = _config.disconnectTest;
 
+    // Sleep(1)이 실제 1ms에 가깝게 동작하도록 타이머 해상도 설정
+    timeBeginPeriod(1);
+
     while (_running)
     {
         // ── 1. DISCONNECTED 클라이언트 접속 시도 ──────────────────
@@ -141,4 +144,6 @@ void DummyManager::NetworkLoop()
         // ── 4. 루프 딜레이 ────────────────────────────────────────
         Sleep(static_cast<DWORD>(loopDelayMs));
     }
+
+    timeEndPeriod(1);
 }
