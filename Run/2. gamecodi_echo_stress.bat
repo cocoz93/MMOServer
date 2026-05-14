@@ -2,7 +2,7 @@
 setlocal
 
 echo ============================================
-echo   Quick Test - Server + Client (No Monitor)
+echo   Echo Stress Test - GameCodiEchoTest Mode
 echo ============================================
 echo.
 
@@ -12,8 +12,8 @@ if %ERRORLEVEL% EQU 0 (
     echo [1/4] Killing running processes...
     taskkill /F /IM IOCP_MMOServer.exe >nul 2>nul
     echo   - Server killed
-    taskkill /F /IM IOCP_MMOClient.exe >nul 2>nul
-    echo   - Client killed
+    taskkill /F /IM LanServer_StressT12est_20191125.exe >nul 2>nul
+    echo   - StressTest killed
     echo.
 ) else (
     echo [1/4] No running processes found.
@@ -29,8 +29,7 @@ if not exist "%MSBUILD%" (
 )
 
 REM === 3. Build (Release x64) ===
-echo [2/4] Building...
-echo   - Building Server...
+echo [2/4] Building Server...
 "%MSBUILD%" "%~dp0..\IOCP_MMOServer\IOCP_MMOServer.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
 if %ERRORLEVEL% NEQ 0 (
     echo [ERROR] Server build failed!
@@ -38,26 +37,17 @@ if %ERRORLEVEL% NEQ 0 (
     exit /b 1
 )
 echo   - Server build OK
-
-echo   - Building Client...
-"%MSBUILD%" "%~dp0..\IOCP_MMOClient\IOCP_MMOClient.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
-if %ERRORLEVEL% NEQ 0 (
-    echo [ERROR] Client build failed!
-    pause
-    exit /b 1
-)
-echo   - Client build OK
 echo.
 
 REM === 4. Configure ===
 echo [3/4] Configuring...
-powershell -Command "(Get-Content '%~dp0ServerConfig.ini') -replace '^Mode=.*', 'Mode=GameServer' -replace '^MonitorEnabled=.*', 'MonitorEnabled=0' | Set-Content '%~dp0ServerConfig.ini'"
-echo   - ServerConfig.ini updated (Mode=GameServer, MonitorEnabled=0)
+powershell -Command "(Get-Content '%~dp0bin\ServerConfig.ini') -replace '^Mode=.*', 'Mode=GameCodiEchoTest' -replace '^MonitorEnabled=.*', 'MonitorEnabled=0' | Set-Content '%~dp0bin\ServerConfig.ini'"
+echo   - ServerConfig.ini updated (Mode=GameCodiEchoTest, MonitorEnabled=0)
 echo.
 
 REM === 5. Run ===
 echo [4/4] Starting...
-start "" /D "%~dp0" IOCP_MMOServer.exe
+start "" /D "%~dp0bin" IOCP_MMOServer.exe
 echo   - Server started
 
 echo   - Waiting for server to listen on port 6000...
@@ -69,11 +59,11 @@ if %ERRORLEVEL% NEQ 0 (
 )
 echo   - Server is ready
 
-start "" /D "%~dp0" IOCP_MMOClient.exe
-echo   - Client started
+start "" /D "%~dp0..\StressTest\GameCodiStressTest" LanServer_StressT12est_20191125.exe
+echo   - StressTest started
 echo.
 
 echo ============================================
-echo   Done! Server + Client running.
+echo   Done! Echo stress test running.
 echo ============================================
 pause
