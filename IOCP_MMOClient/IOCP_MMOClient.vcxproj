@@ -137,6 +137,7 @@
     <ClCompile Include="mainClient.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ClientConfig.h" />
     <ClInclude Include="ClientNetwork.h" />
     <ClInclude Include="ClientPlayer.h" />
     <ClInclude Include="ConsoleRenderer.h" />

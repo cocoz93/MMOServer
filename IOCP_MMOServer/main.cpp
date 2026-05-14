@@ -35,7 +35,10 @@ int main()
     std::cout << "Max Clients: " << config.maxClients << std::endl;
 
     CMonitorManager monitor;
-    CMonitorServer monitorSvr(monitor, config.monitorPort);
+    std::unique_ptr<CMonitorServer> monitorSvr;
+    if (config.monitorEnabled)
+        monitorSvr = std::make_unique<CMonitorServer>(monitor, config.monitorPort);
+
     CGameServer server(monitor);
 
     if (!server.Init(config.mode, config.port, config.maxClients,
@@ -51,7 +54,7 @@ int main()
         return 1;
     }
 
-    monitorSvr.Start();
+    if (monitorSvr) monitorSvr->Start();
 
     // main 스레드는 condition_variable로 대기
     {
@@ -59,7 +62,7 @@ int main()
         cv.wait(lock, [&] { return !running; });
     }
 
-    monitorSvr.Stop();
+    if (monitorSvr) monitorSvr->Stop();
     server.Stop();
 
     std::cout << "Server shutdown complete" << std::endl;
