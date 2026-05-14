@@ -166,8 +166,8 @@ void DummyClient::ProcessPackets(Stats& stats, int reconnectDelayMs)
         MsgHeader hdr;
         if (_recvBuf.Peek(&hdr, sizeof(MsgHeader)) == 0) break;
 
-        // 총 크기 = sizeof(MsgHeader) + hdr.size (body)
-        size_t totalSize = sizeof(MsgHeader) + hdr.size;
+        // hdr.size = 전체 크기 (헤더 포함)
+        size_t totalSize = hdr.size;
         if (totalSize != ECHO_TOTAL_SIZE)
         {
             // 예상치 못한 패킷 크기 - 즉시 연결 종료 (ResetEchoState에서 링버퍼 Clear)
@@ -239,8 +239,10 @@ void DummyClient::TrySend(int overSendCount, int reconnectDelayMs, Stats& stats)
     _sentValue++;
 
     char packet[ECHO_TOTAL_SIZE];
-    uint16_t bodySize = ECHO_BODY_SIZE;
-    std::memcpy(packet,                     &bodySize,   sizeof(uint16_t));
+    MsgHeader hdr;
+    hdr.size = ECHO_TOTAL_SIZE;
+    hdr.type = ECHO_MSG_TYPE;
+    std::memcpy(packet,                     &hdr,        sizeof(MsgHeader));
     std::memcpy(packet + sizeof(MsgHeader), &_sentValue, sizeof(uint64_t));
 
     if (_sendBuf.Enqueue(packet, ECHO_TOTAL_SIZE) == 0)
@@ -321,6 +323,5 @@ void DummyClient::CheckForcedDisconnect(int reconnectDelayMs, Stats& stats)
     if (NowMs() < _nextDisconMs) return;
 
     // 강제 해제 (서버가 끊은 게 아니므로 DisconnectFromServer 증가 X)
-    _disconnectScheduled = false;
     Disconnect(reconnectDelayMs, stats);
 }

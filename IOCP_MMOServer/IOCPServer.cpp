@@ -63,11 +63,11 @@ void CSession::Close()
 }
 
 // CIOCPServer Implementation
-CIOCPServer::CIOCPServer(int port, int maxClients, ServerArchitectureType type,
+CIOCPServer::CIOCPServer(int port, int maxClients, ServerMode mode,
                          CMonitorManager& monitor)
     : _port(port)
     , _maxClients(maxClients)
-    , _architectureType(type)
+    , _serverMode(mode)
     , _monitor(monitor)
     , _running(FALSE)
     , _sessionIdCounter(1)  // 0은 사용하지 않음
@@ -184,14 +184,11 @@ bool CIOCPServer::Start()
 
     std::cout << "[Network] Server started with " << threadCount << " worker threads (Mode: ";
 
-    switch (_architectureType)
+    switch (_serverMode)
     {
-    case ServerArchitectureType::GameCodiEchoTest: std::cout << "GameCodiEchoTest"; break;
-    case ServerArchitectureType::Centralized: std::cout << "Centralized"; break;
-    case ServerArchitectureType::Partitioned: std::cout << "Partitioned"; break;
-
-    default:
-        break;
+    case ServerMode::GameCodiEchoTest:    std::cout << "GameCodiEchoTest";    break;
+    case ServerMode::NetWorkLib_EchoTest: std::cout << "NetWorkLib_EchoTest"; break;
+    case ServerMode::GameServer:          std::cout << "GameServer";          break;
     }
     std::cout << ")" << std::endl;
     return true;
@@ -404,16 +401,14 @@ void CIOCPServer::ProcessAccept(SOCKET clientSocket)
     }
 
     // 컨텐츠쪽 전달
-    switch (_architectureType)
+    switch (_serverMode)
     {
-    case ServerArchitectureType::GameCodiEchoTest:
-        // 따로 전달 없음
+    case ServerMode::GameCodiEchoTest:
+    case ServerMode::NetWorkLib_EchoTest:
+        // 에코 모드: 컨텐츠 레이어 없음
         break;
-    case ServerArchitectureType::Centralized:
+    case ServerMode::GameServer:
         PushNetworkEvent(NetworkEvent(NetworkEvent::Type::CONNECTED, sessionId));
-        break;
-
-    default:
         break;
     }
 
@@ -624,7 +619,7 @@ void CIOCPServer::PostRecv(CSession* session, bool skipAcquire)
 void CIOCPServer::ParsePackets(CSession* session)
 {
     // 특정 더미타입에 맞게 헤더사이즈 조정
-    const size_t headerSize = (_architectureType == ServerArchitectureType::GameCodiEchoTest)
+    const size_t headerSize = (_serverMode == ServerMode::GameCodiEchoTest)
         ? sizeof(EchoMsgHeader)  // 2byte (size만, 페이로드 크기)
         : sizeof(MsgHeader);     // 4byte (size + type, 전체 크기)
 
@@ -649,7 +644,7 @@ void CIOCPServer::ParsePackets(CSession* session)
         // 3. 전체 패킷 크기 계산
         // GameCodiEchoTest: size = 페이로드 크기 → 헤더 크기를 더해야 전체 크기
         // 그 외: size = 전체 크기 (헤더 포함) → 그대로 사용
-        size_t totalPacketSize = (_architectureType == ServerArchitectureType::GameCodiEchoTest)
+        size_t totalPacketSize = (_serverMode == ServerMode::GameCodiEchoTest)
             ? static_cast<size_t>(packetSize) + sizeof(EchoMsgHeader)
             : static_cast<size_t>(packetSize);
 
@@ -689,18 +684,15 @@ void CIOCPServer::ParsePackets(CSession* session)
         pMsg->AddRef();
 
         // 7. 컨텐츠쪽 전달 또는 처리
-        switch (_architectureType)
+        switch (_serverMode)
         {
-        case ServerArchitectureType::GameCodiEchoTest:
+        case ServerMode::GameCodiEchoTest:
+        case ServerMode::NetWorkLib_EchoTest:
             EchoTestSend(session, pMsg);
             break;
-        case ServerArchitectureType::Centralized:
+        case ServerMode::GameServer:
             PushNetworkEvent(NetworkEvent(NetworkEvent::Type::RECEIVED,
                 session->_sessionId, pMsg));
-            break;
-
-        default:
-            pMsg->SubRef();
             break;
         }
 
@@ -909,9 +901,9 @@ bool CIOCPServer::PopNetworkEvent(NetworkEvent& event)
     return _eventQueue.TryPop(event);
 }
 
-ServerArchitectureType CIOCPServer::GetArchitectureType() const
+ServerMode CIOCPServer::GetServerMode() const
 {
-    return _architectureType;
+    return _serverMode;
 }
 
 // 순수 종료 유도 — releaseFlag 설정 + CancelIoEx로 pending IO 취소.
@@ -1005,12 +997,11 @@ void CIOCPServer::ReleaseSession(CSession* session)
     // 서버 종료 중(_running==false)에는 알림 생략.
     if (sessionId != 0 && _running == TRUE)
     {
-        switch (_architectureType)
+        switch (_serverMode)
         {
-        case ServerArchitectureType::Centralized:
+        case ServerMode::GameServer:
             PushNetworkEvent(NetworkEvent(NetworkEvent::Type::DISCONNECTED, sessionId));
             break;
-
         default:
             break;
         }

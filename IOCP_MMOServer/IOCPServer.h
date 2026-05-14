@@ -18,6 +18,7 @@
 #include "LockFree/LockFreeStack.h"
 #include "TimingWheel.h"
 #include "MonitorManager.h"
+#include "Common.h"
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -33,13 +34,6 @@ enum class IOOperation
 };
 
 
-// 서버 아키텍처 타입
-enum class ServerArchitectureType
-{
-    GameCodiEchoTest, // 에코 테스트용 (최소 기능) - 헤더: EchoMsgHeader(2byte), size=페이로드크기
-    Centralized,    // 중앙 집중형 - 헤더: MsgHeader(4byte), size=전체크기(헤더포함)
-    Partitioned,    // 분산형 - 헤더: MsgHeader(4byte), size=전체크기(헤더포함)
-};
 
 class CSession
 {
@@ -194,13 +188,13 @@ private:
     mutable std::mutex _mutex;
 };
 
-//TODO: 아키텍쳐별 설계..
+//TODO: 모드별 설계..
 
 // IOCP 기반 네트워크 서버
 class CIOCPServer
 {
 public:
-    explicit CIOCPServer(int port, int maxClients, ServerArchitectureType type,
+    explicit CIOCPServer(int port, int maxClients, ServerMode mode,
                         CMonitorManager& monitor);
     virtual ~CIOCPServer();
 
@@ -216,8 +210,8 @@ public:
     // 게임 로직 레이어로 전달할 이벤트 가져오기 (QUEUE_BASED 모드용)
     bool PopNetworkEvent(NetworkEvent& event);
 
-    // 처리 방식 타입 가져오기
-    ServerArchitectureType GetArchitectureType() const;
+    // 서버 모드 가져오기
+    ServerMode GetServerMode() const;
 
     // 내부에서 사용할 함수
 private:
@@ -255,7 +249,7 @@ private:
 private:
     int _port;
     int _maxClients;
-    ServerArchitectureType _architectureType;
+    ServerMode _serverMode;
     CMonitorManager& _monitor;
     volatile LONG _running;
     volatile LONGLONG _sessionIdCounter;  // 고유 ID용 (하위 48비트)
