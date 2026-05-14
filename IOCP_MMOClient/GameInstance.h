@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include "ClientConfig.h"
 #include "ClientNetwork.h"
 #include "PlayerManager.h"
 #include "ConsoleRenderer.h"
@@ -51,6 +52,7 @@ private:
     void HandleChatCommand(const std::wstring& command);
 
 private:
+    ClientConfig _config;
     CClientNetwork _network;
     CPlayerManager _playerManager;
     CConsoleRenderer _renderer;
@@ -73,4 +75,8 @@ private:
     // 하트비트 (서버 타임아웃 30초 대비 20초 간격)
     static constexpr int HEARTBEAT_INTERVAL_MS = 20000;
     int _heartbeatAccumMs;
+
+    // 재접속 설정
+    static constexpr int RECONNECT_INTERVAL_SEC = 3;
+    static constexpr int RECONNECT_MAX_RETRY = 10;
 };

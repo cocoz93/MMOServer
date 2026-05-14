@@ -39,6 +39,7 @@ struct ServerConfig
     int         port         = 6000;
     int         maxClients   = 1000;
     int         monitorPort  = 9090;
+    bool        monitorEnabled = false;
     std::vector<MapConfig> maps;
 
     // 실행 파일 경로 기준으로 ServerConfig.ini 로드
@@ -71,6 +72,7 @@ struct ServerConfig
         port        = GetPrivateProfileIntW(L"Server", L"Port", 6000, path);
         maxClients  = GetPrivateProfileIntW(L"Server", L"MaxClients", 1000, path);
         monitorPort = GetPrivateProfileIntW(L"Server", L"MonitorPort", 9090, path);
+        monitorEnabled = (GetPrivateProfileIntW(L"Server", L"MonitorEnabled", 0, path) != 0);
 
         int mapCount = GetPrivateProfileIntW(L"Server", L"MapCount", 3, path);
 
@@ -145,6 +147,7 @@ private:
         std::cout << "  Port        : " << port << std::endl;
         std::cout << "  MaxClients  : " << maxClients << std::endl;
         std::cout << "  MonitorPort : " << monitorPort << std::endl;
+        std::cout << "  MonitorOn   : " << (monitorEnabled ? "true" : "false") << std::endl;
         std::cout << "  Maps        : " << maps.size() << std::endl;
     }
 };

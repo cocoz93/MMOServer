@@ -20,6 +20,8 @@ CGameInstance::~CGameInstance()
 
 bool CGameInstance::Initialize()
 {
+    _config.Load();
+
     _network.SetGameInstance(this);
 
     _renderer.Init();
@@ -30,36 +32,26 @@ bool CGameInstance::Initialize()
 
 void CGameInstance::Run()
 {
-    // IP/포트 입력
-    std::string serverIp;
-    int port;
-
-    std::cout << "Enter server IP (default: 127.0.0.1): ";
-    std::getline(std::cin, serverIp);
-    if (serverIp.empty())
+    // 서버 접속 재시도
+    for (int attempt = 1; attempt <= RECONNECT_MAX_RETRY; ++attempt)
     {
-        serverIp = "127.0.0.1";
+        std::cout << "[Connect] Attempt " << attempt << "/" << RECONNECT_MAX_RETRY
+                  << " (" << _config.serverIp << ":" << _config.serverPort << ")" << std::endl;
+
+        if (ConnectToServer(_config.serverIp, _config.serverPort))
+            break;
+
+        if (attempt == RECONNECT_MAX_RETRY)
+        {
+            LOG_ERROR_STREAM("Failed to connect after " << RECONNECT_MAX_RETRY << " attempts.");
+            return;
+        }
+
+        std::cout << "[Connect] Retrying in " << RECONNECT_INTERVAL_SEC << "s..." << std::endl;
+        Sleep(RECONNECT_INTERVAL_SEC * 1000);
     }
 
-    std::cout << "Enter server port (default: 6000): ";
-    std::string portStr;
-    std::getline(std::cin, portStr);
-    if (portStr.empty())
-    {
-        port = 6000;
-    }
-    else
-    {
-        port = std::stoi(portStr);
-    }
-
-    if (!ConnectToServer(serverIp, port))
-    {
-        LOG_ERROR_STREAM("Failed to connect to server.");
-        return;
-    }
-
-    // 포트 입력 시 눌린 Enter 상태 반영 (첫 프레임 채팅 모드 진입 방지)
+    // 현재 Enter 키 상태 반영 (첫 프레임 채팅 모드 진입 방지)
     _enterPressed = (GetAsyncKeyState(VK_RETURN) & 0x8000) != 0;
 
     // 게임 루프 진입

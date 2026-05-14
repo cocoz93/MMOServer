@@ -66,12 +66,25 @@ start http://localhost:3000
 echo   - Grafana UI opened in browser
 echo.
 
-REM === 5. Run Server / Client ===
-echo [4/4] Starting server and client...
+REM === 5. Set GameServer mode ===
+echo [4/4] Setting GameServer mode...
+powershell -Command "(Get-Content '%RUN_DIR%\ServerConfig.ini') -replace '^Mode=.*', 'Mode=GameServer' | Set-Content '%RUN_DIR%\ServerConfig.ini'"
+echo   - ServerConfig.ini updated (Mode=GameServer)
+echo.
+
+REM === 6. Run Server / Client ===
+echo Starting server and client...
 start "" /D "%RUN_DIR%" IOCP_MMOServer.exe
 echo   - Server started (Run directory)
 
-timeout /t 2 /nobreak >nul
+echo   - Waiting for server to listen on port 6000...
+:WAIT_SERVER
+netstat -an | findstr "LISTENING" | findstr ":6000" >nul
+if %ERRORLEVEL% NEQ 0 (
+    timeout /t 1 /nobreak >nul
+    goto WAIT_SERVER
+)
+echo   - Server is ready
 
 start "" /D "%RUN_DIR%" IOCP_MMOClient.exe
 echo   - Client started (Run directory)

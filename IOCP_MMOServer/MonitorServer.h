@@ -20,6 +20,7 @@
 #include <sstream>
 #include <iomanip>
 #include <memory>
+#include <atomic>
 #include <iostream>
 
 #include "ThirdParty/httplib.h"
@@ -51,6 +52,7 @@ public:
 
     void Stop()
     {
+        _stopFlag = true;
         if (_svr) _svr->stop();
         if (_httpThread.joinable()) _httpThread.join();
         _svr.reset();
@@ -59,8 +61,25 @@ public:
 private:
     void HttpThreadFunc()
     {
-        std::cout << "[MonitorServer] Listening on port " << _port << std::endl;
-        _svr->listen("0.0.0.0", _port);
+        static const int RETRY_INTERVAL_SEC = 5;
+
+        while (!_stopFlag)
+        {
+            std::cout << "[MonitorServer] Listening on port " << _port << std::endl;
+            bool ok = _svr->listen("0.0.0.0", _port);
+
+            if (_stopFlag) break;
+
+            if (!ok)
+            {
+                std::cerr << "[MonitorServer] listen failed on port " << _port
+                          << ". Retrying in " << RETRY_INTERVAL_SEC << "s..." << std::endl;
+
+                for (int i = 0; i < RETRY_INTERVAL_SEC * 10 && !_stopFlag; ++i)
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+        }
+
         std::cout << "[MonitorServer] Stopped" << std::endl;
     }
 
@@ -183,6 +202,7 @@ private:
 private:
     CMonitorManager& _monitor;
     int _port;
+    std::atomic<bool> _stopFlag{false};
     std::unique_ptr<httplib::Server> _svr;
     std::thread _httpThread;
 };
