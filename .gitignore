@@ -1,0 +1,4 @@
+# 상위 .gitignore의 [Bb]in/ 규칙이 Run/bin/까지 무시하므로 예외 처리
+!Run/bin/
+Run/bin/*
+!Run/bin/*.ini
