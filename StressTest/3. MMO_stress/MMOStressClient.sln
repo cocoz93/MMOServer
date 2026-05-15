@@ -1,0 +1,31 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.13.35825.156 d17.13
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MMOStressClient", "MMOStressClient\MMOStressClient.vcxproj", "{A3B2C1D4-5E6F-7A8B-9C0D-1E2F3A4B5C6D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A3B2C1D4-5E6F-7A8B-9C0D-1E2F3A4B5C6D}.Debug|x64.ActiveCfg = Debug|x64
+		{A3B2C1D4-5E6F-7A8B-9C0D-1E2F3A4B5C6D}.Debug|x64.Build.0 = Debug|x64
+		{A3B2C1D4-5E6F-7A8B-9C0D-1E2F3A4B5C6D}.Debug|x86.ActiveCfg = Debug|Win32
+		{A3B2C1D4-5E6F-7A8B-9C0D-1E2F3A4B5C6D}.Debug|x86.Build.0 = Debug|Win32
+		{A3B2C1D4-5E6F-7A8B-9C0D-1E2F3A4B5C6D}.Release|x64.ActiveCfg = Release|x64
+		{A3B2C1D4-5E6F-7A8B-9C0D-1E2F3A4B5C6D}.Release|x64.Build.0 = Release|x64
+		{A3B2C1D4-5E6F-7A8B-9C0D-1E2F3A4B5C6D}.Release|x86.ActiveCfg = Release|Win32
+		{A3B2C1D4-5E6F-7A8B-9C0D-1E2F3A4B5C6D}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {D1E2F3A4-B5C6-D7E8-F9A0-B1C2D3E4F5A6}
+	EndGlobalSection
+EndGlobal
