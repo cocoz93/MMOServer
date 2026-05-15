@@ -2,7 +2,7 @@
 setlocal
 
 echo ============================================
-echo   Echo Test + Monitor - GameServer Mode
+echo   MMO Stress Test - GameServer Mode
 echo ============================================
 echo.
 
@@ -12,8 +12,8 @@ if %ERRORLEVEL% EQU 0 (
     echo [1/5] Killing running processes...
     taskkill /F /IM IOCP_Server.exe >nul 2>nul
     echo   - Server killed
-    taskkill /F /IM EchoStressClient.exe >nul 2>nul
-    echo   - EchoStressClient killed
+    taskkill /F /IM MMOStressClient.exe >nul 2>nul
+    echo   - MMOStressClient killed
     taskkill /F /IM prometheus.exe >nul 2>nul
     taskkill /F /IM windows_exporter.exe >nul 2>nul
     taskkill /F /IM grafana.exe >nul 2>nul
@@ -43,20 +43,20 @@ if %ERRORLEVEL% NEQ 0 (
 )
 echo   - Server build OK
 
-echo   - Building EchoStressClient...
-"%MSBUILD%" "%~dp0..\StressTest\2. Custom_echo_stress\EchoStressClient.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
+echo   - Building MMOStressClient...
+"%MSBUILD%" "%~dp0..\StressTest\3. MMO_stress\MMOStressClient.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
 if %ERRORLEVEL% NEQ 0 (
-    echo [ERROR] EchoStressClient build failed!
+    echo [ERROR] MMOStressClient build failed!
     pause
     exit /b 1
 )
-echo   - EchoStressClient build OK
+echo   - MMOStressClient build OK
 echo.
 
 REM === 4. Configure ===
 echo [3/5] Configuring...
-powershell -Command "(Get-Content '%~dp0bin\ServerConfig.ini') -replace '^Mode=.*', 'Mode=NetWorkLib_EchoTest' -replace '^MonitorEnabled=.*', 'MonitorEnabled=1' | Set-Content '%~dp0bin\ServerConfig.ini'"
-echo   - ServerConfig.ini updated (Mode=NetWorkLib_EchoTest, MonitorEnabled=1)
+powershell -Command "(Get-Content '%~dp0bin\ServerConfig.ini') -replace '^Mode=.*', 'Mode=GameServer' -replace '^MonitorEnabled=.*', 'MonitorEnabled=1' | Set-Content '%~dp0bin\ServerConfig.ini'"
+echo   - ServerConfig.ini updated (Mode=GameServer, MonitorEnabled=1)
 echo.
 
 REM === 5. Start Monitoring ===
@@ -89,8 +89,8 @@ if %ERRORLEVEL% NEQ 0 (
 )
 echo   - Server is ready
 
-start "" /D "%~dp0bin" EchoStressClient.exe
-echo   - EchoStressClient started
+start "" /D "%~dp0bin" MMOStressClient.exe
+echo   - MMOStressClient started
 echo.
 
 echo ============================================
