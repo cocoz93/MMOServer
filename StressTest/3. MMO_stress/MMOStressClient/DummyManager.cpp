@@ -6,12 +6,13 @@
 #pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "winmm.lib")
 
-DummyManager::DummyManager(const MMOStressConfig& config, MMOStats& stats)
+DummyManager::DummyManager(const MMOStressConfig& config, MMOStats& stats, int clientCount)
     : _config(config)
     , _stats(stats)
+    , _clientCount(clientCount)
 {
-    _clients.reserve(config.clientCount);
-    for (int i = 0; i < config.clientCount; ++i)
+    _clients.reserve(clientCount);
+    for (int i = 0; i < clientCount; ++i)
         _clients.push_back(std::make_unique<DummyClient>());
 }
 
@@ -39,7 +40,7 @@ void DummyManager::Stop()
 void DummyManager::NetworkLoop()
 {
     const int   BATCH          = 64;
-    const int   total          = _config.clientCount;
+    const int   total          = _clientCount;
     const auto& ip             = _config.serverIp;
     const int   port           = _config.port;
     const int   loopDelayMs    = _config.loopDelayMs;

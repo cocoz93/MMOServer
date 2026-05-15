@@ -4,6 +4,9 @@
 #include <conio.h>
 #include <io.h>
 #include <fcntl.h>
+#include <vector>
+#include <memory>
+#include <algorithm>
 
 #include "MMOStressConfig.h"
 #include "MMOStats.h"
@@ -30,18 +33,34 @@ int main()
     // 설정 로드
     g_Config.Load();
 
+    // ── DummyManager N개 분산 생성 ──────────────────────────────
+    const int totalClients    = g_Config.clientCount;
+    const int perThread       = g_Config.clientsPerThread;
+    const int threadCount     = (totalClients + perThread - 1) / perThread;
+
     wprintf(L"\n");
     wprintf(L"=============================================\n");
     wprintf(L"  MMO Stress Client\n");
     wprintf(L"  Target : %hs:%d\n", g_Config.serverIp.c_str(), g_Config.port);
-    wprintf(L"  Clients: %d\n", g_Config.clientCount);
+    wprintf(L"  Clients: %d  (%d threads x %d)\n", totalClients, threadCount, perThread);
     wprintf(L"=============================================\n");
     wprintf(L"\n");
 
-    DummyManager manager(g_Config, g_Stats);
+    std::vector<std::unique_ptr<DummyManager>> managers;
+    managers.reserve(threadCount);
+
+    int remaining = totalClients;
+    for (int i = 0; i < threadCount; ++i)
+    {
+        int count = (std::min)(perThread, remaining);
+        managers.push_back(std::make_unique<DummyManager>(g_Config, g_Stats, count));
+        remaining -= count;
+    }
+
     StressMonitorServer monitor(g_Stats, g_Config.monitorPort);
 
-    manager.Start();
+    for (auto& mgr : managers)
+        mgr->Start();
     monitor.Start();
 
     // ── 메인 루프 (1초 주기 콘솔 출력 + 종료 감시) ──────────────
@@ -105,7 +124,8 @@ int main()
     // ── 종료 ────────────────────────────────────────────────────
     wprintf(L"\n[Main] Shutting down...\n");
     monitor.Stop();
-    manager.Stop();
+    for (auto& mgr : managers)
+        mgr->Stop();
 
     WSACleanup();
     wprintf(L"[Main] Done.\n");
