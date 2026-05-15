@@ -38,13 +38,13 @@ void DummyClient::ResetState()
     _sendBuf.Clear();
 }
 
-void DummyClient::Disconnect(MMOStats& stats, int reconnectDelayMs)
+void DummyClient::Disconnect(StatsLocal& stats, int reconnectDelayMs)
 {
     if (_state == ClientState::CONNECTED)
     {
-        stats.connectedCount.fetch_sub(1);
+        stats.connectedDelta -= 1;
         if (_ready)
-            stats.readyCount.fetch_sub(1);
+            stats.readyDelta -= 1;
     }
 
     CloseSocket();
@@ -53,21 +53,21 @@ void DummyClient::Disconnect(MMOStats& stats, int reconnectDelayMs)
     ResetState();
 }
 
-bool DummyClient::IsReadyToConnect() const
+bool DummyClient::IsReadyToConnect(int64_t nowMs) const
 {
-    return _state == ClientState::DISCONNECTED && NowMs() >= _connectReadyMs;
+    return _state == ClientState::DISCONNECTED && nowMs >= _connectReadyMs;
 }
 
 // ─────────────────────────────────────────────────────────────────
 // 연결
 // ─────────────────────────────────────────────────────────────────
 void DummyClient::StartConnect(const std::string& ip, int port,
-                               MMOStats& stats, int reconnectDelayMs)
+                               StatsLocal& stats, int reconnectDelayMs)
 {
     _sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (_sock == INVALID_SOCKET)
     {
-        stats.connectFail.fetch_add(1);
+        stats.connectFail += 1;
         _connectReadyMs = NowMs() + reconnectDelayMs;
         return;
     }
@@ -98,13 +98,13 @@ void DummyClient::StartConnect(const std::string& ip, int port,
     }
     else
     {
-        stats.connectFail.fetch_add(1);
+        stats.connectFail += 1;
         CloseSocket();
         _connectReadyMs = NowMs() + reconnectDelayMs;
     }
 }
 
-void DummyClient::OnConnected(MMOStats& stats)
+void DummyClient::OnConnected(StatsLocal& stats)
 {
     // SO_ERROR 확인 (writable이어도 실패일 수 있음)
     int sockErr = 0;
@@ -118,14 +118,14 @@ void DummyClient::OnConnected(MMOStats& stats)
     }
 
     _state = ClientState::CONNECTED;
-    stats.connectedCount.fetch_add(1);
-    stats.connectTotal.fetch_add(1);
+    stats.connectedDelta += 1;
+    stats.connectTotal += 1;
     ResetState();
 }
 
-void DummyClient::OnConnectFailed(MMOStats& stats, int reconnectDelayMs)
+void DummyClient::OnConnectFailed(StatsLocal& stats, int reconnectDelayMs)
 {
-    stats.connectFail.fetch_add(1);
+    stats.connectFail += 1;
     CloseSocket();
     _state          = ClientState::DISCONNECTED;
     _connectReadyMs = NowMs() + reconnectDelayMs;
@@ -134,14 +134,14 @@ void DummyClient::OnConnectFailed(MMOStats& stats, int reconnectDelayMs)
 // ─────────────────────────────────────────────────────────────────
 // 수신
 // ─────────────────────────────────────────────────────────────────
-void DummyClient::OnRecv(MMOStats& stats, int reconnectDelayMs)
+void DummyClient::OnRecv(StatsLocal& stats, int reconnectDelayMs)
 {
     char buf[4096];
     int bytes = recv(_sock, buf, static_cast<int>(sizeof(buf)), 0);
 
     if (bytes > 0)
     {
-        stats.recvBytes.fetch_add(bytes);
+        stats.recvBytes += bytes;
         if (_recvBuf.Enqueue(buf, static_cast<size_t>(bytes)) == 0)
         {
             // 링버퍼 오버플로우
@@ -152,13 +152,13 @@ void DummyClient::OnRecv(MMOStats& stats, int reconnectDelayMs)
 
     if (bytes == 0)
     {
-        stats.disconnectFromServer.fetch_add(1);
+        stats.disconnectFromServer += 1;
     }
     else
     {
         int err = WSAGetLastError();
         if (err == WSAEWOULDBLOCK) return;
-        stats.disconnectFromServer.fetch_add(1);
+        stats.disconnectFromServer += 1;
     }
 
     Disconnect(stats, reconnectDelayMs);
@@ -187,7 +187,7 @@ uint16_t DummyClient::GetPacketSize(MsgType type)
 // ─────────────────────────────────────────────────────────────────
 // 패킷 파싱
 // ─────────────────────────────────────────────────────────────────
-void DummyClient::ProcessPackets(MMOStats& stats, const MMOStressConfig& config)
+void DummyClient::ProcessPackets(StatsLocal& stats, const MMOStressConfig& config)
 {
     while (true)
     {
@@ -213,7 +213,7 @@ void DummyClient::ProcessPackets(MMOStats& stats, const MMOStressConfig& config)
         char packet[256];
         if (_recvBuf.Dequeue(packet, totalSize) == 0) break;
 
-        stats.recvPackets.fetch_add(1);
+        stats.recvPackets += 1;
 
         switch (hdr.type)
         {
@@ -221,7 +221,7 @@ void DummyClient::ProcessPackets(MMOStats& stats, const MMOStressConfig& config)
         {
             bool wasReady = _ready;
             HandleCreateMyPlayer(packet);
-            if (_ready && !wasReady) stats.readyCount.fetch_add(1);
+            if (_ready && !wasReady) stats.readyDelta += 1;
             break;
         }
         case MsgType::S2C_MOVE_START:
@@ -240,7 +240,7 @@ void DummyClient::ProcessPackets(MMOStats& stats, const MMOStressConfig& config)
         case MsgType::S2C_ZONE_CHANGE_OK:      HandleZoneChangeOk(packet);      break;
         case MsgType::S2C_ZONE_CHANGE_FAIL:
             HandleZoneChangeFail(packet);
-            stats.zoneChangeFail.fetch_add(1);
+            stats.zoneChangeFail += 1;
             break;
         default: break;
         }
@@ -349,7 +349,7 @@ void DummyClient::UpdateLocalPosition(int mapWidth, int mapHeight)
     if (_y >= static_cast<float>(mapHeight)) _y = maxY;
 }
 
-void DummyClient::SendMoveStart(MMOStats& stats)
+void DummyClient::SendMoveStart(StatsLocal& stats, int64_t nowMs)
 {
     // 랜덤 방향 (1~8)
     std::uniform_int_distribution<int> dist(1, 8);
@@ -362,12 +362,12 @@ void DummyClient::SendMoveStart(MMOStats& stats)
     msg.direction   = _direction;
 
     _sendBuf.Enqueue(&msg, sizeof(msg));
-    _moveStartSentMs = NowMs();
-    stats.sendPackets.fetch_add(1);
-    stats.moveStartSent.fetch_add(1);
+    _moveStartSentMs = nowMs;
+    stats.sendPackets += 1;
+    stats.moveStartSent += 1;
 }
 
-void DummyClient::SendMoveStop(MMOStats& stats)
+void DummyClient::SendMoveStop(StatsLocal& stats)
 {
     _moving = false;
 
@@ -379,37 +379,39 @@ void DummyClient::SendMoveStop(MMOStats& stats)
     msg.y           = _y;
 
     _sendBuf.Enqueue(&msg, sizeof(msg));
-    stats.sendPackets.fetch_add(1);
-    stats.moveStopSent.fetch_add(1);
+    stats.sendPackets += 1;
+    stats.moveStopSent += 1;
 }
 
-void DummyClient::SendHeartbeat(MMOStats& stats)
+void DummyClient::SendHeartbeat(StatsLocal& stats)
 {
     MSG_C2S_HEARTBEAT msg;
     msg.header.size = sizeof(msg);
     msg.header.type = MsgType::C2S_HEARTBEAT;
 
     _sendBuf.Enqueue(&msg, sizeof(msg));
-    stats.sendPackets.fetch_add(1);
-    stats.heartbeatSent.fetch_add(1);
+    stats.sendPackets += 1;
+    stats.heartbeatSent += 1;
 }
 
-void DummyClient::SendChat(MMOStats& stats)
+void DummyClient::SendChat(StatsLocal& stats)
 {
-    MSG_C2S_CHAT msg;
-    msg.header.size = sizeof(msg);
-    msg.header.type = MsgType::C2S_CHAT;
-    // 고정 문자열
-    const wchar_t* text = L"stress test";
-    wmemset(msg.message, 0, CHAT_MSG_MAX_LEN);
-    wmemcpy(msg.message, text, wcslen(text));
+    // 고정 문자열 패킷을 한 번만 생성
+    static const MSG_C2S_CHAT cachedMsg = []() {
+        MSG_C2S_CHAT m{};
+        m.header.size = sizeof(m);
+        m.header.type = MsgType::C2S_CHAT;
+        const wchar_t* text = L"stress test";
+        wmemcpy(m.message, text, wcslen(text));
+        return m;
+    }();
 
-    _sendBuf.Enqueue(&msg, sizeof(msg));
-    stats.sendPackets.fetch_add(1);
-    stats.chatSent.fetch_add(1);
+    _sendBuf.Enqueue(&cachedMsg, sizeof(cachedMsg));
+    stats.sendPackets += 1;
+    stats.chatSent += 1;
 }
 
-void DummyClient::SendZoneChange(MMOStats& stats, int targetMapId)
+void DummyClient::SendZoneChange(StatsLocal& stats, int targetMapId)
 {
     MSG_C2S_ZONE_CHANGE msg;
     msg.header.size  = sizeof(msg);
@@ -417,20 +419,18 @@ void DummyClient::SendZoneChange(MMOStats& stats, int targetMapId)
     msg.targetMapId  = targetMapId;
 
     _sendBuf.Enqueue(&msg, sizeof(msg));
-    stats.sendPackets.fetch_add(1);
-    stats.zoneChangeSent.fetch_add(1);
+    stats.sendPackets += 1;
+    stats.zoneChangeSent += 1;
 }
 
-void DummyClient::Tick(MMOStats& stats, const MMOStressConfig& config)
+void DummyClient::Tick(StatsLocal& stats, const MMOStressConfig& config, int64_t nowMs)
 {
     if (!_ready) return;
 
-    int64_t now = NowMs();
-
     // tickIntervalMs(40ms) 도달 체크
-    if (now - _lastTickMs < config.tickIntervalMs)
+    if (nowMs - _lastTickMs < config.tickIntervalMs)
         return;
-    _lastTickMs = now;
+    _lastTickMs = nowMs;
 
     // 이동 중이면 좌표 갱신
     if (_moving)
@@ -454,7 +454,7 @@ void DummyClient::Tick(MMOStats& stats, const MMOStressConfig& config)
         cursor += config.moveProbability;
         if (r <= cursor)
         {
-            SendMoveStart(stats);
+            SendMoveStart(stats, nowMs);
             return;
         }
 
@@ -476,14 +476,13 @@ void DummyClient::Tick(MMOStats& stats, const MMOStressConfig& config)
     }
 }
 
-void DummyClient::CheckHeartbeat(MMOStats& stats, int heartbeatIntervalSec)
+void DummyClient::CheckHeartbeat(StatsLocal& stats, int heartbeatIntervalSec, int64_t nowMs)
 {
     if (!_ready) return;
 
-    int64_t now = NowMs();
-    if (now - _lastHeartbeatMs >= static_cast<int64_t>(heartbeatIntervalSec) * 1000)
+    if (nowMs - _lastHeartbeatMs >= static_cast<int64_t>(heartbeatIntervalSec) * 1000)
     {
-        _lastHeartbeatMs = now;
+        _lastHeartbeatMs = nowMs;
         SendHeartbeat(stats);
     }
 }
@@ -491,7 +490,7 @@ void DummyClient::CheckHeartbeat(MMOStats& stats, int heartbeatIntervalSec)
 // ─────────────────────────────────────────────────────────────────
 // 송신 링버퍼 flush
 // ─────────────────────────────────────────────────────────────────
-void DummyClient::FlushSend(MMOStats& stats, int reconnectDelayMs)
+void DummyClient::FlushSend(StatsLocal& stats, int reconnectDelayMs)
 {
     if (!IsConnected()) return;
 
@@ -513,7 +512,7 @@ void DummyClient::FlushSend(MMOStats& stats, int reconnectDelayMs)
 
         if (sent == 0) return;
 
-        stats.sendBytes.fetch_add(sent);
+        stats.sendBytes += sent;
         _sendBuf.Consume(static_cast<size_t>(sent));
     }
 }

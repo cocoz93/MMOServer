@@ -7,7 +7,7 @@
 #include "RingBuffer.h"
 #include "../../../Shared/Protocol/Protocol.h"
 
-struct MMOStats;
+struct StatsLocal;
 struct MMOStressConfig;
 
 enum class ClientState { DISCONNECTED, CONNECTING, CONNECTED };
@@ -19,26 +19,26 @@ public:
     ~DummyClient() { CloseSocket(); }
 
     // DummyManager가 상태 전이를 트리거
-    void StartConnect(const std::string& ip, int port, MMOStats& stats, int reconnectDelayMs);
-    void OnConnected(MMOStats& stats);
-    void OnConnectFailed(MMOStats& stats, int reconnectDelayMs);
+    void StartConnect(const std::string& ip, int port, StatsLocal& stats, int reconnectDelayMs);
+    void OnConnected(StatsLocal& stats);
+    void OnConnectFailed(StatsLocal& stats, int reconnectDelayMs);
 
     // select()가 읽기 가능 표시 시 호출
-    void OnRecv(MMOStats& stats, int reconnectDelayMs);
+    void OnRecv(StatsLocal& stats, int reconnectDelayMs);
 
     // OnRecv 후 RingBuffer에서 완성된 패킷 파싱
-    void ProcessPackets(MMOStats& stats, const MMOStressConfig& config);
+    void ProcessPackets(StatsLocal& stats, const MMOStressConfig& config);
 
     // 40ms 도달 시 행동 (이동/정지)
-    void Tick(MMOStats& stats, const MMOStressConfig& config);
+    void Tick(StatsLocal& stats, const MMOStressConfig& config, int64_t nowMs);
 
     // 하트비트 (20초 주기)
-    void CheckHeartbeat(MMOStats& stats, int heartbeatIntervalSec);
+    void CheckHeartbeat(StatsLocal& stats, int heartbeatIntervalSec, int64_t nowMs);
 
     // 송신 링버퍼 → 실제 send()
-    void FlushSend(MMOStats& stats, int reconnectDelayMs);
+    void FlushSend(StatsLocal& stats, int reconnectDelayMs);
 
-    bool IsReadyToConnect() const;
+    bool IsReadyToConnect(int64_t nowMs) const;
     bool IsReady()        const { return _ready; }
     bool IsConnected()    const { return _state == ClientState::CONNECTED;    }
     bool IsConnecting()   const { return _state == ClientState::CONNECTING;   }
@@ -47,7 +47,7 @@ public:
 
 private:
     void CloseSocket();
-    void Disconnect(MMOStats& stats, int reconnectDelayMs);
+    void Disconnect(StatsLocal& stats, int reconnectDelayMs);
     void ResetState();
 
     // 패킷 핸들러
@@ -63,11 +63,11 @@ private:
 
     // 이동 로직
     void UpdateLocalPosition(int mapWidth, int mapHeight);
-    void SendMoveStart(MMOStats& stats);
-    void SendMoveStop(MMOStats& stats);
-    void SendHeartbeat(MMOStats& stats);
-    void SendChat(MMOStats& stats);
-    void SendZoneChange(MMOStats& stats, int targetMapId);
+    void SendMoveStart(StatsLocal& stats, int64_t nowMs);
+    void SendMoveStop(StatsLocal& stats);
+    void SendHeartbeat(StatsLocal& stats);
+    void SendChat(StatsLocal& stats);
+    void SendZoneChange(StatsLocal& stats, int targetMapId);
 
     // 패킷 크기 테이블
     static uint16_t GetPacketSize(MsgType type);
@@ -94,8 +94,8 @@ private:
     int64_t     _lastRttMs       = -1; // HandleMoveStart에서 측정한 RTT (-1 = 미측정)
 
     // 난수 생성기 (스레드 로컬이 아닌 인스턴스별)
-    std::mt19937 _rng{std::random_device{}()};
+    std::minstd_rand _rng{std::random_device{}()};
 
-    CRingBufferST  _recvBuf;
-    CRingBufferST  _sendBuf;
+    CRingBufferST  _recvBuf{16384};
+    CRingBufferST  _sendBuf{4096};
 };

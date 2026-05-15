@@ -55,16 +55,19 @@ void DummyManager::NetworkLoop()
     _rampUpCount  = (rampUpMs <= 0) ? total : 1;
     _lastRampUpMs = static_cast<int64_t>(GetTickCount64());
 
+    StatsLocal local;
+
     while (_running)
     {
+        int64_t nowMs = static_cast<int64_t>(GetTickCount64());
+
         // ── RampUp: 점진적 접속 허용 수 증가 ─────────────────────
         if (rampUpMs > 0 && _rampUpCount < total)
         {
-            int64_t now = static_cast<int64_t>(GetTickCount64());
-            if (now - _lastRampUpMs >= rampUpMs)
+            if (nowMs - _lastRampUpMs >= rampUpMs)
             {
                 ++_rampUpCount;
-                _lastRampUpMs = now;
+                _lastRampUpMs = nowMs;
             }
         }
 
@@ -72,8 +75,8 @@ void DummyManager::NetworkLoop()
         for (int i = 0; i < _rampUpCount; ++i)
         {
             auto& c = *_clients[i];
-            if (c.IsReadyToConnect())
-                c.StartConnect(ip, port, _stats, reconnectDelay);
+            if (c.IsReadyToConnect(nowMs))
+                c.StartConnect(ip, port, local, reconnectDelay);
         }
 
         // ── 2. select() 배치 루프 (읽기/연결완료 감지) ───────────
@@ -123,19 +126,19 @@ void DummyManager::NetworkLoop()
                 {
                     if (FD_ISSET(s, &exceptSet))
                     {
-                        c.OnConnectFailed(_stats, reconnectDelay);
+                        c.OnConnectFailed(local, reconnectDelay);
                     }
                     else if (FD_ISSET(s, &writeSet))
                     {
-                        c.OnConnected(_stats);
+                        c.OnConnected(local);
                     }
                 }
 
                 if (c.IsConnected() && FD_ISSET(s, &readSet))
                 {
-                    c.OnRecv(_stats, reconnectDelay);
+                    c.OnRecv(local, reconnectDelay);
                     if (c.IsConnected())
-                        c.ProcessPackets(_stats, _config);
+                        c.ProcessPackets(local, _config);
                 }
             }
         }
@@ -146,12 +149,15 @@ void DummyManager::NetworkLoop()
             auto& c = *_clients[i];
             if (!c.IsConnected()) continue;
 
-            c.Tick(_stats, _config);
-            c.CheckHeartbeat(_stats, _config.heartbeatIntervalSec);
-            c.FlushSend(_stats, reconnectDelay);
+            c.Tick(local, _config, nowMs);
+            c.CheckHeartbeat(local, _config.heartbeatIntervalSec, nowMs);
+            c.FlushSend(local, reconnectDelay);
         }
 
-        // ── 4. 루프 딜레이 ────────────────────────────────────────
+        // ── 4. 로컬 통계 → 글로벌 flush ─────────────────────────
+        local.Flush(_stats);
+
+        // ── 5. 루프 딜레이 ────────────────────────────────────────
         Sleep(static_cast<DWORD>(loopDelayMs));
     }
 
