@@ -13,13 +13,13 @@
 #include <atomic>
 #include <string>
 #include "DummyClient.h"
-#include "DummyConfig.h"
+#include "MMOStressConfig.h"
 #include "MMOStats.h"
 
 class DummyManager
 {
 public:
-    explicit DummyManager(const DummyConfig& config, MMOStats& stats);
+    explicit DummyManager(const MMOStressConfig& config, MMOStats& stats);
     ~DummyManager();
 
     void Start();
@@ -28,7 +28,7 @@ public:
 private:
     void NetworkLoop();
 
-    const DummyConfig& _config;
+    const MMOStressConfig& _config;
     MMOStats&          _stats;
 
     std::vector<std::unique_ptr<DummyClient>> _clients;

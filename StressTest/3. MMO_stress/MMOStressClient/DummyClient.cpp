@@ -2,7 +2,7 @@
 #include <Windows.h>
 #include <cstring>
 #include "MMOStats.h"
-#include "DummyConfig.h"
+#include "MMOStressConfig.h"
 
 // ─────────────────────────────────────────────────────────────────
 // 유틸
@@ -187,7 +187,7 @@ uint16_t DummyClient::GetPacketSize(MsgType type)
 // ─────────────────────────────────────────────────────────────────
 // 패킷 파싱
 // ─────────────────────────────────────────────────────────────────
-void DummyClient::ProcessPackets(MMOStats& stats, const DummyConfig& config)
+void DummyClient::ProcessPackets(MMOStats& stats, const MMOStressConfig& config)
 {
     while (true)
     {
@@ -421,7 +421,7 @@ void DummyClient::SendZoneChange(MMOStats& stats, int targetMapId)
     stats.zoneChangeSent.fetch_add(1);
 }
 
-void DummyClient::Tick(MMOStats& stats, const DummyConfig& config)
+void DummyClient::Tick(MMOStats& stats, const MMOStressConfig& config)
 {
     if (!_ready) return;
 
