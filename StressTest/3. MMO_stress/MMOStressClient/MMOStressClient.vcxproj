@@ -155,7 +155,7 @@
     <ClCompile Include="DummyManager.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="DummyConfig.h" />
+    <ClInclude Include="MMOStressConfig.h" />
     <ClInclude Include="MMOStats.h" />
     <ClInclude Include="..\..\..\Shared\Protocol\Protocol.h" />
     <ClInclude Include="RingBuffer.h" />

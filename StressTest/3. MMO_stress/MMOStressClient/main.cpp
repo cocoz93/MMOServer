@@ -5,13 +5,13 @@
 #include <io.h>
 #include <fcntl.h>
 
-#include "DummyConfig.h"
+#include "MMOStressConfig.h"
 #include "MMOStats.h"
 #include "DummyManager.h"
 #include "StressMonitorServer.h"
 
 // 전역 설정 / 통계
-DummyConfig g_Config;
+MMOStressConfig g_Config;
 MMOStats    g_Stats;
 
 int main()

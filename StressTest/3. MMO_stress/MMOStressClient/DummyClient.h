@@ -8,7 +8,7 @@
 #include "../../../Shared/Protocol/Protocol.h"
 
 struct MMOStats;
-struct DummyConfig;
+struct MMOStressConfig;
 
 enum class ClientState { DISCONNECTED, CONNECTING, CONNECTED };
 
@@ -27,10 +27,10 @@ public:
     void OnRecv(MMOStats& stats, int reconnectDelayMs);
 
     // OnRecv 후 RingBuffer에서 완성된 패킷 파싱
-    void ProcessPackets(MMOStats& stats, const DummyConfig& config);
+    void ProcessPackets(MMOStats& stats, const MMOStressConfig& config);
 
     // 40ms 도달 시 행동 (이동/정지)
-    void Tick(MMOStats& stats, const DummyConfig& config);
+    void Tick(MMOStats& stats, const MMOStressConfig& config);
 
     // 하트비트 (20초 주기)
     void CheckHeartbeat(MMOStats& stats, int heartbeatIntervalSec);

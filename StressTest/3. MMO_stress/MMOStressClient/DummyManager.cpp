@@ -6,7 +6,7 @@
 #pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "winmm.lib")
 
-DummyManager::DummyManager(const DummyConfig& config, MMOStats& stats)
+DummyManager::DummyManager(const MMOStressConfig& config, MMOStats& stats)
     : _config(config)
     , _stats(stats)
 {

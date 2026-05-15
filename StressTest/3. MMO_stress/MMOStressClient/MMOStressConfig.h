@@ -3,7 +3,7 @@
 #include <Windows.h>
 #include <cstdio>
 
-struct DummyConfig
+struct MMOStressConfig
 {
     // ── [Connection] ────────────────────────────────────────────
     std::string serverIp            = "127.0.0.1";
@@ -16,10 +16,10 @@ struct DummyConfig
     int         tickIntervalMs      = 40;
 
     // ── [Scenario] ──────────────────────────────────────────────
-    int         moveProbability         = 40;
-    int         stopProbability         = 30;
-    int         chatProbability         = 5;
-    int         zoneChangeProbability   = 1;
+    int         moveProbability         = 75;
+    int         stopProbability         = 20;
+    int         chatProbability         = 20;
+    int         zoneChangeProbability   = 5;
     int         heartbeatIntervalSec    = 20;
     int         targetMapId             = 1;
 
@@ -34,7 +34,7 @@ struct DummyConfig
     int         testDurationSec     = 0;
     int         rampUpIntervalMs    = 0;
 
-    // 실행 파일 경로 기준으로 DummyConfig.ini 로드
+    // 실행 파일 경로 기준으로 MMOStressConfig.ini 로드
     bool Load()
     {
         wchar_t exePath[MAX_PATH];
@@ -42,13 +42,13 @@ struct DummyConfig
 
         std::wstring iniPath(exePath);
         size_t pos = iniPath.find_last_of(L"\\/");
-        iniPath = iniPath.substr(0, pos + 1) + L"DummyConfig.ini";
+        iniPath = iniPath.substr(0, pos + 1) + L"MMOStressConfig.ini";
 
         // 파일 존재 확인
         DWORD attr = GetFileAttributesW(iniPath.c_str());
         if (attr == INVALID_FILE_ATTRIBUTES)
         {
-            wprintf(L"[Config] DummyConfig.ini not found. Using defaults.\n");
+            wprintf(L"[Config] MMOStressConfig.ini not found. Using defaults.\n");
             PrintConfig();
             return false;
         }
@@ -89,7 +89,7 @@ struct DummyConfig
         testDurationSec     = GetPrivateProfileIntW(L"Test", L"TestDurationSec", 0, path);
         rampUpIntervalMs    = GetPrivateProfileIntW(L"Test", L"RampUpIntervalMs", 0, path);
 
-        wprintf(L"[Config] Loaded from DummyConfig.ini\n");
+        wprintf(L"[Config] Loaded from MMOStressConfig.ini\n");
         PrintConfig();
         return true;
     }
