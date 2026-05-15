@@ -1,6 +1,7 @@
 ﻿#pragma once
 #include <atomic>
 #include <cstdint>
+#include <cstring>
 #include <climits>
 
 struct MMOStats
@@ -68,5 +69,122 @@ struct MMOStats
             }
         }
         rttBuckets[RTT_BUCKET_COUNT - 1].fetch_add(1);  // +Inf
+    }
+};
+
+// ── 스레드 로컬 통계 누적기 ─────────────────────────────────────
+// DummyManager 스레드에서 루프마다 누적 후 MMOStats에 flush
+struct StatsLocal
+{
+    // 게이지 델타 (양수/음수 모두 가능)
+    int connectedDelta      = 0;
+    int readyDelta          = 0;
+
+    // 카운터 (누적)
+    int64_t connectTotal         = 0;
+    int64_t connectFail          = 0;
+    int64_t disconnectFromServer = 0;
+    int64_t sendPackets          = 0;
+    int64_t recvPackets          = 0;
+    int64_t sendBytes            = 0;
+    int64_t recvBytes            = 0;
+    int64_t moveStartSent        = 0;
+    int64_t moveStopSent         = 0;
+    int64_t heartbeatSent        = 0;
+    int64_t chatSent             = 0;
+    int64_t zoneChangeSent       = 0;
+    int64_t zoneChangeFail       = 0;
+
+    // RTT
+    int64_t rttSumMs    = 0;
+    int64_t rttSamples  = 0;
+    int64_t rttMaxMs    = 0;
+    int64_t rttMinMs    = LLONG_MAX;
+    int64_t rttBuckets[MMOStats::RTT_BUCKET_COUNT] = {};
+
+    void RecordRtt(int64_t ms)
+    {
+        rttSumMs += ms;
+        rttSamples += 1;
+        if (ms > rttMaxMs) rttMaxMs = ms;
+        if (ms < rttMinMs) rttMinMs = ms;
+
+        double dMs = static_cast<double>(ms);
+        for (int i = 0; i < MMOStats::RTT_BUCKET_COUNT - 1; ++i)
+        {
+            if (dMs <= MMOStats::RTT_BUCKET_BOUNDS[i])
+            {
+                rttBuckets[i] += 1;
+                return;
+            }
+        }
+        rttBuckets[MMOStats::RTT_BUCKET_COUNT - 1] += 1;
+    }
+
+    void Flush(MMOStats& g)
+    {
+        if (connectedDelta != 0)       g.connectedCount.fetch_add(connectedDelta);
+        if (readyDelta != 0)           g.readyCount.fetch_add(readyDelta);
+        if (connectTotal != 0)         g.connectTotal.fetch_add(connectTotal);
+        if (connectFail != 0)          g.connectFail.fetch_add(connectFail);
+        if (disconnectFromServer != 0) g.disconnectFromServer.fetch_add(disconnectFromServer);
+        if (sendPackets != 0)          g.sendPackets.fetch_add(sendPackets);
+        if (recvPackets != 0)          g.recvPackets.fetch_add(recvPackets);
+        if (sendBytes != 0)            g.sendBytes.fetch_add(sendBytes);
+        if (recvBytes != 0)            g.recvBytes.fetch_add(recvBytes);
+        if (moveStartSent != 0)        g.moveStartSent.fetch_add(moveStartSent);
+        if (moveStopSent != 0)         g.moveStopSent.fetch_add(moveStopSent);
+        if (heartbeatSent != 0)        g.heartbeatSent.fetch_add(heartbeatSent);
+        if (chatSent != 0)            g.chatSent.fetch_add(chatSent);
+        if (zoneChangeSent != 0)       g.zoneChangeSent.fetch_add(zoneChangeSent);
+        if (zoneChangeFail != 0)       g.zoneChangeFail.fetch_add(zoneChangeFail);
+
+        if (rttSumMs != 0)    g.rttSumMs.fetch_add(rttSumMs);
+        if (rttSamples != 0)  g.rttSamples.fetch_add(rttSamples);
+
+        // RTT max (CAS)
+        if (rttMaxMs > 0)
+        {
+            int64_t cur = g.rttMaxMs.load();
+            while (rttMaxMs > cur && !g.rttMaxMs.compare_exchange_weak(cur, rttMaxMs)) {}
+        }
+        // RTT min (CAS)
+        if (rttMinMs < LLONG_MAX)
+        {
+            int64_t cur = g.rttMinMs.load();
+            while (rttMinMs < cur && !g.rttMinMs.compare_exchange_weak(cur, rttMinMs)) {}
+        }
+
+        for (int i = 0; i < MMOStats::RTT_BUCKET_COUNT; ++i)
+        {
+            if (rttBuckets[i] != 0)
+                g.rttBuckets[i].fetch_add(rttBuckets[i]);
+        }
+
+        Reset();
+    }
+
+    void Reset()
+    {
+        connectedDelta = 0;
+        readyDelta = 0;
+        connectTotal = 0;
+        connectFail = 0;
+        disconnectFromServer = 0;
+        sendPackets = 0;
+        recvPackets = 0;
+        sendBytes = 0;
+        recvBytes = 0;
+        moveStartSent = 0;
+        moveStopSent = 0;
+        heartbeatSent = 0;
+        chatSent = 0;
+        zoneChangeSent = 0;
+        zoneChangeFail = 0;
+        rttSumMs = 0;
+        rttSamples = 0;
+        rttMaxMs = 0;
+        rttMinMs = LLONG_MAX;
+        std::memset(rttBuckets, 0, sizeof(rttBuckets));
     }
 };
