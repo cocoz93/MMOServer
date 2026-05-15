@@ -19,7 +19,7 @@
 class DummyManager
 {
 public:
-    explicit DummyManager(const MMOStressConfig& config, MMOStats& stats);
+    DummyManager(const MMOStressConfig& config, MMOStats& stats, int clientCount);
     ~DummyManager();
 
     void Start();
@@ -30,6 +30,7 @@ private:
 
     const MMOStressConfig& _config;
     MMOStats&          _stats;
+    const int          _clientCount;
 
     std::vector<std::unique_ptr<DummyClient>> _clients;
     std::thread       _networkThread;

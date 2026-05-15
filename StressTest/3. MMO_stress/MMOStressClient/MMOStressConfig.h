@@ -9,6 +9,7 @@ struct MMOStressConfig
     std::string serverIp            = "127.0.0.1";
     int         port                = 6000;
     int         clientCount         = 100;
+    int         clientsPerThread    = 2000;
     int         reconnectIntervalMs = 1000;
 
     // ── [Timing] ────────────────────────────────────────────────
@@ -64,6 +65,7 @@ struct MMOStressConfig
 
         port                = GetPrivateProfileIntW(L"Connection", L"Port", 6000, path);
         clientCount         = GetPrivateProfileIntW(L"Connection", L"ClientCount", 100, path);
+        clientsPerThread    = GetPrivateProfileIntW(L"Connection", L"ClientsPerThread", 2000, path);
         reconnectIntervalMs = GetPrivateProfileIntW(L"Connection", L"ReconnectIntervalMs", 1000, path);
 
         // [Timing]
@@ -101,6 +103,7 @@ private:
         wprintf(L"  ServerIp          : %hs\n", serverIp.c_str());
         wprintf(L"  Port              : %d\n", port);
         wprintf(L"  ClientCount       : %d\n", clientCount);
+        wprintf(L"  ClientsPerThread  : %d\n", clientsPerThread);
         wprintf(L"  ReconnectMs       : %d\n", reconnectIntervalMs);
         wprintf(L"  ── Timing ──\n");
         wprintf(L"  LoopDelayMs       : %d\n", loopDelayMs);
