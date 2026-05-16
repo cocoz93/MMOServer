@@ -77,7 +77,7 @@ private:
     static constexpr int HEARTBEAT_INTERVAL_MS = 20000;
     int _heartbeatAccumMs;
 
-    // 재접속 설정
+    // 재접속 설정 (서버가 아직 안 떴을 때 대기용)
     static constexpr int RECONNECT_INTERVAL_SEC = 3;
-    static constexpr int RECONNECT_MAX_RETRY = 10;
+    static constexpr int RECONNECT_MAX_RETRY = 5;
 };
