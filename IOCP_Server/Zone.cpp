@@ -41,6 +41,8 @@ CPlayer* CZone::EnterZone(int64_t sessionId)
     // 플레이어 생성
     CPlayer* player = new CPlayer(sessionId);
     player->_playerId = AllocPlayerId();
+    player->_displayChar = CalcDisplayChar(player->_playerId);
+    player->_colorIndex = CalcColorIndex(player->_playerId);
     player->_zoneId = _zoneId;
     player->_direction = Direction::DOWN;
     player->_moveState = MoveState::IDLE;
@@ -152,4 +154,18 @@ void CZone::CalcSpawnPos(float& outX, float& outY) const
 int32_t CZone::AllocPlayerId()
 {
     return _nextPlayerId++;
+}
+
+// playerId → 고유 표시 문자 (A-Z, a-z, 0-9 = 62종)
+uint8_t CZone::CalcDisplayChar(int32_t playerId)
+{
+    static constexpr char CHARS[] =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    return static_cast<uint8_t>(CHARS[playerId % 62]);
+}
+
+// playerId → 고유 색상 인덱스 (0-6, 7종)
+uint8_t CZone::CalcColorIndex(int32_t playerId)
+{
+    return static_cast<uint8_t>((playerId / 62) % 7);
 }

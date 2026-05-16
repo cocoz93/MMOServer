@@ -8,9 +8,12 @@ class CPlayerManager
 {
 public:
     // 내 캐릭터 설정
-    void SetMyPlayer(int32_t playerId, float x, float y, Direction direction, int32_t speed)
+    void SetMyPlayer(int32_t playerId, float x, float y, Direction direction, int32_t speed,
+                     uint8_t displayChar, uint8_t colorIndex)
     {
         _myPlayer.playerId = playerId;
+        _myPlayer.displayChar = displayChar;
+        _myPlayer.colorIndex = colorIndex;
         _myPlayer.x = x;
         _myPlayer.y = y;
         _myPlayer.direction = direction;
@@ -21,10 +24,13 @@ public:
 
     // 다른 플레이어 추가 (시야 진입)
     void AddOtherPlayer(int32_t playerId, float x, float y,
-                        Direction direction, MoveState moveState, int32_t speed)
+                        Direction direction, MoveState moveState, int32_t speed,
+                        uint8_t displayChar, uint8_t colorIndex)
     {
         ClientPlayer player;
         player.playerId = playerId;
+        player.displayChar = displayChar;
+        player.colorIndex = colorIndex;
         player.x = x;
         player.y = y;
         player.direction = direction;

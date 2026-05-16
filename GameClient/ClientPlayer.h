@@ -27,6 +27,8 @@ enum class MoveState : uint8_t
 struct ClientPlayer
 {
     int32_t playerId = 0;
+    uint8_t displayChar = 'A';  // 서버에서 할당받은 표시 문자
+    uint8_t colorIndex = 0;     // 서버에서 할당받은 색상 인덱스
     float x = 0.0f;
     float y = 0.0f;
     Direction direction = Direction::NONE;

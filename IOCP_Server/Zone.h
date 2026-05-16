@@ -72,6 +72,10 @@ private:
     // playerId 발급
     int32_t AllocPlayerId();
 
+    // playerId 기반 표시 속성 계산
+    static uint8_t CalcDisplayChar(int32_t playerId);
+    static uint8_t CalcColorIndex(int32_t playerId);
+
     int32_t _zoneId;
     int32_t _mapId;
     int32_t _mapWidth;

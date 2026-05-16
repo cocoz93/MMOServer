@@ -41,6 +41,8 @@ public:
     int64_t _sessionId;   // 네트워크 세션 ID (IOCPServer에서 부여, 서버 내부용)
     int64_t _accountId;   // 계정 ID (로그인/DB용)
     int32_t _playerId;    // 게임 월드 내 식별자 (클라이언트에 노출)
+    uint8_t _displayChar; // 표시 문자 (ASCII: A-Z, a-z, 0-9)
+    uint8_t _colorIndex;  // 색상 인덱스 (0-6)
 
     // 월드 좌표
     float _x;

@@ -28,6 +28,8 @@ struct ClientNetworkEvent
 
     // 공용 필드 (패킷 타입에 따라 사용)
     int32_t playerId;
+    uint8_t displayChar;
+    uint8_t colorIndex;
     float x;
     float y;
     uint8_t direction;

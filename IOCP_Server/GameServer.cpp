@@ -461,6 +461,8 @@ void CGameServer::RecvChat(int64_t sessionId, CSerialBuffer* pMsg)
     // 주변에 채팅 브로드캐스트 (본인 포함)
     MSG_S2C_CHAT msg;
     msg.playerId = player->_playerId;
+    msg.displayChar = player->_displayChar;
+    msg.colorIndex = player->_colorIndex;
     memcpy(msg.message, recvMsg.message, sizeof(recvMsg.message));
     BroadcastAround(zone, player, msg, false);
 }
@@ -482,6 +484,8 @@ void CGameServer::SendCreateMyPlayer(int64_t sessionId, CPlayer* player)
     MSG_S2C_CREATE_MY_PLAYER msg;
     msg.playerId = player->_playerId;
     msg.direction = static_cast<uint8_t>(player->_direction);
+    msg.displayChar = player->_displayChar;
+    msg.colorIndex = player->_colorIndex;
     msg.x = player->_x;
     msg.y = player->_y;
     msg.speed = player->_speed;
@@ -494,6 +498,8 @@ void CGameServer::SendCreateOtherPlayer(int64_t sessionId, CPlayer* player)
     msg.playerId = player->_playerId;
     msg.direction = static_cast<uint8_t>(player->_direction);
     msg.moveState = static_cast<uint8_t>(player->_moveState);
+    msg.displayChar = player->_displayChar;
+    msg.colorIndex = player->_colorIndex;
     msg.x = player->_x;
     msg.y = player->_y;
     msg.speed = player->_speed;
@@ -531,6 +537,8 @@ void CGameServer::SendChat(int64_t sessionId, CPlayer* player, const wchar_t* me
 {
     MSG_S2C_CHAT msg;
     msg.playerId = player->_playerId;
+    msg.displayChar = player->_displayChar;
+    msg.colorIndex = player->_colorIndex;
     memcpy(msg.message, message, sizeof(msg.message));
     SendPacket(sessionId, msg);
 }
@@ -672,6 +680,8 @@ void CGameServer::SendZoneChangeOk(int64_t sessionId, int32_t mapId, int32_t cha
     msg.mapId = mapId;
     msg.channelIndex = channelIndex;
     msg.playerId = player->_playerId;
+    msg.displayChar = player->_displayChar;
+    msg.colorIndex = player->_colorIndex;
     msg.x = player->_x;
     msg.y = player->_y;
     SendPacket(sessionId, msg);

@@ -26,16 +26,8 @@ static int GetDisplayWidth(const wchar_t* text, int charLen)
     return width;
 }
 
-// playerId → 고유 문자 (A-Z, a-z, 0-9 = 62종)
-static wchar_t GetPlayerChar(int32_t playerId)
-{
-    static constexpr const wchar_t CHARS[] =
-        L"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    return CHARS[playerId % 62];
-}
-
-// playerId → 고유 색상 (배경과 구분되는 밝은 색 7종)
-static WORD GetPlayerColor(int32_t playerId)
+// colorIndex(0-6) → 콘솔 색상 속성 변환
+static WORD GetColorFromIndex(uint8_t colorIndex)
 {
     static constexpr WORD COLORS[] =
     {
@@ -47,7 +39,7 @@ static WORD GetPlayerColor(int32_t playerId)
         FOREGROUND_BLUE | FOREGROUND_INTENSITY,                             // 밝은 파랑
         FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY, // 밝은 흰색
     };
-    return COLORS[(playerId / 62) % 7];
+    return COLORS[colorIndex % 7];
 }
 
 CConsoleRenderer::CConsoleRenderer()
@@ -218,7 +210,7 @@ void CConsoleRenderer::RenderGameView(const ClientPlayer* me,
         }
     }
 
-    // 다른 플레이어 배치 (playerId 기반 고유 문자+색상)
+    // 다른 플레이어 배치 (서버 할당 고유 문자+색상)
     for (const auto& pair : others)
     {
         const ClientPlayer& p = pair.second;
@@ -227,12 +219,12 @@ void CConsoleRenderer::RenderGameView(const ClientPlayer* me,
 
         if (sx >= 0 && sx < VIEW_WIDTH && sy >= 0 && sy < VIEW_HEIGHT)
         {
-            _viewBuffer[sy][sx].Char.UnicodeChar = GetPlayerChar(p.playerId);
-            _viewBuffer[sy][sx].Attributes = GetPlayerColor(p.playerId);
+            _viewBuffer[sy][sx].Char.UnicodeChar = static_cast<wchar_t>(p.displayChar);
+            _viewBuffer[sy][sx].Attributes = GetColorFromIndex(p.colorIndex);
         }
     }
 
-    // 내 캐릭터 배치 (고유 문자+색상 + 반전+밑줄로 강조)
+    // 내 캐릭터 배치 (서버 할당 문자+색상 + 반전+밑줄로 강조)
     if (me)
     {
         int mx = static_cast<int>(me->x - camX + 0.5f);
@@ -240,8 +232,8 @@ void CConsoleRenderer::RenderGameView(const ClientPlayer* me,
 
         if (mx >= 0 && mx < VIEW_WIDTH && my >= 0 && my < VIEW_HEIGHT)
         {
-            _viewBuffer[my][mx].Char.UnicodeChar = GetPlayerChar(me->playerId);
-            _viewBuffer[my][mx].Attributes = GetPlayerColor(me->playerId)
+            _viewBuffer[my][mx].Char.UnicodeChar = static_cast<wchar_t>(me->displayChar);
+            _viewBuffer[my][mx].Attributes = GetColorFromIndex(me->colorIndex)
                 | COMMON_LVB_REVERSE_VIDEO | COMMON_LVB_UNDERSCORE;
         }
     }

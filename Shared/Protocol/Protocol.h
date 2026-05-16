@@ -134,11 +134,13 @@ struct MSG_S2C_CREATE_MY_PLAYER
     MsgHeader header;
     int32_t playerId;
     uint8_t direction;
+    uint8_t displayChar;  // 서버 권위 표시 문자 (ASCII: A-Z, a-z, 0-9)
+    uint8_t colorIndex;   // 서버 권위 색상 인덱스 (0-6)
     float x;
     float y;
     int32_t speed;
 
-    MSG_S2C_CREATE_MY_PLAYER() : header{ sizeof(*this), TYPE }, playerId(0), direction(0), x(0), y(0), speed(0) {}
+    MSG_S2C_CREATE_MY_PLAYER() : header{ sizeof(*this), TYPE }, playerId(0), direction(0), displayChar('A'), colorIndex(0), x(0), y(0), speed(0) {}
 };
 
 // S2C: 다른 캐릭터 생성 (시야 진입)
@@ -149,11 +151,13 @@ struct MSG_S2C_CREATE_OTHER_PLAYER
     int32_t playerId;
     uint8_t direction;
     uint8_t moveState;    // MoveState enum (진입 시 이동 중일 수 있음)
+    uint8_t displayChar;  // 서버 권위 표시 문자 (ASCII: A-Z, a-z, 0-9)
+    uint8_t colorIndex;   // 서버 권위 색상 인덱스 (0-6)
     float x;
     float y;
     int32_t speed;
 
-    MSG_S2C_CREATE_OTHER_PLAYER() : header{ sizeof(*this), TYPE }, playerId(0), direction(0), moveState(0), x(0), y(0), speed(0) {}
+    MSG_S2C_CREATE_OTHER_PLAYER() : header{ sizeof(*this), TYPE }, playerId(0), direction(0), moveState(0), displayChar('A'), colorIndex(0), x(0), y(0), speed(0) {}
 };
 
 // S2C: 캐릭터 삭제 (시야 이탈 / 퇴장)
@@ -185,9 +189,11 @@ struct MSG_S2C_CHAT
     static constexpr MsgType TYPE = MsgType::S2C_CHAT;
     MsgHeader header;
     int32_t playerId;     // 발신자
+    uint8_t displayChar;  // 발신자 표시 문자
+    uint8_t colorIndex;   // 발신자 색상 인덱스
     wchar_t message[CHAT_MSG_MAX_LEN];
 
-    MSG_S2C_CHAT() : header{ sizeof(*this), TYPE }, playerId(0), message{} {}
+    MSG_S2C_CHAT() : header{ sizeof(*this), TYPE }, playerId(0), displayChar('A'), colorIndex(0), message{} {}
 };
 
 //==================================================
@@ -235,10 +241,12 @@ struct MSG_S2C_ZONE_CHANGE_OK
     int32_t mapId;
     int32_t channelIndex;
     int32_t playerId;
+    uint8_t displayChar;  // 서버 권위 표시 문자
+    uint8_t colorIndex;   // 서버 권위 색상 인덱스
     float x;
     float y;
 
-    MSG_S2C_ZONE_CHANGE_OK() : header{ sizeof(*this), TYPE }, mapId(0), channelIndex(0), playerId(0), x(0), y(0) {}
+    MSG_S2C_ZONE_CHANGE_OK() : header{ sizeof(*this), TYPE }, mapId(0), channelIndex(0), playerId(0), displayChar('A'), colorIndex(0), x(0), y(0) {}
 };
 
 // S2C: 맵 이동 실패

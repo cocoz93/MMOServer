@@ -145,7 +145,8 @@ void CGameInstance::ProcessNetworkEvents()
         case ClientNetworkEvent::Type::CREATE_MY_PLAYER:
             _playerManager.SetMyPlayer(
                 event.playerId, event.x, event.y,
-                static_cast<Direction>(event.direction), event.speed);
+                static_cast<Direction>(event.direction), event.speed,
+                event.displayChar, event.colorIndex);
             AddChatMessage(L"[System] Connected to server.");
             break;
 
@@ -153,7 +154,8 @@ void CGameInstance::ProcessNetworkEvents()
             _playerManager.AddOtherPlayer(
                 event.playerId, event.x, event.y,
                 static_cast<Direction>(event.direction),
-                static_cast<MoveState>(event.moveState), event.speed);
+                static_cast<MoveState>(event.moveState), event.speed,
+                event.displayChar, event.colorIndex);
             break;
 
         case ClientNetworkEvent::Type::DELETE_PLAYER:
@@ -200,7 +202,7 @@ void CGameInstance::ProcessNetworkEvents()
         case ClientNetworkEvent::Type::CHAT:
         {
             wchar_t buf[128];
-            swprintf_s(buf, L"[Player %d] %s", event.playerId, event.chatMessage);
+            swprintf_s(buf, L"[%c] %s", static_cast<wchar_t>(event.displayChar), event.chatMessage);
             AddChatMessage(buf);
             break;
         }
@@ -222,7 +224,8 @@ void CGameInstance::ProcessNetworkEvents()
                 ? _playerManager.GetMyPlayer()->speed : 50;
             _playerManager.Clear();
             _playerManager.SetMyPlayer(
-                event.playerId, event.x, event.y, Direction::NONE, prevSpeed);
+                event.playerId, event.x, event.y, Direction::NONE, prevSpeed,
+                event.displayChar, event.colorIndex);
             wchar_t buf[128];
             swprintf_s(buf, L"[System] Zone changed: Map=%d Channel=%d",
                         event.mapId, event.channelIndex);
@@ -423,6 +426,8 @@ void CGameInstance::OnCreateMyPlayer(const MSG_S2C_CREATE_MY_PLAYER* msg)
     ClientNetworkEvent event{};
     event.type = ClientNetworkEvent::Type::CREATE_MY_PLAYER;
     event.playerId = msg->playerId;
+    event.displayChar = msg->displayChar;
+    event.colorIndex = msg->colorIndex;
     event.x = msg->x;
     event.y = msg->y;
     event.direction = msg->direction;
@@ -435,6 +440,8 @@ void CGameInstance::OnCreateOtherPlayer(const MSG_S2C_CREATE_OTHER_PLAYER* msg)
     ClientNetworkEvent event{};
     event.type = ClientNetworkEvent::Type::CREATE_OTHER_PLAYER;
     event.playerId = msg->playerId;
+    event.displayChar = msg->displayChar;
+    event.colorIndex = msg->colorIndex;
     event.x = msg->x;
     event.y = msg->y;
     event.direction = msg->direction;
@@ -478,6 +485,8 @@ void CGameInstance::OnChat(const MSG_S2C_CHAT* msg)
     ClientNetworkEvent event{};
     event.type = ClientNetworkEvent::Type::CHAT;
     event.playerId = msg->playerId;
+    event.displayChar = msg->displayChar;
+    event.colorIndex = msg->colorIndex;
     wcsncpy_s(event.chatMessage, msg->message, 63);
     _eventQueue.Push(std::move(event));
 }
@@ -496,6 +505,8 @@ void CGameInstance::OnZoneChangeOk(const MSG_S2C_ZONE_CHANGE_OK* msg)
     ClientNetworkEvent event{};
     event.type = ClientNetworkEvent::Type::ZONE_CHANGE_OK;
     event.playerId = msg->playerId;
+    event.displayChar = msg->displayChar;
+    event.colorIndex = msg->colorIndex;
     event.x = msg->x;
     event.y = msg->y;
     event.mapId = msg->mapId;
