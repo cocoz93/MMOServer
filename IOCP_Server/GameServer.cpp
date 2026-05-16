@@ -237,21 +237,24 @@ void CGameServer::OnConnected(int64_t sessionId)
     // 세션 → 존 매핑 등록
     _zoneManager.RegisterSession(sessionId, zone->GetZoneId());
 
-    // 1) 본인에게 내 캐릭터 생성
+    // 1) 존 메타 정보 전송
+    SendZoneInfo(sessionId, zone);
+
+    // 2) 본인에게 내 캐릭터 생성
     SendCreateMyPlayer(sessionId, player);
 
-    // 2) 주변 플레이어 수집
+    // 3) 주변 플레이어 수집
     std::vector<CPlayer*> aroundPlayers;
     zone->GetSectorManager().GetAroundPlayers(
         player->_sectorX, player->_sectorY, aroundPlayers, player);
 
-    // 3) 주변 플레이어에게 새 캐릭터 등장
+    // 4) 주변 플레이어에게 새 캐릭터 등장
     for (CPlayer* other : aroundPlayers)
     {
         SendCreateOtherPlayer(other->_sessionId, player);
     }
 
-    // 4) 본인에게 주변 기존 플레이어들 정보
+    // 5) 본인에게 주변 기존 플레이어들 정보
     for (CPlayer* other : aroundPlayers)
     {
         SendCreateOtherPlayer(sessionId, other);
@@ -466,6 +469,14 @@ void CGameServer::RecvChat(int64_t sessionId, CSerialBuffer* pMsg)
 // 패킷 전송 추상화
 // ==========================================================================
 
+void CGameServer::SendZoneInfo(int64_t sessionId, CZone* zone)
+{
+    MSG_S2C_ZONE_INFO msg;
+    msg.mapWidth = zone->GetMapWidth();
+    msg.mapHeight = zone->GetMapHeight();
+    SendPacket(sessionId, msg);
+}
+
 void CGameServer::SendCreateMyPlayer(int64_t sessionId, CPlayer* player)
 {
     MSG_S2C_CREATE_MY_PLAYER msg;
@@ -603,6 +614,7 @@ void CGameServer::RecvZoneChange(int64_t sessionId, CSerialBuffer* pMsg)
                 SendZoneChangeFail(sessionId, 1);
 
                 // 복귀한 존에서 본인 + 주변 상호 통보 (OnConnected와 동일)
+                SendZoneInfo(sessionId, fallback);
                 SendCreateMyPlayer(sessionId, fbPlayer);
 
                 aroundPlayers.clear();
@@ -632,7 +644,8 @@ void CGameServer::RecvZoneChange(int64_t sessionId, CSerialBuffer* pMsg)
     _zoneManager.RegisterSession(sessionId, newZone->GetZoneId());
     InterlockedIncrement64(&_monitor._zoneChangeCount);
 
-    // 본인에게 존 이동 성공 통보
+    // 존 메타 정보 + 존 이동 성공 통보
+    SendZoneInfo(sessionId, newZone);
     int32_t channelIndex = CZoneManager::GetChannelIndexFromZoneId(newZone->GetZoneId());
     SendZoneChangeOk(sessionId, targetMapId, channelIndex, newPlayer);
 

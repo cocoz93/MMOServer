@@ -171,6 +171,7 @@ uint16_t DummyClient::GetPacketSize(MsgType type)
 {
     switch (type)
     {
+    case MsgType::S2C_ZONE_INFO:           return sizeof(MSG_S2C_ZONE_INFO);
     case MsgType::S2C_CREATE_MY_PLAYER:    return sizeof(MSG_S2C_CREATE_MY_PLAYER);
     case MsgType::S2C_CREATE_OTHER_PLAYER: return sizeof(MSG_S2C_CREATE_OTHER_PLAYER);
     case MsgType::S2C_DELETE_PLAYER:       return sizeof(MSG_S2C_DELETE_PLAYER);
@@ -242,6 +243,8 @@ void DummyClient::ProcessPackets(StatsLocal& stats, const MMOStressConfig& confi
             HandleZoneChangeFail(packet);
             stats.zoneChangeFail += 1;
             break;
+        case MsgType::S2C_ZONE_INFO:
+            break;  // 더미 클라이언트는 존 메타 정보 무시
         default: break;
         }
     }

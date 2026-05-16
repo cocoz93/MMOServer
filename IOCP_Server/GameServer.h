@@ -94,6 +94,7 @@ private:
     }
 
     // 패킷별 전송 함수 (Fill + Send)
+    void SendZoneInfo(int64_t sessionId, CZone* zone);
     void SendCreateMyPlayer(int64_t sessionId, CPlayer* player);
     void SendCreateOtherPlayer(int64_t sessionId, CPlayer* player);
     void SendDeletePlayer(int64_t sessionId, CPlayer* player);
