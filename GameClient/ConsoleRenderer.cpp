@@ -26,6 +26,30 @@ static int GetDisplayWidth(const wchar_t* text, int charLen)
     return width;
 }
 
+// playerId → 고유 문자 (A-Z, a-z, 0-9 = 62종)
+static wchar_t GetPlayerChar(int32_t playerId)
+{
+    static constexpr const wchar_t CHARS[] =
+        L"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    return CHARS[playerId % 62];
+}
+
+// playerId → 고유 색상 (배경과 구분되는 밝은 색 7종)
+static WORD GetPlayerColor(int32_t playerId)
+{
+    static constexpr WORD COLORS[] =
+    {
+        FOREGROUND_GREEN | FOREGROUND_INTENSITY,                            // 밝은 초록
+        FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY,           // 밝은 노랑
+        FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY,          // 밝은 청록
+        FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_INTENSITY,            // 밝은 자홍
+        FOREGROUND_RED | FOREGROUND_INTENSITY,                              // 밝은 빨강
+        FOREGROUND_BLUE | FOREGROUND_INTENSITY,                             // 밝은 파랑
+        FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY, // 밝은 흰색
+    };
+    return COLORS[(playerId / 62) % 7];
+}
+
 CConsoleRenderer::CConsoleRenderer()
     : _hConsole(INVALID_HANDLE_VALUE)
 {
@@ -194,7 +218,7 @@ void CConsoleRenderer::RenderGameView(const ClientPlayer* me,
         }
     }
 
-    // 다른 플레이어 배치
+    // 다른 플레이어 배치 (playerId 기반 고유 문자+색상)
     for (const auto& pair : others)
     {
         const ClientPlayer& p = pair.second;
@@ -203,12 +227,12 @@ void CConsoleRenderer::RenderGameView(const ClientPlayer* me,
 
         if (sx >= 0 && sx < VIEW_WIDTH && sy >= 0 && sy < VIEW_HEIGHT)
         {
-            _viewBuffer[sy][sx].Char.UnicodeChar = L'#';
-            _viewBuffer[sy][sx].Attributes = COLOR_OTHER_PLAYER;
+            _viewBuffer[sy][sx].Char.UnicodeChar = GetPlayerChar(p.playerId);
+            _viewBuffer[sy][sx].Attributes = GetPlayerColor(p.playerId);
         }
     }
 
-    // 내 캐릭터 배치 (항상 중앙)
+    // 내 캐릭터 배치 (고유 문자+색상 + 반전+밑줄로 강조)
     if (me)
     {
         int mx = static_cast<int>(me->x - camX + 0.5f);
@@ -216,8 +240,9 @@ void CConsoleRenderer::RenderGameView(const ClientPlayer* me,
 
         if (mx >= 0 && mx < VIEW_WIDTH && my >= 0 && my < VIEW_HEIGHT)
         {
-            _viewBuffer[my][mx].Char.UnicodeChar = L'@';
-            _viewBuffer[my][mx].Attributes = COLOR_MY_PLAYER;
+            _viewBuffer[my][mx].Char.UnicodeChar = GetPlayerChar(me->playerId);
+            _viewBuffer[my][mx].Attributes = GetPlayerColor(me->playerId)
+                | COMMON_LVB_REVERSE_VIDEO | COMMON_LVB_UNDERSCORE;
         }
     }
 
