@@ -23,6 +23,7 @@ public:
     bool ConnectToServer(const std::string& serverIp, int port);
 
     // S2C 패킷 핸들러 (수신 스레드에서 호출 → 이벤트 큐에 Push)
+    void OnZoneInfo(const MSG_S2C_ZONE_INFO* msg);
     void OnCreateMyPlayer(const MSG_S2C_CREATE_MY_PLAYER* msg);
     void OnCreateOtherPlayer(const MSG_S2C_CREATE_OTHER_PLAYER* msg);
     void OnDeletePlayer(const MSG_S2C_DELETE_PLAYER* msg);

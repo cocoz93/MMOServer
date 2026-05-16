@@ -36,6 +36,12 @@ CConsoleRenderer::~CConsoleRenderer()
 {
 }
 
+void CConsoleRenderer::SetMapSize(int width, int height)
+{
+    _mapWidth = width;
+    _mapHeight = height;
+}
+
 void CConsoleRenderer::Init()
 {
     _hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -164,10 +170,10 @@ void CConsoleRenderer::RenderGameView(const ClientPlayer* me,
             int worldY = static_cast<int>(camY + row);
 
             // 경계선 (맵 가장자리 1칸)
-            bool isBorderX = (worldX == -1 || worldX == MAP_WIDTH);
-            bool isBorderY = (worldY == -1 || worldY == MAP_HEIGHT);
-            bool isInsideX = (worldX >= 0 && worldX < MAP_WIDTH);
-            bool isInsideY = (worldY >= 0 && worldY < MAP_HEIGHT);
+            bool isBorderX = (worldX == -1 || worldX == _mapWidth);
+            bool isBorderY = (worldY == -1 || worldY == _mapHeight);
+            bool isInsideX = (worldX >= 0 && worldX < _mapWidth);
+            bool isInsideY = (worldY >= 0 && worldY < _mapHeight);
 
             if ((isBorderX && (isInsideY || isBorderY)) ||
                 (isBorderY && (isInsideX || isBorderX)))

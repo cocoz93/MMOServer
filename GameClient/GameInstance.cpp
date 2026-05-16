@@ -137,6 +137,11 @@ void CGameInstance::ProcessNetworkEvents()
     {
         switch (event.type)
         {
+        case ClientNetworkEvent::Type::ZONE_INFO:
+            _renderer.SetMapSize(event.mapWidth, event.mapHeight);
+            _playerManager.SetMapSize(event.mapWidth, event.mapHeight);
+            break;
+
         case ClientNetworkEvent::Type::CREATE_MY_PLAYER:
             _playerManager.SetMyPlayer(
                 event.playerId, event.x, event.y,
@@ -403,6 +408,15 @@ void CGameInstance::ProcessChatInput()
 // ==========================================================================
 // S2C 패킷 핸들러 — 이벤트 큐에 Push (수신 스레드에서 호출)
 // ==========================================================================
+
+void CGameInstance::OnZoneInfo(const MSG_S2C_ZONE_INFO* msg)
+{
+    ClientNetworkEvent event{};
+    event.type = ClientNetworkEvent::Type::ZONE_INFO;
+    event.mapWidth = msg->mapWidth;
+    event.mapHeight = msg->mapHeight;
+    _eventQueue.Push(std::move(event));
+}
 
 void CGameInstance::OnCreateMyPlayer(const MSG_S2C_CREATE_MY_PLAYER* msg)
 {

@@ -83,18 +83,26 @@ public:
         return _otherPlayers;
     }
 
+public:
+    // 맵 크기 설정 (서버에서 S2C_ZONE_INFO로 수신)
+    void SetMapSize(int width, int height)
+    {
+        _mapWidth = width;
+        _mapHeight = height;
+    }
+
 private:
-    // 맵 크기 (서버 Zone과 동일)
-    static constexpr int MAP_WIDTH = 400;
-    static constexpr int MAP_HEIGHT = 400;
+    // 맵 크기 (서버에서 S2C_ZONE_INFO로 수신)
+    int _mapWidth = 400;
+    int _mapHeight = 400;
 
     // 맵 경계 클램핑 (서버 Zone::Tick과 동일 조건)
-    static void ClampToMap(ClientPlayer& player)
+    void ClampToMap(ClientPlayer& player)
     {
-        if (player.x < 0.0f)                         player.x = 0.0f;
-        if (player.x >= static_cast<float>(MAP_WIDTH))  player.x = static_cast<float>(MAP_WIDTH) - 1.0f;
-        if (player.y < 0.0f)                         player.y = 0.0f;
-        if (player.y >= static_cast<float>(MAP_HEIGHT)) player.y = static_cast<float>(MAP_HEIGHT) - 1.0f;
+        if (player.x < 0.0f)                          player.x = 0.0f;
+        if (player.x >= static_cast<float>(_mapWidth))  player.x = static_cast<float>(_mapWidth) - 1.0f;
+        if (player.y < 0.0f)                          player.y = 0.0f;
+        if (player.y >= static_cast<float>(_mapHeight)) player.y = static_cast<float>(_mapHeight) - 1.0f;
     }
 
     // 방향별 좌표 이동 적용

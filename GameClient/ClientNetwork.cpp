@@ -250,6 +250,11 @@ void CClientNetwork::DispatchPacket(const char* data, uint16_t size)
 
     switch (header->type)
     {
+    case MsgType::S2C_ZONE_INFO:
+        if (size >= sizeof(MSG_S2C_ZONE_INFO))
+            _gameInstance->OnZoneInfo(reinterpret_cast<const MSG_S2C_ZONE_INFO*>(data));
+        break;
+
     case MsgType::S2C_CREATE_MY_PLAYER:
         if (size >= sizeof(MSG_S2C_CREATE_MY_PLAYER))
             _gameInstance->OnCreateMyPlayer(reinterpret_cast<const MSG_S2C_CREATE_MY_PLAYER*>(data));

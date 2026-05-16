@@ -11,6 +11,7 @@ struct ClientNetworkEvent
 {
     enum class Type
     {
+        ZONE_INFO,
         CREATE_MY_PLAYER,
         CREATE_OTHER_PLAYER,
         DELETE_PLAYER,
@@ -32,6 +33,10 @@ struct ClientNetworkEvent
     uint8_t direction;
     uint8_t moveState;
     int32_t speed;
+
+    // 존 정보
+    int32_t mapWidth;
+    int32_t mapHeight;
 
     // 존 이동
     int32_t mapId;

@@ -41,8 +41,9 @@ enum class MsgType : uint16_t
     S2C_SYNC_POSITION,  // 서버 → 클라이언트: 좌표 강제 보정
 
     //--------------------------------------------------
-    // 존 이동
+    // 존 정보 / 존 이동
     //--------------------------------------------------
+    S2C_ZONE_INFO,        // 서버 → 클라이언트: 존 메타 정보 (맵 크기 등)
     C2S_ZONE_CHANGE,      // 클라이언트 → 서버: 맵 이동 요청
     S2C_ZONE_CHANGE_OK,   // 서버 → 클라이언트: 이동 성공
     S2C_ZONE_CHANGE_FAIL, // 서버 → 클라이언트: 이동 실패
@@ -205,8 +206,19 @@ struct MSG_S2C_SYNC_POSITION
 };
 
 //==================================================
-// 존 이동
+// 존 정보 / 존 이동
 //==================================================
+
+// S2C: 존 메타 정보 (존 입장/이동 시 CREATE_MY_PLAYER 앞에 전송)
+struct MSG_S2C_ZONE_INFO
+{
+    static constexpr MsgType TYPE = MsgType::S2C_ZONE_INFO;
+    MsgHeader header;
+    int32_t mapWidth;
+    int32_t mapHeight;
+
+    MSG_S2C_ZONE_INFO() : header{ sizeof(*this), TYPE }, mapWidth(0), mapHeight(0) {}
+};
 
 // C2S: 맵 이동 요청
 struct MSG_C2S_ZONE_CHANGE
