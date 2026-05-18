@@ -95,12 +95,13 @@ void CSectorManager::GetAroundPlayers(int32_t sectorX, int32_t sectorY,
 {
     outPlayers.clear();
 
-    std::vector<SectorPos> aroundSectors;
-    GetAroundSectorList(sectorX, sectorY, aroundSectors);
+    SectorPos aroundSectors[MAX_AROUND_SECTORS];
+    int32_t count = 0;
+    GetAroundSectorList(sectorX, sectorY, aroundSectors, count);
 
-    for (const auto& pos : aroundSectors)
+    for (int32_t i = 0; i < count; ++i)
     {
-        const auto& players = _sectors[pos.y][pos.x];
+        const auto& players = _sectors[aroundSectors[i].y][aroundSectors[i].x];
         for (CPlayer* p : players)
         {
             if (p != exclude)
@@ -119,41 +120,43 @@ void CSectorManager::GetSectorDiff(int32_t oldSectorX, int32_t oldSectorY,
     outAdded.clear();
     outRemoved.clear();
 
-    std::vector<SectorPos> oldList;
-    std::vector<SectorPos> newList;
-    GetAroundSectorList(oldSectorX, oldSectorY, oldList);
-    GetAroundSectorList(newSectorX, newSectorY, newList);
+    SectorPos oldList[MAX_AROUND_SECTORS];
+    SectorPos newList[MAX_AROUND_SECTORS];
+    int32_t oldCount = 0;
+    int32_t newCount = 0;
+    GetAroundSectorList(oldSectorX, oldSectorY, oldList, oldCount);
+    GetAroundSectorList(newSectorX, newSectorY, newList, newCount);
 
     // newList에 있지만 oldList에 없는 것 → added
-    for (const auto& ns : newList)
+    for (int32_t i = 0; i < newCount; ++i)
     {
         bool found = false;
-        for (const auto& os : oldList)
+        for (int32_t j = 0; j < oldCount; ++j)
         {
-            if (ns.x == os.x && ns.y == os.y)
+            if (newList[i].x == oldList[j].x && newList[i].y == oldList[j].y)
             {
                 found = true;
                 break;
             }
         }
         if (!found)
-            outAdded.push_back(ns);
+            outAdded.push_back(newList[i]);
     }
 
     // oldList에 있지만 newList에 없는 것 → removed
-    for (const auto& os : oldList)
+    for (int32_t i = 0; i < oldCount; ++i)
     {
         bool found = false;
-        for (const auto& ns : newList)
+        for (int32_t j = 0; j < newCount; ++j)
         {
-            if (os.x == ns.x && os.y == ns.y)
+            if (oldList[i].x == newList[j].x && oldList[i].y == newList[j].y)
             {
                 found = true;
                 break;
             }
         }
         if (!found)
-            outRemoved.push_back(os);
+            outRemoved.push_back(oldList[i]);
     }
 }
 
@@ -164,9 +167,9 @@ bool CSectorManager::IsValidSector(int32_t sectorX, int32_t sectorY) const
 }
 
 void CSectorManager::GetAroundSectorList(int32_t sectorX, int32_t sectorY,
-                                         std::vector<SectorPos>& outSectors) const
+                                         SectorPos* outSectors, int32_t& outCount) const
 {
-    outSectors.clear();
+    outCount = 0;
 
     for (int32_t dy = -1; dy <= 1; ++dy)
     {
@@ -177,7 +180,7 @@ void CSectorManager::GetAroundSectorList(int32_t sectorX, int32_t sectorY,
 
             if (IsValidSector(nx, ny))
             {
-                outSectors.push_back({ nx, ny });
+                outSectors[outCount++] = { nx, ny };
             }
         }
     }

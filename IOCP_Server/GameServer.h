@@ -86,12 +86,12 @@ private:
     template <typename T>
     void BroadcastAround(CZone* zone, CPlayer* player, const T& msg, bool excludeSelf = true)
     {
-        std::vector<CPlayer*> aroundPlayers;
+        _broadcastBuffer.clear();
         CPlayer* exclude = excludeSelf ? player : nullptr;
         zone->GetSectorManager().GetAroundPlayers(
-            player->_sectorX, player->_sectorY, aroundPlayers, exclude);
+            player->_sectorX, player->_sectorY, _broadcastBuffer, exclude);
 
-        for (CPlayer* other : aroundPlayers)
+        for (CPlayer* other : _broadcastBuffer)
         {
             SendPacket(other->_sessionId, msg);
         }
@@ -124,8 +124,6 @@ private:
 
     std::thread _gameThread;
     std::atomic<bool> _running;
-    int _frameCount = 0;
-
     // 프레임 설정
     static constexpr int FRAME_PER_SEC = 25;
     static constexpr int FRAME_INTERVAL_MS = 1000 / FRAME_PER_SEC;  // 40ms
@@ -133,7 +131,6 @@ private:
     // 이동 검증 상수
     static constexpr float MOVE_TOLERANCE_BASE = 2.0f;  // 고정 여유값
     static constexpr uint32_t CHEAT_KICK_THRESHOLD = 5;
-    static constexpr int SYNC_INTERVAL_FRAMES = 10;  // 400ms마다 동기화
     static constexpr int CLEANUP_INTERVAL_FRAMES = 25 * 30;  // 30초마다 빈 채널 정리
 
     int32_t _defaultMapId = 0;  // 최초 접속 시 입장할 맵
@@ -142,4 +139,9 @@ private:
     // 섹터 변경 배치 처리용 대기열 (프레임 내 수집 → 틱 후 일괄 처리)
     std::vector<SectorChangeInfo> _pendingSectorChanges;
     std::unordered_set<CPlayer*> _sectorChangedSet;  // 이미 기록된 플레이어 필터
+
+    // 프레임 재사용 버퍼 (힙 할당 방지 — clear()로 capacity 유지)
+    std::vector<CPlayer*> _broadcastBuffer;
+    std::vector<SectorChangeInfo> _tickSectorChanges;
+    std::vector<CPlayer*> _tickClampedPlayers;
 };

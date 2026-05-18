@@ -63,9 +63,11 @@ public:
 private:
     bool IsValidSector(int32_t sectorX, int32_t sectorY) const;
 
-    // 주변 9섹터 좌표 수집 (경계 클램핑 포함)
+    // 주변 9섹터 좌표 수집 (경계 클램핑 포함, 고정 배열)
+    // outSectors: 최대 9개, outCount: 실제 개수
+    static constexpr int32_t MAX_AROUND_SECTORS = 9;
     void GetAroundSectorList(int32_t sectorX, int32_t sectorY,
-                             std::vector<SectorPos>& outSectors) const;
+                             SectorPos* outSectors, int32_t& outCount) const;
 
     int32_t _mapWidth;
     int32_t _mapHeight;

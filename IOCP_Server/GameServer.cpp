@@ -114,12 +114,12 @@ void CGameServer::GameLoopThread()
         ProcessNetworkEvents();
 
         // 2) 게임 로직 갱신 (좌표 이동 + 섹터 변경 감지 + 경계 클램핑)
-        std::vector<SectorChangeInfo> sectorChanges;
-        std::vector<CPlayer*> clampedPlayers;
-        _zoneManager.TickAll(deltaTime, sectorChanges, clampedPlayers);
+        _tickSectorChanges.clear();
+        _tickClampedPlayers.clear();
+        _zoneManager.TickAll(deltaTime, _tickSectorChanges, _tickClampedPlayers);
 
         // 3) 섹터 변경 배치 처리 (RecvMoveStop + TickAll 병합 → 삽입 시 중복 차단)
-        for (const auto& change : sectorChanges)
+        for (const auto& change : _tickSectorChanges)
         {
             PushSectorChange(change.player, change.oldSectorX, change.oldSectorY);
         }
@@ -142,7 +142,7 @@ void CGameServer::GameLoopThread()
         _sectorChangedSet.clear();
 
         // 3-1) 맵 경계 클램핑으로 정지된 플레이어에게 MOVE_STOP 브로드캐스트
-        for (CPlayer* player : clampedPlayers)
+        for (CPlayer* player : _tickClampedPlayers)
         {
             CZone* zone = _zoneManager.FindZoneBySession(player->_sessionId);
             if (zone != nullptr)
@@ -156,25 +156,7 @@ void CGameServer::GameLoopThread()
             }
         }
 
-        // 4) 이동 중 플레이어에게 주기적 좌표 동기화
-        ++_frameCount;
-        if (_frameCount >= SYNC_INTERVAL_FRAMES)
-        {
-            _frameCount = 0;
-            for (const auto& zonePair : _zoneManager.GetZones())
-            {
-                for (const auto& playerPair : zonePair.second->GetPlayers())
-                {
-                    CPlayer* p = playerPair.second;
-                    if (p->_moveState == MoveState::MOVING)
-                    {
-                        SendSyncPosition(p->_sessionId, p);
-                    }
-                }
-            }
-        }
-
-        // 5) 빈 동적 채널 정리
+        // 4) 빈 동적 채널 정리
         ++_cleanupFrameCount;
         if (_cleanupFrameCount >= CLEANUP_INTERVAL_FRAMES)
         {
