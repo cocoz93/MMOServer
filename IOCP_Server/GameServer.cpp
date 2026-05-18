@@ -118,9 +118,19 @@ void CGameServer::GameLoopThread()
         std::vector<CPlayer*> clampedPlayers;
         _zoneManager.TickAll(deltaTime, sectorChanges, clampedPlayers);
 
-        // 3) 섹터 변경 브로드캐스트
+        // 3) 섹터 변경 배치 처리 (RecvMoveStop + TickAll 병합 → 삽입 시 중복 차단)
         for (const auto& change : sectorChanges)
         {
+            PushSectorChange(change.player, change.oldSectorX, change.oldSectorY);
+        }
+
+        for (const auto& change : _pendingSectorChanges)
+        {
+            // 출발 섹터 == 현재 섹터이면 원위치 복귀 → 브로드캐스트 불필요
+            if (change.oldSectorX == change.player->_sectorX &&
+                change.oldSectorY == change.player->_sectorY)
+                continue;
+
             CZone* zone = _zoneManager.FindZoneBySession(change.player->_sessionId);
             if (zone != nullptr)
             {
@@ -128,6 +138,8 @@ void CGameServer::GameLoopThread()
                                     change.oldSectorX, change.oldSectorY);
             }
         }
+        _pendingSectorChanges.clear();
+        _sectorChangedSet.clear();
 
         // 3-1) 맵 경계 클램핑으로 정지된 플레이어에게 MOVE_STOP 브로드캐스트
         for (CPlayer* player : clampedPlayers)
@@ -432,8 +444,8 @@ void CGameServer::RecvMoveStop(int64_t sessionId, CSerialBuffer* pMsg)
         player->_sectorY = newSectorY;
         zone->GetSectorManager().AddPlayer(player, newSectorX, newSectorY);
 
-        // 시야 진입/이탈 브로드캐스트
-        ProcessSectorChange(zone, player, oldSectorX, oldSectorY);
+        // 시야 진입/이탈 — 대기열에 추가 (틱 끝에 배치 처리)
+        PushSectorChange(player, oldSectorX, oldSectorY);
     }
 
     // 주변에 MOVE_STOP 브로드캐스트
@@ -746,6 +758,19 @@ bool CGameServer::ValidateMove(CZone* zone, CPlayer* player, float clientX, floa
     }
 
     return true;
+}
+
+// ==========================================================================
+// 섹터 변경 대기열 삽입 — 같은 플레이어는 최초 출발 섹터만 기록
+// ==========================================================================
+
+void CGameServer::PushSectorChange(CPlayer* player, int32_t oldSectorX, int32_t oldSectorY)
+{
+    if (_sectorChangedSet.find(player) != _sectorChangedSet.end())
+        return;  // 이미 기록됨 → 최초 출발 섹터 유지
+
+    _pendingSectorChanges.push_back({ player, oldSectorX, oldSectorY });
+    _sectorChangedSet.insert(player);
 }
 
 // ==========================================================================

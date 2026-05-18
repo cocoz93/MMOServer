@@ -21,6 +21,7 @@
 #include <atomic>
 #include <memory>
 #include <vector>
+#include <unordered_set>
 
 #include "IOCPServer.h"
 #include "ZoneManager.h"
@@ -68,6 +69,9 @@ private:
     // 섹터 변경 시 시야 진입/이탈 브로드캐스트
     void ProcessSectorChange(CZone* zone, CPlayer* player,
                              int32_t oldSectorX, int32_t oldSectorY);
+
+    // 섹터 변경 대기열에 추가 (중복 플레이어는 최초 출발 섹터만 유지)
+    void PushSectorChange(CPlayer* player, int32_t oldSectorX, int32_t oldSectorY);
 
     // ── 패킷 전송 추상화 ──
 
@@ -134,4 +138,8 @@ private:
 
     int32_t _defaultMapId = 0;  // 최초 접속 시 입장할 맵
     int _cleanupFrameCount = 0;
+
+    // 섹터 변경 배치 처리용 대기열 (프레임 내 수집 → 틱 후 일괄 처리)
+    std::vector<SectorChangeInfo> _pendingSectorChanges;
+    std::unordered_set<CPlayer*> _sectorChangedSet;  // 이미 기록된 플레이어 필터
 };
