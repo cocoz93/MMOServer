@@ -16,10 +16,10 @@ CPlayer::CPlayer(int64_t sessionId)
     , _zoneId(-1)
     , _cheatCount(0)
 {
-    // 50 ~ 200 (10 단위) 랜덤 속도 부여
+    // 25 ~ 100 (5 단위) 랜덤 속도 부여
     static thread_local std::mt19937 rng(std::random_device{}());
     std::uniform_int_distribution<int> dist(5, 20);
-    _speed = dist(rng) * 10;
+    _speed = dist(rng) * 5;
 }
 
 CPlayer::~CPlayer()
