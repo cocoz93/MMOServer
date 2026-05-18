@@ -91,6 +91,9 @@ echo   - Server is ready
 
 start "" /D "%~dp0bin" MMOStressClient.exe
 echo   - MMOStressClient started
+
+start "" /D "%~dp0bin" GameClient.exe
+echo   - GameClient started (manual play)
 echo.
 
 echo ============================================
