@@ -48,6 +48,7 @@ bool CClientNetwork::Connect(const std::string& serverIp, int port)
         const int wsaErr = WSAGetLastError();
         LOG_WSA_ERROR_STREAM("connect failed: ", wsaErr);
         closesocket(_socket);
+        _socket = INVALID_SOCKET;
         WSACleanup();
         return false;
     }
@@ -68,11 +69,6 @@ bool CClientNetwork::Connect(const std::string& serverIp, int port)
 
 void CClientNetwork::Disconnect()
 {
-    if (!_connected)
-    {
-        return;
-    }
-
     _running = false;
     _connected = false;
 
