@@ -1,7 +1,8 @@
 ﻿#include "Player.h"
 
 CPlayer::CPlayer()
-    : _accountId(0)
+    : _sessionId(-1)
+    , _accountId(0)
     , _playerId(0)
     , _displayChar('A')
     , _colorIndex(0)

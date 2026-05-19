@@ -13,13 +13,13 @@
 //  Port=6000
 //  MaxClients=1000
 //  MonitorPort=9090
-//  MapCount=3
+//  MapCount=1
 //
 //  [MapDefault]
-//  Width=400
-//  Height=400
-//  SectorSize=40
-//  MaxPlayersPerChannel=100
+//  Width=200
+//  Height=200
+//  SectorSize=20
+//  MaxPlayersPerChannel=200
 //
 //  [Map1]              ← 개별 오버라이드 (없으면 MapDefault 적용)
 //  Width=800
@@ -78,10 +78,10 @@ struct ServerConfig
 
         // [MapDefault] 섹션 로드
         MapConfig defaultMap = {};
-        defaultMap.mapWidth            = GetPrivateProfileIntW(L"MapDefault", L"Width", 400, path);
-        defaultMap.mapHeight           = GetPrivateProfileIntW(L"MapDefault", L"Height", 400, path);
-        defaultMap.sectorSize          = GetPrivateProfileIntW(L"MapDefault", L"SectorSize", 40, path);
-        defaultMap.maxPlayersPerChannel = GetPrivateProfileIntW(L"MapDefault", L"MaxPlayersPerChannel", 100, path);
+        defaultMap.mapWidth            = GetPrivateProfileIntW(L"MapDefault", L"Width", 200, path);
+        defaultMap.mapHeight           = GetPrivateProfileIntW(L"MapDefault", L"Height", 200, path);
+        defaultMap.sectorSize          = GetPrivateProfileIntW(L"MapDefault", L"SectorSize", 20, path);
+        defaultMap.maxPlayersPerChannel = GetPrivateProfileIntW(L"MapDefault", L"MaxPlayersPerChannel", 200, path);
 
         // [Map0] ~ [MapN-1] 섹션 순회 (없으면 디폴트 적용)
         maps.clear();
@@ -107,9 +107,7 @@ private:
     void SetDefaultMaps()
     {
         maps = {
-            { 0, 400, 400, 40, 100 },
-            { 1, 400, 400, 40, 100 },
-            { 2, 400, 400, 40, 100 },
+            { 0, 200, 200, 20, 200 },
         };
     }
 

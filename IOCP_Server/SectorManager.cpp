@@ -114,11 +114,11 @@ void CSectorManager::GetAroundPlayers(int32_t sectorX, int32_t sectorY,
 
 void CSectorManager::GetSectorDiff(int32_t oldSectorX, int32_t oldSectorY,
                                    int32_t newSectorX, int32_t newSectorY,
-                                   std::vector<SectorPos>& outAdded,
-                                   std::vector<SectorPos>& outRemoved) const
+                                   SectorPos* outAdded, int32_t& outAddedCount,
+                                   SectorPos* outRemoved, int32_t& outRemovedCount) const
 {
-    outAdded.clear();
-    outRemoved.clear();
+    outAddedCount = 0;
+    outRemovedCount = 0;
 
     SectorPos oldList[MAX_AROUND_SECTORS];
     SectorPos newList[MAX_AROUND_SECTORS];
@@ -140,7 +140,7 @@ void CSectorManager::GetSectorDiff(int32_t oldSectorX, int32_t oldSectorY,
             }
         }
         if (!found)
-            outAdded.push_back(newList[i]);
+            outAdded[outAddedCount++] = newList[i];
     }
 
     // oldList에 있지만 newList에 없는 것 → removed
@@ -156,7 +156,7 @@ void CSectorManager::GetSectorDiff(int32_t oldSectorX, int32_t oldSectorY,
             }
         }
         if (!found)
-            outRemoved.push_back(oldList[i]);
+            outRemoved[outRemovedCount++] = oldList[i];
     }
 }
 

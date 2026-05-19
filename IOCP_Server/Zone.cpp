@@ -1,5 +1,6 @@
 ﻿#include "Zone.h"
 #include "Player.h"
+#include <algorithm>
 
 CZone::CZone()
     : _zoneId(-1)
@@ -12,7 +13,8 @@ CZone::CZone()
 CZone::~CZone()
 {
     // CPlayer의 생명주기는 CGameServer가 관리
-    _players.clear();
+    _playerMap.clear();
+    _playerList.clear();
 }
 
 bool CZone::Init(int32_t zoneId, int32_t mapId, int32_t mapWidth, int32_t mapHeight, int32_t sectorSize)
@@ -45,16 +47,17 @@ bool CZone::EnterZone(CPlayer* player)
     player->_sectorY = _sectorManager.CalcSectorY(player->_y);
     _sectorManager.AddPlayer(player, player->_sectorX, player->_sectorY);
 
-    // 플레이어 목록에 추가 (playerId 키)
-    _players[player->_playerId] = player;
+    // 플레이어 목록에 추가
+    _playerMap[player->_playerId] = player;
+    _playerList.push_back(player);
 
     return true;
 }
 
 void CZone::LeaveZone(int32_t playerId)
 {
-    auto it = _players.find(playerId);
-    if (it == _players.end())
+    auto it = _playerMap.find(playerId);
+    if (it == _playerMap.end())
         return;
 
     CPlayer* player = it->second;
@@ -63,15 +66,22 @@ void CZone::LeaveZone(int32_t playerId)
     _sectorManager.RemovePlayer(player, player->_sectorX, player->_sectorY);
 
     // 맵에서 제거 (delete는 CGameServer가 담당)
-    _players.erase(it);
+    _playerMap.erase(it);
+
+    // 순회용 리스트에서 O(1) 삭제 (swap-and-pop)
+    auto listIt = std::find(_playerList.begin(), _playerList.end(), player);
+    if (listIt != _playerList.end())
+    {
+        *listIt = _playerList.back();
+        _playerList.pop_back();
+    }
 }
 
 void CZone::Tick(float deltaTime, std::vector<SectorChangeInfo>& outSectorChanges,
                  std::vector<CPlayer*>& outClampedPlayers)
 {
-    for (auto& pair : _players)
+    for (CPlayer* player : _playerList)
     {
-        CPlayer* player = pair.second;
         if (player->_moveState != MoveState::MOVING)
             continue;
 
@@ -127,8 +137,8 @@ void CZone::Tick(float deltaTime, std::vector<SectorChangeInfo>& outSectorChange
 
 CPlayer* CZone::FindPlayer(int32_t playerId) const
 {
-    auto it = _players.find(playerId);
-    if (it == _players.end())
+    auto it = _playerMap.find(playerId);
+    if (it == _playerMap.end())
         return nullptr;
     return it->second;
 }

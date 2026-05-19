@@ -79,12 +79,7 @@ private:
     static uint8_t CalcDisplayChar(int32_t playerId);
     static uint8_t CalcColorIndex(int32_t playerId);
 
-    // ── 계층 경계 헬퍼 (playerId → sessionId 변환) ──
-
-    // playerId → sessionId 변환 (없으면 -1)
-    int64_t GetSessionId(CPlayer* player) const;
-
-    // 컨텐츠 레이어에서 연결 해제 요청
+    // 플레이어 연결 해제
     void DisconnectPlayer(CPlayer* player);
 
     // ── 패킷 전송 추상화 ──
@@ -93,14 +88,13 @@ private:
     template <typename T>
     void SendPacket(CPlayer* target, const T& msg)
     {
-        int64_t sid = GetSessionId(target);
-        if (sid != -1)
-            _network->RequestSendMsg(sid, reinterpret_cast<const char*>(&msg), sizeof(T));
+        if (target->_sessionId != -1)
+            _network->RequestSendMsg(target->_sessionId, reinterpret_cast<const char*>(&msg), sizeof(T));
     }
 
     // 주변 브로드캐스트 (excludeSelf=true: 본인 제외)
     template <typename T>
-    void BroadcastAround(CZone* zone, CPlayer* player, const T& msg, bool excludeSelf = true)
+    void BroadcastAroundSector(CZone* zone, CPlayer* player, const T& msg, bool excludeSelf = true)
     {
         _broadcastBuffer.clear();
         CPlayer* exclude = excludeSelf ? player : nullptr;
@@ -152,9 +146,8 @@ private:
     int32_t _defaultMapId = 0;  // 최초 접속 시 입장할 맵
     int32_t _nextPlayerId = 1;  // 전역 playerId 카운터 (싱글스레드 게임 루프)
 
-    // 경계 계층: 네트워크(sessionId) ↔ 컨텐츠(playerId) 양방향 매핑
-    std::unordered_map<int64_t, CPlayer*> _sessionToPlayer;   // sessionId → CPlayer*
-    std::unordered_map<int32_t, int64_t> _playerToSession;    // playerId → sessionId
+    // 네트워크 경계: sessionId → CPlayer* (수신 시 플레이어 조회)
+    std::unordered_map<int64_t, CPlayer*> _sessionToPlayer;
     int _cleanupFrameCount = 0;
 
     // 섹터 변경 배치 처리용 대기열 (프레임 내 수집 → 틱 후 일괄 처리)
@@ -162,7 +155,8 @@ private:
     std::unordered_set<CPlayer*> _sectorChangedSet;  // 이미 기록된 플레이어 필터
 
     // 프레임 재사용 버퍼 (힙 할당 방지 — clear()로 capacity 유지)
-    std::vector<CPlayer*> _broadcastBuffer;
+    std::vector<CPlayer*> _broadcastBuffer;       // BroadcastAroundSector 전용
+    std::vector<CPlayer*> _eventAroundBuffer;     // 접속/해제/존이동 전용
     std::vector<SectorChangeInfo> _tickSectorChanges;
     std::vector<CPlayer*> _tickClampedPlayers;
 };

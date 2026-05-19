@@ -57,8 +57,8 @@ public:
     int32_t GetMapId() const { return _mapId; }
     int32_t GetMapWidth() const { return _mapWidth; }
     int32_t GetMapHeight() const { return _mapHeight; }
-    int32_t GetPlayerCount() const { return static_cast<int32_t>(_players.size()); }
-    const std::unordered_map<int32_t, CPlayer*>& GetPlayers() const { return _players; }
+    int32_t GetPlayerCount() const { return static_cast<int32_t>(_playerList.size()); }
+    const std::vector<CPlayer*>& GetPlayers() const { return _playerList; }
 
     // 섹터매니저 접근 (이동 처리 등 외부에서 필요)
     CSectorManager& GetSectorManager() { return _sectorManager; }
@@ -75,6 +75,9 @@ private:
 
     CSectorManager _sectorManager;
 
-    // playerId → CPlayer*
-    std::unordered_map<int32_t, CPlayer*> _players;
+    // playerId → CPlayer* (조회용)
+    std::unordered_map<int32_t, CPlayer*> _playerMap;
+
+    // 순회용 (Tick 캐시 지역성)
+    std::vector<CPlayer*> _playerList;
 };

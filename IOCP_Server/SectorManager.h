@@ -3,12 +3,12 @@
 //
 // [설계 기준]
 //  - 콘솔 클라이언트 80x25 기준, 게임 뷰 80x20 타일
-//  - 섹터 크기 40x40 (정사각형), 맵 크기 400x400 → 10x10 그리드 (100섹터)
-//  - 주변 9섹터 순회 시 커버 범위 120x120 → 클라 뷰(80x20)보다 넉넉
+//  - 섹터 크기 20x20 (정사각형), 맵 크기 200x200 → 10x10 그리드 (100섹터)
+//  - 주변 9섹터 순회 시 커버 범위 60x60 → 클라 뷰(80x20)보다 넉넉
 //  - 섹터 크기 ≈ 클라 화면 반절, 시야보다 크게 잡아 화면 내 팝업 방지
 //
 // [사용 흐름]
-//  Init(400, 400, 40) → 존 생성 시 호출
+//  Init(200, 200, 20) → 존 생성 시 호출
 //  CalcSectorX/Y()    → 월드 좌표에서 섹터 좌표 계산
 //  AddPlayer/Remove   → 섹터에 플레이어 등록/해제
 //  GetAroundPlayers() → 브로드캐스트 대상 수집
@@ -53,19 +53,20 @@ public:
     struct SectorPos { int32_t x; int32_t y; };
     void GetSectorDiff(int32_t oldSectorX, int32_t oldSectorY,
                        int32_t newSectorX, int32_t newSectorY,
-                       std::vector<SectorPos>& outAdded,
-                       std::vector<SectorPos>& outRemoved) const;
+                       SectorPos* outAdded, int32_t& outAddedCount,
+                       SectorPos* outRemoved, int32_t& outRemovedCount) const;
 
     int32_t GetSectorCountX() const { return _sectorCountX; }
     int32_t GetSectorCountY() const { return _sectorCountY; }
     int32_t GetSectorSize() const { return _sectorSize; }
+
+    static constexpr int32_t MAX_AROUND_SECTORS = 9;
 
 private:
     bool IsValidSector(int32_t sectorX, int32_t sectorY) const;
 
     // 주변 9섹터 좌표 수집 (경계 클램핑 포함, 고정 배열)
     // outSectors: 최대 9개, outCount: 실제 개수
-    static constexpr int32_t MAX_AROUND_SECTORS = 9;
     void GetAroundSectorList(int32_t sectorX, int32_t sectorY,
                              SectorPos* outSectors, int32_t& outCount) const;
 

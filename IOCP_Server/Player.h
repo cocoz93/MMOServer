@@ -27,6 +27,8 @@ enum class MoveState : uint8_t
 
 class CPlayer
 {
+    friend class CGameServer;  // 경계 계층만 _sessionId 접근 허용
+
 public:
     CPlayer();
     ~CPlayer();
@@ -56,4 +58,7 @@ public:
 
     // 이동 검증용
     uint32_t _cheatCount; // 위반 누적 카운터
+
+private:
+    int64_t _sessionId;   // 네트워크 세션 ID (CGameServer만 접근)
 };
