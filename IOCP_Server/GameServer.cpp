@@ -176,6 +176,15 @@ void CGameServer::GameLoopThread()
                     if (player->_moveState != MoveState::MOVING)
                         continue;
 
+                    // 델타 동기화: 마지막 동기화 이후 충분히 이동한 경우만 전송
+                    float dx = player->_x - player->_lastSyncX;
+                    float dy = player->_y - player->_lastSyncY;
+                    if (dx * dx + dy * dy < SYNC_DISTANCE_THRESHOLD_SQ)
+                        continue;
+
+                    player->_lastSyncX = player->_x;
+                    player->_lastSyncY = player->_y;
+
                     MSG_S2C_SYNC_POSITION msg;
                     msg.playerId = player->_playerId;
                     msg.x = player->_x;
@@ -265,6 +274,10 @@ void CGameServer::OnConnected(int64_t sessionId)
     // 경계 매핑 등록
     player->_sessionId = sessionId;
     _sessionToPlayer[sessionId] = player;
+
+    // 델타 동기화 기준 좌표 초기화 (스폰 직후 불필요한 동기화 방지)
+    player->_lastSyncX = player->_x;
+    player->_lastSyncY = player->_y;
 
     // 1) 존 메타 정보 전송
     SendZoneInfo(player, zone);
@@ -419,6 +432,10 @@ void CGameServer::RecvMoveStart(CPlayer* player, CSerialBuffer* pMsg)
     // 플레이어 상태 갱신
     player->_direction = static_cast<Direction>(recvMsg.direction);
     player->_moveState = MoveState::MOVING;
+
+    // 델타 동기화 기준 좌표 갱신 (이동 시작 직후 즉시 동기화 방지)
+    player->_lastSyncX = player->_x;
+    player->_lastSyncY = player->_y;
 
     // 주변에 MOVE_START 브로드캐스트
     MSG_S2C_MOVE_START msg;
@@ -697,6 +714,10 @@ void CGameServer::RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg)
             _sessionToPlayer[sessionId] = player;
             SendZoneChangeFail(player, 1);
 
+            // 델타 동기화 기준 좌표 초기화
+            player->_lastSyncX = player->_x;
+            player->_lastSyncY = player->_y;
+
             // 복귀한 존에서 본인 + 주변 상호 통보
             SendZoneInfo(player, fallback);
             SendCreateMyPlayer(player);
@@ -727,6 +748,10 @@ void CGameServer::RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg)
     // 경계 매핑 갱신 (player 객체는 동일, playerId만 변경됨)
     _sessionToPlayer[sessionId] = player;
     InterlockedIncrement64(&_monitor._zoneChangeCount);
+
+    // 델타 동기화 기준 좌표 초기화
+    player->_lastSyncX = player->_x;
+    player->_lastSyncY = player->_y;
 
     // 존 메타 정보 + 존 이동 성공 통보
     SendZoneInfo(player, newZone);

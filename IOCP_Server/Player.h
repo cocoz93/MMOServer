@@ -59,6 +59,10 @@ public:
     // 이동 검증용
     uint32_t _cheatCount; // 위반 누적 카운터
 
+    // 델타 동기화: 마지막 위치 동기화 시점의 좌표
+    float _lastSyncX;
+    float _lastSyncY;
+
 private:
     int64_t _sessionId;   // 네트워크 세션 ID (CGameServer만 접근)
 };

@@ -15,6 +15,8 @@ CPlayer::CPlayer()
     , _speed(50)
     , _zoneId(-1)
     , _cheatCount(0)
+    , _lastSyncX(0.0f)
+    , _lastSyncY(0.0f)
 {
     // 25 ~ 100 (5 단위) 랜덤 속도 부여
     static thread_local std::mt19937 rng(std::random_device{}());
