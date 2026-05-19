@@ -33,5 +33,5 @@ struct ClientPlayer
     float y = 0.0f;
     Direction direction = Direction::NONE;
     MoveState moveState = MoveState::IDLE;
-    int32_t speed = 50;
+    int32_t speed = 0;
 };

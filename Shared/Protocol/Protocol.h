@@ -200,15 +200,16 @@ struct MSG_S2C_CHAT
 // 좌표 보정
 //==================================================
 
-// S2C: 서버 권위 좌표 강제 동기화
+// S2C: 서버 권위 좌표 강제 동기화 (자기 자신 + 타인 주기적 동기화 겸용)
 struct MSG_S2C_SYNC_POSITION
 {
     static constexpr MsgType TYPE = MsgType::S2C_SYNC_POSITION;
     MsgHeader header;
+    int32_t playerId;
     float x;
     float y;
 
-    MSG_S2C_SYNC_POSITION() : header{ sizeof(*this), TYPE }, x(0), y(0) {}
+    MSG_S2C_SYNC_POSITION() : header{ sizeof(*this), TYPE }, playerId(0), x(0), y(0) {}
 };
 
 //==================================================

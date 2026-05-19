@@ -164,7 +164,28 @@ void CGameServer::GameLoopThread()
             }
         }
 
-        // 4) 빈 동적 채널 정리
+        // 4) 주기적 위치 동기화 (MOVING 플레이어 → 주변 브로드캐스트)
+        ++_syncFrameCount;
+        if (_syncFrameCount >= SYNC_INTERVAL_FRAMES)
+        {
+            _syncFrameCount = 0;
+            for (const auto& [zoneId, zone] : _zoneManager.GetZones())
+            {
+                for (CPlayer* player : zone->GetPlayers())
+                {
+                    if (player->_moveState != MoveState::MOVING)
+                        continue;
+
+                    MSG_S2C_SYNC_POSITION msg;
+                    msg.playerId = player->_playerId;
+                    msg.x = player->_x;
+                    msg.y = player->_y;
+                    BroadcastAroundSector(zone.get(), player, msg, false);  // 본인 포함
+                }
+            }
+        }
+
+        // 5) 빈 동적 채널 정리
         ++_cleanupFrameCount;
         if (_cleanupFrameCount >= CLEANUP_INTERVAL_FRAMES)
         {
@@ -592,6 +613,7 @@ void CGameServer::SendChat(CPlayer* target, CPlayer* player, const wchar_t* mess
 void CGameServer::SendSyncPosition(CPlayer* target)
 {
     MSG_S2C_SYNC_POSITION msg;
+    msg.playerId = target->_playerId;
     msg.x = target->_x;
     msg.y = target->_y;
     SendPacket(target, msg);

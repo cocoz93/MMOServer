@@ -142,6 +142,7 @@ private:
     static constexpr float MOVE_TOLERANCE_BASE = 2.0f;  // 고정 여유값
     static constexpr uint32_t CHEAT_KICK_THRESHOLD = 5;
     static constexpr int CLEANUP_INTERVAL_FRAMES = 25 * 30;  // 30초마다 빈 채널 정리
+    static constexpr int SYNC_INTERVAL_FRAMES = 13;          // 13 × 40ms ≈ 500ms 주기적 위치 동기화
 
     int32_t _defaultMapId = 0;  // 최초 접속 시 입장할 맵
     int32_t _nextPlayerId = 1;  // 전역 playerId 카운터 (싱글스레드 게임 루프)
@@ -149,6 +150,7 @@ private:
     // 네트워크 경계: sessionId → CPlayer* (수신 시 플레이어 조회)
     std::unordered_map<int64_t, CPlayer*> _sessionToPlayer;
     int _cleanupFrameCount = 0;
+    int _syncFrameCount = 0;
 
     // 섹터 변경 배치 처리용 대기열 (프레임 내 수집 → 틱 후 일괄 처리)
     std::vector<SectorChangeInfo> _pendingSectorChanges;
