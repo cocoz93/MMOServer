@@ -262,6 +262,10 @@ void CGameInstance::ProcessNetworkEvents()
 
 void CGameInstance::ProcessInput()
 {
+    // 이 콘솔 창에 포커스가 없으면 입력 무시
+    if (GetConsoleWindow() != GetForegroundWindow())
+        return;
+
     // 현재 프레임의 키 상태 조사
     bool currentKeys[4];
     currentKeys[0] = (GetAsyncKeyState(VK_UP) & 0x8000) != 0;
