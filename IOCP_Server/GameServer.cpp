@@ -758,6 +758,7 @@ void CGameServer::SendZoneChangeOk(CPlayer* target, int32_t mapId, int32_t chann
     msg.playerId = target->_playerId;
     msg.displayChar = target->_displayChar;
     msg.colorIndex = target->_colorIndex;
+    msg.direction = static_cast<uint8_t>(target->_direction);
     msg.x = target->_x;
     msg.y = target->_y;
     SendPacket(target, msg);

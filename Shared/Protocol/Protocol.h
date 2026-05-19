@@ -244,10 +244,11 @@ struct MSG_S2C_ZONE_CHANGE_OK
     int32_t playerId;
     uint8_t displayChar;  // 서버 권위 표시 문자
     uint8_t colorIndex;   // 서버 권위 색상 인덱스
+    uint8_t direction;    // 서버 권위 방향 (Direction enum)
     float x;
     float y;
 
-    MSG_S2C_ZONE_CHANGE_OK() : header{ sizeof(*this), TYPE }, mapId(0), channelIndex(0), playerId(0), displayChar('A'), colorIndex(0), x(0), y(0) {}
+    MSG_S2C_ZONE_CHANGE_OK() : header{ sizeof(*this), TYPE }, mapId(0), channelIndex(0), playerId(0), displayChar('A'), colorIndex(0), direction(0), x(0), y(0) {}
 };
 
 // S2C: 맵 이동 실패

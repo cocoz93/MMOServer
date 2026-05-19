@@ -255,7 +255,7 @@ void CGameInstance::ProcessNetworkEvents()
                 ? _playerManager.GetMyPlayer()->speed : 50;
             _playerManager.Clear();
             _playerManager.SetMyPlayer(
-                event.playerId, event.x, event.y, Direction::NONE, prevSpeed,
+                event.playerId, event.x, event.y, static_cast<Direction>(event.direction), prevSpeed,
                 event.displayChar, event.colorIndex);
             wchar_t buf[128];
             swprintf_s(buf, L"[System] Zone changed: Map=%d Channel=%d",
@@ -567,6 +567,7 @@ void CGameInstance::OnZoneChangeOk(const MSG_S2C_ZONE_CHANGE_OK* msg)
     event.playerId = msg->playerId;
     event.displayChar = msg->displayChar;
     event.colorIndex = msg->colorIndex;
+    event.direction = msg->direction;
     event.x = msg->x;
     event.y = msg->y;
     event.mapId = msg->mapId;
