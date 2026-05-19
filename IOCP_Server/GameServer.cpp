@@ -5,6 +5,7 @@
 #include <iostream>
 #include <chrono>
 #include <cmath>
+#include <algorithm>
 
 CGameServer::CGameServer(CMonitorManager& monitor)
     : _mode(ServerMode::GameServer)
@@ -90,6 +91,14 @@ void CGameServer::Stop()
                 CSerialBuffer::Free(event.pMsg);
         }
     }
+
+    // 잔여 플레이어 정리 (CGameServer가 생명주기 소유)
+    for (auto& pair : _sessionToPlayer)
+    {
+        delete pair.second;
+    }
+    _sessionToPlayer.clear();
+    _playerToSession.clear();
 }
 
 // ==========================================================================
@@ -131,7 +140,7 @@ void CGameServer::GameLoopThread()
                 change.oldSectorY == change.player->_sectorY)
                 continue;
 
-            CZone* zone = _zoneManager.FindZoneBySession(change.player->_sessionId);
+            CZone* zone = _zoneManager.GetZone(change.player->_zoneId);
             if (zone != nullptr)
             {
                 ProcessSectorChange(zone, change.player,
@@ -144,7 +153,7 @@ void CGameServer::GameLoopThread()
         // 3-1) 맵 경계 클램핑으로 정지된 플레이어에게 MOVE_STOP 브로드캐스트
         for (CPlayer* player : _tickClampedPlayers)
         {
-            CZone* zone = _zoneManager.FindZoneBySession(player->_sessionId);
+            CZone* zone = _zoneManager.GetZone(player->_zoneId);
             if (zone != nullptr)
             {
                 MSG_S2C_MOVE_STOP msg;
@@ -207,7 +216,7 @@ void CGameServer::ProcessNetworkEvents()
 void CGameServer::OnConnected(int64_t sessionId)
 {
     // 이미 등록된 세션이면 무시 (중복 접속 방어)
-    if (_zoneManager.FindZoneBySession(sessionId) != nullptr)
+    if (_sessionToPlayer.find(sessionId) != _sessionToPlayer.end())
     {
         _network->RequestDisconnectSession(sessionId);
         return;
@@ -221,21 +230,27 @@ void CGameServer::OnConnected(int64_t sessionId)
         return;
     }
 
-    CPlayer* player = zone->EnterZone(sessionId);
-    if (player == nullptr)
+    // 플레이어 생성 + ID/표시 속성 부여 (CGameServer가 생명주기 소유)
+    CPlayer* player = new CPlayer();
+    player->_playerId = AllocPlayerId();
+    player->_displayChar = CalcDisplayChar(player->_playerId);
+    player->_colorIndex = CalcColorIndex(player->_playerId);
+    if (!zone->EnterZone(player))
     {
+        delete player;
         _network->RequestDisconnectSession(sessionId);
         return;
     }
 
-    // 세션 → 존 매핑 등록
-    _zoneManager.RegisterSession(sessionId, zone->GetZoneId());
+    // 경계 계층: 양방향 매핑 등록
+    _sessionToPlayer[sessionId] = player;
+    _playerToSession[player->_playerId] = sessionId;
 
     // 1) 존 메타 정보 전송
-    SendZoneInfo(sessionId, zone);
+    SendZoneInfo(player, zone);
 
     // 2) 본인에게 내 캐릭터 생성
-    SendCreateMyPlayer(sessionId, player);
+    SendCreateMyPlayer(player);
 
     // 3) 주변 플레이어 수집
     std::vector<CPlayer*> aroundPlayers;
@@ -245,24 +260,25 @@ void CGameServer::OnConnected(int64_t sessionId)
     // 4) 주변 플레이어에게 새 캐릭터 등장
     for (CPlayer* other : aroundPlayers)
     {
-        SendCreateOtherPlayer(other->_sessionId, player);
+        SendCreateOtherPlayer(other, player);
     }
 
     // 5) 본인에게 주변 기존 플레이어들 정보
     for (CPlayer* other : aroundPlayers)
     {
-        SendCreateOtherPlayer(sessionId, other);
+        SendCreateOtherPlayer(player, other);
     }
 }
 
 void CGameServer::OnDisconnected(int64_t sessionId)
 {
-    CZone* zone = _zoneManager.FindZoneBySession(sessionId);
-    if (zone == nullptr)
+    auto it = _sessionToPlayer.find(sessionId);
+    if (it == _sessionToPlayer.end())
         return;
 
-    CPlayer* player = zone->FindPlayer(sessionId);
-    if (player == nullptr)
+    CPlayer* player = it->second;
+    CZone* zone = _zoneManager.GetZone(player->_zoneId);
+    if (zone == nullptr)
         return;
 
     // 주변에 DELETE 브로드캐스트
@@ -272,14 +288,25 @@ void CGameServer::OnDisconnected(int64_t sessionId)
 
     for (CPlayer* other : aroundPlayers)
     {
-        SendDeletePlayer(other->_sessionId, player);
+        SendDeletePlayer(other, player);
     }
 
-    // 섹터 해제 + 플레이어 삭제
-    zone->LeaveZone(sessionId);
+    // 섹터 변경 대기열에서 제거
+    _sectorChangedSet.erase(player);
+    _pendingSectorChanges.erase(
+        std::remove_if(_pendingSectorChanges.begin(), _pendingSectorChanges.end(),
+            [player](const SectorChangeInfo& c) { return c.player == player; }),
+        _pendingSectorChanges.end());
 
-    // 세션 → 존 매핑 해제
-    _zoneManager.UnregisterSession(sessionId);
+    // 섹터 해제 + _players 맵에서 제거
+    zone->LeaveZone(player->_playerId);
+
+    // 경계 계층: 양방향 매핑 해제
+    _playerToSession.erase(player->_playerId);
+    _sessionToPlayer.erase(it);
+
+    // 플레이어 삭제 (CGameServer가 생명주기 소유)
+    delete player;
 }
 
 void CGameServer::OnReceived(int64_t sessionId, CSerialBuffer* pMsg)
@@ -300,22 +327,31 @@ void CGameServer::OnReceived(int64_t sessionId, CSerialBuffer* pMsg)
         return;
     }
 
+    // 경계 계층: sessionId → CPlayer* 변환 (이후 컨텐츠 로직은 CPlayer*만 사용)
+    auto it = _sessionToPlayer.find(sessionId);
+    if (it == _sessionToPlayer.end())
+    {
+        CSerialBuffer::Free(pMsg);
+        return;
+    }
+    CPlayer* player = it->second;
+
     switch (header.type)
     {
     case MsgType::C2S_MOVE_START:
-        RecvMoveStart(sessionId, pMsg);
+        RecvMoveStart(player, pMsg);
         break;
 
     case MsgType::C2S_MOVE_STOP:
-        RecvMoveStop(sessionId, pMsg);
+        RecvMoveStop(player, pMsg);
         break;
 
     case MsgType::C2S_CHAT:
-        RecvChat(sessionId, pMsg);
+        RecvChat(player, pMsg);
         break;
 
     case MsgType::C2S_ZONE_CHANGE:
-        RecvZoneChange(sessionId, pMsg);
+        RecvZoneChange(player, pMsg);
         break;
 
     default:
@@ -343,14 +379,16 @@ uint16_t CGameServer::GetExpectedSize(MsgType type)
 // 패킷 핸들러
 // ==========================================================================
 
-void CGameServer::RecvMoveStart(int64_t sessionId, CSerialBuffer* pMsg)
+void CGameServer::RecvMoveStart(CPlayer* player, CSerialBuffer* pMsg)
 {
-    CZone* zone = _zoneManager.FindZoneBySession(sessionId);
-    if (zone == nullptr)
-        return;
+	if (player == nullptr)
+		return;
 
-    CPlayer* player = zone->FindPlayer(sessionId);
-    if (player == nullptr)
+	if (pMsg == nullptr)
+		return;
+
+    CZone* zone = _zoneManager.GetZone(player->_zoneId);
+    if (zone == nullptr)
         return;
 
     MSG_C2S_MOVE_START recvMsg;
@@ -378,14 +416,10 @@ void CGameServer::RecvMoveStart(int64_t sessionId, CSerialBuffer* pMsg)
     BroadcastAround(zone, player, msg);
 }
 
-void CGameServer::RecvMoveStop(int64_t sessionId, CSerialBuffer* pMsg)
+void CGameServer::RecvMoveStop(CPlayer* player, CSerialBuffer* pMsg)
 {
-    CZone* zone = _zoneManager.FindZoneBySession(sessionId);
+    CZone* zone = _zoneManager.GetZone(player->_zoneId);
     if (zone == nullptr)
-        return;
-
-    CPlayer* player = zone->FindPlayer(sessionId);
-    if (player == nullptr)
         return;
 
     MSG_C2S_MOVE_STOP recvMsg;
@@ -439,14 +473,10 @@ void CGameServer::RecvMoveStop(int64_t sessionId, CSerialBuffer* pMsg)
     BroadcastAround(zone, player, msg);
 }
 
-void CGameServer::RecvChat(int64_t sessionId, CSerialBuffer* pMsg)
+void CGameServer::RecvChat(CPlayer* player, CSerialBuffer* pMsg)
 {
-    CZone* zone = _zoneManager.FindZoneBySession(sessionId);
+    CZone* zone = _zoneManager.GetZone(player->_zoneId);
     if (zone == nullptr)
-        return;
-
-    CPlayer* player = zone->FindPlayer(sessionId);
-    if (player == nullptr)
         return;
 
     MSG_C2S_CHAT recvMsg;
@@ -465,28 +495,66 @@ void CGameServer::RecvChat(int64_t sessionId, CSerialBuffer* pMsg)
 // 패킷 전송 추상화
 // ==========================================================================
 
-void CGameServer::SendZoneInfo(int64_t sessionId, CZone* zone)
+// ==========================================================================
+// 계층 경계 헬퍼
+// ==========================================================================
+
+int32_t CGameServer::AllocPlayerId()
+{
+    return _nextPlayerId++;
+}
+
+// playerId → 고유 표시 문자 (A-Z, a-z, 0-9 = 62종)
+uint8_t CGameServer::CalcDisplayChar(int32_t playerId)
+{
+    static constexpr char CHARS[] =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    return static_cast<uint8_t>(CHARS[playerId % 62]);
+}
+
+// playerId → 고유 색상 인덱스 (0-6, 7종)
+uint8_t CGameServer::CalcColorIndex(int32_t playerId)
+{
+    return static_cast<uint8_t>((playerId / 62) % 7);
+}
+
+int64_t CGameServer::GetSessionId(CPlayer* player) const
+{
+    auto it = _playerToSession.find(player->_playerId);
+    if (it == _playerToSession.end())
+        return -1;
+    return it->second;
+}
+
+void CGameServer::DisconnectPlayer(CPlayer* player)
+{
+    int64_t sid = GetSessionId(player);
+    if (sid != -1)
+        _network->RequestDisconnectSession(sid);
+}
+
+void CGameServer::SendZoneInfo(CPlayer* target, CZone* zone)
 {
     MSG_S2C_ZONE_INFO msg;
     msg.mapWidth = zone->GetMapWidth();
     msg.mapHeight = zone->GetMapHeight();
-    SendPacket(sessionId, msg);
+    SendPacket(target, msg);
 }
 
-void CGameServer::SendCreateMyPlayer(int64_t sessionId, CPlayer* player)
+void CGameServer::SendCreateMyPlayer(CPlayer* target)
 {
     MSG_S2C_CREATE_MY_PLAYER msg;
-    msg.playerId = player->_playerId;
-    msg.direction = static_cast<uint8_t>(player->_direction);
-    msg.displayChar = player->_displayChar;
-    msg.colorIndex = player->_colorIndex;
-    msg.x = player->_x;
-    msg.y = player->_y;
-    msg.speed = player->_speed;
-    SendPacket(sessionId, msg);
+    msg.playerId = target->_playerId;
+    msg.direction = static_cast<uint8_t>(target->_direction);
+    msg.displayChar = target->_displayChar;
+    msg.colorIndex = target->_colorIndex;
+    msg.x = target->_x;
+    msg.y = target->_y;
+    msg.speed = target->_speed;
+    SendPacket(target, msg);
 }
 
-void CGameServer::SendCreateOtherPlayer(int64_t sessionId, CPlayer* player)
+void CGameServer::SendCreateOtherPlayer(CPlayer* target, CPlayer* player)
 {
     MSG_S2C_CREATE_OTHER_PLAYER msg;
     msg.playerId = player->_playerId;
@@ -497,62 +565,63 @@ void CGameServer::SendCreateOtherPlayer(int64_t sessionId, CPlayer* player)
     msg.x = player->_x;
     msg.y = player->_y;
     msg.speed = player->_speed;
-    SendPacket(sessionId, msg);
+    SendPacket(target, msg);
 }
 
-void CGameServer::SendDeletePlayer(int64_t sessionId, CPlayer* player)
+void CGameServer::SendDeletePlayer(CPlayer* target, CPlayer* player)
 {
     MSG_S2C_DELETE_PLAYER msg;
     msg.playerId = player->_playerId;
-    SendPacket(sessionId, msg);
+    SendPacket(target, msg);
 }
 
-void CGameServer::SendMoveStart(int64_t sessionId, CPlayer* player)
+void CGameServer::SendMoveStart(CPlayer* target, CPlayer* player)
 {
     MSG_S2C_MOVE_START msg;
     msg.playerId = player->_playerId;
     msg.direction = static_cast<uint8_t>(player->_direction);
     msg.x = player->_x;
     msg.y = player->_y;
-    SendPacket(sessionId, msg);
+    SendPacket(target, msg);
 }
 
-void CGameServer::SendMoveStop(int64_t sessionId, CPlayer* player)
+void CGameServer::SendMoveStop(CPlayer* target, CPlayer* player)
 {
     MSG_S2C_MOVE_STOP msg;
     msg.playerId = player->_playerId;
     msg.direction = static_cast<uint8_t>(player->_direction);
     msg.x = player->_x;
     msg.y = player->_y;
-    SendPacket(sessionId, msg);
+    SendPacket(target, msg);
 }
 
-void CGameServer::SendChat(int64_t sessionId, CPlayer* player, const wchar_t* message)
+void CGameServer::SendChat(CPlayer* target, CPlayer* player, const wchar_t* message)
 {
     MSG_S2C_CHAT msg;
     msg.playerId = player->_playerId;
     msg.displayChar = player->_displayChar;
     msg.colorIndex = player->_colorIndex;
     memcpy(msg.message, message, sizeof(msg.message));
-    SendPacket(sessionId, msg);
+    SendPacket(target, msg);
 }
 
-void CGameServer::SendSyncPosition(int64_t sessionId, CPlayer* player)
+void CGameServer::SendSyncPosition(CPlayer* target)
 {
     MSG_S2C_SYNC_POSITION msg;
-    msg.x = player->_x;
-    msg.y = player->_y;
-    SendPacket(sessionId, msg);
+    msg.x = target->_x;
+    msg.y = target->_y;
+    SendPacket(target, msg);
 }
 
-void CGameServer::RecvZoneChange(int64_t sessionId, CSerialBuffer* pMsg)
+void CGameServer::RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg)
 {
-    CZone* oldZone = _zoneManager.FindZoneBySession(sessionId);
-    if (oldZone == nullptr)
+    // 매핑 조작(erase/insert)에 필요하므로 경계 변환 전에 캡처
+    int64_t sessionId = GetSessionId(player);
+    if (sessionId == -1)
         return;
 
-    CPlayer* oldPlayer = oldZone->FindPlayer(sessionId);
-    if (oldPlayer == nullptr)
+    CZone* oldZone = _zoneManager.GetZone(player->_zoneId);
+    if (oldZone == nullptr)
         return;
 
     MSG_C2S_ZONE_CHANGE recvMsg;
@@ -567,7 +636,7 @@ void CGameServer::RecvZoneChange(int64_t sessionId, CSerialBuffer* pMsg)
         targetMapId = _zoneManager.GetRandomMapId(currentMapId);
         if (targetMapId == -1)
         {
-            SendZoneChangeFail(sessionId, 0);
+            SendZoneChangeFail(player, 0);
             return;
         }
     }
@@ -576,116 +645,122 @@ void CGameServer::RecvZoneChange(int64_t sessionId, CSerialBuffer* pMsg)
     CZone* newZone = _zoneManager.FindOrCreateChannel(targetMapId);
     if (newZone == nullptr)
     {
-        // 존재하지 않는 맵
-        SendZoneChangeFail(sessionId, 0);
+        SendZoneChangeFail(player, 0);
         return;
     }
 
-    // ── 현재 존에서 퇴장 (OnDisconnected와 동일한 흐름) ──
+    // ── 현재 존에서 퇴장 ──
 
     // 주변에 DELETE 브로드캐스트
     std::vector<CPlayer*> aroundPlayers;
     oldZone->GetSectorManager().GetAroundPlayers(
-        oldPlayer->_sectorX, oldPlayer->_sectorY, aroundPlayers, oldPlayer);
+        player->_sectorX, player->_sectorY, aroundPlayers, player);
 
     for (CPlayer* other : aroundPlayers)
     {
-        SendDeletePlayer(other->_sessionId, oldPlayer);
+        SendDeletePlayer(other, player);
     }
 
-    // 섹터 해제 + 플레이어 삭제
-    oldZone->LeaveZone(sessionId);
+    // 섹터 변경 대기열에서 제거
+    _sectorChangedSet.erase(player);
+    _pendingSectorChanges.erase(
+        std::remove_if(_pendingSectorChanges.begin(), _pendingSectorChanges.end(),
+            [player](const SectorChangeInfo& c) { return c.player == player; }),
+        _pendingSectorChanges.end());
 
-    // 세션 → 존 매핑 해제
-    _zoneManager.UnregisterSession(sessionId);
+    // 이전 playerId 매핑 제거 (새 존에서 새 playerId가 부여됨)
+    _playerToSession.erase(player->_playerId);
 
-    // ── 새 존에 입장 (OnConnected와 동일한 흐름) ──
+    // 섹터 해제 + _players 맵에서 제거
+    oldZone->LeaveZone(player->_playerId);
 
-    CPlayer* newPlayer = newZone->EnterZone(sessionId);
-    if (newPlayer == nullptr)
+    // ── 새 존에 입장 (player 객체 재활용, 새 playerId 부여) ──
+
+    player->_playerId = AllocPlayerId();
+    player->_displayChar = CalcDisplayChar(player->_playerId);
+    player->_colorIndex = CalcColorIndex(player->_playerId);
+    if (!newZone->EnterZone(player))
     {
         // 입장 실패 시 원래 맵의 여유 채널로 복귀 시도
-        // 참고: FindOrCreateChannel이므로 원래 채널이 아닌 같은 맵의 다른 채널에 배정될 수 있음
         CZone* fallback = _zoneManager.FindOrCreateChannel(CZoneManager::GetMapIdFromZoneId(oldZone->GetZoneId()));
-        if (fallback != nullptr)
+        if (fallback != nullptr && fallback->EnterZone(player))
         {
-            CPlayer* fbPlayer = fallback->EnterZone(sessionId);
-            if (fbPlayer != nullptr)
+            _sessionToPlayer[sessionId] = player;
+            _playerToSession[player->_playerId] = sessionId;
+            SendZoneChangeFail(player, 1);
+
+            // 복귀한 존에서 본인 + 주변 상호 통보
+            SendZoneInfo(player, fallback);
+            SendCreateMyPlayer(player);
+
+            aroundPlayers.clear();
+            fallback->GetSectorManager().GetAroundPlayers(
+                player->_sectorX, player->_sectorY, aroundPlayers, player);
+
+            for (CPlayer* other : aroundPlayers)
             {
-                _zoneManager.RegisterSession(sessionId, fallback->GetZoneId());
-                SendZoneChangeFail(sessionId, 1);
-
-                // 복귀한 존에서 본인 + 주변 상호 통보 (OnConnected와 동일)
-                SendZoneInfo(sessionId, fallback);
-                SendCreateMyPlayer(sessionId, fbPlayer);
-
-                aroundPlayers.clear();
-                fallback->GetSectorManager().GetAroundPlayers(
-                    fbPlayer->_sectorX, fbPlayer->_sectorY, aroundPlayers, fbPlayer);
-
-                for (CPlayer* other : aroundPlayers)
-                {
-                    SendCreateOtherPlayer(other->_sessionId, fbPlayer);
-                }
-                for (CPlayer* other : aroundPlayers)
-                {
-                    SendCreateOtherPlayer(sessionId, other);
-                }
-
-                return;
+                SendCreateOtherPlayer(other, player);
             }
+            for (CPlayer* other : aroundPlayers)
+            {
+                SendCreateOtherPlayer(player, other);
+            }
+
+            return;
         }
 
         // 복귀도 실패 → 좀비 방지를 위해 연결 해제
-        SendZoneChangeFail(sessionId, 1);
+        _sessionToPlayer.erase(sessionId);
+        delete player;
         _network->RequestDisconnectSession(sessionId);
         return;
     }
 
-    // 세션 → 존 매핑 등록
-    _zoneManager.RegisterSession(sessionId, newZone->GetZoneId());
+    // 경계 계층: 새 playerId로 매핑 갱신
+    _sessionToPlayer[sessionId] = player;
+    _playerToSession[player->_playerId] = sessionId;
     InterlockedIncrement64(&_monitor._zoneChangeCount);
 
     // 존 메타 정보 + 존 이동 성공 통보
-    SendZoneInfo(sessionId, newZone);
+    SendZoneInfo(player, newZone);
     int32_t channelIndex = CZoneManager::GetChannelIndexFromZoneId(newZone->GetZoneId());
-    SendZoneChangeOk(sessionId, targetMapId, channelIndex, newPlayer);
+    SendZoneChangeOk(player, targetMapId, channelIndex);
 
     // 주변 플레이어에게 새 캐릭터 등장
     aroundPlayers.clear();
     newZone->GetSectorManager().GetAroundPlayers(
-        newPlayer->_sectorX, newPlayer->_sectorY, aroundPlayers, newPlayer);
+        player->_sectorX, player->_sectorY, aroundPlayers, player);
 
     for (CPlayer* other : aroundPlayers)
     {
-        SendCreateOtherPlayer(other->_sessionId, newPlayer);
+        SendCreateOtherPlayer(other, player);
     }
 
     // 본인에게 주변 기존 플레이어들 정보
     for (CPlayer* other : aroundPlayers)
     {
-        SendCreateOtherPlayer(sessionId, other);
+        SendCreateOtherPlayer(player, other);
     }
 }
 
-void CGameServer::SendZoneChangeOk(int64_t sessionId, int32_t mapId, int32_t channelIndex, CPlayer* player)
+void CGameServer::SendZoneChangeOk(CPlayer* target, int32_t mapId, int32_t channelIndex)
 {
     MSG_S2C_ZONE_CHANGE_OK msg;
     msg.mapId = mapId;
     msg.channelIndex = channelIndex;
-    msg.playerId = player->_playerId;
-    msg.displayChar = player->_displayChar;
-    msg.colorIndex = player->_colorIndex;
-    msg.x = player->_x;
-    msg.y = player->_y;
-    SendPacket(sessionId, msg);
+    msg.playerId = target->_playerId;
+    msg.displayChar = target->_displayChar;
+    msg.colorIndex = target->_colorIndex;
+    msg.x = target->_x;
+    msg.y = target->_y;
+    SendPacket(target, msg);
 }
 
-void CGameServer::SendZoneChangeFail(int64_t sessionId, uint8_t reason)
+void CGameServer::SendZoneChangeFail(CPlayer* target, uint8_t reason)
 {
     MSG_S2C_ZONE_CHANGE_FAIL msg;
     msg.reason = reason;
-    SendPacket(sessionId, msg);
+    SendPacket(target, msg);
 }
 
 bool CGameServer::ValidateMove(CZone* zone, CPlayer* player, float clientX, float clientY)
@@ -695,10 +770,10 @@ bool CGameServer::ValidateMove(CZone* zone, CPlayer* player, float clientX, floa
     {
         ++player->_cheatCount;
         InterlockedIncrement64(&_monitor._cheatDetected);
-        SendSyncPosition(player->_sessionId, player);
+        SendSyncPosition(player);
 
         if (player->_cheatCount >= CHEAT_KICK_THRESHOLD)
-            _network->RequestDisconnectSession(player->_sessionId);
+            DisconnectPlayer(player);
 
         return false;
     }
@@ -710,10 +785,10 @@ bool CGameServer::ValidateMove(CZone* zone, CPlayer* player, float clientX, floa
     {
         ++player->_cheatCount;
         InterlockedIncrement64(&_monitor._cheatDetected);
-        SendSyncPosition(player->_sessionId, player);
+        SendSyncPosition(player);
 
         if (player->_cheatCount >= CHEAT_KICK_THRESHOLD)
-            _network->RequestDisconnectSession(player->_sessionId);
+            DisconnectPlayer(player);
 
         return false;
     }
@@ -731,10 +806,10 @@ bool CGameServer::ValidateMove(CZone* zone, CPlayer* player, float clientX, floa
     {
         ++player->_cheatCount;
         InterlockedIncrement64(&_monitor._cheatDetected);
-        SendSyncPosition(player->_sessionId, player);
+        SendSyncPosition(player);
 
         if (player->_cheatCount >= CHEAT_KICK_THRESHOLD)
-            _network->RequestDisconnectSession(player->_sessionId);
+            DisconnectPlayer(player);
 
         return false;
     }
@@ -774,8 +849,8 @@ void CGameServer::ProcessSectorChange(CZone* zone, CPlayer* player,
         const auto& players = zone->GetSectorManager().GetSectorPlayers(pos.x, pos.y);
         for (CPlayer* other : players)
         {
-            SendDeletePlayer(other->_sessionId, player);  // 상대에게 나를 삭제
-            SendDeletePlayer(player->_sessionId, other);   // 나에게 상대를 삭제
+            SendDeletePlayer(other, player);  // 상대에게 나를 삭제
+            SendDeletePlayer(player, other);   // 나에게 상대를 삭제
         }
     }
 
@@ -788,8 +863,8 @@ void CGameServer::ProcessSectorChange(CZone* zone, CPlayer* player,
             if (other == player)
                 continue;  // 멀티섹터 점프 시 자기 자신 방지
 
-            SendCreateOtherPlayer(other->_sessionId, player);  // 상대에게 나를 생성
-            SendCreateOtherPlayer(player->_sessionId, other);   // 나에게 상대를 생성
+            SendCreateOtherPlayer(other, player);  // 상대에게 나를 생성
+            SendCreateOtherPlayer(player, other);   // 나에게 상대를 생성
         }
     }
 }

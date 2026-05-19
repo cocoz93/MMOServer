@@ -1,8 +1,7 @@
 ﻿#include "Player.h"
 
-CPlayer::CPlayer(int64_t sessionId)
-    : _sessionId(sessionId)
-    , _accountId(0)
+CPlayer::CPlayer()
+    : _accountId(0)
     , _playerId(0)
     , _displayChar('A')
     , _colorIndex(0)
@@ -24,11 +23,6 @@ CPlayer::CPlayer(int64_t sessionId)
 
 CPlayer::~CPlayer()
 {
-}
-
-int64_t CPlayer::GetSessionId() const
-{
-    return _sessionId;
 }
 
 int64_t CPlayer::GetAccountId() const

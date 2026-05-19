@@ -61,10 +61,10 @@ private:
     void OnReceived(int64_t sessionId, CSerialBuffer* pMsg);
 
     // 패킷 핸들러
-    void RecvMoveStart(int64_t sessionId, CSerialBuffer* pMsg);
-    void RecvMoveStop(int64_t sessionId, CSerialBuffer* pMsg);
-    void RecvChat(int64_t sessionId, CSerialBuffer* pMsg);
-    void RecvZoneChange(int64_t sessionId, CSerialBuffer* pMsg);
+    void RecvMoveStart(CPlayer* player, CSerialBuffer* pMsg);
+    void RecvMoveStop(CPlayer* player, CSerialBuffer* pMsg);
+    void RecvChat(CPlayer* player, CSerialBuffer* pMsg);
+    void RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg);
 
     // 섹터 변경 시 시야 진입/이탈 브로드캐스트
     void ProcessSectorChange(CZone* zone, CPlayer* player,
@@ -73,13 +73,29 @@ private:
     // 섹터 변경 대기열에 추가 (중복 플레이어는 최초 출발 섹터만 유지)
     void PushSectorChange(CPlayer* player, int32_t oldSectorX, int32_t oldSectorY);
 
+    // ── 플레이어 ID 발급 + 표시 속성 ──
+
+    int32_t AllocPlayerId();
+    static uint8_t CalcDisplayChar(int32_t playerId);
+    static uint8_t CalcColorIndex(int32_t playerId);
+
+    // ── 계층 경계 헬퍼 (playerId → sessionId 변환) ──
+
+    // playerId → sessionId 변환 (없으면 -1)
+    int64_t GetSessionId(CPlayer* player) const;
+
+    // 컨텐츠 레이어에서 연결 해제 요청
+    void DisconnectPlayer(CPlayer* player);
+
     // ── 패킷 전송 추상화 ──
 
-    // 단일 세션에 패킷 전송 (템플릿)
+    // 단일 플레이어에게 패킷 전송 (템플릿)
     template <typename T>
-    void SendPacket(int64_t sessionId, const T& msg)
+    void SendPacket(CPlayer* target, const T& msg)
     {
-        _network->RequestSendMsg(sessionId, reinterpret_cast<const char*>(&msg), sizeof(T));
+        int64_t sid = GetSessionId(target);
+        if (sid != -1)
+            _network->RequestSendMsg(sid, reinterpret_cast<const char*>(&msg), sizeof(T));
     }
 
     // 주변 브로드캐스트 (excludeSelf=true: 본인 제외)
@@ -93,21 +109,21 @@ private:
 
         for (CPlayer* other : _broadcastBuffer)
         {
-            SendPacket(other->_sessionId, msg);
+            SendPacket(other, msg);
         }
     }
 
     // 패킷별 전송 함수 (Fill + Send)
-    void SendZoneInfo(int64_t sessionId, CZone* zone);
-    void SendCreateMyPlayer(int64_t sessionId, CPlayer* player);
-    void SendCreateOtherPlayer(int64_t sessionId, CPlayer* player);
-    void SendDeletePlayer(int64_t sessionId, CPlayer* player);
-    void SendMoveStart(int64_t sessionId, CPlayer* player);
-    void SendMoveStop(int64_t sessionId, CPlayer* player);
-    void SendChat(int64_t sessionId, CPlayer* player, const wchar_t* message);
-    void SendSyncPosition(int64_t sessionId, CPlayer* player);
-    void SendZoneChangeOk(int64_t sessionId, int32_t mapId, int32_t channelIndex, CPlayer* player);
-    void SendZoneChangeFail(int64_t sessionId, uint8_t reason);
+    void SendZoneInfo(CPlayer* target, CZone* zone);
+    void SendCreateMyPlayer(CPlayer* target);
+    void SendCreateOtherPlayer(CPlayer* target, CPlayer* player);
+    void SendDeletePlayer(CPlayer* target, CPlayer* player);
+    void SendMoveStart(CPlayer* target, CPlayer* player);
+    void SendMoveStop(CPlayer* target, CPlayer* player);
+    void SendChat(CPlayer* target, CPlayer* player, const wchar_t* message);
+    void SendSyncPosition(CPlayer* target);
+    void SendZoneChangeOk(CPlayer* target, int32_t mapId, int32_t channelIndex);
+    void SendZoneChangeFail(CPlayer* target, uint8_t reason);
 
     // 이동 검증
     bool ValidateMove(CZone* zone, CPlayer* player, float clientX, float clientY);
@@ -134,6 +150,11 @@ private:
     static constexpr int CLEANUP_INTERVAL_FRAMES = 25 * 30;  // 30초마다 빈 채널 정리
 
     int32_t _defaultMapId = 0;  // 최초 접속 시 입장할 맵
+    int32_t _nextPlayerId = 1;  // 전역 playerId 카운터 (싱글스레드 게임 루프)
+
+    // 경계 계층: 네트워크(sessionId) ↔ 컨텐츠(playerId) 양방향 매핑
+    std::unordered_map<int64_t, CPlayer*> _sessionToPlayer;   // sessionId → CPlayer*
+    std::unordered_map<int32_t, int64_t> _playerToSession;    // playerId → sessionId
     int _cleanupFrameCount = 0;
 
     // 섹터 변경 배치 처리용 대기열 (프레임 내 수집 → 틱 후 일괄 처리)

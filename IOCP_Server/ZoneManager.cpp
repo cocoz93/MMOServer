@@ -77,24 +77,6 @@ CZone* CZoneManager::GetZone(int32_t zoneId)
     return it->second.get();
 }
 
-void CZoneManager::RegisterSession(int64_t sessionId, int32_t zoneId)
-{
-    _sessionToZone[sessionId] = zoneId;
-}
-
-void CZoneManager::UnregisterSession(int64_t sessionId)
-{
-    _sessionToZone.erase(sessionId);
-}
-
-CZone* CZoneManager::FindZoneBySession(int64_t sessionId)
-{
-    auto it = _sessionToZone.find(sessionId);
-    if (it == _sessionToZone.end())
-        return nullptr;
-    return GetZone(it->second);
-}
-
 void CZoneManager::TickAll(float deltaTime, std::vector<SectorChangeInfo>& outSectorChanges,
                            std::vector<CPlayer*>& outClampedPlayers)
 {

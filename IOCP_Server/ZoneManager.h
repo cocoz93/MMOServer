@@ -1,11 +1,10 @@
 ﻿// ==========================================================================
-// CZoneManager — 존 컨테이너 + 맵/채널 관리 + 세션 라우팅
+// CZoneManager — 존 컨테이너 + 맵/채널 관리
 //
 // [책임]
 //  - 맵 설정 등록 및 맵별 채널(존) 관리
 //  - 채널 자동 배정 (인원 초과 시 동적 생성)
 //  - 빈 동적 채널 자동 정리
-//  - 세션 → 존 매핑 (어떤 세션이 어떤 존에 있는지)
 //
 // [설계]
 //  - 싱글스레드 전제 (게임 루프 스레드에서만 호출)
@@ -49,11 +48,6 @@ public:
     // 존 조회
     CZone* GetZone(int32_t zoneId);
 
-    // 세션 → 존 라우팅
-    void RegisterSession(int64_t sessionId, int32_t zoneId);
-    void UnregisterSession(int64_t sessionId);
-    CZone* FindZoneBySession(int64_t sessionId);
-
     // 전체 존 Tick — 섹터 변경 및 경계 클램핑 수집
     void TickAll(float deltaTime, std::vector<SectorChangeInfo>& outSectorChanges,
                  std::vector<CPlayer*>& outClampedPlayers);
@@ -75,9 +69,6 @@ private:
 
     // zoneId → CZone
     std::unordered_map<int32_t, std::unique_ptr<CZone>> _zones;
-
-    // sessionId → zoneId
-    std::unordered_map<int64_t, int32_t> _sessionToZone;
 
     // mapId → 맵 설정
     std::unordered_map<int32_t, MapConfig> _mapConfigs;

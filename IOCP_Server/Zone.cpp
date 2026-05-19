@@ -6,17 +6,12 @@ CZone::CZone()
     , _mapId(-1)
     , _mapWidth(0)
     , _mapHeight(0)
-    , _nextPlayerId(1)
 {
 }
 
 CZone::~CZone()
 {
-    // 잔여 플레이어 정리
-    for (auto& pair : _players)
-    {
-        delete pair.second;
-    }
+    // CPlayer의 생명주기는 CGameServer가 관리
     _players.clear();
 }
 
@@ -32,17 +27,12 @@ bool CZone::Init(int32_t zoneId, int32_t mapId, int32_t mapWidth, int32_t mapHei
     return true;
 }
 
-CPlayer* CZone::EnterZone(int64_t sessionId)
+bool CZone::EnterZone(CPlayer* player)
 {
-    // 중복 입장 방지
-    if (_players.find(sessionId) != _players.end())
-        return nullptr;
+    if (player == nullptr)
+        return false;
 
-    // 플레이어 생성
-    CPlayer* player = new CPlayer(sessionId);
-    player->_playerId = AllocPlayerId();
-    player->_displayChar = CalcDisplayChar(player->_playerId);
-    player->_colorIndex = CalcColorIndex(player->_playerId);
+    // 존 설정 (playerId, 표시 속성은 CGameServer가 부여 완료 상태)
     player->_zoneId = _zoneId;
     player->_direction = Direction::DOWN;
     player->_moveState = MoveState::IDLE;
@@ -55,15 +45,15 @@ CPlayer* CZone::EnterZone(int64_t sessionId)
     player->_sectorY = _sectorManager.CalcSectorY(player->_y);
     _sectorManager.AddPlayer(player, player->_sectorX, player->_sectorY);
 
-    // 플레이어 목록에 추가
-    _players[sessionId] = player;
+    // 플레이어 목록에 추가 (playerId 키)
+    _players[player->_playerId] = player;
 
-    return player;
+    return true;
 }
 
-void CZone::LeaveZone(int64_t sessionId)
+void CZone::LeaveZone(int32_t playerId)
 {
-    auto it = _players.find(sessionId);
+    auto it = _players.find(playerId);
     if (it == _players.end())
         return;
 
@@ -72,8 +62,7 @@ void CZone::LeaveZone(int64_t sessionId)
     // 섹터 해제
     _sectorManager.RemovePlayer(player, player->_sectorX, player->_sectorY);
 
-    // 정리
-    delete player;
+    // 맵에서 제거 (delete는 CGameServer가 담당)
     _players.erase(it);
 }
 
@@ -136,9 +125,9 @@ void CZone::Tick(float deltaTime, std::vector<SectorChangeInfo>& outSectorChange
     }
 }
 
-CPlayer* CZone::FindPlayer(int64_t sessionId) const
+CPlayer* CZone::FindPlayer(int32_t playerId) const
 {
-    auto it = _players.find(sessionId);
+    auto it = _players.find(playerId);
     if (it == _players.end())
         return nullptr;
     return it->second;
@@ -151,21 +140,3 @@ void CZone::CalcSpawnPos(float& outX, float& outY) const
     outY = static_cast<float>(_mapHeight / 2);
 }
 
-int32_t CZone::AllocPlayerId()
-{
-    return _nextPlayerId++;
-}
-
-// playerId → 고유 표시 문자 (A-Z, a-z, 0-9 = 62종)
-uint8_t CZone::CalcDisplayChar(int32_t playerId)
-{
-    static constexpr char CHARS[] =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    return static_cast<uint8_t>(CHARS[playerId % 62]);
-}
-
-// playerId → 고유 색상 인덱스 (0-6, 7종)
-uint8_t CZone::CalcColorIndex(int32_t playerId)
-{
-    return static_cast<uint8_t>((playerId / 62) % 7);
-}
