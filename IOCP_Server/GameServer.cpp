@@ -438,9 +438,16 @@ void CGameServer::RecvMoveStop(CPlayer* player, CSerialBuffer* pMsg)
     MSG_C2S_MOVE_STOP recvMsg;
     pMsg->GetData(reinterpret_cast<char*>(&recvMsg), sizeof(recvMsg));
 
-    // 이동 중이 아니면 무시 (IDLE 상태에서 STOP 방지)
+    // 이동 중이 아니면 좌표 보정만 수행 후 종료
+    // (서버 벽 클램핑으로 먼저 IDLE된 경우 클라이언트와 좌표 어긋남 방지)
     if (player->_moveState != MoveState::MOVING)
+    {
+        float dx = recvMsg.x - player->_x;
+        float dy = recvMsg.y - player->_y;
+        if (dx * dx + dy * dy >= 0.25f)   // 0.5 타일 이상 차이
+            SendSyncPosition(player);
         return;
+    }
 
     // Direction 범위 검증 (8방향)
     if (recvMsg.direction < static_cast<uint8_t>(Direction::UP) ||

@@ -108,8 +108,20 @@ void CGameInstance::GameLoop()
             _network.SendHeartbeat();
         }
 
-        // 4) 클라이언트 예측 이동 갱신
-        _playerManager.UpdateMovingPlayers(deltaTime);
+        // 4) 클라이언트 예측 이동 갱신 (벽 충돌 시 자동 정지 포함)
+        bool myPlayerClamped = false;
+        _playerManager.UpdateMovingPlayers(deltaTime, myPlayerClamped);
+
+        // 벽에 닿아 자동 정지된 경우 서버에 MOVE_STOP 전송 (서버 Zone::Tick과 동일 동작)
+        if (myPlayerClamped)
+        {
+            ClientPlayer* me = _playerManager.GetMyPlayer();
+            if (me)
+            {
+                _network.SendMoveStop(
+                    static_cast<uint8_t>(me->direction), me->x, me->y);
+            }
+        }
 
         // 5) 렌더링
         _renderer.RenderFrame(
@@ -185,9 +197,15 @@ void CGameInstance::ProcessNetworkEvents()
             ClientPlayer* me = _playerManager.GetMyPlayer();
             if (me && me->playerId == event.playerId)
             {
+                // 이미 다른 방향으로 이동 중이면 늦은 MOVE_STOP 무시
+                // (서버 벽 클램핑 → 전송 지연 → 새 이동 중단 방지)
+                Direction stopDir = static_cast<Direction>(event.direction);
+                if (me->moveState == MoveState::MOVING && me->direction != stopDir)
+                    break;
+
                 me->x = event.x;
                 me->y = event.y;
-                me->direction = static_cast<Direction>(event.direction);
+                me->direction = stopDir;
                 me->moveState = MoveState::IDLE;
                 break;
             }
@@ -374,8 +392,9 @@ void CGameInstance::ProcessInput()
             me->moveState = MoveState::IDLE;
         }
 
-        // 새 방향이 있으면 이동 시작
-        if (newDir != Direction::NONE)
+        // 새 방향이 있으면 이동 시작 (벽 방향은 차단)
+        if (newDir != Direction::NONE &&
+            !_playerManager.IsBlockedByWall(me->x, me->y, newDir))
         {
             _network.SendMoveStart(static_cast<uint8_t>(newDir));
             me->direction = newDir;

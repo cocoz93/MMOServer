@@ -54,12 +54,20 @@ public:
     }
 
     // MOVING 상태인 플레이어들의 좌표를 방향별로 갱신
-    void UpdateMovingPlayers(float deltaTime)
+    // myPlayerClamped: 내 캐릭터가 벽에 닿아 자동 정지되었으면 true
+    void UpdateMovingPlayers(float deltaTime, bool& myPlayerClamped)
     {
+        myPlayerClamped = false;
+
         if (_hasMyPlayer && _myPlayer.moveState == MoveState::MOVING)
         {
             ApplyMovement(_myPlayer, deltaTime);
-            ClampToMap(_myPlayer);
+            if (ClampToMap(_myPlayer))
+            {
+                // 서버 Zone::Tick과 동일: 경계 클램핑 → IDLE 전환
+                _myPlayer.moveState = MoveState::IDLE;
+                myPlayerClamped = true;
+            }
         }
 
         for (auto& pair : _otherPlayers)
@@ -67,7 +75,10 @@ public:
             if (pair.second.moveState == MoveState::MOVING)
             {
                 ApplyMovement(pair.second, deltaTime);
-                ClampToMap(pair.second);
+                if (ClampToMap(pair.second))
+                {
+                    pair.second.moveState = MoveState::IDLE;
+                }
             }
         }
     }
@@ -89,6 +100,31 @@ public:
         return _otherPlayers;
     }
 
+    // 벽 경계에 닿은 상태에서 해당 방향으로 이동 불가 여부
+    bool IsBlockedByWall(float x, float y, Direction dir) const
+    {
+        float maxX = static_cast<float>(_mapWidth) - 1.0f;
+        float maxY = static_cast<float>(_mapHeight) - 1.0f;
+
+        bool atLeft   = (x <= 0.0f);
+        bool atRight  = (x >= maxX);
+        bool atTop    = (y <= 0.0f);
+        bool atBottom = (y >= maxY);
+
+        switch (dir)
+        {
+        case Direction::LEFT:       return atLeft;
+        case Direction::RIGHT:      return atRight;
+        case Direction::UP:         return atTop;
+        case Direction::DOWN:       return atBottom;
+        case Direction::UP_LEFT:    return atLeft  && atTop;
+        case Direction::UP_RIGHT:   return atRight && atTop;
+        case Direction::DOWN_LEFT:  return atLeft  && atBottom;
+        case Direction::DOWN_RIGHT: return atRight && atBottom;
+        default: return false;
+        }
+    }
+
 public:
     // 맵 크기 설정 (서버에서 S2C_ZONE_INFO로 수신)
     void SetMapSize(int width, int height)
@@ -102,13 +138,15 @@ private:
     int _mapWidth = 120;
     int _mapHeight = 120;
 
-    // 맵 경계 클램핑 (서버 Zone::Tick과 동일 조건)
-    void ClampToMap(ClientPlayer& player)
+    // 맵 경계 클램핑 (서버 Zone::Tick과 동일 조건) — 클램핑 발생 시 true 반환
+    bool ClampToMap(ClientPlayer& player)
     {
-        if (player.x < 0.0f)                          player.x = 0.0f;
-        if (player.x >= static_cast<float>(_mapWidth))  player.x = static_cast<float>(_mapWidth) - 1.0f;
-        if (player.y < 0.0f)                          player.y = 0.0f;
-        if (player.y >= static_cast<float>(_mapHeight)) player.y = static_cast<float>(_mapHeight) - 1.0f;
+        bool clamped = false;
+        if (player.x < 0.0f)                          { player.x = 0.0f; clamped = true; }
+        if (player.x >= static_cast<float>(_mapWidth))  { player.x = static_cast<float>(_mapWidth) - 1.0f; clamped = true; }
+        if (player.y < 0.0f)                          { player.y = 0.0f; clamped = true; }
+        if (player.y >= static_cast<float>(_mapHeight)) { player.y = static_cast<float>(_mapHeight) - 1.0f; clamped = true; }
+        return clamped;
     }
 
     // 방향별 좌표 이동 적용
