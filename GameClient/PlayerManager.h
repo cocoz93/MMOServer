@@ -117,10 +117,10 @@ public:
         case Direction::RIGHT:      return atRight;
         case Direction::UP:         return atTop;
         case Direction::DOWN:       return atBottom;
-        case Direction::UP_LEFT:    return atLeft  && atTop;
-        case Direction::UP_RIGHT:   return atRight && atTop;
-        case Direction::DOWN_LEFT:  return atLeft  && atBottom;
-        case Direction::DOWN_RIGHT: return atRight && atBottom;
+        case Direction::UP_LEFT:    return atLeft  || atTop;
+        case Direction::UP_RIGHT:   return atRight || atTop;
+        case Direction::DOWN_LEFT:  return atLeft  || atBottom;
+        case Direction::DOWN_RIGHT: return atRight || atBottom;
         default: return false;
         }
     }

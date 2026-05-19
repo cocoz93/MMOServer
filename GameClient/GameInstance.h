@@ -64,6 +64,7 @@ private:
     // 키 상태 추적 (콘솔 입력 버퍼 기반, 포커스 창만 수신)
     bool _keyDown[256];   // 가상 키코드별 눌림 상태
     bool _enterPressed;
+    bool _escPressed;
 
     // 채팅
     std::vector<std::wstring> _chatLog;

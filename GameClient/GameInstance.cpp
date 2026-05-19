@@ -9,6 +9,7 @@ CGameInstance::CGameInstance()
     : _running(false)
     , _keyDown{}
     , _enterPressed(false)
+    , _escPressed(false)
     , _chatMode(false)
     , _heartbeatAccumMs(0)
 {
@@ -326,12 +327,15 @@ void CGameInstance::ProcessInput()
     currentKeys[2] = _keyDown[VK_LEFT];
     currentKeys[3] = _keyDown[VK_RIGHT];
 
-    // ESC 종료
-    if (_keyDown[VK_ESCAPE])
+    // ESC 종료 (엣지 검출 — 채팅 취소 후 연속 종료 방지)
+    bool escDown = _keyDown[VK_ESCAPE];
+    if (escDown && !_escPressed)
     {
+        _escPressed = true;
         _running = false;
         return;
     }
+    _escPressed = escDown;
 
     // Enter → 채팅 모드 진입 (엣지 검출)
     bool enterDown = _keyDown[VK_RETURN];
@@ -380,6 +384,44 @@ void CGameInstance::ProcessInput()
     else if (right)         newDir = Direction::RIGHT;
 
     ClientPlayer* me = _playerManager.GetMyPlayer();
+
+    // 대각선이 벽에 막힌 경우 유효 성분으로 폴백 (벽 따라 슬라이딩)
+    if (newDir != Direction::NONE &&
+        _playerManager.IsBlockedByWall(me->x, me->y, newDir))
+    {
+        Direction fallback = Direction::NONE;
+        switch (newDir)
+        {
+        case Direction::UP_LEFT:
+            if (!_playerManager.IsBlockedByWall(me->x, me->y, Direction::UP))
+                fallback = Direction::UP;
+            else if (!_playerManager.IsBlockedByWall(me->x, me->y, Direction::LEFT))
+                fallback = Direction::LEFT;
+            break;
+        case Direction::UP_RIGHT:
+            if (!_playerManager.IsBlockedByWall(me->x, me->y, Direction::UP))
+                fallback = Direction::UP;
+            else if (!_playerManager.IsBlockedByWall(me->x, me->y, Direction::RIGHT))
+                fallback = Direction::RIGHT;
+            break;
+        case Direction::DOWN_LEFT:
+            if (!_playerManager.IsBlockedByWall(me->x, me->y, Direction::DOWN))
+                fallback = Direction::DOWN;
+            else if (!_playerManager.IsBlockedByWall(me->x, me->y, Direction::LEFT))
+                fallback = Direction::LEFT;
+            break;
+        case Direction::DOWN_RIGHT:
+            if (!_playerManager.IsBlockedByWall(me->x, me->y, Direction::DOWN))
+                fallback = Direction::DOWN;
+            else if (!_playerManager.IsBlockedByWall(me->x, me->y, Direction::RIGHT))
+                fallback = Direction::RIGHT;
+            break;
+        default:
+            break;
+        }
+        newDir = fallback;
+    }
+
     Direction curDir = (me->moveState == MoveState::MOVING) ? me->direction : Direction::NONE;
 
     if (newDir != curDir)
@@ -429,6 +471,7 @@ void CGameInstance::ProcessChatInput()
         {
             _chatMode = false;
             _chatInput.clear();
+            _escPressed = true; // 채팅 취소 후 ESC 자동반복에 의한 게임 종료 방지
             return;
         }
 
