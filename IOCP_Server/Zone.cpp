@@ -1,6 +1,7 @@
 ﻿#include "Zone.h"
 #include "Player.h"
 #include <algorithm>
+#include <random>
 
 CZone::CZone()
     : _zoneId(-1)
@@ -145,8 +146,11 @@ CPlayer* CZone::FindPlayer(int32_t playerId) const
 
 void CZone::CalcSpawnPos(float& outX, float& outY) const
 {
-    // 맵 중앙 스폰
-    outX = static_cast<float>(_mapWidth / 2);
-    outY = static_cast<float>(_mapHeight / 2);
+    // 맵 전체 랜덤 스폰 (경계 1칸 여유)
+    thread_local std::mt19937 rng{ std::random_device{}() };
+    std::uniform_real_distribution<float> distX(1.0f, static_cast<float>(_mapWidth - 1));
+    std::uniform_real_distribution<float> distY(1.0f, static_cast<float>(_mapHeight - 1));
+    outX = distX(rng);
+    outY = distY(rng);
 }
 

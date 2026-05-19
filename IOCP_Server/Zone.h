@@ -65,7 +65,7 @@ public:
     const CSectorManager& GetSectorManager() const { return _sectorManager; }
 
 private:
-    // 스폰 좌표 계산 (현재: 맵 중앙)
+    // 스폰 좌표 계산 (맵 전체 랜덤)
     void CalcSpawnPos(float& outX, float& outY) const;
 
     int32_t _zoneId;
