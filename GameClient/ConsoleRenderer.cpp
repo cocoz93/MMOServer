@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <cstring>
 #include <algorithm>
+#include <cmath>
 
 // 콘솔에서 2셀을 차지하는 fullwidth 문자 판정 (한글·CJK 등)
 static bool IsFullWidth(wchar_t ch)
@@ -182,8 +183,8 @@ void CConsoleRenderer::RenderGameView(const ClientPlayer* me,
         for (int col = 0; col < VIEW_WIDTH; ++col)
         {
             // 뷰포트 셀에 대응하는 월드 좌표
-            int worldX = static_cast<int>(camX + col);
-            int worldY = static_cast<int>(camY + row);
+            int worldX = static_cast<int>(std::floor(camX + col));
+            int worldY = static_cast<int>(std::floor(camY + row));
 
             // 경계선 (맵 가장자리 1칸)
             bool isBorderX = (worldX == -1 || worldX == _mapWidth);
