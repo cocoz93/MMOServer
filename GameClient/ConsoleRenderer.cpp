@@ -305,7 +305,9 @@ void CConsoleRenderer::RenderChatInput(const std::wstring& chatInput, bool chatM
     // 커서를 채팅 입력줄 끝으로 이동 (에코 문자가 게임 뷰를 오염하지 않도록)
     // fullwidth 문자(한글 등)는 2셀 차지하므로 표시 폭 기준으로 계산
     int inputDisplayWidth = GetDisplayWidth(chatInput.c_str(), static_cast<int>(chatInput.size()));
-    COORD cursorPos = { static_cast<SHORT>(3 + inputDisplayWidth), CHAT_INPUT_ROW };
+    SHORT cursorX = static_cast<SHORT>(3 + inputDisplayWidth);
+    if (cursorX >= CONSOLE_WIDTH) cursorX = CONSOLE_WIDTH - 1;
+    COORD cursorPos = { cursorX, CHAT_INPUT_ROW };
     SetConsoleCursorPosition(_hConsole, cursorPos);
 }
 

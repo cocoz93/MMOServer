@@ -459,10 +459,33 @@ void CGameInstance::ProcessChatInput()
             continue;
         }
 
-        // 일반 문자 입력 (유니코드)
+        // 일반 문자 입력 (유니코드) — 표시 폭 기준으로도 제한
         if (ch >= 32 && _chatInput.size() < CHAT_MSG_MAX_LEN - 1)
         {
-            _chatInput += ch;
+            // " > " 접두사(3셀) + 커서 "_"(1셀) 제외한 가용 폭
+            static constexpr int MAX_INPUT_CELLS = 80 - 4;
+
+            // 현재 입력의 표시 폭 계산
+            int currentCells = 0;
+            for (size_t i = 0; i < _chatInput.size(); ++i)
+            {
+                wchar_t c = _chatInput[i];
+                currentCells += (c >= 0xAC00 && c <= 0xD7AF) ||
+                                (c >= 0x4E00 && c <= 0x9FFF) ||
+                                (c >= 0x3400 && c <= 0x4DBF) ||
+                                (c >= 0x1100 && c <= 0x115F) ||
+                                (c >= 0xFF01 && c <= 0xFF60) ? 2 : 1;
+            }
+            int addCells = (ch >= 0xAC00 && ch <= 0xD7AF) ||
+                           (ch >= 0x4E00 && ch <= 0x9FFF) ||
+                           (ch >= 0x3400 && ch <= 0x4DBF) ||
+                           (ch >= 0x1100 && ch <= 0x115F) ||
+                           (ch >= 0xFF01 && ch <= 0xFF60) ? 2 : 1;
+
+            if (currentCells + addCells <= MAX_INPUT_CELLS)
+            {
+                _chatInput += ch;
+            }
         }
     }
 }
