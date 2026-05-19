@@ -7,6 +7,7 @@
 
 CGameInstance::CGameInstance()
     : _running(false)
+    , _keyDown{}
     , _enterPressed(false)
     , _chatMode(false)
     , _heartbeatAccumMs(0)
@@ -52,7 +53,7 @@ void CGameInstance::Run()
     }
 
     // 현재 Enter 키 상태 반영 (첫 프레임 채팅 모드 진입 방지)
-    _enterPressed = (GetAsyncKeyState(VK_RETURN) & 0x8000) != 0;
+    _enterPressed = (GetKeyState(VK_RETURN) & 0x8000) != 0;
 
     // 게임 루프 진입
     GameLoop();
@@ -90,11 +91,14 @@ void CGameInstance::GameLoop()
         // 1) 네트워크 이벤트 소비
         ProcessNetworkEvents();
 
-        // 2) 키보드 입력 처리
+        // 2) 콘솔 입력 버퍼에서 키 상태 갱신 후 입력 처리
         if (_chatMode)
             ProcessChatInput();
         else
+        {
+            PollConsoleInput();
             ProcessInput();
+        }
 
         // 3) 하트비트 송신 (20초 간격)
         _heartbeatAccumMs += static_cast<int>(deltaTime * 1000.0f);
@@ -257,31 +261,53 @@ void CGameInstance::ProcessNetworkEvents()
 }
 
 // ==========================================================================
+// 콘솔 입력 버퍼 폴링 — 키 상태 갱신
+// (콘솔 입력 버퍼는 포커스된 창에만 이벤트가 들어옴)
+// ==========================================================================
+
+void CGameInstance::PollConsoleInput()
+{
+    HANDLE hInput = GetStdHandle(STD_INPUT_HANDLE);
+    INPUT_RECORD records[32];
+    DWORD numRead;
+
+    while (PeekConsoleInputW(hInput, records, 1, &numRead) && numRead > 0)
+    {
+        ReadConsoleInputW(hInput, records, 32, &numRead);
+        for (DWORD i = 0; i < numRead; ++i)
+        {
+            if (records[i].EventType != KEY_EVENT)
+                continue;
+            const auto& ke = records[i].Event.KeyEvent;
+            WORD vk = ke.wVirtualKeyCode;
+            if (vk < 256)
+                _keyDown[vk] = (ke.bKeyDown != 0);
+        }
+    }
+}
+
+// ==========================================================================
 // 키보드 입력 처리 — 일반 모드 (이동)
 // ==========================================================================
 
 void CGameInstance::ProcessInput()
 {
-    // 이 콘솔 창에 포커스가 없으면 입력 무시
-    if (GetConsoleWindow() != GetForegroundWindow())
-        return;
-
     // 현재 프레임의 키 상태 조사
     bool currentKeys[4];
-    currentKeys[0] = (GetAsyncKeyState(VK_UP) & 0x8000) != 0;
-    currentKeys[1] = (GetAsyncKeyState(VK_DOWN) & 0x8000) != 0;
-    currentKeys[2] = (GetAsyncKeyState(VK_LEFT) & 0x8000) != 0;
-    currentKeys[3] = (GetAsyncKeyState(VK_RIGHT) & 0x8000) != 0;
+    currentKeys[0] = _keyDown[VK_UP];
+    currentKeys[1] = _keyDown[VK_DOWN];
+    currentKeys[2] = _keyDown[VK_LEFT];
+    currentKeys[3] = _keyDown[VK_RIGHT];
 
     // ESC 종료
-    if (GetAsyncKeyState(VK_ESCAPE) & 0x8000)
+    if (_keyDown[VK_ESCAPE])
     {
         _running = false;
         return;
     }
 
     // Enter → 채팅 모드 진입 (엣지 검출)
-    bool enterDown = (GetAsyncKeyState(VK_RETURN) & 0x8000) != 0;
+    bool enterDown = _keyDown[VK_RETURN];
     if (enterDown && !_enterPressed)
     {
         // 이동 중이면 정지 후 진입
@@ -297,6 +323,7 @@ void CGameInstance::ProcessInput()
         _chatMode = true;
         _chatInput.clear();
         FlushConsoleInputBuffer(GetStdHandle(STD_INPUT_HANDLE));
+        memset(_keyDown, 0, sizeof(_keyDown));
         return;
     }
     _enterPressed = enterDown;

@@ -41,8 +41,8 @@ private:
     HANDLE _hConsole;
 
     // 게임 뷰 설정 (서버에서 S2C_ZONE_INFO로 수신)
-    int _mapWidth = 400;
-    int _mapHeight = 400;
+    int _mapWidth = 120;
+    int _mapHeight = 120;
     static constexpr int VIEW_WIDTH = 80;
     static constexpr int VIEW_HEIGHT = 21;
 
