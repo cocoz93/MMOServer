@@ -214,10 +214,19 @@ void CGameInstance::ProcessNetworkEvents()
         case ClientNetworkEvent::Type::SYNC_POSITION:
         {
             ClientPlayer* me = _playerManager.GetMyPlayer();
-            if (me)
+            if (me && event.playerId == me->playerId)
             {
                 me->x = event.x;
                 me->y = event.y;
+            }
+            else
+            {
+                ClientPlayer* other = _playerManager.FindPlayer(event.playerId);
+                if (other)
+                {
+                    other->x = event.x;
+                    other->y = event.y;
+                }
             }
             break;
         }
@@ -526,6 +535,7 @@ void CGameInstance::OnSyncPosition(const MSG_S2C_SYNC_POSITION* msg)
 {
     ClientNetworkEvent event{};
     event.type = ClientNetworkEvent::Type::SYNC_POSITION;
+    event.playerId = msg->playerId;
     event.x = msg->x;
     event.y = msg->y;
     _eventQueue.Push(std::move(event));
