@@ -99,8 +99,8 @@ public:
 
 private:
     // 맵 크기 (서버에서 S2C_ZONE_INFO로 수신)
-    int _mapWidth = 400;
-    int _mapHeight = 400;
+    int _mapWidth = 120;
+    int _mapHeight = 120;
 
     // 맵 경계 클램핑 (서버 Zone::Tick과 동일 조건)
     void ClampToMap(ClientPlayer& player)
