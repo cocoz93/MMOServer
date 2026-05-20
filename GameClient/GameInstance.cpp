@@ -299,7 +299,14 @@ void CGameInstance::ProcessNetworkEvents()
         case ClientNetworkEvent::Type::ZONE_CHANGE_FAIL:
         {
             _zoneChangeResponseReceived = true;
-            const wchar_t* reason = (event.reason == 0) ? L"Map not found" : L"All channels full";
+            const wchar_t* reason;
+            switch (event.reason)
+            {
+            case 0:  reason = L"Not found";            break;
+            case 1:  reason = L"All channels full";    break;
+            case 2:  reason = L"Already in this channel"; break;
+            default: reason = L"Unknown";              break;
+            }
             wchar_t buf[128];
             swprintf_s(buf, L"[System] Zone change failed: %s", reason);
             AddChatMessage(buf);
@@ -722,5 +729,46 @@ void CGameInstance::HandleChatCommand(const std::wstring& command)
         return;
     }
 
-    AddChatMessage(L"[System] Unknown command. Available: /map");
+    // ── 채널 이동 ──
+
+    if (command == L"/ch" || command == L"/ch list")
+    {
+        AddChatMessage(L"[System] Usage: /ch <channel_number>");
+        return;
+    }
+
+    if (command.size() > 4 && command.substr(0, 4) == L"/ch ")
+    {
+        std::wstring arg = command.substr(4);
+
+        try
+        {
+            int32_t channelIndex = std::stoi(arg);
+
+            // 이동 중이면 정지 (이전 존에서 유령 이동 방지)
+            ClientPlayer* me = _playerManager.GetMyPlayer();
+            if (me && me->moveState == MoveState::MOVING)
+            {
+                _network.SendMoveStop(
+                    static_cast<uint8_t>(me->direction), me->x, me->y);
+                me->moveState = MoveState::IDLE;
+            }
+
+            int32_t currentMapId = _renderer.GetMapId();
+            _network.SendZoneChange(currentMapId, channelIndex);
+            _zoneChanging = true;
+            _zoneChangeElapsedMs = 0;
+
+            wchar_t buf[128];
+            swprintf_s(buf, L"[System] Requesting channel change to ch %d...", channelIndex);
+            AddChatMessage(buf);
+        }
+        catch (...)
+        {
+            AddChatMessage(L"[System] Invalid channel number. Usage: /ch <channel_number>");
+        }
+        return;
+    }
+
+    AddChatMessage(L"[System] Unknown command. Available: /map, /ch");
 }

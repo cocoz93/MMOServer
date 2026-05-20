@@ -48,6 +48,15 @@ CZone* CZoneManager::FindOrCreateChannel(int32_t mapId)
     return newZone;
 }
 
+CZone* CZoneManager::FindChannel(int32_t mapId, int32_t channelIndex)
+{
+    if (_mapConfigs.find(mapId) == _mapConfigs.end())
+        return nullptr;
+
+    int32_t zoneId = MakeZoneId(mapId, channelIndex);
+    return GetZone(zoneId);
+}
+
 void CZoneManager::CleanupEmptyChannels()
 {
     for (auto& pair : _mapChannels)

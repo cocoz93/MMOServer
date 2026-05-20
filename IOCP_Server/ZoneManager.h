@@ -42,6 +42,9 @@ public:
     // 채널 자동 배정 — 여유 있는 채널 반환, 없으면 동적 생성
     CZone* FindOrCreateChannel(int32_t mapId);
 
+    // 특정 채널 조회 — 존재하지 않으면 nullptr (자동 생성 안 함)
+    CZone* FindChannel(int32_t mapId, int32_t channelIndex);
+
     // 빈 동적 채널 정리 (channelIndex > 0이고 플레이어 0명)
     void CleanupEmptyChannels();
 

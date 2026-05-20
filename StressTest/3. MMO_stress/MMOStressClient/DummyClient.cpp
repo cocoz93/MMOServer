@@ -430,6 +430,7 @@ void DummyClient::SendZoneChange(StatsLocal& stats, int targetMapId)
     msg.header.size  = sizeof(msg);
     msg.header.type  = MsgType::C2S_ZONE_CHANGE;
     msg.targetMapId  = targetMapId;
+    msg.targetChannelIndex = -1;  // 자동배정
 
     _sendBuf.Enqueue(&msg, sizeof(msg));
     stats.sendPackets += 1;

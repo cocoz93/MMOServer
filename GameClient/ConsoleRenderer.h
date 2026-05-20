@@ -17,6 +17,7 @@ public:
     void Init();
     void SetZoneInfo(int mapId, int channelIndex);
     void SetMapSize(int width, int height);
+    int GetMapId() const { return _mapId; }
 
     // 매 프레임 전체 화면 갱신
     void RenderFrame(const ClientPlayer* me,

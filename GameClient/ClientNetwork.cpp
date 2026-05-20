@@ -222,12 +222,13 @@ void CClientNetwork::SendChat(const wchar_t* message)
     SendPacket(reinterpret_cast<const char*>(&msg), sendSize);
 }
 
-void CClientNetwork::SendZoneChange(int32_t targetMapId)
+void CClientNetwork::SendZoneChange(int32_t targetMapId, int32_t targetChannelIndex)
 {
     MSG_C2S_ZONE_CHANGE msg;
     msg.header.size = sizeof(MSG_C2S_ZONE_CHANGE);
     msg.header.type = MsgType::C2S_ZONE_CHANGE;
     msg.targetMapId = targetMapId;
+    msg.targetChannelIndex = targetChannelIndex;
 
     SendPacket(reinterpret_cast<const char*>(&msg), sizeof(msg));
 }

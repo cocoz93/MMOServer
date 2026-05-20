@@ -700,25 +700,51 @@ void CGameServer::RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg)
     pMsg->GetData(reinterpret_cast<char*>(&recvMsg), sizeof(recvMsg));
 
     int32_t targetMapId = recvMsg.targetMapId;
+    int32_t targetChannelIndex = recvMsg.targetChannelIndex;
 
-    // 랜덤 맵 이동 요청 처리
-    if (targetMapId == -1)
+    CZone* newZone = nullptr;
+
+    if (targetChannelIndex >= 0)
     {
+        // ── 채널 지정 이동 (같은 맵 내) ──
         int32_t currentMapId = CZoneManager::GetMapIdFromZoneId(oldZone->GetZoneId());
-        targetMapId = _zoneManager.GetRandomMapId(currentMapId);
+
+        newZone = _zoneManager.FindChannel(currentMapId, targetChannelIndex);
+        if (newZone == nullptr)
+        {
+            SendZoneChangeFail(player, 0);  // 채널 없음
+            return;
+        }
+        if (newZone->GetZoneId() == oldZone->GetZoneId())
+        {
+            SendZoneChangeFail(player, 2);  // 이미 해당 채널
+            return;
+        }
+
+        targetMapId = currentMapId;
+    }
+    else
+    {
+        // ── 기존 맵 이동 (자동 채널 배정) ──
+
+        // 랜덤 맵 이동 요청 처리
         if (targetMapId == -1)
+        {
+            int32_t currentMapId = CZoneManager::GetMapIdFromZoneId(oldZone->GetZoneId());
+            targetMapId = _zoneManager.GetRandomMapId(currentMapId);
+            if (targetMapId == -1)
+            {
+                SendZoneChangeFail(player, 0);
+                return;
+            }
+        }
+
+        newZone = _zoneManager.FindOrCreateChannel(targetMapId);
+        if (newZone == nullptr)
         {
             SendZoneChangeFail(player, 0);
             return;
         }
-    }
-
-    // 대상 맵의 여유 채널 찾기
-    CZone* newZone = _zoneManager.FindOrCreateChannel(targetMapId);
-    if (newZone == nullptr)
-    {
-        SendZoneChangeFail(player, 0);
-        return;
     }
 
     // ── 현재 존에서 퇴장 ──

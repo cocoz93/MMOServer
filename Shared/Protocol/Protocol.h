@@ -229,11 +229,12 @@ struct MSG_S2C_ZONE_INFO
     MSG_S2C_ZONE_INFO() : header{ sizeof(*this), TYPE }, mapId(0), channelIndex(0), mapWidth(0), mapHeight(0) {}
 };
 
-// C2S: 맵 이동 요청
+// C2S: 맵 이동 / 채널 이동 요청
 struct MSG_C2S_ZONE_CHANGE
 {
     MsgHeader header;
     int32_t targetMapId;
+    int32_t targetChannelIndex = -1; // -1: 자동배정(기존 동작), 0 이상: 지정 채널
 };
 
 // S2C: 맵 이동 성공
@@ -258,7 +259,7 @@ struct MSG_S2C_ZONE_CHANGE_FAIL
 {
     static constexpr MsgType TYPE = MsgType::S2C_ZONE_CHANGE_FAIL;
     MsgHeader header;
-    uint8_t reason;  // 0: 존재하지 않는 맵, 1: 모든 채널 가득 참
+    uint8_t reason;  // 0: 존재하지 않는 맵/채널, 1: 모든 채널 가득 참, 2: 이미 해당 채널
 
     MSG_S2C_ZONE_CHANGE_FAIL() : header{ sizeof(*this), TYPE }, reason(0) {}
 };
