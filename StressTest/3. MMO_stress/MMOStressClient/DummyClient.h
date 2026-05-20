@@ -101,6 +101,6 @@ private:
     // 난수 생성기 (스레드 로컬이 아닌 인스턴스별)
     std::minstd_rand _rng{std::random_device{}()};
 
-    CRingBufferST  _recvBuf{16384};
+    CRingBufferST  _recvBuf{65535};
     CRingBufferST  _sendBuf{4096};
 };
