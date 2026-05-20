@@ -724,11 +724,8 @@ void CGameServer::RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg)
     // 섹터 해제 + _players 맵에서 제거
     oldZone->LeaveZone(player->_playerId);
 
-    // ── 새 존에 입장 (player 객체 재활용, 새 playerId 부여) ──
+    // ── 새 존에 입장 (player 객체 재활용, playerId 유지) ──
 
-    player->_playerId = AllocPlayerId();
-    player->_displayChar = CalcDisplayChar(player->_playerId);
-    player->_colorIndex = CalcColorIndex(player->_playerId);
     if (!newZone->EnterZone(player))
     {
         // 입장 실패 시 원래 맵의 여유 채널로 복귀 시도
