@@ -2,18 +2,14 @@
 
 #include <cstdint>
 
-// 8방향 (서버 Player.h와 동일)
+// 4방향 (서버 Player.h와 동일)
 enum class Direction : uint8_t
 {
     NONE = 0,
     UP,          // ↑
     DOWN,        // ↓
     LEFT,        // ←
-    RIGHT,       // →
-    UP_LEFT,     // ↖
-    UP_RIGHT,    // ↗
-    DOWN_LEFT,   // ↙
-    DOWN_RIGHT   // ↘
+    RIGHT        // →
 };
 
 // 이동 상태 (서버 Player.h와 동일)

@@ -84,7 +84,7 @@ private:
     float       _x              = 0.0f;
     float       _y              = 0.0f;
     int32_t     _speed          = 0;
-    uint8_t     _direction      = 0;   // Direction enum (0=NONE, 1=UP ~ 8=DOWN_RIGHT)
+    uint8_t     _direction      = 0;   // Direction enum (0=NONE, 1=UP ~ 4=RIGHT)
     bool        _moving         = false;
 
     // 타이밍

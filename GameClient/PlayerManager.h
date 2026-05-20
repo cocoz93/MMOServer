@@ -113,14 +113,10 @@ public:
 
         switch (dir)
         {
-        case Direction::LEFT:       return atLeft;
-        case Direction::RIGHT:      return atRight;
-        case Direction::UP:         return atTop;
-        case Direction::DOWN:       return atBottom;
-        case Direction::UP_LEFT:    return atLeft  || atTop;
-        case Direction::UP_RIGHT:   return atRight || atTop;
-        case Direction::DOWN_LEFT:  return atLeft  || atBottom;
-        case Direction::DOWN_RIGHT: return atRight || atBottom;
+        case Direction::LEFT:  return atLeft;
+        case Direction::RIGHT: return atRight;
+        case Direction::UP:    return atTop;
+        case Direction::DOWN:  return atBottom;
         default: return false;
         }
     }
@@ -152,18 +148,13 @@ private:
     // 방향별 좌표 이동 적용
     static void ApplyMovement(ClientPlayer& player, float deltaTime)
     {
-        static constexpr float DIAGONAL_FACTOR = 0.7071f; // 1/√2
         float dist = player.speed * deltaTime;
         switch (player.direction)
         {
-        case Direction::UP:         player.y -= dist; break;
-        case Direction::DOWN:       player.y += dist; break;
-        case Direction::LEFT:       player.x -= dist; break;
-        case Direction::RIGHT:      player.x += dist; break;
-        case Direction::UP_LEFT:    player.x -= dist * DIAGONAL_FACTOR; player.y -= dist * DIAGONAL_FACTOR; break;
-        case Direction::UP_RIGHT:   player.x += dist * DIAGONAL_FACTOR; player.y -= dist * DIAGONAL_FACTOR; break;
-        case Direction::DOWN_LEFT:  player.x -= dist * DIAGONAL_FACTOR; player.y += dist * DIAGONAL_FACTOR; break;
-        case Direction::DOWN_RIGHT: player.x += dist * DIAGONAL_FACTOR; player.y += dist * DIAGONAL_FACTOR; break;
+        case Direction::UP:    player.y -= dist; break;
+        case Direction::DOWN:  player.y += dist; break;
+        case Direction::LEFT:  player.x -= dist; break;
+        case Direction::RIGHT: player.x += dist; break;
         default: break;
         }
     }

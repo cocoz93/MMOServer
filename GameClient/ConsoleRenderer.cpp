@@ -124,15 +124,11 @@ void CConsoleRenderer::RenderStatusBar(const ClientPlayer* me)
         const wchar_t* dirStr = L"";
         switch (me->direction)
         {
-        case Direction::UP:         dirStr = L"UP";    break;
-        case Direction::DOWN:       dirStr = L"DOWN";  break;
-        case Direction::LEFT:       dirStr = L"LEFT";  break;
-        case Direction::RIGHT:      dirStr = L"RIGHT"; break;
-        case Direction::UP_LEFT:    dirStr = L"UL";    break;
-        case Direction::UP_RIGHT:   dirStr = L"UR";    break;
-        case Direction::DOWN_LEFT:  dirStr = L"DL";    break;
-        case Direction::DOWN_RIGHT: dirStr = L"DR";    break;
-        default:                    dirStr = L"-";     break;
+        case Direction::UP:    dirStr = L"UP";    break;
+        case Direction::DOWN:  dirStr = L"DOWN";  break;
+        case Direction::LEFT:  dirStr = L"LEFT";  break;
+        case Direction::RIGHT: dirStr = L"RIGHT"; break;
+        default:               dirStr = L"-";     break;
         }
 
         swprintf_s(buf, CONSOLE_WIDTH + 1,

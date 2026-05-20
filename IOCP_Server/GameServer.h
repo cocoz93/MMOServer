@@ -122,6 +122,9 @@ private:
     // 이동 검증
     bool ValidateMove(CZone* zone, CPlayer* player, float clientX, float clientY);
 
+    // 벽 방향 검증 — 경계 위치에서 벽 쪽 이동 차단
+    bool IsBlockedByWall(CZone* zone, CPlayer* player, Direction dir);
+
     // 패킷 타입별 최소 크기 반환 (0이면 알 수 없는 타입)
     static uint16_t GetExpectedSize(MsgType type);
 

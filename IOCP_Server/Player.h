@@ -4,18 +4,14 @@
 #include <string>
 #include <random>
 
-// 8방향
+// 4방향
 enum class Direction : uint8_t
 {
     NONE = 0,
     UP,          // ↑
     DOWN,        // ↓
     LEFT,        // ←
-    RIGHT,       // →
-    UP_LEFT,     // ↖
-    UP_RIGHT,    // ↗
-    DOWN_LEFT,   // ↙
-    DOWN_RIGHT   // ↘
+    RIGHT        // →
 };
 
 // 이동 상태

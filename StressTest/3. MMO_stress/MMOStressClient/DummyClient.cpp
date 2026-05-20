@@ -325,21 +325,16 @@ void DummyClient::HandleZoneChangeFail(const char* packet)
 // ─────────────────────────────────────────────────────────────────
 void DummyClient::UpdateLocalPosition(int mapWidth, int mapHeight)
 {
-    static constexpr float DIAGONAL_FACTOR = 0.7071f;
-    static constexpr float DELTA_TIME      = 0.04f;  // 서버 FRAME_PER_SEC=25 → 1/25=0.04
+    static constexpr float DELTA_TIME = 0.04f;  // 서버 FRAME_PER_SEC=25 → 1/25=0.04
 
     float dist = static_cast<float>(_speed) * DELTA_TIME;
 
     switch (_direction)
     {
-    case 1: /* UP         */ _y -= dist; break;
-    case 2: /* DOWN       */ _y += dist; break;
-    case 3: /* LEFT       */ _x -= dist; break;
-    case 4: /* RIGHT      */ _x += dist; break;
-    case 5: /* UP_LEFT    */ _x -= dist * DIAGONAL_FACTOR; _y -= dist * DIAGONAL_FACTOR; break;
-    case 6: /* UP_RIGHT   */ _x += dist * DIAGONAL_FACTOR; _y -= dist * DIAGONAL_FACTOR; break;
-    case 7: /* DOWN_LEFT  */ _x -= dist * DIAGONAL_FACTOR; _y += dist * DIAGONAL_FACTOR; break;
-    case 8: /* DOWN_RIGHT */ _x += dist * DIAGONAL_FACTOR; _y += dist * DIAGONAL_FACTOR; break;
+    case 1: /* UP    */ _y -= dist; break;
+    case 2: /* DOWN  */ _y += dist; break;
+    case 3: /* LEFT  */ _x -= dist; break;
+    case 4: /* RIGHT */ _x += dist; break;
     default: break;
     }
 
@@ -354,8 +349,8 @@ void DummyClient::UpdateLocalPosition(int mapWidth, int mapHeight)
 
 void DummyClient::SendMoveStart(StatsLocal& stats, int64_t nowMs)
 {
-    // 랜덤 방향 (1~8)
-    std::uniform_int_distribution<int> dist(1, 8);
+    // 랜덤 방향 (1~4)
+    std::uniform_int_distribution<int> dist(1, 4);
     _direction = static_cast<uint8_t>(dist(_rng));
     _moving = true;
 

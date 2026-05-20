@@ -87,18 +87,13 @@ void CZone::Tick(float deltaTime, std::vector<SectorChangeInfo>& outSectorChange
             continue;
 
         // 방향에 따라 좌표 갱신 (플레이어별 속도)
-        static constexpr float DIAGONAL_FACTOR = 0.7071f; // 1/√2
         float dist = player->_speed * deltaTime;
         switch (player->_direction)
         {
-        case Direction::UP:         player->_y -= dist; break;
-        case Direction::DOWN:       player->_y += dist; break;
-        case Direction::LEFT:       player->_x -= dist; break;
-        case Direction::RIGHT:      player->_x += dist; break;
-        case Direction::UP_LEFT:    player->_x -= dist * DIAGONAL_FACTOR; player->_y -= dist * DIAGONAL_FACTOR; break;
-        case Direction::UP_RIGHT:   player->_x += dist * DIAGONAL_FACTOR; player->_y -= dist * DIAGONAL_FACTOR; break;
-        case Direction::DOWN_LEFT:  player->_x -= dist * DIAGONAL_FACTOR; player->_y += dist * DIAGONAL_FACTOR; break;
-        case Direction::DOWN_RIGHT: player->_x += dist * DIAGONAL_FACTOR; player->_y += dist * DIAGONAL_FACTOR; break;
+        case Direction::UP:    player->_y -= dist; break;
+        case Direction::DOWN:  player->_y += dist; break;
+        case Direction::LEFT:  player->_x -= dist; break;
+        case Direction::RIGHT: player->_x += dist; break;
         default: break;
         }
 

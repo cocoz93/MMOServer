@@ -424,13 +424,21 @@ void CGameServer::RecvMoveStart(CPlayer* player, CSerialBuffer* pMsg)
     if (player->_moveState == MoveState::MOVING)
         return;
 
-    // Direction 범위 검증 (8방향)
+    // Direction 범위 검증 (4방향)
     if (recvMsg.direction < static_cast<uint8_t>(Direction::UP) ||
-        recvMsg.direction > static_cast<uint8_t>(Direction::DOWN_RIGHT))
+        recvMsg.direction > static_cast<uint8_t>(Direction::RIGHT))
         return;
 
+    // 벽 방향 검증: 벽 위치에서 벽 쪽으로 이동 시도 시 차단
+    Direction dir = static_cast<Direction>(recvMsg.direction);
+    if (IsBlockedByWall(zone, player, dir))
+    {
+        SendSyncPosition(player);
+        return;
+    }
+
     // 플레이어 상태 갱신
-    player->_direction = static_cast<Direction>(recvMsg.direction);
+    player->_direction = dir;
     player->_moveState = MoveState::MOVING;
 
     // 델타 동기화 기준 좌표 갱신 (이동 시작 직후 즉시 동기화 방지)
@@ -466,9 +474,9 @@ void CGameServer::RecvMoveStop(CPlayer* player, CSerialBuffer* pMsg)
         return;
     }
 
-    // Direction 범위 검증 (8방향)
+    // Direction 범위 검증 (4방향)
     if (recvMsg.direction < static_cast<uint8_t>(Direction::UP) ||
-        recvMsg.direction > static_cast<uint8_t>(Direction::DOWN_RIGHT))
+        recvMsg.direction > static_cast<uint8_t>(Direction::RIGHT))
         return;
 
     // 방향 갱신
@@ -848,6 +856,30 @@ bool CGameServer::ValidateMove(CZone* zone, CPlayer* player, float clientX, floa
     }
 
     return true;
+}
+
+// ==========================================================================
+// 벽 방향 검증 — 경계 위치에서 벽 쪽 이동 차단 (클라이언트 IsBlockedByWall과 동일)
+// ==========================================================================
+
+bool CGameServer::IsBlockedByWall(CZone* zone, CPlayer* player, Direction dir)
+{
+    float maxX = static_cast<float>(zone->GetMapWidth()) - 1.0f;
+    float maxY = static_cast<float>(zone->GetMapHeight()) - 1.0f;
+
+    bool atLeft   = (player->_x <= 0.0f);
+    bool atRight  = (player->_x >= maxX);
+    bool atTop    = (player->_y <= 0.0f);
+    bool atBottom = (player->_y >= maxY);
+
+    switch (dir)
+    {
+    case Direction::LEFT:  return atLeft;
+    case Direction::RIGHT: return atRight;
+    case Direction::UP:    return atTop;
+    case Direction::DOWN:  return atBottom;
+    default: return false;
+    }
 }
 
 // ==========================================================================

@@ -198,8 +198,8 @@ void CGameInstance::ProcessNetworkEvents()
             ClientPlayer* me = _playerManager.GetMyPlayer();
             if (me && me->playerId == event.playerId)
             {
-                // 이미 다른 방향으로 이동 중이면 늦은 MOVE_STOP 무시
-                // (서버 벽 클램핑 → 전송 지연 → 새 이동 중단 방지)
+                // 이미 다른 방향으로 이동 중이면 이 MOVE_STOP은 무시
+                // (4방향 단일축 이동에서는 서버/클라 클램프 값이 동일하므로 위치 보정 불필요)
                 Direction stopDir = static_cast<Direction>(event.direction);
                 if (me->moveState == MoveState::MOVING && me->direction != stopDir)
                     break;
@@ -363,64 +363,23 @@ void CGameInstance::ProcessInput()
     if (!_playerManager.HasMyPlayer())
         return;
 
-    // 키 조합으로 8방향 결정
+    // 키 입력으로 4방향 결정 (동시 입력 시 상쇄)
     bool up    = currentKeys[0];
     bool down  = currentKeys[1];
     bool left  = currentKeys[2];
     bool right = currentKeys[3];
 
-    // 상충 입력 상쇄
     if (up && down)    { up = false; down = false; }
     if (left && right) { left = false; right = false; }
 
+    // 세로 우선 (동시 입력 시 세로 채택)
     Direction newDir = Direction::NONE;
-    if (up && left)        newDir = Direction::UP_LEFT;
-    else if (up && right)  newDir = Direction::UP_RIGHT;
-    else if (down && left)  newDir = Direction::DOWN_LEFT;
-    else if (down && right) newDir = Direction::DOWN_RIGHT;
-    else if (up)            newDir = Direction::UP;
-    else if (down)          newDir = Direction::DOWN;
-    else if (left)          newDir = Direction::LEFT;
-    else if (right)         newDir = Direction::RIGHT;
+    if (up)         newDir = Direction::UP;
+    else if (down)  newDir = Direction::DOWN;
+    else if (left)  newDir = Direction::LEFT;
+    else if (right) newDir = Direction::RIGHT;
 
     ClientPlayer* me = _playerManager.GetMyPlayer();
-
-    // 대각선이 벽에 막힌 경우 유효 성분으로 폴백 (벽 따라 슬라이딩)
-    if (newDir != Direction::NONE &&
-        _playerManager.IsBlockedByWall(me->x, me->y, newDir))
-    {
-        Direction fallback = Direction::NONE;
-        switch (newDir)
-        {
-        case Direction::UP_LEFT:
-            if (!_playerManager.IsBlockedByWall(me->x, me->y, Direction::UP))
-                fallback = Direction::UP;
-            else if (!_playerManager.IsBlockedByWall(me->x, me->y, Direction::LEFT))
-                fallback = Direction::LEFT;
-            break;
-        case Direction::UP_RIGHT:
-            if (!_playerManager.IsBlockedByWall(me->x, me->y, Direction::UP))
-                fallback = Direction::UP;
-            else if (!_playerManager.IsBlockedByWall(me->x, me->y, Direction::RIGHT))
-                fallback = Direction::RIGHT;
-            break;
-        case Direction::DOWN_LEFT:
-            if (!_playerManager.IsBlockedByWall(me->x, me->y, Direction::DOWN))
-                fallback = Direction::DOWN;
-            else if (!_playerManager.IsBlockedByWall(me->x, me->y, Direction::LEFT))
-                fallback = Direction::LEFT;
-            break;
-        case Direction::DOWN_RIGHT:
-            if (!_playerManager.IsBlockedByWall(me->x, me->y, Direction::DOWN))
-                fallback = Direction::DOWN;
-            else if (!_playerManager.IsBlockedByWall(me->x, me->y, Direction::RIGHT))
-                fallback = Direction::RIGHT;
-            break;
-        default:
-            break;
-        }
-        newDir = fallback;
-    }
 
     Direction curDir = (me->moveState == MoveState::MOVING) ? me->direction : Direction::NONE;
 
