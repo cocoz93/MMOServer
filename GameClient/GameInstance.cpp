@@ -323,6 +323,14 @@ void CGameInstance::ProcessNetworkEvents()
             AddChatMessage(buf);
             break;
         }
+
+        case ClientNetworkEvent::Type::ADMIN_LOGIN_OK:
+            AddChatMessage(L"[System] Admin login successful.");
+            break;
+
+        case ClientNetworkEvent::Type::ADMIN_LOGIN_FAIL:
+            AddChatMessage(L"[System] Admin login failed. Invalid key.");
+            break;
         }
     }
 }
@@ -642,6 +650,20 @@ void CGameInstance::OnError(const MSG_S2C_ERROR* msg)
     _eventQueue.Push(std::move(event));
 }
 
+void CGameInstance::OnAdminLoginOk()
+{
+    ClientNetworkEvent event{};
+    event.type = ClientNetworkEvent::Type::ADMIN_LOGIN_OK;
+    _eventQueue.Push(std::move(event));
+}
+
+void CGameInstance::OnAdminLoginFail()
+{
+    ClientNetworkEvent event{};
+    event.type = ClientNetworkEvent::Type::ADMIN_LOGIN_FAIL;
+    _eventQueue.Push(std::move(event));
+}
+
 // ==========================================================================
 // 채팅 로그 관리
 // ==========================================================================
@@ -770,5 +792,21 @@ void CGameInstance::HandleChatCommand(const std::wstring& command)
         return;
     }
 
-    AddChatMessage(L"[System] Unknown command. Available: /map, /ch");
+    // ── 운영자 인증 ──
+
+    if (command.size() > 7 && command.substr(0, 7) == L"/admin ")
+    {
+        std::wstring arg = command.substr(7);
+
+        // wchar_t → char 변환 (ASCII key)
+        char key[ADMIN_KEY_MAX_LEN]{};
+        for (size_t i = 0; i < arg.size() && i < ADMIN_KEY_MAX_LEN - 1; ++i)
+            key[i] = static_cast<char>(arg[i]);
+
+        _network.SendAdminLogin(key);
+        AddChatMessage(L"[System] Requesting admin login...");
+        return;
+    }
+
+    AddChatMessage(L"[System] Unknown command. Available: /map, /ch, /admin");
 }

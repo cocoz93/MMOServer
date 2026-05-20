@@ -65,6 +65,7 @@ private:
     void RecvMoveStop(CPlayer* player, CSerialBuffer* pMsg);
     void RecvChat(CPlayer* player, CSerialBuffer* pMsg);
     void RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg);
+    void RecvAdminLogin(CPlayer* player, CSerialBuffer* pMsg);
 
     // 섹터 변경 시 시야 진입/이탈 브로드캐스트
     void ProcessSectorChange(CZone* zone, CPlayer* player,

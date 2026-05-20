@@ -242,6 +242,17 @@ void CClientNetwork::SendHeartbeat()
     SendPacket(reinterpret_cast<const char*>(&msg), sizeof(msg));
 }
 
+void CClientNetwork::SendAdminLogin(const char* key)
+{
+    MSG_C2S_ADMIN_LOGIN msg{};
+    msg.header.size = sizeof(MSG_C2S_ADMIN_LOGIN);
+    msg.header.type = MsgType::C2S_ADMIN_LOGIN;
+
+    strncpy_s(msg.key, key, ADMIN_KEY_MAX_LEN - 1);
+
+    SendPacket(reinterpret_cast<const char*>(&msg), sizeof(msg));
+}
+
 // ==========================================================================
 // 패킷 디스패치 — S2C 패킷 타입별 GameInstance 콜백 호출
 // ==========================================================================
@@ -303,6 +314,16 @@ void CClientNetwork::DispatchPacket(const char* data, uint16_t size)
     case MsgType::S2C_ZONE_CHANGE_FAIL:
         if (size >= sizeof(MSG_S2C_ZONE_CHANGE_FAIL))
             _gameInstance->OnZoneChangeFail(reinterpret_cast<const MSG_S2C_ZONE_CHANGE_FAIL*>(data));
+        break;
+
+    case MsgType::S2C_ADMIN_LOGIN_OK:
+        if (size >= sizeof(MSG_S2C_ADMIN_LOGIN_OK))
+            _gameInstance->OnAdminLoginOk();
+        break;
+
+    case MsgType::S2C_ADMIN_LOGIN_FAIL:
+        if (size >= sizeof(MSG_S2C_ADMIN_LOGIN_FAIL))
+            _gameInstance->OnAdminLoginFail();
         break;
 
     case MsgType::S2C_ERROR:

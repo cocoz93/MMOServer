@@ -387,6 +387,10 @@ void CGameServer::OnReceived(int64_t sessionId, CSerialBuffer* pMsg)
         RecvZoneChange(player, pMsg);
         break;
 
+    case MsgType::C2S_ADMIN_LOGIN:
+        RecvAdminLogin(player, pMsg);
+        break;
+
     default:
         break;
     }
@@ -404,6 +408,7 @@ uint16_t CGameServer::GetExpectedSize(MsgType type)
     case MsgType::C2S_CHAT:         return sizeof(MsgHeader) + sizeof(wchar_t); // 가변 길이: 최소 1글자
     case MsgType::C2S_ZONE_CHANGE:  return sizeof(MSG_C2S_ZONE_CHANGE);
     case MsgType::C2S_HEARTBEAT:    return sizeof(MSG_C2S_HEARTBEAT);
+    case MsgType::C2S_ADMIN_LOGIN:  return sizeof(MSG_C2S_ADMIN_LOGIN);
     default:                        return 0;
     }
 }
@@ -721,6 +726,17 @@ void CGameServer::RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg)
             return;
         }
 
+        // 인원 제한 체크 (admin은 스킵)
+        if (!player->_isAdmin)
+        {
+            int32_t maxPlayers = _zoneManager.GetMaxPlayersPerChannel(currentMapId);
+            if (maxPlayers > 0 && newZone->GetPlayerCount() >= maxPlayers)
+            {
+                SendZoneChangeFail(player, 1);  // 채널 가득 참
+                return;
+            }
+        }
+
         targetMapId = currentMapId;
     }
     else
@@ -739,7 +755,7 @@ void CGameServer::RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg)
             }
         }
 
-        newZone = _zoneManager.FindOrCreateChannel(targetMapId);
+        newZone = _zoneManager.FindOrCreateChannel(targetMapId, player->_isAdmin);
         if (newZone == nullptr)
         {
             SendZoneChangeFail(player, 0);
@@ -838,6 +854,32 @@ void CGameServer::RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg)
     for (CPlayer* other : _eventAroundBuffer)
     {
         SendCreateOtherPlayer(player, other);
+    }
+}
+
+// ── 운영자 인증 ──
+
+static constexpr char ADMIN_KEY[] = "admin1234";  // 운영자 인증 키
+
+void CGameServer::RecvAdminLogin(CPlayer* player, CSerialBuffer* pMsg)
+{
+    MSG_C2S_ADMIN_LOGIN recvMsg;
+    pMsg->GetData(reinterpret_cast<char*>(&recvMsg), sizeof(recvMsg));
+
+    // null-terminate 보장
+    recvMsg.key[ADMIN_KEY_MAX_LEN - 1] = '\0';
+
+    if (strcmp(recvMsg.key, ADMIN_KEY) == 0)
+    {
+        player->_isAdmin = true;
+
+        MSG_S2C_ADMIN_LOGIN_OK msg;
+        SendPacket(player, msg);
+    }
+    else
+    {
+        MSG_S2C_ADMIN_LOGIN_FAIL msg;
+        SendPacket(player, msg);
     }
 }
 

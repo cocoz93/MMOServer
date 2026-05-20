@@ -33,6 +33,7 @@ public:
     void SendChat(const wchar_t* message);
     void SendZoneChange(int32_t targetMapId, int32_t targetChannelIndex = -1);
     void SendHeartbeat();
+    void SendAdminLogin(const char* key);
 
     // GameInstance 연결 (패킷 핸들러 콜백용)
     void SetGameInstance(CGameInstance* instance) { _gameInstance = instance; }

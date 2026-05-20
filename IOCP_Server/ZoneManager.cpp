@@ -25,7 +25,7 @@ bool CZoneManager::RegisterMap(const MapConfig& config)
     return true;
 }
 
-CZone* CZoneManager::FindOrCreateChannel(int32_t mapId)
+CZone* CZoneManager::FindOrCreateChannel(int32_t mapId, bool isAdmin)
 {
     auto configIt = _mapConfigs.find(mapId);
     if (configIt == _mapConfigs.end())
@@ -34,11 +34,11 @@ CZone* CZoneManager::FindOrCreateChannel(int32_t mapId)
     const MapConfig& config = configIt->second;
     auto& channels = _mapChannels[mapId];
 
-    // 여유 있는 기존 채널 탐색
+    // 여유 있는 기존 채널 탐색 (admin은 인원 제한 무시 — 첫 번째 채널 반환)
     for (int32_t zoneId : channels)
     {
         CZone* zone = GetZone(zoneId);
-        if (zone != nullptr && zone->GetPlayerCount() < config.maxPlayersPerChannel)
+        if (zone != nullptr && (isAdmin || zone->GetPlayerCount() < config.maxPlayersPerChannel))
             return zone;
     }
 
@@ -55,6 +55,14 @@ CZone* CZoneManager::FindChannel(int32_t mapId, int32_t channelIndex)
 
     int32_t zoneId = MakeZoneId(mapId, channelIndex);
     return GetZone(zoneId);
+}
+
+int32_t CZoneManager::GetMaxPlayersPerChannel(int32_t mapId) const
+{
+    auto it = _mapConfigs.find(mapId);
+    if (it == _mapConfigs.end())
+        return -1;
+    return it->second.maxPlayersPerChannel;
 }
 
 void CZoneManager::CleanupEmptyChannels()

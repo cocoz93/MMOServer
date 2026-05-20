@@ -21,7 +21,9 @@ struct ClientNetworkEvent
         SYNC_POSITION,
         ZONE_CHANGE_OK,
         ZONE_CHANGE_FAIL,
-        ERROR_MSG
+        ERROR_MSG,
+        ADMIN_LOGIN_OK,
+        ADMIN_LOGIN_FAIL
     };
 
     Type type;

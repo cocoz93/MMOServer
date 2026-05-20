@@ -34,6 +34,8 @@ public:
     void OnZoneChangeOk(const MSG_S2C_ZONE_CHANGE_OK* msg);
     void OnZoneChangeFail(const MSG_S2C_ZONE_CHANGE_FAIL* msg);
     void OnError(const MSG_S2C_ERROR* msg);
+    void OnAdminLoginOk();
+    void OnAdminLoginFail();
 
 private:
     // 게임 루프 (25fps)

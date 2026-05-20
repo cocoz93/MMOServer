@@ -51,6 +51,7 @@ public:
     int32_t _speed;
 
     int32_t _zoneId;      // 소속 존 ID (-1: 미배정)
+    bool _isAdmin;        // 운영자 여부
 
     // 델타 동기화: 마지막 위치 동기화 시점의 좌표
     float _lastSyncX;

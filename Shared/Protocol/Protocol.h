@@ -54,6 +54,13 @@ enum class MsgType : uint16_t
     C2S_HEARTBEAT,          // 클라이언트 → 서버: 연결 유지 하트비트
 
     //--------------------------------------------------
+    // 운영자
+    //--------------------------------------------------
+    C2S_ADMIN_LOGIN,        // 클라이언트 → 서버: 운영자 인증 요청
+    S2C_ADMIN_LOGIN_OK,     // 서버 → 클라이언트: 인증 성공
+    S2C_ADMIN_LOGIN_FAIL,   // 서버 → 클라이언트: 인증 실패
+
+    //--------------------------------------------------
     // 에러
     //--------------------------------------------------
     S2C_ERROR
@@ -262,6 +269,37 @@ struct MSG_S2C_ZONE_CHANGE_FAIL
     uint8_t reason;  // 0: 존재하지 않는 맵/채널, 1: 모든 채널 가득 참, 2: 이미 해당 채널
 
     MSG_S2C_ZONE_CHANGE_FAIL() : header{ sizeof(*this), TYPE }, reason(0) {}
+};
+
+//==================================================
+// 운영자
+//==================================================
+
+constexpr int32_t ADMIN_KEY_MAX_LEN = 64;
+
+// C2S: 운영자 인증 요청
+struct MSG_C2S_ADMIN_LOGIN
+{
+    MsgHeader header;
+    char key[ADMIN_KEY_MAX_LEN];
+};
+
+// S2C: 운영자 인증 성공
+struct MSG_S2C_ADMIN_LOGIN_OK
+{
+    static constexpr MsgType TYPE = MsgType::S2C_ADMIN_LOGIN_OK;
+    MsgHeader header;
+
+    MSG_S2C_ADMIN_LOGIN_OK() : header{ sizeof(*this), TYPE } {}
+};
+
+// S2C: 운영자 인증 실패
+struct MSG_S2C_ADMIN_LOGIN_FAIL
+{
+    static constexpr MsgType TYPE = MsgType::S2C_ADMIN_LOGIN_FAIL;
+    MsgHeader header;
+
+    MSG_S2C_ADMIN_LOGIN_FAIL() : header{ sizeof(*this), TYPE } {}
 };
 
 //==================================================
