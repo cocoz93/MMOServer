@@ -155,6 +155,10 @@ private:
     std::unordered_map<int64_t, CPlayer*> _sessionToPlayer;
     int _cleanupFrameCount = 0;
     int _syncFrameCount = 0;
+    // 최근 최대 틱 간격 추적 (ValidateMove 허용치 계산용)
+    // 부하 스파이크가 수 프레임 뒤의 이동 검증에도 반영되도록 지수 감쇠 적용
+    static constexpr float PEAK_DECAY = 0.95f;
+    float _peakDeltaTime = 0.04f;
 
     // 섹터 변경 배치 처리용 대기열 (프레임 내 수집 → 틱 후 일괄 처리)
     std::vector<SectorChangeInfo> _pendingSectorChanges;

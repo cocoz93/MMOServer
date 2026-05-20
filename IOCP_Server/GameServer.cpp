@@ -118,6 +118,9 @@ void CGameServer::GameLoopThread()
         float deltaTime = std::chrono::duration<float>(frameStart - prevTime).count();
         prevTime = frameStart;
 
+        // 피크 틱 간격 추적 — 부하 스파이크를 수 프레임 유지하여 이동 검증 오탐 방지
+        _peakDeltaTime = (std::max)(deltaTime, _peakDeltaTime * PEAK_DECAY);
+
         // 1) 네트워크 이벤트 전부 소비
         ProcessNetworkEvents();
 
@@ -189,7 +192,7 @@ void CGameServer::GameLoopThread()
                     msg.playerId = player->_playerId;
                     msg.x = player->_x;
                     msg.y = player->_y;
-                    BroadcastAroundSector(zone.get(), player, msg, false);  // 본인 포함
+                    BroadcastAroundSector(zone.get(), player, msg, true);   // 본인 제외 (본인 보정은 ValidateMove/벽클램핑에서 처리)
                 }
             }
         }
@@ -850,8 +853,9 @@ bool CGameServer::ValidateMove(CZone* zone, CPlayer* player, float clientX, floa
     }
 
     // C. 이동 거리 검증 (스피드핵)
-    // 최대 허용 거리 = 속도 × 최악 2프레임 + 고정 여유값
-    float maxDist = player->_speed * (2.0f / FRAME_PER_SEC) + MOVE_TOLERANCE_BASE;
+    // 최대 허용 거리 = 속도 × 실측 틱 간격 2회분 + 고정 여유값
+    // 부하 시 틱이 늘어나면 허용치도 비례 확대 → 정상 이동 오탐 방지
+    float maxDist = player->_speed * (_peakDeltaTime * 2.0f) + MOVE_TOLERANCE_BASE;
     float toleranceSq = maxDist * maxDist;
 
     float dx = clientX - player->_x;
