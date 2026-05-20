@@ -420,17 +420,33 @@ void CGameServer::RecvMoveStart(CPlayer* player, CSerialBuffer* pMsg)
     MSG_C2S_MOVE_START recvMsg;
     pMsg->GetData(reinterpret_cast<char*>(&recvMsg), sizeof(recvMsg));
 
-    // 이미 이동 중이면 무시 (중복 MOVE_START 방지)
-    if (player->_moveState == MoveState::MOVING)
-        return;
-
     // Direction 범위 검증 (4방향)
     if (recvMsg.direction < static_cast<uint8_t>(Direction::UP) ||
         recvMsg.direction > static_cast<uint8_t>(Direction::RIGHT))
         return;
 
-    // 벽 방향 검증: 벽 위치에서 벽 쪽으로 이동 시도 시 차단
     Direction dir = static_cast<Direction>(recvMsg.direction);
+
+    // 이동 중 방향 전환: 같은 방향이면 무시, 다른 방향이면 갱신 + 재브로드캐스트
+    if (player->_moveState == MoveState::MOVING)
+    {
+        if (dir == player->_direction)
+            return;
+
+        player->_direction = dir;
+        player->_lastSyncX = player->_x;
+        player->_lastSyncY = player->_y;
+
+        MSG_S2C_MOVE_START msg;
+        msg.playerId = player->_playerId;
+        msg.direction = static_cast<uint8_t>(dir);
+        msg.x = player->_x;
+        msg.y = player->_y;
+        BroadcastAroundSector(zone, player, msg);
+        return;
+    }
+
+    // 벽 방향 검증: 벽 위치에서 벽 쪽으로 이동 시도 시 차단
     if (IsBlockedByWall(zone, player, dir))
     {
         SendSyncPosition(player);
@@ -448,7 +464,7 @@ void CGameServer::RecvMoveStart(CPlayer* player, CSerialBuffer* pMsg)
     // 주변에 MOVE_START 브로드캐스트
     MSG_S2C_MOVE_START msg;
     msg.playerId = player->_playerId;
-    msg.direction = static_cast<uint8_t>(player->_direction);
+    msg.direction = static_cast<uint8_t>(dir);
     msg.x = player->_x;
     msg.y = player->_y;
     BroadcastAroundSector(zone, player, msg);
