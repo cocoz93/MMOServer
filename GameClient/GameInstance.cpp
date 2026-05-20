@@ -201,7 +201,8 @@ void CGameInstance::ProcessNetworkEvents()
                 event.playerId, event.x, event.y,
                 static_cast<Direction>(event.direction),
                 static_cast<MoveState>(event.moveState), event.speed,
-                event.displayChar, event.colorIndex);
+                event.displayChar, event.colorIndex,
+                static_cast<SpawnReason>(event.spawnReason));
             break;
 
         case ClientNetworkEvent::Type::DELETE_PLAYER:
@@ -556,6 +557,7 @@ void CGameInstance::OnCreateOtherPlayer(const MSG_S2C_CREATE_OTHER_PLAYER* msg)
     event.y = msg->y;
     event.direction = msg->direction;
     event.moveState = msg->moveState;
+    event.spawnReason = msg->spawnReason;
     event.speed = msg->speed;
     _eventQueue.Push(std::move(event));
 }

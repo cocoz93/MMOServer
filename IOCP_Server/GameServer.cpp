@@ -291,10 +291,10 @@ void CGameServer::OnConnected(int64_t sessionId)
     zone->GetSectorManager().GetAroundPlayers(
         player->_sectorX, player->_sectorY, _eventAroundBuffer, player);
 
-    // 4) 주변 플레이어에게 새 캐릭터 등장
+    // 4) 주변 플레이어에게 새 캐릭터 등장 (최초 접속으로 등장했음을 알림)
     for (CPlayer* other : _eventAroundBuffer)
     {
-        SendCreateOtherPlayer(other, player);
+        SendCreateOtherPlayer(other, player, SpawnReason::CONNECT);
     }
 
     // 5) 본인에게 주변 기존 플레이어들 정보
@@ -622,7 +622,7 @@ void CGameServer::SendCreateMyPlayer(CPlayer* target)
     SendPacket(target, msg);
 }
 
-void CGameServer::SendCreateOtherPlayer(CPlayer* target, CPlayer* player)
+void CGameServer::SendCreateOtherPlayer(CPlayer* target, CPlayer* player, SpawnReason reason)
 {
     MSG_S2C_CREATE_OTHER_PLAYER msg;
     msg.playerId = player->_playerId;
@@ -630,6 +630,7 @@ void CGameServer::SendCreateOtherPlayer(CPlayer* target, CPlayer* player)
     msg.moveState = static_cast<uint8_t>(player->_moveState);
     msg.displayChar = player->_displayChar;
     msg.colorIndex = player->_colorIndex;
+    msg.spawnReason = static_cast<uint8_t>(reason);
     msg.x = player->_x;
     msg.y = player->_y;
     msg.speed = player->_speed;
@@ -840,17 +841,17 @@ void CGameServer::RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg)
     int32_t channelIndex = CZoneManager::GetChannelIndexFromZoneId(newZone->GetZoneId());
     SendZoneChangeOk(player, targetMapId, channelIndex);
 
-    // 주변 플레이어에게 새 캐릭터 등장
+    // 주변 플레이어에게 새 캐릭터 등장 (존 이동으로 등장했음을 알림)
     _eventAroundBuffer.clear();
     newZone->GetSectorManager().GetAroundPlayers(
         player->_sectorX, player->_sectorY, _eventAroundBuffer, player);
 
     for (CPlayer* other : _eventAroundBuffer)
     {
-        SendCreateOtherPlayer(other, player);
+        SendCreateOtherPlayer(other, player, SpawnReason::ZONE_TRANSFER);
     }
 
-    // 본인에게 주변 기존 플레이어들 정보
+    // 본인에게 주변 기존 플레이어들 정보 (기존 플레이어는 일반 스폰)
     for (CPlayer* other : _eventAroundBuffer)
     {
         SendCreateOtherPlayer(player, other);

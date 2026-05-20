@@ -235,6 +235,44 @@ void CConsoleRenderer::RenderGameView(const ClientPlayer* me,
         }
     }
 
+    // 스폰 파티클 이펙트 — 상하좌우 셀에 특수 문자 배치 (타일/빈칸 위에만)
+    static constexpr int DX[] = { 0, 0, -1, 1 };
+    static constexpr int DY[] = { -1, 1, 0, 0 };
+
+    for (const auto& pair : others)
+    {
+        const ClientPlayer& p = pair.second;
+        if (p.spawnEffectTimer <= 0.0f)
+            continue;
+
+        int sx = static_cast<int>(std::floor(p.x)) - camTileX;
+        int sy = static_cast<int>(std::floor(p.y)) - camTileY;
+
+        // 전반(>1.0s): 밝은 파티클, 후반(<=1.0s): 어두운 파티클
+        bool bright = (p.spawnEffectTimer > 1.0f);
+        wchar_t particleChar = bright ? L'\x2726' : L'\x00B7';  // ✦ or ·
+        WORD particleColor = GetColorFromIndex(p.colorIndex);
+        if (!bright)
+            particleColor &= ~FOREGROUND_INTENSITY;  // 어두운 색으로
+
+        for (int d = 0; d < 4; ++d)
+        {
+            int px = sx + DX[d];
+            int py = sy + DY[d];
+
+            if (px < 0 || px >= VIEW_WIDTH || py < 0 || py >= VIEW_HEIGHT)
+                continue;
+
+            // 타일('.') 또는 빈칸(' ') 위에만 배치 (플레이어·벽 덮지 않음)
+            wchar_t existing = _viewBuffer[py][px].Char.UnicodeChar;
+            if (existing != L'.' && existing != L' ')
+                continue;
+
+            _viewBuffer[py][px].Char.UnicodeChar = particleChar;
+            _viewBuffer[py][px].Attributes = particleColor;
+        }
+    }
+
     // 내 캐릭터 배치 (서버 할당 문자+색상 + 반전+밑줄로 강조)
     if (me)
     {

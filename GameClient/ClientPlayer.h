@@ -30,4 +30,7 @@ struct ClientPlayer
     Direction direction = Direction::NONE;
     MoveState moveState = MoveState::IDLE;
     int32_t speed = 0;
+
+    // 존 이동 스폰 이펙트 (깜빡임 잔여 시간, 0이면 이펙트 없음)
+    float spawnEffectTimer = 0.0f;
 };

@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "ClientPlayer.h"
+#include "../Shared/Protocol/Protocol.h"
 #include <unordered_map>
 
 // 내 캐릭터 + 주변 플레이어 목록 관리
@@ -25,7 +26,8 @@ public:
     // 다른 플레이어 추가 (시야 진입)
     void AddOtherPlayer(int32_t playerId, float x, float y,
                         Direction direction, MoveState moveState, int32_t speed,
-                        uint8_t displayChar, uint8_t colorIndex)
+                        uint8_t displayChar, uint8_t colorIndex,
+                        SpawnReason reason = SpawnReason::NORMAL)
     {
         ClientPlayer player;
         player.playerId = playerId;
@@ -36,6 +38,7 @@ public:
         player.direction = direction;
         player.moveState = moveState;
         player.speed = speed;
+        player.spawnEffectTimer = (reason != SpawnReason::NORMAL) ? SPAWN_EFFECT_DURATION : 0.0f;
         _otherPlayers[playerId] = player;
     }
 
@@ -79,6 +82,14 @@ public:
                 {
                     pair.second.moveState = MoveState::IDLE;
                 }
+            }
+
+            // 스폰 이펙트 타이머 감소
+            if (pair.second.spawnEffectTimer > 0.0f)
+            {
+                pair.second.spawnEffectTimer -= deltaTime;
+                if (pair.second.spawnEffectTimer < 0.0f)
+                    pair.second.spawnEffectTimer = 0.0f;
             }
         }
     }
@@ -130,6 +141,9 @@ public:
     }
 
 private:
+    // 스폰 이펙트 지속 시간 (초)
+    static constexpr float SPAWN_EFFECT_DURATION = 2.0f;
+
     // 맵 크기 (서버에서 S2C_ZONE_INFO로 수신)
     int _mapWidth = 120;
     int _mapHeight = 120;

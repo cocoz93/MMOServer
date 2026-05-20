@@ -150,6 +150,14 @@ struct MSG_S2C_CREATE_MY_PLAYER
     MSG_S2C_CREATE_MY_PLAYER() : header{ sizeof(*this), TYPE }, playerId(0), direction(0), displayChar('A'), colorIndex(0), x(0), y(0), speed(0) {}
 };
 
+// 스폰 사유 (S2C_CREATE_OTHER_PLAYER 전용)
+enum class SpawnReason : uint8_t
+{
+    NORMAL = 0,         // 걸어서 시야 진입
+    ZONE_TRANSFER = 1,  // 존/채널 이동으로 등장
+    CONNECT = 2         // 최초 접속으로 등장
+};
+
 // S2C: 다른 캐릭터 생성 (시야 진입)
 struct MSG_S2C_CREATE_OTHER_PLAYER
 {
@@ -160,11 +168,12 @@ struct MSG_S2C_CREATE_OTHER_PLAYER
     uint8_t moveState;    // MoveState enum (진입 시 이동 중일 수 있음)
     uint8_t displayChar;  // 서버 권위 표시 문자 (ASCII: A-Z, a-z, 0-9)
     uint8_t colorIndex;   // 서버 권위 색상 인덱스 (0-6)
+    uint8_t spawnReason;  // SpawnReason enum (등장 사유)
     float x;
     float y;
     int32_t speed;
 
-    MSG_S2C_CREATE_OTHER_PLAYER() : header{ sizeof(*this), TYPE }, playerId(0), direction(0), moveState(0), displayChar('A'), colorIndex(0), x(0), y(0), speed(0) {}
+    MSG_S2C_CREATE_OTHER_PLAYER() : header{ sizeof(*this), TYPE }, playerId(0), direction(0), moveState(0), displayChar('A'), colorIndex(0), spawnReason(0), x(0), y(0), speed(0) {}
 };
 
 // S2C: 캐릭터 삭제 (시야 이탈 / 퇴장)

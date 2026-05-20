@@ -134,7 +134,7 @@ private:
     // 패킷별 전송 함수 (Fill + Send)
     void SendZoneInfo(CPlayer* target, CZone* zone);
     void SendCreateMyPlayer(CPlayer* target);
-    void SendCreateOtherPlayer(CPlayer* target, CPlayer* player);
+    void SendCreateOtherPlayer(CPlayer* target, CPlayer* player, SpawnReason reason = SpawnReason::NORMAL);
     void SendDeletePlayer(CPlayer* target, CPlayer* player);
     void SendMoveStart(CPlayer* target, CPlayer* player);
     void SendMoveStop(CPlayer* target, CPlayer* player);

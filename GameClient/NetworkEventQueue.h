@@ -36,6 +36,7 @@ struct ClientNetworkEvent
     float y;
     uint8_t direction;
     uint8_t moveState;
+    uint8_t spawnReason;
     int32_t speed;
 
     // 존 정보
