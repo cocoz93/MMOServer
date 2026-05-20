@@ -119,9 +119,6 @@ private:
     void SendZoneChangeOk(CPlayer* target, int32_t mapId, int32_t channelIndex);
     void SendZoneChangeFail(CPlayer* target, uint8_t reason);
 
-    // 이동 검증
-    bool ValidateMove(CZone* zone, CPlayer* player, float clientX, float clientY);
-
     // 벽 방향 검증 — 경계 위치에서 벽 쪽 이동 차단
     bool IsBlockedByWall(CZone* zone, CPlayer* player, Direction dir);
 
@@ -141,9 +138,6 @@ private:
     static constexpr int FRAME_PER_SEC = 25;
     static constexpr int FRAME_INTERVAL_MS = 1000 / FRAME_PER_SEC;  // 40ms
 
-    // 이동 검증 상수
-    static constexpr float MOVE_TOLERANCE_BASE = 2.0f;  // 고정 여유값
-    static constexpr uint32_t CHEAT_KICK_THRESHOLD = 5;
     static constexpr int CLEANUP_INTERVAL_FRAMES = 25 * 30;  // 30초마다 빈 채널 정리
     static constexpr int SYNC_INTERVAL_FRAMES = 13;          // 13 × 40ms ≈ 500ms 주기적 위치 동기화
     static constexpr float SYNC_DISTANCE_THRESHOLD_SQ = 4.0f; // 델타 동기화 임계값 제곱 (2타일)
@@ -155,10 +149,6 @@ private:
     std::unordered_map<int64_t, CPlayer*> _sessionToPlayer;
     int _cleanupFrameCount = 0;
     int _syncFrameCount = 0;
-    // 최근 최대 틱 간격 추적 (ValidateMove 허용치 계산용)
-    // 부하 스파이크가 수 프레임 뒤의 이동 검증에도 반영되도록 지수 감쇠 적용
-    static constexpr float PEAK_DECAY = 0.95f;
-    float _peakDeltaTime = 0.04f;
 
     // 섹터 변경 배치 처리용 대기열 (프레임 내 수집 → 틱 후 일괄 처리)
     std::vector<SectorChangeInfo> _pendingSectorChanges;

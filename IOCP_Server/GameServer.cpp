@@ -118,9 +118,6 @@ void CGameServer::GameLoopThread()
         float deltaTime = std::chrono::duration<float>(frameStart - prevTime).count();
         prevTime = frameStart;
 
-        // 피크 틱 간격 추적 — 부하 스파이크를 수 프레임 유지하여 이동 검증 오탐 방지
-        _peakDeltaTime = (std::max)(deltaTime, _peakDeltaTime * PEAK_DECAY);
-
         // 1) 네트워크 이벤트 전부 소비
         ProcessNetworkEvents();
 
@@ -192,7 +189,7 @@ void CGameServer::GameLoopThread()
                     msg.playerId = player->_playerId;
                     msg.x = player->_x;
                     msg.y = player->_y;
-                    BroadcastAroundSector(zone.get(), player, msg, true);   // 본인 제외 (본인 보정은 ValidateMove/벽클램핑에서 처리)
+                    BroadcastAroundSector(zone.get(), player, msg, true);   // 본인 제외 (본인 보정은 벽 클램핑 MOVE_STOP에서 처리)
                 }
             }
         }
@@ -482,32 +479,18 @@ void CGameServer::RecvMoveStop(CPlayer* player, CSerialBuffer* pMsg)
     MSG_C2S_MOVE_STOP recvMsg;
     pMsg->GetData(reinterpret_cast<char*>(&recvMsg), sizeof(recvMsg));
 
-    // 이동 중이 아니면 좌표 보정만 수행 후 종료
-    // (서버 벽 클램핑으로 먼저 IDLE된 경우 클라이언트와 좌표 어긋남 방지)
+    // 이동 중이 아니면 무시 (서버 벽 클램핑으로 이미 IDLE 처리됨)
     if (player->_moveState != MoveState::MOVING)
-    {
-        float dx = recvMsg.x - player->_x;
-        float dy = recvMsg.y - player->_y;
-        if (dx * dx + dy * dy >= 0.25f)   // 0.5 타일 이상 차이
-            SendSyncPosition(player);
         return;
-    }
 
     // Direction 범위 검증 (4방향)
     if (recvMsg.direction < static_cast<uint8_t>(Direction::UP) ||
         recvMsg.direction > static_cast<uint8_t>(Direction::RIGHT))
         return;
 
-    // 방향 갱신
+    // 서버 권위 모델: 서버 좌표 유지, 상태만 변경
     player->_direction = static_cast<Direction>(recvMsg.direction);
     player->_moveState = MoveState::IDLE;
-
-    // 이동 검증 — 통과 시 클라이언트 좌표 수용, 실패 시 서버 좌표 유지
-    if (ValidateMove(zone, player, recvMsg.x, recvMsg.y))
-    {
-        player->_x = recvMsg.x;
-        player->_y = recvMsg.y;
-    }
 
     // 섹터 이동 판정
     int32_t newSectorX = zone->GetSectorManager().CalcSectorX(player->_x);
@@ -820,61 +803,6 @@ void CGameServer::SendZoneChangeFail(CPlayer* target, uint8_t reason)
     MSG_S2C_ZONE_CHANGE_FAIL msg;
     msg.reason = reason;
     SendPacket(target, msg);
-}
-
-bool CGameServer::ValidateMove(CZone* zone, CPlayer* player, float clientX, float clientY)
-{
-    // A. NaN/INF 검증 — IEEE 754에서 NaN은 모든 비교가 false이므로 경계 검사를 우회함
-    if (!std::isfinite(clientX) || !std::isfinite(clientY))
-    {
-        ++player->_cheatCount;
-        InterlockedIncrement64(&_monitor._cheatDetected);
-        SendSyncPosition(player);
-
-        if (player->_cheatCount >= CHEAT_KICK_THRESHOLD)
-            DisconnectPlayer(player);
-
-        return false;
-    }
-
-    // B. 맵 경계 검증 (텔레포트핵)
-    int32_t mapW = zone->GetMapWidth();
-    int32_t mapH = zone->GetMapHeight();
-    if (clientX < 0.0f || clientX >= mapW || clientY < 0.0f || clientY >= mapH)
-    {
-        ++player->_cheatCount;
-        InterlockedIncrement64(&_monitor._cheatDetected);
-        SendSyncPosition(player);
-
-        if (player->_cheatCount >= CHEAT_KICK_THRESHOLD)
-            DisconnectPlayer(player);
-
-        return false;
-    }
-
-    // C. 이동 거리 검증 (스피드핵)
-    // 최대 허용 거리 = 속도 × 실측 틱 간격 2회분 + 고정 여유값
-    // 부하 시 틱이 늘어나면 허용치도 비례 확대 → 정상 이동 오탐 방지
-    float maxDist = player->_speed * (_peakDeltaTime * 2.0f) + MOVE_TOLERANCE_BASE;
-    float toleranceSq = maxDist * maxDist;
-
-    float dx = clientX - player->_x;
-    float dy = clientY - player->_y;
-    float distSq = dx * dx + dy * dy;
-
-    if (distSq > toleranceSq)
-    {
-        ++player->_cheatCount;
-        InterlockedIncrement64(&_monitor._cheatDetected);
-        SendSyncPosition(player);
-
-        if (player->_cheatCount >= CHEAT_KICK_THRESHOLD)
-            DisconnectPlayer(player);
-
-        return false;
-    }
-
-    return true;
 }
 
 // ==========================================================================

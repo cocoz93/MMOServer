@@ -52,9 +52,6 @@ public:
 
     int32_t _zoneId;      // 소속 존 ID (-1: 미배정)
 
-    // 이동 검증용
-    uint32_t _cheatCount; // 위반 누적 카운터
-
     // 델타 동기화: 마지막 위치 동기화 시점의 좌표
     float _lastSyncX;
     float _lastSyncY;

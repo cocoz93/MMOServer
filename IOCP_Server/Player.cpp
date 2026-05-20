@@ -14,7 +14,6 @@ CPlayer::CPlayer()
     , _moveState(MoveState::IDLE)
     , _speed(50)
     , _zoneId(-1)
-    , _cheatCount(0)
     , _lastSyncX(0.0f)
     , _lastSyncY(0.0f)
 {
