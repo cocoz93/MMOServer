@@ -18,9 +18,9 @@ CPlayer::CPlayer()
     , _lastSyncX(0.0f)
     , _lastSyncY(0.0f)
 {
-    // 25 ~ 100 (5 단위) 랜덤 속도 부여
+    // 25 ~ 50 (5 단위) 랜덤 속도 부여
     static thread_local std::mt19937 rng(std::random_device{}());
-    std::uniform_int_distribution<int> dist(5, 20);
+    std::uniform_int_distribution<int> dist(5, 10);
     _speed = dist(rng) * 5;
 }
 
