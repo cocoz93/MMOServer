@@ -84,7 +84,7 @@ private:
 
     // ── 패킷 전송 추상화 ──
 
-    // 단일 플레이어에게 패킷 전송 (템플릿)
+    // 단일 플레이어에게 패킷 전송 (템플릿 — 고정 크기)
     template <typename T>
     void SendPacket(CPlayer* target, const T& msg)
     {
@@ -92,7 +92,15 @@ private:
             _network->RequestSendMsg(target->_sessionId, reinterpret_cast<const char*>(&msg), sizeof(T));
     }
 
-    // 주변 브로드캐스트 (excludeSelf=true: 본인 제외)
+    // 단일 플레이어에게 패킷 전송 (가변 크기)
+    template <typename T>
+    void SendPacket(CPlayer* target, const T& msg, uint16_t size)
+    {
+        if (target->_sessionId != -1)
+            _network->RequestSendMsg(target->_sessionId, reinterpret_cast<const char*>(&msg), size);
+    }
+
+    // 주변 브로드캐스트 (excludeSelf=true: 본인 제외, 고정 크기)
     template <typename T>
     void BroadcastAroundSector(CZone* zone, CPlayer* player, const T& msg, bool excludeSelf = true)
     {
@@ -104,6 +112,21 @@ private:
         for (CPlayer* other : _broadcastBuffer)
         {
             SendPacket(other, msg);
+        }
+    }
+
+    // 주변 브로드캐스트 (가변 크기)
+    template <typename T>
+    void BroadcastAroundSector(CZone* zone, CPlayer* player, const T& msg, uint16_t size, bool excludeSelf = true)
+    {
+        _broadcastBuffer.clear();
+        CPlayer* exclude = excludeSelf ? player : nullptr;
+        zone->GetSectorManager().GetAroundPlayers(
+            player->_sectorX, player->_sectorY, _broadcastBuffer, exclude);
+
+        for (CPlayer* other : _broadcastBuffer)
+        {
+            SendPacket(other, msg, size);
         }
     }
 

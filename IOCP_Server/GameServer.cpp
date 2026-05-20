@@ -6,6 +6,7 @@
 #include <chrono>
 #include <cmath>
 #include <algorithm>
+#include <cstddef>  // offsetof
 
 CGameServer::CGameServer(CMonitorManager& monitor)
     : _mode(ServerMode::GameServer)
@@ -400,7 +401,7 @@ uint16_t CGameServer::GetExpectedSize(MsgType type)
     {
     case MsgType::C2S_MOVE_START:   return sizeof(MSG_C2S_MOVE_START);
     case MsgType::C2S_MOVE_STOP:    return sizeof(MSG_C2S_MOVE_STOP);
-    case MsgType::C2S_CHAT:         return sizeof(MSG_C2S_CHAT);
+    case MsgType::C2S_CHAT:         return sizeof(MsgHeader) + sizeof(wchar_t); // 가변 길이: 최소 1글자
     case MsgType::C2S_ZONE_CHANGE:  return sizeof(MSG_C2S_ZONE_CHANGE);
     case MsgType::C2S_HEARTBEAT:    return sizeof(MSG_C2S_HEARTBEAT);
     default:                        return 0;
@@ -526,16 +527,37 @@ void CGameServer::RecvChat(CPlayer* player, CSerialBuffer* pMsg)
     if (zone == nullptr)
         return;
 
-    MSG_C2S_CHAT recvMsg;
-    pMsg->GetData(reinterpret_cast<char*>(&recvMsg), sizeof(recvMsg));
+    // 가변 길이 수신: header.size 기반으로 실제 메시지 길이 역산
+    MsgHeader header;
+    pMsg->PeekData(reinterpret_cast<char*>(&header), sizeof(header));
 
-    // 주변에 채팅 브로드캐스트 (본인 포함)
+    uint16_t recvSize = header.size;
+    if (recvSize > sizeof(MSG_C2S_CHAT))
+        recvSize = sizeof(MSG_C2S_CHAT);  // 최대 크기 제한
+
+    MSG_C2S_CHAT recvMsg{};
+    pMsg->GetData(reinterpret_cast<char*>(&recvMsg), recvSize);
+
+    // 메시지 길이 계산 (바이트 → wchar_t 글자 수)
+    uint16_t msgBytes = recvSize - sizeof(MsgHeader);
+    uint16_t msgLen = msgBytes / sizeof(wchar_t);
+    if (msgLen > CHAT_MSG_MAX_LEN - 1)
+        msgLen = CHAT_MSG_MAX_LEN - 1;
+    recvMsg.message[msgLen] = L'\0';  // null 종단 보장
+
+    // 가변 길이 S2C 패킷 조립
     MSG_S2C_CHAT msg;
     msg.playerId = player->_playerId;
     msg.displayChar = player->_displayChar;
     msg.colorIndex = player->_colorIndex;
-    memcpy(msg.message, recvMsg.message, sizeof(recvMsg.message));
-    BroadcastAroundSector(zone, player, msg, false);
+    memcpy(msg.message, recvMsg.message, (msgLen + 1) * sizeof(wchar_t));
+
+    // 실제 전송 크기 설정 (가변)
+    uint16_t sendSize = static_cast<uint16_t>(
+        offsetof(MSG_S2C_CHAT, message) + (msgLen + 1) * sizeof(wchar_t));
+    msg.header.size = sendSize;
+
+    BroadcastAroundSector(zone, player, msg, sendSize, false);
 }
 
 // ==========================================================================
@@ -642,8 +664,17 @@ void CGameServer::SendChat(CPlayer* target, CPlayer* player, const wchar_t* mess
     msg.playerId = player->_playerId;
     msg.displayChar = player->_displayChar;
     msg.colorIndex = player->_colorIndex;
-    memcpy(msg.message, message, sizeof(msg.message));
-    SendPacket(target, msg);
+
+    size_t msgLen = wcslen(message);
+    if (msgLen > CHAT_MSG_MAX_LEN - 1)
+        msgLen = CHAT_MSG_MAX_LEN - 1;
+    wmemcpy(msg.message, message, msgLen);
+    msg.message[msgLen] = L'\0';
+
+    uint16_t sendSize = static_cast<uint16_t>(
+        offsetof(MSG_S2C_CHAT, message) + (msgLen + 1) * sizeof(wchar_t));
+    msg.header.size = sendSize;
+    SendPacket(target, msg, sendSize);
 }
 
 void CGameServer::SendSyncPosition(CPlayer* target)

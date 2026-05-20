@@ -174,7 +174,7 @@ struct MSG_S2C_DELETE_PLAYER
 // 채팅
 //==================================================
 
-constexpr int32_t CHAT_MSG_MAX_LEN = 64; // wchar_t 기준 글자 수 (128바이트)
+constexpr int32_t CHAT_MSG_MAX_LEN = 512; // wchar_t 기준 글자 수 (1024바이트)
 
 // C2S: 채팅 메시지
 struct MSG_C2S_CHAT

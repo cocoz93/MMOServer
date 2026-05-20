@@ -46,7 +46,7 @@ struct ClientNetworkEvent
     uint8_t reason;
 
     // 채팅 / 에러
-    wchar_t chatMessage[64];
+    wchar_t chatMessage[512];
     char errorMessage[256];
 };
 

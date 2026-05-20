@@ -2,6 +2,7 @@
 #include "../Shared/Common/ErrorLog.h"
 #include <iostream>
 #include <chrono>
+#include <cstddef>  // offsetof
 #define NOMINMAX
 #include <Windows.h>
 
@@ -252,7 +253,7 @@ void CGameInstance::ProcessNetworkEvents()
 
         case ClientNetworkEvent::Type::CHAT:
         {
-            wchar_t buf[128];
+            wchar_t buf[CHAT_MSG_MAX_LEN + 8];
             swprintf_s(buf, L"[%c] %s", static_cast<wchar_t>(event.displayChar), event.chatMessage);
             AddChatMessage(buf);
             break;
@@ -492,33 +493,10 @@ void CGameInstance::ProcessChatInput()
             continue;
         }
 
-        // 일반 문자 입력 (유니코드) — 표시 폭 기준으로도 제한
+        // 일반 문자 입력 (유니코드) — 글자 수만 제한, 표시는 렌더러에서 스크롤
         if (ch >= 32 && _chatInput.size() < CHAT_MSG_MAX_LEN - 1)
         {
-            // " > " 접두사(3셀) + 커서 "_"(1셀) 제외한 가용 폭
-            static constexpr int MAX_INPUT_CELLS = 80 - 4;
-
-            // 현재 입력의 표시 폭 계산
-            int currentCells = 0;
-            for (size_t i = 0; i < _chatInput.size(); ++i)
-            {
-                wchar_t c = _chatInput[i];
-                currentCells += (c >= 0xAC00 && c <= 0xD7AF) ||
-                                (c >= 0x4E00 && c <= 0x9FFF) ||
-                                (c >= 0x3400 && c <= 0x4DBF) ||
-                                (c >= 0x1100 && c <= 0x115F) ||
-                                (c >= 0xFF01 && c <= 0xFF60) ? 2 : 1;
-            }
-            int addCells = (ch >= 0xAC00 && ch <= 0xD7AF) ||
-                           (ch >= 0x4E00 && ch <= 0x9FFF) ||
-                           (ch >= 0x3400 && ch <= 0x4DBF) ||
-                           (ch >= 0x1100 && ch <= 0x115F) ||
-                           (ch >= 0xFF01 && ch <= 0xFF60) ? 2 : 1;
-
-            if (currentCells + addCells <= MAX_INPUT_CELLS)
-            {
-                _chatInput += ch;
-            }
+            _chatInput += ch;
         }
     }
 }
@@ -604,7 +582,15 @@ void CGameInstance::OnChat(const MSG_S2C_CHAT* msg)
     event.playerId = msg->playerId;
     event.displayChar = msg->displayChar;
     event.colorIndex = msg->colorIndex;
-    wcsncpy_s(event.chatMessage, msg->message, 63);
+
+    // 가변 길이: header.size 기반으로 메시지 글자 수 역산
+    uint16_t msgBytes = msg->header.size - static_cast<uint16_t>(offsetof(MSG_S2C_CHAT, message));
+    uint16_t msgLen = msgBytes / sizeof(wchar_t);
+    if (msgLen > CHAT_MSG_MAX_LEN - 1)
+        msgLen = CHAT_MSG_MAX_LEN - 1;
+    wmemcpy(event.chatMessage, msg->message, msgLen);
+    event.chatMessage[msgLen] = L'\0';
+
     _eventQueue.Push(std::move(event));
 }
 
@@ -655,7 +641,17 @@ void CGameInstance::OnError(const MSG_S2C_ERROR* msg)
 
 void CGameInstance::AddChatMessage(const std::wstring& msg)
 {
-    _chatLog.push_back(msg);
+    // 콘솔 표시 폭(78자) 기준으로 줄바꿈 분할
+    static constexpr size_t LINE_WIDTH = 78;
+    if (msg.size() <= LINE_WIDTH)
+    {
+        _chatLog.push_back(msg);
+    }
+    else
+    {
+        for (size_t pos = 0; pos < msg.size(); pos += LINE_WIDTH)
+            _chatLog.push_back(msg.substr(pos, LINE_WIDTH));
+    }
 
     // 최대 라인 수 초과 시 오래된 메시지 제거
     while (static_cast<int>(_chatLog.size()) > MAX_CHAT_LOG)

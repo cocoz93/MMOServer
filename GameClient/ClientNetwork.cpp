@@ -3,6 +3,7 @@
 #include "GameInstance.h"
 #include "../Shared/Common/ErrorLog.h"
 #include <cstring>
+#include <cstddef>  // offsetof
 #include <iostream>
 
 CClientNetwork::CClientNetwork()
@@ -205,13 +206,20 @@ void CClientNetwork::SendMoveStop(uint8_t direction, float x, float y)
 
 void CClientNetwork::SendChat(const wchar_t* message)
 {
-    MSG_C2S_CHAT msg;
-    msg.header.size = sizeof(MSG_C2S_CHAT);
+    MSG_C2S_CHAT msg{};
     msg.header.type = MsgType::C2S_CHAT;
-    wcsncpy_s(msg.message, message, CHAT_MSG_MAX_LEN - 1);
-    msg.message[CHAT_MSG_MAX_LEN - 1] = L'\0';
 
-    SendPacket(reinterpret_cast<const char*>(&msg), sizeof(msg));
+    size_t len = wcslen(message);
+    if (len > CHAT_MSG_MAX_LEN - 1)
+        len = CHAT_MSG_MAX_LEN - 1;
+    wmemcpy(msg.message, message, len);
+    msg.message[len] = L'\0';
+
+    uint16_t sendSize = static_cast<uint16_t>(
+        sizeof(MsgHeader) + (len + 1) * sizeof(wchar_t));
+    msg.header.size = sendSize;
+
+    SendPacket(reinterpret_cast<const char*>(&msg), sendSize);
 }
 
 void CClientNetwork::SendZoneChange(int32_t targetMapId)
@@ -277,7 +285,7 @@ void CClientNetwork::DispatchPacket(const char* data, uint16_t size)
         break;
 
     case MsgType::S2C_CHAT:
-        if (size >= sizeof(MSG_S2C_CHAT))
+        if (size >= offsetof(MSG_S2C_CHAT, message) + sizeof(wchar_t))
             _gameInstance->OnChat(reinterpret_cast<const MSG_S2C_CHAT*>(data));
         break;
 

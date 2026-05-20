@@ -1,6 +1,7 @@
 ﻿#include "DummyClient.h"
 #include <Windows.h>
 #include <cstring>
+#include <cstddef>  // offsetof
 #include "MMOStats.h"
 #include "MMOStressConfig.h"
 
@@ -177,7 +178,7 @@ uint16_t DummyClient::GetPacketSize(MsgType type)
     case MsgType::S2C_DELETE_PLAYER:       return sizeof(MSG_S2C_DELETE_PLAYER);
     case MsgType::S2C_MOVE_START:          return sizeof(MSG_S2C_MOVE_START);
     case MsgType::S2C_MOVE_STOP:           return sizeof(MSG_S2C_MOVE_STOP);
-    case MsgType::S2C_CHAT:               return sizeof(MSG_S2C_CHAT);
+    case MsgType::S2C_CHAT:               return static_cast<uint16_t>(offsetof(MSG_S2C_CHAT, message) + sizeof(wchar_t)); // 가변 길이: 최소 크기
     case MsgType::S2C_SYNC_POSITION:      return sizeof(MSG_S2C_SYNC_POSITION);
     case MsgType::S2C_ZONE_CHANGE_OK:     return sizeof(MSG_S2C_ZONE_CHANGE_OK);
     case MsgType::S2C_ZONE_CHANGE_FAIL:   return sizeof(MSG_S2C_ZONE_CHANGE_FAIL);
@@ -199,19 +200,19 @@ void DummyClient::ProcessPackets(StatsLocal& stats, const MMOStressConfig& confi
 
         uint16_t totalSize = hdr.size;
 
-        // 알려진 패킷인지 확인
+        // 알려진 패킷인지 확인 (최소 크기 검증 — 채팅 등 가변 길이 대응)
         uint16_t expected = GetPacketSize(hdr.type);
-        if (expected == 0 || totalSize != expected)
+        if (expected == 0 || totalSize < expected)
         {
-            // 알 수 없는 패킷 타입 또는 크기 불일치 → 연결 종료
+            // 알 수 없는 패킷 타입 또는 크기 부족 → 연결 종료
             Disconnect(stats, config.reconnectIntervalMs);
             return;
         }
 
         if (_recvBuf.GetDataSize() < totalSize) break;
 
-        // 최대 패킷 크기 (MSG_S2C_CHAT = 136B)
-        char packet[256];
+        // 최대 패킷 크기 (MSG_S2C_CHAT 가변, 최대 ~1034B)
+        char packet[2048];
         if (_recvBuf.Dequeue(packet, totalSize) == 0) break;
 
         stats.recvPackets += 1;
@@ -402,17 +403,23 @@ void DummyClient::SendHeartbeat(StatsLocal& stats)
 
 void DummyClient::SendChat(StatsLocal& stats)
 {
-    // 고정 문자열 패킷을 한 번만 생성
-    static const MSG_C2S_CHAT cachedMsg = []() {
-        MSG_C2S_CHAT m{};
-        m.header.size = sizeof(m);
-        m.header.type = MsgType::C2S_CHAT;
-        const wchar_t* text = L"stress test";
-        wmemcpy(m.message, text, wcslen(text));
-        return m;
-    }();
+    // 랜덤 길이(1~511글자) 랜덤 문자열 생성
+    std::uniform_int_distribution<int> lenDist(1, CHAT_MSG_MAX_LEN - 1);
+    std::uniform_int_distribution<int> charDist(L'A', L'Z');
 
-    _sendBuf.Enqueue(&cachedMsg, sizeof(cachedMsg));
+    int len = lenDist(_rng);
+
+    MSG_C2S_CHAT msg{};
+    msg.header.type = MsgType::C2S_CHAT;
+    for (int i = 0; i < len; ++i)
+        msg.message[i] = static_cast<wchar_t>(charDist(_rng));
+    msg.message[len] = L'\0';
+
+    uint16_t sendSize = static_cast<uint16_t>(
+        sizeof(MsgHeader) + (len + 1) * sizeof(wchar_t));
+    msg.header.size = sendSize;
+
+    _sendBuf.Enqueue(&msg, sendSize);
     stats.sendPackets += 1;
     stats.chatSent += 1;
 }

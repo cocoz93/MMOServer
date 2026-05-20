@@ -341,7 +341,29 @@ void CConsoleRenderer::RenderChatInput(const std::wstring& chatInput, bool chatM
     wchar_t buf[CONSOLE_WIDTH + 1];
     if (chatMode)
     {
-        swprintf_s(buf, CONSOLE_WIDTH + 1, L" > %s_", chatInput.c_str());
+        // " > "(3셀) + 커서 "_"(1셀) = 가용 76셀
+        static constexpr int MAX_VISIBLE_CELLS = CONSOLE_WIDTH - 4;
+
+        // 입력이 가용 폭을 초과하면 뒷부분만 표시
+        const wchar_t* displayStr = chatInput.c_str();
+        int totalLen = static_cast<int>(chatInput.size());
+        int startIdx = 0;
+
+        int totalWidth = GetDisplayWidth(displayStr, totalLen);
+        if (totalWidth > MAX_VISIBLE_CELLS)
+        {
+            // 뒤에서부터 MAX_VISIBLE_CELLS에 맞는 시작점 탐색
+            int cells = 0;
+            for (int i = totalLen - 1; i >= 0; --i)
+            {
+                int w = IsFullWidth(displayStr[i]) ? 2 : 1;
+                if (cells + w > MAX_VISIBLE_CELLS) break;
+                cells += w;
+                startIdx = i;
+            }
+        }
+
+        swprintf_s(buf, CONSOLE_WIDTH + 1, L" > %s_", displayStr + startIdx);
         WriteTextAt(0, CHAT_INPUT_ROW, buf, COLOR_CHAT_MODE, CONSOLE_WIDTH);
     }
     else
@@ -351,12 +373,23 @@ void CConsoleRenderer::RenderChatInput(const std::wstring& chatInput, bool chatM
     }
 
     // 커서를 채팅 입력줄 끝으로 이동 (에코 문자가 게임 뷰를 오염하지 않도록)
-    // fullwidth 문자(한글 등)는 2셀 차지하므로 표시 폭 기준으로 계산
-    int inputDisplayWidth = GetDisplayWidth(chatInput.c_str(), static_cast<int>(chatInput.size()));
-    SHORT cursorX = static_cast<SHORT>(3 + inputDisplayWidth);
-    if (cursorX >= CONSOLE_WIDTH) cursorX = CONSOLE_WIDTH - 1;
-    COORD cursorPos = { cursorX, CHAT_INPUT_ROW };
-    SetConsoleCursorPosition(_hConsole, cursorPos);
+    // 표시 중인 부분의 폭 기준으로 계산
+    int visibleLen = static_cast<int>(chatInput.size());
+    if (chatMode)
+    {
+        static constexpr int MAX_VISIBLE_CELLS = CONSOLE_WIDTH - 4;
+        int totalWidth = GetDisplayWidth(chatInput.c_str(), visibleLen);
+        int displayWidth = (totalWidth > MAX_VISIBLE_CELLS) ? MAX_VISIBLE_CELLS : totalWidth;
+        SHORT cursorX = static_cast<SHORT>(3 + displayWidth);
+        if (cursorX >= CONSOLE_WIDTH) cursorX = CONSOLE_WIDTH - 1;
+        COORD cursorPos = { cursorX, CHAT_INPUT_ROW };
+        SetConsoleCursorPosition(_hConsole, cursorPos);
+    }
+    else
+    {
+        COORD cursorPos = { 0, CHAT_INPUT_ROW };
+        SetConsoleCursorPosition(_hConsole, cursorPos);
+    }
 }
 
 // ==========================================================================
