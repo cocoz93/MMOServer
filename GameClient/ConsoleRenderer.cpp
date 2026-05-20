@@ -169,8 +169,8 @@ void CConsoleRenderer::RenderGameView(const ClientPlayer* me,
     float camX = 0.0f, camY = 0.0f;
     if (me)
     {
-        camX = me->x - VIEW_WIDTH / 2.0f;
-        camY = me->y - VIEW_HEIGHT / 2.0f;
+        camX = me->x - VIEW_WIDTH / 2;
+        camY = me->y - VIEW_HEIGHT / 2;
     }
 
     // 맵 경계 기반 타일 채우기
@@ -207,12 +207,16 @@ void CConsoleRenderer::RenderGameView(const ClientPlayer* me,
         }
     }
 
+    // floor(camX) 사전 계산 — 벽 타일과 동일한 좌표계로 플레이어 배치
+    int camTileX = static_cast<int>(std::floor(camX));
+    int camTileY = static_cast<int>(std::floor(camY));
+
     // 다른 플레이어 배치 (서버 할당 고유 문자+색상)
     for (const auto& pair : others)
     {
         const ClientPlayer& p = pair.second;
-        int sx = static_cast<int>(p.x - camX + 0.5f);
-        int sy = static_cast<int>(p.y - camY + 0.5f);
+        int sx = static_cast<int>(std::floor(p.x)) - camTileX;
+        int sy = static_cast<int>(std::floor(p.y)) - camTileY;
 
         if (sx >= 0 && sx < VIEW_WIDTH && sy >= 0 && sy < VIEW_HEIGHT)
         {
@@ -224,8 +228,8 @@ void CConsoleRenderer::RenderGameView(const ClientPlayer* me,
     // 내 캐릭터 배치 (서버 할당 문자+색상 + 반전+밑줄로 강조)
     if (me)
     {
-        int mx = static_cast<int>(me->x - camX + 0.5f);
-        int my = static_cast<int>(me->y - camY + 0.5f);
+        int mx = static_cast<int>(std::floor(me->x)) - camTileX;
+        int my = static_cast<int>(std::floor(me->y)) - camTileY;
 
         if (mx >= 0 && mx < VIEW_WIDTH && my >= 0 && my < VIEW_HEIGHT)
         {

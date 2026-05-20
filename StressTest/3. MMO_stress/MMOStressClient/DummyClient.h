@@ -51,6 +51,7 @@ private:
     void ResetState();
 
     // 패킷 핸들러
+    void HandleZoneInfo(const char* packet);
     void HandleCreateMyPlayer(const char* packet);
     void HandleMoveStart(const char* packet);
     void HandleMoveStop(const char* packet);
@@ -86,6 +87,10 @@ private:
     int32_t     _speed          = 0;
     uint8_t     _direction      = 0;   // Direction enum (0=NONE, 1=UP ~ 4=RIGHT)
     bool        _moving         = false;
+
+    // 서버에서 수신한 맵 크기 (S2C_ZONE_INFO)
+    int32_t     _mapWidth       = 0;
+    int32_t     _mapHeight      = 0;
 
     // 타이밍
     int64_t     _lastTickMs      = 0;

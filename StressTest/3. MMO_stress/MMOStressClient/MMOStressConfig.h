@@ -24,10 +24,6 @@ struct MMOStressConfig
     int         heartbeatIntervalSec    = 20;
     int         targetMapId             = 1;
 
-    // ── [Map] ───────────────────────────────────────────────────
-    int         mapWidth            = 400;
-    int         mapHeight           = 400;
-
     // ── [Monitor] ───────────────────────────────────────────────
     int         monitorPort         = 9101;
 
@@ -80,10 +76,6 @@ struct MMOStressConfig
         heartbeatIntervalSec    = GetPrivateProfileIntW(L"Scenario", L"HeartbeatIntervalSec", 20, path);
         targetMapId             = GetPrivateProfileIntW(L"Scenario", L"TargetMapId", 1, path);
 
-        // [Map]
-        mapWidth            = GetPrivateProfileIntW(L"Map", L"MapWidth", 400, path);
-        mapHeight           = GetPrivateProfileIntW(L"Map", L"MapHeight", 400, path);
-
         // [Monitor]
         monitorPort         = GetPrivateProfileIntW(L"Monitor", L"MonitorPort", 9101, path);
 
@@ -115,9 +107,6 @@ private:
         wprintf(L"  ZoneChangeProbab  : %d\n", zoneChangeProbability);
         wprintf(L"  HeartbeatSec      : %d\n", heartbeatIntervalSec);
         wprintf(L"  TargetMapId       : %d\n", targetMapId);
-        wprintf(L"  ── Map ──\n");
-        wprintf(L"  MapWidth          : %d\n", mapWidth);
-        wprintf(L"  MapHeight         : %d\n", mapHeight);
         wprintf(L"  ── Monitor ──\n");
         wprintf(L"  MonitorPort       : %d\n", monitorPort);
         wprintf(L"  ── Test ──\n");

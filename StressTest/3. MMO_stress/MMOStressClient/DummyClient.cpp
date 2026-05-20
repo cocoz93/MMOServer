@@ -244,7 +244,8 @@ void DummyClient::ProcessPackets(StatsLocal& stats, const MMOStressConfig& confi
             stats.zoneChangeFail += 1;
             break;
         case MsgType::S2C_ZONE_INFO:
-            break;  // 더미 클라이언트는 존 메타 정보 무시
+            HandleZoneInfo(packet);
+            break;
         default: break;
         }
     }
@@ -253,6 +254,13 @@ void DummyClient::ProcessPackets(StatsLocal& stats, const MMOStressConfig& confi
 // ─────────────────────────────────────────────────────────────────
 // 패킷 핸들러
 // ─────────────────────────────────────────────────────────────────
+void DummyClient::HandleZoneInfo(const char* packet)
+{
+    auto* msg = reinterpret_cast<const MSG_S2C_ZONE_INFO*>(packet);
+    _mapWidth = msg->mapWidth;
+    _mapHeight = msg->mapHeight;
+}
+
 void DummyClient::HandleCreateMyPlayer(const char* packet)
 {
     auto* msg = reinterpret_cast<const MSG_S2C_CREATE_MY_PLAYER*>(packet);
@@ -432,7 +440,7 @@ void DummyClient::Tick(StatsLocal& stats, const MMOStressConfig& config, int64_t
 
     // 이동 중이면 좌표 갱신
     if (_moving)
-        UpdateLocalPosition(config.mapWidth, config.mapHeight);
+        UpdateLocalPosition(_mapWidth, _mapHeight);
 
     // 랜덤 행동 결정
     std::uniform_int_distribution<int> roll(1, 100);
