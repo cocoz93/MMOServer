@@ -51,7 +51,7 @@ echo.
 
 REM === 4. Configure ===
 echo [3/4] Configuring...
-powershell -Command "(Get-Content '%~dp0bin\ServerConfig.ini') -replace '^Mode=.*', 'Mode=GameServer' -replace '^MonitorEnabled=.*', 'MonitorEnabled=0' | Set-Content '%~dp0bin\ServerConfig.ini'"
+powershell -Command "(Get-Content -Encoding UTF8 '%~dp0bin\ServerConfig.ini') -replace '^Mode=.*', 'Mode=GameServer' -replace '^MonitorEnabled=.*', 'MonitorEnabled=0' | Set-Content -Encoding UTF8 '%~dp0bin\ServerConfig.ini'"
 echo   - ServerConfig.ini updated (Mode=GameServer, MonitorEnabled=0)
 echo.
 
