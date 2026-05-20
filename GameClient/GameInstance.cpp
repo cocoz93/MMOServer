@@ -92,16 +92,39 @@ void CGameInstance::GameLoop()
         // 1) 네트워크 이벤트 소비
         ProcessNetworkEvents();
 
-        // 2) 콘솔 입력 버퍼에서 키 상태 갱신 후 입력 처리
+        // 2) 존 이동 전환 중 최소 표시 시간 체크 (응답 올 때까지 대기, 타임아웃 없음)
+        if (_zoneChanging)
+        {
+            _zoneChangeElapsedMs += static_cast<int>(deltaTime * 1000.0f);
+            if (_zoneChangeResponseReceived && _zoneChangeElapsedMs >= ZONE_CHANGE_MIN_DISPLAY_MS)
+            {
+                _zoneChanging = false;
+                _zoneChangeResponseReceived = false;
+            }
+        }
+
+        // 3) 콘솔 입력 버퍼에서 키 상태 갱신 후 입력 처리 (전환 중 이동 차단)
         if (_chatMode)
             ProcessChatInput();
         else
         {
             PollConsoleInput();
-            ProcessInput();
+            if (_zoneChanging)
+            {
+                // 전환 중에는 ESC 종료만 허용
+                bool escDown = _keyDown[VK_ESCAPE];
+                if (escDown && !_escPressed)
+                {
+                    _escPressed = true;
+                    _running = false;
+                }
+                _escPressed = escDown;
+            }
+            else
+                ProcessInput();
         }
 
-        // 3) 하트비트 송신 (20초 간격)
+        // 4) 하트비트 송신 (20초 간격)
         _heartbeatAccumMs += static_cast<int>(deltaTime * 1000.0f);
         if (_heartbeatAccumMs >= HEARTBEAT_INTERVAL_MS)
         {
@@ -109,30 +132,34 @@ void CGameInstance::GameLoop()
             _network.SendHeartbeat();
         }
 
-        // 4) 클라이언트 예측 이동 갱신 (벽 충돌 시 자동 정지 포함)
-        bool myPlayerClamped = false;
-        _playerManager.UpdateMovingPlayers(deltaTime, myPlayerClamped);
-
-        // 벽에 닿아 자동 정지된 경우 서버에 MOVE_STOP 전송 (서버 Zone::Tick과 동일 동작)
-        if (myPlayerClamped)
+        // 5) 클라이언트 예측 이동 갱신 (전환 중 화면 고정)
+        if (!_zoneChanging)
         {
-            ClientPlayer* me = _playerManager.GetMyPlayer();
-            if (me)
+            bool myPlayerClamped = false;
+            _playerManager.UpdateMovingPlayers(deltaTime, myPlayerClamped);
+
+            // 벽에 닿아 자동 정지된 경우 서버에 MOVE_STOP 전송 (서버 Zone::Tick과 동일 동작)
+            if (myPlayerClamped)
             {
-                _network.SendMoveStop(
-                    static_cast<uint8_t>(me->direction), me->x, me->y);
+                ClientPlayer* me = _playerManager.GetMyPlayer();
+                if (me)
+                {
+                    _network.SendMoveStop(
+                        static_cast<uint8_t>(me->direction), me->x, me->y);
+                }
             }
         }
 
-        // 5) 렌더링
+        // 6) 렌더링
         _renderer.RenderFrame(
             _playerManager.GetMyPlayer(),
             _playerManager.GetOtherPlayers(),
             _chatLog,
             _chatInput,
-            _chatMode);
+            _chatMode,
+            _zoneChanging);
 
-        // 6) 프레임 제한
+        // 7) 프레임 제한
         auto frameEnd = Clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(frameEnd - frameStart);
         int sleepMs = FRAME_INTERVAL_MS - static_cast<int>(elapsed.count());
@@ -260,6 +287,7 @@ void CGameInstance::ProcessNetworkEvents()
                 event.playerId, event.x, event.y, static_cast<Direction>(event.direction), prevSpeed,
                 event.displayChar, event.colorIndex);
             _renderer.SetZoneInfo(event.mapId, event.channelIndex);
+            _zoneChangeResponseReceived = true;
             wchar_t buf[128];
             swprintf_s(buf, L"[System] Zone changed: Map=%d Channel=%d",
                         event.mapId, event.channelIndex);
@@ -269,6 +297,7 @@ void CGameInstance::ProcessNetworkEvents()
 
         case ClientNetworkEvent::Type::ZONE_CHANGE_FAIL:
         {
+            _zoneChangeResponseReceived = true;
             const wchar_t* reason = (event.reason == 0) ? L"Map not found" : L"All channels full";
             wchar_t buf[128];
             swprintf_s(buf, L"[System] Zone change failed: %s", reason);
@@ -653,7 +682,18 @@ void CGameInstance::HandleChatCommand(const std::wstring& command)
 
         if (arg == L"random")
         {
+            // 이동 중이면 정지 (이전 존에서 유령 이동 방지)
+            ClientPlayer* me = _playerManager.GetMyPlayer();
+            if (me && me->moveState == MoveState::MOVING)
+            {
+                _network.SendMoveStop(
+                    static_cast<uint8_t>(me->direction), me->x, me->y);
+                me->moveState = MoveState::IDLE;
+            }
+
             _network.SendZoneChange(-1);
+            _zoneChanging = true;
+            _zoneChangeElapsedMs = 0;
             AddChatMessage(L"[System] Requesting random zone change...");
             return;
         }
@@ -661,7 +701,19 @@ void CGameInstance::HandleChatCommand(const std::wstring& command)
         try
         {
             int32_t mapId = std::stoi(arg);
+
+            // 이동 중이면 정지 (이전 존에서 유령 이동 방지)
+            ClientPlayer* me = _playerManager.GetMyPlayer();
+            if (me && me->moveState == MoveState::MOVING)
+            {
+                _network.SendMoveStop(
+                    static_cast<uint8_t>(me->direction), me->x, me->y);
+                me->moveState = MoveState::IDLE;
+            }
+
             _network.SendZoneChange(mapId);
+            _zoneChanging = true;
+            _zoneChangeElapsedMs = 0;
 
             wchar_t buf[128];
             swprintf_s(buf, L"[System] Requesting zone change to map %d...", mapId);

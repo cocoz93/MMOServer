@@ -76,6 +76,12 @@ private:
     static constexpr int FRAME_PER_SEC = 25;
     static constexpr int FRAME_INTERVAL_MS = 1000 / FRAME_PER_SEC;  // 40ms
 
+    // 존 이동 전환 상태 (요청~응답 사이 딤 오버레이 + 입력 차단)
+    bool _zoneChanging = false;
+    bool _zoneChangeResponseReceived = false;
+    int  _zoneChangeElapsedMs = 0;
+    static constexpr int ZONE_CHANGE_MIN_DISPLAY_MS = 500;
+
     // 하트비트 (서버 타임아웃 30초 대비 20초 간격)
     static constexpr int HEARTBEAT_INTERVAL_MS = 20000;
     int _heartbeatAccumMs;

@@ -107,11 +107,15 @@ void CConsoleRenderer::RenderFrame(const ClientPlayer* me,
                                    const std::unordered_map<int32_t, ClientPlayer>& others,
                                    const std::vector<std::wstring>& chatLog,
                                    const std::wstring& chatInput,
-                                   bool chatMode)
+                                   bool chatMode,
+                                   bool zoneChanging)
 {
     RenderStatusBar(me);
     RenderHelpBar();
-    RenderGameView(me, others);
+    if (zoneChanging)
+        RenderZoneTransition();
+    else
+        RenderGameView(me, others);
     RenderChatArea(chatLog);
     RenderChatInput(chatInput, chatMode);
 }
@@ -246,6 +250,44 @@ void CConsoleRenderer::RenderGameView(const ClientPlayer* me,
     }
 
     // 한 번에 출력
+    COORD bufSize = { VIEW_WIDTH, VIEW_HEIGHT };
+    COORD bufCoord = { 0, 0 };
+    SMALL_RECT writeRegion = { 0, VIEW_START_ROW,
+                               VIEW_WIDTH - 1,
+                               static_cast<SHORT>(VIEW_START_ROW + VIEW_HEIGHT - 1) };
+
+    WriteConsoleOutputW(_hConsole, &_viewBuffer[0][0], bufSize, bufCoord, &writeRegion);
+}
+
+// ==========================================================================
+// 존 이동 전환 오버레이 — 딤 + 중앙 텍스트
+// ==========================================================================
+
+void CConsoleRenderer::RenderZoneTransition()
+{
+    // 게임뷰 영역 전체를 검은 배경으로 클리어
+    for (int row = 0; row < VIEW_HEIGHT; ++row)
+    {
+        for (int col = 0; col < VIEW_WIDTH; ++col)
+        {
+            _viewBuffer[row][col].Char.UnicodeChar = L' ';
+            _viewBuffer[row][col].Attributes = 0;
+        }
+    }
+
+    // 중앙 행에 로딩 텍스트 오버레이
+    static constexpr wchar_t LOADING_TEXT[] = L"\x2550\x2550\x2550 Zone Loading... \x2550\x2550\x2550";
+    static constexpr int TEXT_LEN = sizeof(LOADING_TEXT) / sizeof(wchar_t) - 1; // null 제외
+    int startCol = (VIEW_WIDTH - TEXT_LEN) / 2;
+    int centerRow = VIEW_HEIGHT / 2;
+
+    for (int i = 0; i < TEXT_LEN; ++i)
+    {
+        _viewBuffer[centerRow][startCol + i].Char.UnicodeChar = LOADING_TEXT[i];
+        _viewBuffer[centerRow][startCol + i].Attributes = COLOR_STATUS;
+    }
+
+    // 딤 처리된 버퍼를 출력
     COORD bufSize = { VIEW_WIDTH, VIEW_HEIGHT };
     COORD bufCoord = { 0, 0 };
     SMALL_RECT writeRegion = { 0, VIEW_START_ROW,

@@ -23,7 +23,8 @@ public:
                      const std::unordered_map<int32_t, ClientPlayer>& others,
                      const std::vector<std::wstring>& chatLog,
                      const std::wstring& chatInput,
-                     bool chatMode);
+                     bool chatMode,
+                     bool zoneChanging);
 
 private:
     // 개별 영역 렌더
@@ -33,6 +34,7 @@ private:
                         const std::unordered_map<int32_t, ClientPlayer>& others);
     void RenderChatArea(const std::vector<std::wstring>& chatLog);
     void RenderChatInput(const std::wstring& chatInput, bool chatMode);
+    void RenderZoneTransition();
 
     // 유틸
     void WriteTextAt(SHORT x, SHORT y, const wchar_t* text, WORD attr, int maxLen);
