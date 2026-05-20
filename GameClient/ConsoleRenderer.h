@@ -15,6 +15,7 @@ public:
     ~CConsoleRenderer();
 
     void Init();
+    void SetZoneInfo(int mapId, int channelIndex);
     void SetMapSize(int width, int height);
 
     // 매 프레임 전체 화면 갱신
@@ -40,7 +41,9 @@ private:
 private:
     HANDLE _hConsole;
 
-    // 게임 뷰 설정 (서버에서 S2C_ZONE_INFO로 수신)
+    // 존 정보 (서버에서 S2C_ZONE_INFO로 수신)
+    int _mapId = -1;
+    int _channelIndex = -1;
     int _mapWidth = 120;
     int _mapHeight = 120;
     static constexpr int VIEW_WIDTH = 80;

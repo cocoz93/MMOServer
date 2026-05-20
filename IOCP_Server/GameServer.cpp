@@ -589,6 +589,8 @@ void CGameServer::DisconnectPlayer(CPlayer* player)
 void CGameServer::SendZoneInfo(CPlayer* target, CZone* zone)
 {
     MSG_S2C_ZONE_INFO msg;
+    msg.mapId = zone->GetMapId();
+    msg.channelIndex = CZoneManager::GetChannelIndexFromZoneId(zone->GetZoneId());
     msg.mapWidth = zone->GetMapWidth();
     msg.mapHeight = zone->GetMapHeight();
     SendPacket(target, msg);

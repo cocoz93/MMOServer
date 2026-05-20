@@ -53,6 +53,12 @@ CConsoleRenderer::~CConsoleRenderer()
 {
 }
 
+void CConsoleRenderer::SetZoneInfo(int mapId, int channelIndex)
+{
+    _mapId = mapId;
+    _channelIndex = channelIndex;
+}
+
 void CConsoleRenderer::SetMapSize(int width, int height)
 {
     _mapWidth = width;
@@ -132,8 +138,8 @@ void CConsoleRenderer::RenderStatusBar(const ClientPlayer* me)
         }
 
         swprintf_s(buf, CONSOLE_WIDTH + 1,
-            L" Player:%-4d  Pos:(%6.1f,%6.1f)  Speed:%-3d  [%s %s]",
-            me->playerId, me->x, me->y, me->speed, stateStr, dirStr);
+            L" Zone:%d-%d  Player:%-4d  Pos:(%6.1f,%6.1f)  Speed:%-3d  [%s %s]",
+            _mapId, _channelIndex, me->playerId, me->x, me->y, me->speed, stateStr, dirStr);
     }
     else
     {

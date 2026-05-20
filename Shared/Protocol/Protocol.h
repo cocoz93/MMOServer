@@ -221,10 +221,12 @@ struct MSG_S2C_ZONE_INFO
 {
     static constexpr MsgType TYPE = MsgType::S2C_ZONE_INFO;
     MsgHeader header;
+    int32_t mapId;
+    int32_t channelIndex;
     int32_t mapWidth;
     int32_t mapHeight;
 
-    MSG_S2C_ZONE_INFO() : header{ sizeof(*this), TYPE }, mapWidth(0), mapHeight(0) {}
+    MSG_S2C_ZONE_INFO() : header{ sizeof(*this), TYPE }, mapId(0), channelIndex(0), mapWidth(0), mapHeight(0) {}
 };
 
 // C2S: 맵 이동 요청
