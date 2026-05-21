@@ -19,17 +19,17 @@ public:
 
     // DummyManager가 상태 전이를 트리거
     void StartConnect(const std::string& ip, int port, Stats& stats, int reconnectDelayMs);
-    void OnConnected(Stats& stats);
+    void OnConnected(Stats& stats, int reconnectDelayMs);
     void OnConnectFailed(Stats& stats, int reconnectDelayMs);
 
     // select()가 읽기 가능 표시 시 호출
     void OnRecv(Stats& stats, int reconnectDelayMs);
 
     // OnRecv 후 RingBuffer에서 완성된 패킷 파싱
-    void ProcessPackets(Stats& stats, int reconnectDelayMs);
+    void ProcessPackets(Stats& stats, int reconnectDelayMs, int maxPacketSize);
 
     // 에코 송신 시도 (pendingCount < overSendCount 이면 송신버퍼에 enqueue)
-    void TrySend(int overSendCount, int reconnectDelayMs, Stats& stats);
+    void TrySend(int overSendCount, int minPacketSize, int maxPacketSize, int reconnectDelayMs, Stats& stats);
 
     // 송신 링버퍼 → 실제 send() (partial send 안전 처리)
     void FlushSend(int reconnectDelayMs, Stats& stats);

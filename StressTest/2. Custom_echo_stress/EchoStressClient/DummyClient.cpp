@@ -40,6 +40,8 @@ void DummyClient::Disconnect(int reconnectDelayMs, Stats& stats)
     _state               = ClientState::DISCONNECTED;
     _connectReadyMs      = NowMs() + reconnectDelayMs;
     _disconnectScheduled = false;
+    if (_pendingCount > 0)
+        stats.pendingPackets.fetch_sub(_pendingCount);
     ResetEchoState();
 }
 
@@ -94,7 +96,7 @@ void DummyClient::StartConnect(const std::string& ip, int port,
     }
 }
 
-void DummyClient::OnConnected(Stats& stats)
+void DummyClient::OnConnected(Stats& stats, int reconnectDelayMs)
 {
     // SO_ERROR 확인 (writable이어도 실패일 수 있음)
     int sockErr = 0;
@@ -103,7 +105,7 @@ void DummyClient::OnConnected(Stats& stats)
 
     if (sockErr != 0)
     {
-        OnConnectFailed(stats, 1000);
+        OnConnectFailed(stats, reconnectDelayMs);
         return;
     }
 
@@ -157,7 +159,7 @@ void DummyClient::OnRecv(Stats& stats, int reconnectDelayMs)
 // ─────────────────────────────────────────────────────────────────
 // 패킷 파싱
 // ─────────────────────────────────────────────────────────────────
-void DummyClient::ProcessPackets(Stats& stats, int reconnectDelayMs)
+void DummyClient::ProcessPackets(Stats& stats, int reconnectDelayMs, int maxPacketSize)
 {
     while (true)
     {
@@ -168,7 +170,7 @@ void DummyClient::ProcessPackets(Stats& stats, int reconnectDelayMs)
 
         // hdr.size = 전체 크기 (헤더 포함)
         size_t totalSize = hdr.size;
-        if (totalSize != ECHO_TOTAL_SIZE)
+        if (totalSize < ECHO_TOTAL_SIZE || totalSize > static_cast<size_t>(maxPacketSize))
         {
             // 예상치 못한 패킷 크기 - 즉시 연결 종료 (ResetEchoState에서 링버퍼 Clear)
             Disconnect(reconnectDelayMs, stats);
@@ -177,7 +179,7 @@ void DummyClient::ProcessPackets(Stats& stats, int reconnectDelayMs)
 
         if (_recvBuf.GetDataSize() < totalSize) break;
 
-        char packet[ECHO_TOTAL_SIZE];
+        char packet[4096];
         if (_recvBuf.Dequeue(packet, totalSize) == 0) break;
 
         uint64_t recvVal;
@@ -197,7 +199,11 @@ void DummyClient::ProcessPackets(Stats& stats, int reconnectDelayMs)
                 stats.RecordRtt(rtt);
             }
             _expectedRecv++;
-            if (_pendingCount > 0) _pendingCount--;
+            if (_pendingCount > 0)
+            {
+                _pendingCount--;
+                stats.pendingPackets.fetch_sub(1);
+            }
         }
         else if (recvVal < _expectedRecv)
         {
@@ -211,7 +217,11 @@ void DummyClient::ProcessPackets(Stats& stats, int reconnectDelayMs)
             // recvVal > _expectedRecv: 예상 밖 값 → 진짜 패킷 에러
             stats.packetError.fetch_add(1);
             _expectedRecv = recvVal + 1;
-            if (_pendingCount > 0) _pendingCount--;
+            if (_pendingCount > 0)
+            {
+                _pendingCount--;
+                stats.pendingPackets.fetch_sub(1);
+            }
             if (!_sendTimes.empty()) _sendTimes.pop_front();
         }
 
@@ -222,29 +232,35 @@ void DummyClient::ProcessPackets(Stats& stats, int reconnectDelayMs)
 // ─────────────────────────────────────────────────────────────────
 // 에코 송신 (송신 링버퍼에 enqueue)
 // ─────────────────────────────────────────────────────────────────
-void DummyClient::TrySend(int overSendCount, int reconnectDelayMs, Stats& stats)
+void DummyClient::TrySend(int overSendCount, int minPacketSize, int maxPacketSize, int reconnectDelayMs, Stats& stats)
 {
     if (!IsConnected()) return;
+
+    static thread_local std::mt19937 rng{ std::random_device{}() };
+    std::uniform_int_distribution<int> sizeDist(minPacketSize, maxPacketSize);
 
     while (_pendingCount < overSendCount)
     {
         _sentValue++;
 
-        char packet[ECHO_TOTAL_SIZE];
+        const int packetSize = sizeDist(rng);
+        char packet[4096];
         MsgHeader hdr;
-        hdr.size = ECHO_TOTAL_SIZE;
+        hdr.size = static_cast<uint16_t>(packetSize);
         hdr.type = MsgType::ECHO;
         std::memcpy(packet,                     &hdr,        sizeof(MsgHeader));
         std::memcpy(packet + sizeof(MsgHeader), &_sentValue, sizeof(uint64_t));
 
-        if (_sendBuf.Enqueue(packet, ECHO_TOTAL_SIZE) == 0)
+        if (_sendBuf.Enqueue(packet, packetSize) == 0)
         {
             // 송신 버퍼 가득참 - 다음 루프에서 재시도
             _sentValue--;
+            stats.sendBufferFull.fetch_add(1);
             return;
         }
 
         _pendingCount++;
+        stats.pendingPackets.fetch_add(1);
         _sendTimes.push_back(NowMs());
         stats.sendCount.fetch_add(1);
     }
@@ -293,7 +309,11 @@ void DummyClient::CheckTimeout(int echoTimeoutMs, Stats& stats)
         stats.echoNotRecv.fetch_add(1);
         _sendTimes.pop_front();
         _expectedRecv++;
-        if (_pendingCount > 0) _pendingCount--;
+        if (_pendingCount > 0)
+        {
+            _pendingCount--;
+            stats.pendingPackets.fetch_sub(1);
+        }
     }
 }
 

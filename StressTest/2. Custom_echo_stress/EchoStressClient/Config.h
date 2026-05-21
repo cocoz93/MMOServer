@@ -16,6 +16,8 @@ struct Config
     int         echoTimeoutMs   = 500;           // 에코 미응답 판정 기준 시간(ms). 이 시간 내 응답 없으면 EchoNotRecv 카운터 증가
     int         testDurationSec = 0;             // 테스트 지속 시간(초). 0이면 수동 종료까지 무한 실행
     int         monitorPort     = 9092;          // Prometheus 메트릭 HTTP 포트
+    int         minPacketSize   = 12;            // 에코 패킷 최소 크기(B). 하한 12 (헤더4+echoValue8)
+    int         maxPacketSize   = 256;           // 에코 패킷 최대 크기(B). 상한 4096 (서버 MAX_PACKET_SIZE)
 
     // 실행 파일 경로 기준으로 ini 로드 (인자 없으면 StressConfig.ini)
     bool Load(const char* iniFileName = nullptr)
@@ -65,6 +67,14 @@ struct Config
         echoTimeoutMs       = GetPrivateProfileIntW(L"Stress", L"EchoTimeoutMs", 500, path);
         testDurationSec     = GetPrivateProfileIntW(L"Stress", L"TestDurationSec", 0, path);
         monitorPort         = GetPrivateProfileIntW(L"Stress", L"MonitorPort", 9092, path);
+        minPacketSize       = GetPrivateProfileIntW(L"Stress", L"MinPacketSize", 12, path);
+        maxPacketSize       = GetPrivateProfileIntW(L"Stress", L"MaxPacketSize", 256, path);
+
+        // 유효성 보정
+        if (minPacketSize < 12)   minPacketSize = 12;
+        if (maxPacketSize > 4096) maxPacketSize = 4096;
+        if (maxPacketSize < 12)   maxPacketSize = 12;
+        if (minPacketSize > maxPacketSize) minPacketSize = maxPacketSize;
 
         wprintf(L"[Config] Loaded from StressConfig.ini\n");
         PrintConfig();
@@ -84,5 +94,7 @@ private:
         wprintf(L"  EchoTimeoutMs  : %d\n", echoTimeoutMs);
         wprintf(L"  TestDurationSec: %d\n", testDurationSec);
         wprintf(L"  MonitorPort    : %d\n", monitorPort);
+        wprintf(L"  MinPacketSize  : %d\n", minPacketSize);
+        wprintf(L"  MaxPacketSize  : %d\n", maxPacketSize);
     }
 };
