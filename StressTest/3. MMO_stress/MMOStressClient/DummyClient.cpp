@@ -295,6 +295,8 @@ void DummyClient::HandleMoveStop(const char* /*packet*/)
 void DummyClient::HandleSyncPosition(const char* packet)
 {
     auto* msg = reinterpret_cast<const MSG_S2C_SYNC_POSITION*>(packet);
+    if (msg->playerId != _playerId)
+        return;
     _x = msg->x;
     _y = msg->y;
 }
