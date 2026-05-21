@@ -22,12 +22,14 @@ public:
     int GetTotalCount() const { return _config.clientCount; }
 
 private:
-    void NetworkLoop();
+    void NetworkLoop(int begin, int end);
+    void DisplayLoop();
 
     Config  _config;
     Stats   _stats;
 
     std::vector<std::unique_ptr<DummyClient>> _clients;
-    std::thread  _networkThread;
+    std::vector<std::thread> _threads;
+    std::thread _displayThread;
     std::atomic<bool> _running{false};
 };

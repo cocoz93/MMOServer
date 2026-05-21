@@ -59,4 +59,9 @@ struct Stats
 
     // --- 현재 연결 수 ---
     std::atomic<int>     connectedCount     {0};
+
+    // --- 클라이언트 병목 감지 ---
+    std::atomic<int64_t> loopDurationMs     {0};   // 루프 1회 소요 시간 (gauge, 최근 값)
+    std::atomic<int64_t> sendBufferFull     {0};   // 송신 버퍼 가득참 횟수 (counter)
+    std::atomic<int>     pendingPackets     {0};   // 전체 미응답 패킷 수 (gauge)
 };

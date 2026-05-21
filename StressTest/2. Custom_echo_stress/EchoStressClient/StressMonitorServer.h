@@ -108,11 +108,21 @@ private:
                      "Total packet errors", _stats.packetError);
         WriteCounter(ss, "stress_late_arrival_total",
                      "Total late arrivals", _stats.lateArrival);
+        WriteCounter(ss, "stress_send_buffer_full_total",
+                     "Total send buffer full events", _stats.sendBufferFull);
 
         // ── 게이지 ──
         ss << "# HELP stress_connected_clients Current connected clients\n";
         ss << "# TYPE stress_connected_clients gauge\n";
         ss << "stress_connected_clients " << _stats.connectedCount.load() << "\n\n";
+
+        ss << "# HELP stress_loop_duration_ms Network loop iteration duration in ms\n";
+        ss << "# TYPE stress_loop_duration_ms gauge\n";
+        ss << "stress_loop_duration_ms " << _stats.loopDurationMs.load() << "\n\n";
+
+        ss << "# HELP stress_pending_packets Current pending (unacked) echo packets\n";
+        ss << "# TYPE stress_pending_packets gauge\n";
+        ss << "stress_pending_packets " << _stats.pendingPackets.load() << "\n\n";
 
         // ── RTT 히스토그램 ──
         WriteRttHistogram(ss);
