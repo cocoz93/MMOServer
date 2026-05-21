@@ -1,28 +1,24 @@
 @echo off
-setlocal
+setlocal EnableDelayedExpansion
+
+REM === Client count (default: 1) ===
+set CLIENT_COUNT=1
+if not "%~1"=="" set CLIENT_COUNT=%~1
 
 echo ============================================
-echo   Echo Test + Monitor - GameServer Mode
+echo   Echo Test + Monitor (x%CLIENT_COUNT%)
 echo ============================================
 echo.
 
 REM === 1. Kill running processes ===
-tasklist /FI "IMAGENAME eq IOCP_Server.exe" | findstr /I "IOCP_Server.exe" >nul
-if %ERRORLEVEL% EQU 0 (
-    echo [1/5] Killing running processes...
-    taskkill /F /IM IOCP_Server.exe >nul 2>nul
-    echo   - Server killed
-    taskkill /F /IM EchoStressClient.exe >nul 2>nul
-    echo   - EchoStressClient killed
-    taskkill /F /IM prometheus.exe >nul 2>nul
-    taskkill /F /IM windows_exporter.exe >nul 2>nul
-    taskkill /F /IM grafana.exe >nul 2>nul
-    echo   - Monitoring killed
-    echo.
-) else (
-    echo [1/5] No running processes found.
-    echo.
-)
+echo [1/5] Killing running processes...
+taskkill /F /IM IOCP_Server.exe >nul 2>nul
+taskkill /F /IM EchoStressClient.exe >nul 2>nul
+taskkill /F /IM prometheus.exe >nul 2>nul
+taskkill /F /IM windows_exporter.exe >nul 2>nul
+taskkill /F /IM grafana-server.exe >nul 2>nul
+echo   - Done
+echo.
 
 REM === 2. MSBuild path ===
 set "MSBUILD=C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"
@@ -59,6 +55,11 @@ powershell -Command "(Get-Content -Encoding UTF8 '%~dp0bin\ServerConfig.ini') -r
 echo   - ServerConfig.ini updated (Mode=NetWorkLib_EchoTest, MonitorEnabled=1)
 
 set "PROM_YML=%~dp0..\Monitoring\prometheus-3.4.1.windows-amd64\prometheus.yml"
+set "STRESS_TARGETS=\"localhost:9092\""
+for /L %%i in (2,1,%CLIENT_COUNT%) do (
+    set /a PORT=9091+%%i
+    set "STRESS_TARGETS=!STRESS_TARGETS!, \"localhost:!PORT!\""
+)
 powershell -NoProfile -Command "@'
 global:
   scrape_interval: 5s
@@ -75,13 +76,13 @@ scrape_configs:
 
   - job_name: stress_client
     static_configs:
-      - targets: [\"localhost:9092\"]
+      - targets: [%STRESS_TARGETS%]
 
   - job_name: windows
     static_configs:
       - targets: [\"localhost:9182\"]
 '@ | Set-Content -Encoding UTF8 '%PROM_YML%'"
-echo   - prometheus.yml updated (stress_client: 9092)
+echo   - prometheus.yml updated (stress_client: %STRESS_TARGETS%)
 echo.
 
 REM === 5. Start Monitoring ===
@@ -106,20 +107,31 @@ start "" /D "%~dp0bin" IOCP_Server.exe
 echo   - Server started
 
 echo   - Waiting for server to listen on port 6000...
+set WAIT_COUNT=0
 :WAIT_SERVER
 netstat -an | findstr "LISTENING" | findstr ":6000" >nul
-if %ERRORLEVEL% NEQ 0 (
-    timeout /t 1 /nobreak >nul
-    goto WAIT_SERVER
+if %ERRORLEVEL% EQU 0 goto SERVER_READY
+set /a WAIT_COUNT+=1
+if %WAIT_COUNT% GEQ 30 (
+    echo [ERROR] Server did not start within 30 seconds!
+    pause
+    exit /b 1
 )
+timeout /t 1 /nobreak >nul
+goto WAIT_SERVER
+:SERVER_READY
 echo   - Server is ready
 
 start "" /D "%~dp0bin" EchoStressClient.exe
-echo   - EchoStressClient started
+echo   - EchoStressClient #1 started (MonitorPort=9092)
+for /L %%i in (2,1,%CLIENT_COUNT%) do (
+    start "" /D "%~dp0bin" EchoStressClient.exe StressConfig%%i.ini
+    echo   - EchoStressClient #%%i started (StressConfig%%i.ini)
+)
 echo.
 
 echo ============================================
-echo   Done! All services running.
+echo   Done! All services running. (Clients: %CLIENT_COUNT%)
 echo   Prometheus UI : http://localhost:9091
 echo   Grafana       : http://localhost:3000
 echo   (Grafana login: admin / admin)
