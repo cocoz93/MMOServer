@@ -589,6 +589,7 @@ void CIOCPServer::PostRecv(CSession* session, bool skipAcquire)
     DWORD flags = 0;
     DWORD recvBytes = 0;
 
+    InterlockedIncrement64(&_monitor._wsaRecvCalls);
     int result = WSARecv(socket, wsaBuf, bufCount, &recvBytes, &flags,
         &ex->overlapped, NULL);
 
@@ -745,6 +746,7 @@ void CIOCPServer::PostSend(CSession* session)
 
     if (InterlockedExchange(&session->_sending, TRUE) == TRUE)
     {
+        InterlockedIncrement64(&_monitor._sendContention);
         IOCountDecrement(session);
         return;
     }
@@ -808,6 +810,7 @@ void CIOCPServer::PostSend(CSession* session)
     }
 
     DWORD sendBytes = 0;
+    InterlockedIncrement64(&_monitor._wsaSendCalls);
     int result = WSASend(socket, wsaBuf, bufCount, &sendBytes, 0,
         &ex->overlapped, NULL);
 
@@ -868,6 +871,9 @@ void CIOCPServer::RequestSendMsg(int64_t sessionId, const char* data, int length
         IOCountDecrement(session);
         return;
     }
+
+    // Enqueue 바이트 누적 (_sendBytes와의 차이로 SendQ 체류량 산출)
+    InterlockedExchangeAdd64(&_monitor._sendEnqueuedBytes, static_cast<LONG64>(length));
 
     PostSend(session);
     IOCountDecrement(session);

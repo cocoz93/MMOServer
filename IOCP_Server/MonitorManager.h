@@ -40,6 +40,10 @@ public:
     volatile LONG64 _sendQueueOverflow = 0; // SendQ 오버플로 (Enqueue 실패)
     volatile LONG64 _recvBufferOverflow = 0; // RecvQ 오버플로 (수신 버퍼 가득 참)
     volatile LONG64 _zoneChangeCount = 0;   // 존 이동 횟수
+    volatile LONG64 _sendContention = 0;    // PostSend 경합 (이미 송신 중이라 건너뛴 횟수)
+    volatile LONG64 _wsaRecvCalls = 0;      // WSARecv 시스템 콜 횟수
+    volatile LONG64 _wsaSendCalls = 0;      // WSASend 시스템 콜 횟수
+    volatile LONG64 _sendEnqueuedBytes = 0; // SendQ Enqueue 바이트 누적 (_sendBytes와의 차이 = 체류량)
 
     // ══════════════════════════════════════════════════════════════
     // 게이지 (up/down)
@@ -103,4 +107,5 @@ public:
     {
         return static_cast<int>(InterlockedIncrement(&_workerThreadCount) - 1);
     }
+
 };

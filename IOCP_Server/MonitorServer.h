@@ -118,6 +118,14 @@ private:
                      "Total recv buffer overflows", _monitor._recvBufferOverflow);
         WriteCounter(ss, "mmo_zone_change_total",
                      "Total zone changes", _monitor._zoneChangeCount);
+        WriteCounter(ss, "mmo_send_contention_total",
+                     "Total PostSend contentions (skipped due to sending flag)", _monitor._sendContention);
+        WriteCounter(ss, "mmo_wsa_recv_calls_total",
+                     "Total WSARecv system calls", _monitor._wsaRecvCalls);
+        WriteCounter(ss, "mmo_wsa_send_calls_total",
+                     "Total WSASend system calls", _monitor._wsaSendCalls);
+        WriteCounter(ss, "mmo_send_enqueued_bytes_total",
+                     "Total bytes enqueued to SendQ", _monitor._sendEnqueuedBytes);
 
         // ── 게이지 ──
         ss << "# HELP mmo_session_count Current active sessions\n";
