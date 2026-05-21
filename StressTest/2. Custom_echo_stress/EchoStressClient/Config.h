@@ -17,15 +17,25 @@ struct Config
     int         testDurationSec = 0;             // 테스트 지속 시간(초). 0이면 수동 종료까지 무한 실행
     int         monitorPort     = 9092;          // Prometheus 메트릭 HTTP 포트
 
-    // 실행 파일 경로 기준으로 StressConfig.ini 로드
-    bool Load()
+    // 실행 파일 경로 기준으로 ini 로드 (인자 없으면 StressConfig.ini)
+    bool Load(const char* iniFileName = nullptr)
     {
         wchar_t exePath[MAX_PATH];
         GetModuleFileNameW(NULL, exePath, MAX_PATH);
 
         std::wstring iniPath(exePath);
         size_t pos = iniPath.find_last_of(L"\\/");
-        iniPath = iniPath.substr(0, pos + 1) + L"StressConfig.ini";
+
+        if (iniFileName)
+        {
+            wchar_t wBuf[MAX_PATH];
+            MultiByteToWideChar(CP_ACP, 0, iniFileName, -1, wBuf, MAX_PATH);
+            iniPath = iniPath.substr(0, pos + 1) + wBuf;
+        }
+        else
+        {
+            iniPath = iniPath.substr(0, pos + 1) + L"StressConfig.ini";
+        }
 
         // 파일 존재 확인
         DWORD attr = GetFileAttributesW(iniPath.c_str());

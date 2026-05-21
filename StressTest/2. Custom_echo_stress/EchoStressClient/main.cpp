@@ -14,7 +14,7 @@
 // ─────────────────────────────────────────────────────────────────
 // 진입점
 // ─────────────────────────────────────────────────────────────────
-int main()
+int main(int argc, char* argv[])
 {
     _setmode(_fileno(stdout), _O_U16TEXT);
     _setmode(_fileno(stderr), _O_U16TEXT);
@@ -27,7 +27,7 @@ int main()
     }
 
     Config cfg;
-    cfg.Load();
+    cfg.Load(argc > 1 ? argv[1] : nullptr);
 
         wprintf(L"\n[Custom Echo Stress] start. Server=%hs:%d, Clients=%d\n",
             cfg.serverIp.c_str(), cfg.port, cfg.clientCount);

@@ -2,7 +2,7 @@
 setlocal
 
 echo ============================================
-echo   Echo Test + Monitor - GameServer Mode
+echo   Echo Test + Monitor - GameServer Mode (x2)
 echo ============================================
 echo.
 
@@ -75,13 +75,13 @@ scrape_configs:
 
   - job_name: stress_client
     static_configs:
-      - targets: [\"localhost:9092\"]
+      - targets: [\"localhost:9092\", \"localhost:9093\"]
 
   - job_name: windows
     static_configs:
       - targets: [\"localhost:9182\"]
 '@ | Set-Content -Encoding UTF8 '%PROM_YML%'"
-echo   - prometheus.yml updated (stress_client: 9092)
+echo   - prometheus.yml updated (stress_client: 9092, 9093)
 echo.
 
 REM === 5. Start Monitoring ===
@@ -115,7 +115,10 @@ if %ERRORLEVEL% NEQ 0 (
 echo   - Server is ready
 
 start "" /D "%~dp0bin" EchoStressClient.exe
-echo   - EchoStressClient started
+echo   - EchoStressClient #1 started (MonitorPort=9092)
+
+start "" /D "%~dp0bin" EchoStressClient.exe StressConfig2.ini
+echo   - EchoStressClient #2 started (MonitorPort=9093)
 echo.
 
 echo ============================================
@@ -123,5 +126,7 @@ echo   Done! All services running.
 echo   Prometheus UI : http://localhost:9091
 echo   Grafana       : http://localhost:3000
 echo   (Grafana login: admin / admin)
+echo   Stress #1 metrics : :9092
+echo   Stress #2 metrics : :9093
 echo ============================================
 pause
