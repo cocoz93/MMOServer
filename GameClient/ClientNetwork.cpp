@@ -182,12 +182,14 @@ bool CClientNetwork::SendPacket(const char* data, size_t length)
     return true;
 }
 
-void CClientNetwork::SendMoveStart(uint8_t direction)
+void CClientNetwork::SendMoveStart(uint8_t direction, float x, float y)
 {
     MSG_C2S_MOVE_START msg;
     msg.header.size = sizeof(MSG_C2S_MOVE_START);
     msg.header.type = MsgType::C2S_MOVE_START;
     msg.direction = direction;
+    msg.x = x;
+    msg.y = y;
 
     SendPacket(reinterpret_cast<const char*>(&msg), sizeof(msg));
 }

@@ -28,7 +28,7 @@ public:
     bool SendPacket(const char* data, size_t length);
 
     // C2S 패킷 전송 함수
-    void SendMoveStart(uint8_t direction);
+    void SendMoveStart(uint8_t direction, float x, float y);
     void SendMoveStop(uint8_t direction, float x, float y);
     void SendChat(const wchar_t* message);
     void SendZoneChange(int32_t targetMapId, int32_t targetChannelIndex = -1);

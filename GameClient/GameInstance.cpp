@@ -445,7 +445,7 @@ void CGameInstance::ProcessInput()
         if (newDir != Direction::NONE &&
             !_playerManager.IsBlockedByWall(me->x, me->y, newDir))
         {
-            _network.SendMoveStart(static_cast<uint8_t>(newDir));
+            _network.SendMoveStart(static_cast<uint8_t>(newDir), me->x, me->y);
             me->direction = newDir;
             me->moveState = MoveState::MOVING;
         }

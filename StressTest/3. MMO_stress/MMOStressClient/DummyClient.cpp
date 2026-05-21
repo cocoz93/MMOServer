@@ -367,6 +367,8 @@ void DummyClient::SendMoveStart(StatsLocal& stats, int64_t nowMs)
     msg.header.size = sizeof(msg);
     msg.header.type = MsgType::C2S_MOVE_START;
     msg.direction   = _direction;
+    msg.x           = _x;
+    msg.y           = _y;
 
     _sendBuf.Enqueue(&msg, sizeof(msg));
     _moveStartSentMs = nowMs;

@@ -93,6 +93,8 @@ struct MSG_C2S_MOVE_START
 {
     MsgHeader header;
     uint8_t direction;    // Direction enum
+    float x;              // 클라이언트 예측 좌표 (서버 허용 범위 내 수용)
+    float y;
 };
 
 // C2S: 이동 정지 (방향키 뗌)

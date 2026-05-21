@@ -190,7 +190,7 @@ void CGameServer::GameLoopThread()
                     msg.playerId = player->_playerId;
                     msg.x = player->_x;
                     msg.y = player->_y;
-                    BroadcastAroundSector(zone.get(), player, msg, true);   // 본인 제외 (본인 보정은 벽 클램핑 MOVE_STOP에서 처리)
+                    BroadcastAroundSector(zone.get(), player, msg, false);  // 본인 포함 (이동 중 클라-서버 좌표 드리프트 보정)
                 }
             }
         }
@@ -432,6 +432,27 @@ void CGameServer::RecvMoveStart(CPlayer* player, CSerialBuffer* pMsg)
         return;
 
     Direction dir = static_cast<Direction>(recvMsg.direction);
+
+    // 클라이언트 예측 좌표 수용: 서버 좌표와의 오차가 허용 범위 내이면 채택
+    {
+        float dx = recvMsg.x - player->_x;
+        float dy = recvMsg.y - player->_y;
+        if (dx * dx + dy * dy <= MOVE_START_ACCEPT_DIST_SQ)
+        {
+            // 맵 경계 클램핑 후 수용
+            float acceptX = recvMsg.x;
+            float acceptY = recvMsg.y;
+            float mapW = static_cast<float>(zone->GetMapWidth());
+            float mapH = static_cast<float>(zone->GetMapHeight());
+            if (acceptX < 0.0f)    acceptX = 0.0f;
+            if (acceptX >= mapW)   acceptX = mapW - 1.0f;
+            if (acceptY < 0.0f)    acceptY = 0.0f;
+            if (acceptY >= mapH)   acceptY = mapH - 1.0f;
+            player->_x = acceptX;
+            player->_y = acceptY;
+        }
+        // 범위 초과 시 서버 좌표 유지 (치트 방지)
+    }
 
     // 이동 중 방향 전환: 같은 방향이면 무시, 다른 방향이면 갱신 + 재브로드캐스트
     if (player->_moveState == MoveState::MOVING)
