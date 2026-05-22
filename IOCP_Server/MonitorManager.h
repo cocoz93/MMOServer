@@ -102,10 +102,16 @@ public:
     WorkerCounter _workerCounters[MAX_WORKER_THREADS] = {};
     volatile LONG _workerThreadCount = 0;
 
-    // 워커 스레드 시작 시 호출 → 슬롯 인덱스 반환
+    // 워커 스레드 시작 시 호출 → 슬롯 인덱스 반환 (-1: 슬롯 초과)
     int RegisterWorkerThread()
     {
-        return static_cast<int>(InterlockedIncrement(&_workerThreadCount) - 1);
+        LONG index = InterlockedIncrement(&_workerThreadCount) - 1;
+        if (index >= MAX_WORKER_THREADS)
+        {
+            InterlockedDecrement(&_workerThreadCount);
+            return -1;
+        }
+        return static_cast<int>(index);
     }
 
 };

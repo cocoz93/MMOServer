@@ -45,7 +45,7 @@ public:
 
     bool Init(size_t capacity = 65535)
     {
-        if (capacity <= 0)
+        if (capacity == 0)
             return false;
 
         _buffer = new (std::nothrow) char[capacity];
@@ -324,7 +324,7 @@ public:
 
     bool Init(size_t capacity = 65535)
     {
-        if (capacity <= 0)
+        if (capacity == 0)
             return false;
 
         _buffer = new (std::nothrow) char[capacity];

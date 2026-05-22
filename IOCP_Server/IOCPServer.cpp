@@ -479,7 +479,7 @@ void CIOCPServer::WorkerThread()
         IOCountDecrement(session);
 
         // 워커 스레드별 완료 통지 카운트
-        if (workerIndex < CMonitorManager::MAX_WORKER_THREADS)
+        if (workerIndex >= 0 && workerIndex < CMonitorManager::MAX_WORKER_THREADS)
             InterlockedIncrement64(&_monitor._workerCounters[workerIndex].completionCount);
     }
 }
@@ -882,6 +882,7 @@ void CIOCPServer::RequestSendMsg(int64_t sessionId, const char* data, int length
 void CIOCPServer::EchoTestSend(CSession* session, CSerialBuffer* pMsg)
 {
     // 에코 테스트: 받은 패킷을 그대로 돌려보냄
+    InterlockedIncrement64(&_monitor._sendPackets);
     RequestSendMsg(session->_sessionId, pMsg);
 }
 
@@ -972,11 +973,11 @@ void CIOCPServer::IOCountDecrement(CSession* session)
     const LONG count = InterlockedDecrement(&session->_ioCount);
     if (count < 0)
     {
-        // 언더플로 복구 — 0으로 리셋하지만 release 로직은 실행하지 않으므로
-        // 이 세션의 인덱스는 영구히 반환되지 않는다 (세션 누수).
+        // 언더플로 복구 — 0으로 리셋 후 세션 해제하여 인덱스 누수를 방지한다.
         // TODO: 크래시 로직 도입 후 여기서 즉시 중단하는 것이 안전함
         InterlockedExchange(&session->_ioCount, 0);
         LOG_ERROR_STREAM("[Error] IOCount underflow - SessionId: " << session->_sessionId);
+        ReleaseSession(session);
         return;
     }
 
