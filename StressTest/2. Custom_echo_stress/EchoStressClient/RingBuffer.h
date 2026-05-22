@@ -4,7 +4,7 @@
 #include <cstring>
 #include <mutex>
 #include <algorithm>
-#include <stdexcept>
+
 
 
 // 템플릿 기본 매개변수(Default Template Argument)
