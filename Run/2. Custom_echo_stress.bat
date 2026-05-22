@@ -1,4 +1,10 @@
 @echo off
+REM === 창이 바로 닫히지 않도록 cmd /k 로 재실행 ===
+if not defined _RELAUNCH (
+    set "_RELAUNCH=1"
+    cmd /k "%~f0" %*
+    exit /b
+)
 setlocal EnableDelayedExpansion
 
 REM === Client count (default: 1) ===
@@ -24,8 +30,7 @@ REM === 2. MSBuild path ===
 set "MSBUILD=C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"
 if not exist "%MSBUILD%" (
     echo [ERROR] MSBuild not found!
-    pause
-    exit /b 1
+    goto :ERROR
 )
 
 REM === 3. Build (Release x64) ===
@@ -34,8 +39,7 @@ echo   - Building Server...
 "%MSBUILD%" "%~dp0..\IOCP_Server\IOCP_Server.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
 if %ERRORLEVEL% NEQ 0 (
     echo [ERROR] Server build failed!
-    pause
-    exit /b 1
+    goto :ERROR
 )
 echo   - Server build OK
 
@@ -43,8 +47,7 @@ echo   - Building EchoStressClient...
 "%MSBUILD%" "%~dp0..\StressTest\2. Custom_echo_stress\EchoStressClient.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
 if %ERRORLEVEL% NEQ 0 (
     echo [ERROR] EchoStressClient build failed!
-    pause
-    exit /b 1
+    goto :ERROR
 )
 echo   - EchoStressClient build OK
 echo.
@@ -52,36 +55,44 @@ echo.
 REM === 4. Configure ===
 echo [3/5] Configuring...
 powershell -Command "(Get-Content -Encoding UTF8 '%~dp0bin\ServerConfig.ini') -replace '^Mode=.*', 'Mode=NetWorkLib_EchoTest' -replace '^MonitorEnabled=.*', 'MonitorEnabled=1' | Set-Content -Encoding UTF8 '%~dp0bin\ServerConfig.ini'"
+if %ERRORLEVEL% NEQ 0 (
+    echo [ERROR] ServerConfig.ini update failed!
+    goto :ERROR
+)
 echo   - ServerConfig.ini updated (Mode=NetWorkLib_EchoTest, MonitorEnabled=1)
 
 set "PROM_YML=%~dp0..\Monitoring\prometheus-3.4.1.windows-amd64\prometheus.yml"
-set "STRESS_TARGETS=\"localhost:9092\""
+set STRESS_TARGETS="localhost:9092"
 for /L %%i in (2,1,%CLIENT_COUNT%) do (
     set /a PORT=9091+%%i
-    set "STRESS_TARGETS=!STRESS_TARGETS!, \"localhost:!PORT!\""
+    set STRESS_TARGETS=!STRESS_TARGETS!, "localhost:!PORT!"
 )
-powershell -NoProfile -Command "@'
-global:
-  scrape_interval: 5s
-  evaluation_interval: 15s
-
-scrape_configs:
-  - job_name: prometheus
-    static_configs:
-      - targets: [\"localhost:9091\"]
-
-  - job_name: mmo_server
-    static_configs:
-      - targets: [\"localhost:9090\"]
-
-  - job_name: stress_client
-    static_configs:
-      - targets: [%STRESS_TARGETS%]
-
-  - job_name: windows
-    static_configs:
-      - targets: [\"localhost:9182\"]
-'@ | Set-Content -Encoding UTF8 '%PROM_YML%'"
+(
+echo global:
+echo   scrape_interval: 5s
+echo   evaluation_interval: 15s
+echo.
+echo scrape_configs:
+echo   - job_name: prometheus
+echo     static_configs:
+echo       - targets: ["localhost:9091"]
+echo.
+echo   - job_name: mmo_server
+echo     static_configs:
+echo       - targets: ["localhost:9090"]
+echo.
+echo   - job_name: stress_client
+echo     static_configs:
+echo       - targets: [%STRESS_TARGETS%]
+echo.
+echo   - job_name: windows
+echo     static_configs:
+echo       - targets: ["localhost:9182"]
+) > "%PROM_YML%"
+if %ERRORLEVEL% NEQ 0 (
+    echo [ERROR] prometheus.yml update failed!
+    goto :ERROR
+)
 echo   - prometheus.yml updated (stress_client: %STRESS_TARGETS%)
 echo.
 
@@ -114,8 +125,7 @@ if %ERRORLEVEL% EQU 0 goto SERVER_READY
 set /a WAIT_COUNT+=1
 if %WAIT_COUNT% GEQ 30 (
     echo [ERROR] Server did not start within 30 seconds!
-    pause
-    exit /b 1
+    goto :ERROR
 )
 timeout /t 1 /nobreak >nul
 goto WAIT_SERVER
@@ -137,3 +147,12 @@ echo   Grafana       : http://localhost:3000
 echo   (Grafana login: admin / admin)
 echo ============================================
 pause
+exit /b 0
+
+:ERROR
+echo.
+echo ============================================
+echo   [FAILED] Error occurred. Check log above.
+echo ============================================
+pause
+exit /b 1
