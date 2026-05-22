@@ -24,6 +24,10 @@ void DummyManager::Start()
     _running = true;
 
     const int total = _config.clientCount;
+    const int rampUpMs = _config.rampUpIntervalMs;
+    _rampUpCount.store((rampUpMs <= 0) ? total : 1, std::memory_order_relaxed);
+    _lastRampUpMs = static_cast<int64_t>(GetTickCount64());
+
     int threadCount = (std::max)(1, (std::min)(4, total / 250));
 
     for (int t = 0; t < threadCount; ++t)
@@ -116,13 +120,34 @@ void DummyManager::NetworkLoop(int begin, int end)
     // Sleep(1)이 실제 1ms에 가깝게 동작하도록 타이머 해상도 설정
     timeBeginPeriod(1);
 
+    const int   rampUpMs        = _config.rampUpIntervalMs;
+    const int   total           = _config.clientCount;
+
     while (_running)
     {
         int64_t loopStart = static_cast<int64_t>(GetTickCount64());
 
+        // ── 0. Ramp-up 갱신 (첫 번째 스레드만 수행) ────────────────
+        if (rampUpMs > 0 && begin == 0)
+        {
+            int64_t now = loopStart;
+            int64_t elapsed = now - _lastRampUpMs;
+            if (elapsed >= rampUpMs)
+            {
+                int add = static_cast<int>(elapsed / rampUpMs);
+                int cur = _rampUpCount.load(std::memory_order_relaxed);
+                int next = (std::min)(cur + add, total);
+                _rampUpCount.store(next, std::memory_order_relaxed);
+                _lastRampUpMs += static_cast<int64_t>(add) * rampUpMs;
+            }
+        }
+
         // ── 1. DISCONNECTED 클라이언트 접속 시도 ──────────────────
+        int rampLimit = _rampUpCount.load(std::memory_order_relaxed);
         for (int i = begin; i < end; ++i)
         {
+            if (i >= rampLimit)
+                break;
             auto& c = *_clients[i];
             if (c.IsReadyToConnect())
                 c.StartConnect(ip, port, _stats, reconnectDelay);

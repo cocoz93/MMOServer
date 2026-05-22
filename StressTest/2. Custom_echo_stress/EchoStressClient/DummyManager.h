@@ -32,4 +32,8 @@ private:
     std::vector<std::thread> _threads;
     std::thread _displayThread;
     std::atomic<bool> _running{false};
+
+    // Ramp-up: 점진 접속 제어 (전체 스레드 공유)
+    std::atomic<int>  _rampUpCount{0};
+    int64_t           _lastRampUpMs{0};
 };

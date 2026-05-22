@@ -18,6 +18,7 @@ struct Config
     int         monitorPort     = 9092;          // Prometheus 메트릭 HTTP 포트
     int         minPacketSize   = 12;            // 에코 패킷 최소 크기(B). 하한 12 (헤더4+echoValue8)
     int         maxPacketSize   = 256;           // 에코 패킷 최대 크기(B). 상한 4096 (서버 MAX_PACKET_SIZE)
+    int         rampUpIntervalMs = 0;            // 점진 접속 간격(ms). 0이면 전체 동시 접속, >0이면 해당 간격마다 1명씩 추가
 
     // 실행 파일 경로 기준으로 ini 로드 (인자 없으면 StressConfig.ini)
     bool Load(const char* iniFileName = nullptr)
@@ -69,6 +70,7 @@ struct Config
         monitorPort         = GetPrivateProfileIntW(L"Stress", L"MonitorPort", 9092, path);
         minPacketSize       = GetPrivateProfileIntW(L"Stress", L"MinPacketSize", 12, path);
         maxPacketSize       = GetPrivateProfileIntW(L"Stress", L"MaxPacketSize", 256, path);
+        rampUpIntervalMs    = GetPrivateProfileIntW(L"Stress", L"RampUpIntervalMs", 0, path);
 
         // 유효성 보정
         if (minPacketSize < 12)   minPacketSize = 12;
@@ -96,5 +98,6 @@ private:
         wprintf(L"  MonitorPort    : %d\n", monitorPort);
         wprintf(L"  MinPacketSize  : %d\n", minPacketSize);
         wprintf(L"  MaxPacketSize  : %d\n", maxPacketSize);
+        wprintf(L"  RampUpInterval : %d ms\n", rampUpIntervalMs);
     }
 };

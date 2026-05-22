@@ -7,6 +7,13 @@
 // ─────────────────────────────────────────────────────────────────
 // 유틸
 // ─────────────────────────────────────────────────────────────────
+static void FillDeterministicPadding(char* dst, size_t len, uint64_t seed)
+{
+    std::mt19937 rng(static_cast<unsigned>(seed));
+    for (size_t i = 0; i < len; ++i)
+        dst[i] = static_cast<char>(rng() & 0xFF);
+}
+
 int64_t DummyClient::NowMs()
 {
     return static_cast<int64_t>(GetTickCount64());
@@ -198,6 +205,16 @@ void DummyClient::ProcessPackets(Stats& stats, int reconnectDelayMs, int maxPack
 
                 stats.RecordRtt(rtt);
             }
+            // payload 무결성 검증
+            if (totalSize > ECHO_TOTAL_SIZE)
+            {
+                char expected[4096];
+                size_t padLen = totalSize - ECHO_TOTAL_SIZE;
+                FillDeterministicPadding(expected, padLen, recvVal);
+                if (std::memcmp(packet + ECHO_TOTAL_SIZE, expected, padLen) != 0)
+                    stats.packetError.fetch_add(1);
+            }
+
             _expectedRecv++;
             if (_pendingCount > 0)
             {
@@ -250,6 +267,8 @@ void DummyClient::TrySend(int overSendCount, int minPacketSize, int maxPacketSiz
         hdr.type = MsgType::ECHO;
         std::memcpy(packet,                     &hdr,        sizeof(MsgHeader));
         std::memcpy(packet + sizeof(MsgHeader), &_sentValue, sizeof(uint64_t));
+        if (packetSize > ECHO_TOTAL_SIZE)
+            FillDeterministicPadding(packet + ECHO_TOTAL_SIZE, packetSize - ECHO_TOTAL_SIZE, _sentValue);
 
         if (_sendBuf.Enqueue(packet, packetSize) == 0)
         {
