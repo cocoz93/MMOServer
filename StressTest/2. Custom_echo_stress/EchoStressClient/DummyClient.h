@@ -49,9 +49,9 @@ public:
     bool IsConnecting()   const { return _state == ClientState::CONNECTING;   }
     bool IsDisconnected() const { return _state == ClientState::DISCONNECTED; }
     SOCKET GetSocket()    const { return _sock; }
+    void CloseSocket();
 
 private:
-    void CloseSocket();
     void Disconnect(int reconnectDelayMs, Stats& stats);
     void ResetEchoState();
 

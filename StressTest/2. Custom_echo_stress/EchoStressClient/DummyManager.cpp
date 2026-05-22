@@ -53,6 +53,10 @@ void DummyManager::Stop()
             t.join();
     }
     _threads.clear();
+
+    // 스레드 종료 후 모든 소켓 명시적 정리 (WSACleanup 이전에 수행되도록)
+    for (auto& c : _clients)
+        c->CloseSocket();
 }
 
 // ─────────────────────────────────────────────────────────────────
