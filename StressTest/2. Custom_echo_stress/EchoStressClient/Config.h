@@ -19,10 +19,10 @@ struct Config
     int         minPacketSize   = 12;            // 에코 패킷 최소 크기(B). 하한 12 (헤더4+echoValue8)
     int         maxPacketSize   = 256;           // 에코 패킷 최대 크기(B). 상한 4096 (서버 MAX_PACKET_SIZE)
     int         rampUpIntervalMs = 0;            // 점진 접속 간격(ms). 0이면 전체 동시 접속, >0이면 해당 간격마다 1명씩 추가
-    int         attackMode       = 0;            // 0=정상 에코, 1=비정상 패킷 크기, 2=패킷 폭주, 3=idle(타임아웃), 4=sendQ 압박
+    int         attackMode       = 1;            // 0=정상 에코, 1=비정상 패킷 크기, 2=패킷 폭주, 3=idle(타임아웃), 4=sendQ 압박
     int         attackClientCount = 0;           // 0=전원 공격, N=앞에서 N명만 공격 (나머지 정상 에코)
 
-    // 실행 파일 경로 기준으로 ini 로드 (인자 없으면 StressConfig.ini)
+    // 실행 파일 경로 기준으로 ini 로드 (인자 없으면 EchoStressConfig.ini)
     bool Load(const char* iniFileName = nullptr)
     {
         wchar_t exePath[MAX_PATH];
@@ -39,14 +39,14 @@ struct Config
         }
         else
         {
-            iniPath = iniPath.substr(0, pos + 1) + L"StressConfig.ini";
+            iniPath = iniPath.substr(0, pos + 1) + L"EchoStressConfig.ini";
         }
 
         // 파일 존재 확인
         DWORD attr = GetFileAttributesW(iniPath.c_str());
         if (attr == INVALID_FILE_ATTRIBUTES)
         {
-            wprintf(L"[Config] StressConfig.ini not found. Using defaults.\n");
+            wprintf(L"[Config] EchoStressConfig.ini not found. Using defaults.\n");
             PrintConfig();
             return false;
         }
@@ -73,7 +73,7 @@ struct Config
         minPacketSize       = GetPrivateProfileIntW(L"Stress", L"MinPacketSize", 12, path);
         maxPacketSize       = GetPrivateProfileIntW(L"Stress", L"MaxPacketSize", 256, path);
         rampUpIntervalMs    = GetPrivateProfileIntW(L"Stress", L"RampUpIntervalMs", 0, path);
-        attackMode          = GetPrivateProfileIntW(L"Stress", L"AttackMode", 0, path);
+        attackMode          = GetPrivateProfileIntW(L"Stress", L"AttackMode", 1, path);
         attackClientCount   = GetPrivateProfileIntW(L"Stress", L"AttackClientCount", 0, path);
 
         // 유효성 보정
@@ -85,7 +85,7 @@ struct Config
         if (attackClientCount < 0) attackClientCount = 0;
         if (attackClientCount > clientCount) attackClientCount = clientCount;
 
-        wprintf(L"[Config] Loaded from StressConfig.ini\n");
+        wprintf(L"[Config] Loaded from EchoStressConfig.ini\n");
         PrintConfig();
         return true;
     }
