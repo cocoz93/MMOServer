@@ -268,6 +268,26 @@ void DummyClient::ProcessPackets(Stats& stats, int reconnectDelayMs, int maxPack
 }
 
 // ─────────────────────────────────────────────────────────────────
+// 공격 테스트: 비정상 패킷 크기 송신 (mode 1)
+// ─────────────────────────────────────────────────────────────────
+void DummyClient::SendAttackInvalidSize(Stats& stats)
+{
+    if (!IsConnected()) return;
+    if (_sendBuf.GetDataSize() > 0) return;  // 이전 공격 패킷 미전송 시 대기
+
+    static constexpr uint16_t INVALID_SIZES[] = { 0, 3, 4097, 65535 };
+    static thread_local std::mt19937 rng{ std::random_device{}() };
+    std::uniform_int_distribution<int> dist(0, 3);
+
+    MsgHeader hdr;
+    hdr.size = INVALID_SIZES[dist(rng)];
+    hdr.type = MsgType::ECHO;
+
+    _sendBuf.Enqueue(reinterpret_cast<const char*>(&hdr), sizeof(MsgHeader));
+    stats.attackPacketsSent.fetch_add(1);
+}
+
+// ─────────────────────────────────────────────────────────────────
 // 에코 송신 (송신 링버퍼에 enqueue)
 // ─────────────────────────────────────────────────────────────────
 void DummyClient::TrySend(int overSendCount, int minPacketSize, int maxPacketSize, int reconnectDelayMs, Stats& stats)

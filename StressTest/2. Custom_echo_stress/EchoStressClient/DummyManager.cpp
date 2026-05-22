@@ -98,6 +98,14 @@ void DummyManager::DisplayLoop()
 
         wprintf(L"[%02d:%02d] Conn: %d/%d | Send: %lld/s | Recv: %lld/s | RTT: %lldms | Loop: %lldms | Pend: %d | BufFull: %lld | Err: %lld\n",
                 mm, ss, conn, total, sendTps, recvTps, avgRtt, loopMs, pending, bufFull, errors);
+
+        if (_config.attackMode > 0)
+        {
+            int64_t atkSent  = _stats.attackPacketsSent.load();
+            int64_t svrDisc  = _stats.disconnectFromServer.load();
+            wprintf(L"  [Attack] Mode: %d | AtkSent: %lld | SvrDisconnect: %lld\n",
+                    _config.attackMode, atkSent, svrDisc);
+        }
     }
 }
 
@@ -114,8 +122,10 @@ void DummyManager::NetworkLoop(int begin, int end)
     const int   echoTimeoutMs   = _config.echoTimeoutMs;
     const int   reconnectDelay  = _config.reconnectIntervalMs;
     const bool  disconnectTest  = _config.disconnectTest;
-    const int   minPacketSize  = _config.minPacketSize;
-    const int   maxPacketSize  = _config.maxPacketSize;
+    const int   minPacketSize      = _config.minPacketSize;
+    const int   maxPacketSize      = _config.maxPacketSize;
+    const int   attackMode         = _config.attackMode;
+    const int   attackClientCount  = _config.attackClientCount;
 
     // Sleep(1)이 실제 1ms에 가깝게 동작하도록 타이머 해상도 설정
     timeBeginPeriod(1);
@@ -172,7 +182,10 @@ void DummyManager::NetworkLoop(int begin, int end)
 
                 if (c.IsConnected())
                 {
-                    FD_SET(s, &readSet);
+                    bool isAttacker = (attackMode > 0) &&
+                                      (attackClientCount == 0 || i < attackClientCount);
+                    if (!(attackMode == 4 && isAttacker))
+                        FD_SET(s, &readSet);
                     hasAny = true;
                 }
                 else if (c.IsConnecting())
@@ -226,12 +239,42 @@ void DummyManager::NetworkLoop(int begin, int end)
             auto& c = *_clients[i];
             if (!c.IsConnected()) continue;
 
-            c.TrySend(overSendCount, minPacketSize, maxPacketSize, reconnectDelay, _stats);
-            c.FlushSend(reconnectDelay, _stats);
-            c.CheckTimeout(echoTimeoutMs, _stats);
+            bool isAttacker = (attackMode > 0) &&
+                              (attackClientCount == 0 || i < attackClientCount);
 
-            if (disconnectTest)
-                c.CheckForcedDisconnect(reconnectDelay, _stats);
+            if (!isAttacker)
+            {
+                // 기존 정상 에코 (변경 없음)
+                c.TrySend(overSendCount, minPacketSize, maxPacketSize, reconnectDelay, _stats);
+                c.FlushSend(reconnectDelay, _stats);
+                c.CheckTimeout(echoTimeoutMs, _stats);
+                if (disconnectTest)
+                    c.CheckForcedDisconnect(reconnectDelay, _stats);
+            }
+            else
+            {
+                switch (attackMode)
+                {
+                case 1:  // 비정상 패킷 크기
+                    c.SendAttackInvalidSize(_stats);
+                    c.FlushSend(reconnectDelay, _stats);
+                    break;
+
+                case 2:  // 패킷 폭주 (유효 패킷, 제한 해제)
+                    c.TrySend(INT_MAX, minPacketSize, maxPacketSize, reconnectDelay, _stats);
+                    c.FlushSend(reconnectDelay, _stats);
+                    c.CheckTimeout(echoTimeoutMs, _stats);
+                    break;
+
+                case 3:  // idle — 모두 스킵, 서버 타임아웃 대기
+                    break;
+
+                case 4:  // sendQ 압박 — 대량 송신, recv 안 함
+                    c.TrySend(INT_MAX, minPacketSize, maxPacketSize, reconnectDelay, _stats);
+                    c.FlushSend(reconnectDelay, _stats);
+                    break;
+                }
+            }
         }
 
         // ── 4. 루프 시간 기록 + 딜레이 ──────────────────────────────

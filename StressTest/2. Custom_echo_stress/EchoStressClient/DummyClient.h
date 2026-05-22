@@ -37,6 +37,9 @@ public:
     // EchoTimeoutMs 초과 여부 확인
     void CheckTimeout(int echoTimeoutMs, Stats& stats);
 
+    // 공격 테스트: 비정상 패킷 크기 송신 (mode 1)
+    void SendAttackInvalidSize(Stats& stats);
+
     // DisconnectTest 전용: 랜덤 타이밍으로 강제 연결 해제
     void ScheduleDisconnect(int reconnectIntervalMs);
     void CheckForcedDisconnect(int reconnectDelayMs, Stats& stats);

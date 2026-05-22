@@ -57,6 +57,9 @@ struct Stats
         rttBuckets[RTT_BUCKET_COUNT - 1].fetch_add(1);  // +Inf
     }
 
+    // --- 공격 테스트 ---
+    std::atomic<int64_t> attackPacketsSent  {0};   // 공격 패킷 송신 수 (mode 1 전용)
+
     // --- 현재 연결 수 ---
     std::atomic<int>     connectedCount     {0};
 
