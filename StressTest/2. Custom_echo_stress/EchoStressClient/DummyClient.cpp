@@ -9,9 +9,30 @@
 // ─────────────────────────────────────────────────────────────────
 static void FillDeterministicPadding(char* dst, size_t len, uint64_t seed)
 {
-    std::mt19937 rng(static_cast<unsigned>(seed));
-    for (size_t i = 0; i < len; ++i)
-        dst[i] = static_cast<char>(rng() & 0xFF);
+    uint64_t s = seed;
+    size_t i = 0;
+
+    // 8바이트 단위 채우기 (splitmix64)
+    for (; i + 8 <= len; i += 8)
+    {
+        s += 0x9e3779b97f4a7c15ULL;
+        uint64_t z = s;
+        z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9ULL;
+        z = (z ^ (z >> 27)) * 0x94d049bb133111ebULL;
+        z ^= (z >> 31);
+        std::memcpy(dst + i, &z, 8);
+    }
+
+    // 나머지 바이트
+    if (i < len)
+    {
+        s += 0x9e3779b97f4a7c15ULL;
+        uint64_t z = s;
+        z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9ULL;
+        z = (z ^ (z >> 27)) * 0x94d049bb133111ebULL;
+        z ^= (z >> 31);
+        std::memcpy(dst + i, &z, len - i);
+    }
 }
 
 int64_t DummyClient::NowMs()
