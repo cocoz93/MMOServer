@@ -198,9 +198,10 @@ void DummyClient::ProcessPackets(Stats& stats, int reconnectDelayMs, int maxPack
 
         // hdr.size = 전체 크기 (헤더 포함)
         size_t totalSize = hdr.size;
-        if (totalSize < ECHO_TOTAL_SIZE || totalSize > static_cast<size_t>(maxPacketSize))
+        if (totalSize < ECHO_TOTAL_SIZE || totalSize > static_cast<size_t>(maxPacketSize)
+            || hdr.type != MsgType::ECHO)
         {
-            // 예상치 못한 패킷 크기 - 즉시 연결 종료 (ResetEchoState에서 링버퍼 Clear)
+            // 예상치 못한 패킷 크기/타입 - 즉시 연결 종료 (ResetEchoState에서 링버퍼 Clear)
             Disconnect(reconnectDelayMs, stats);
             return;
         }
