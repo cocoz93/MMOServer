@@ -34,6 +34,75 @@ inline void LogError(const std::wstring& message)
 }
 }
 
+// ==========================================================================
+// USE_SPDLOG_LOGGER 분기 — IOCP_Server에만 정의됨
+// ==========================================================================
+#ifdef USE_SPDLOG_LOGGER
+
+#include "Logger.h"
+
+// ---- SLOG_* 매크로 (직접 spdlog 호출) ----
+#define SLOG_DEBUG(...) SPDLOG_DEBUG(__VA_ARGS__)
+#define SLOG_INFO(...)  SPDLOG_INFO(__VA_ARGS__)
+#define SLOG_WARN(...)  SPDLOG_WARN(__VA_ARGS__)
+#define SLOG_ERROR(...) SPDLOG_ERROR(__VA_ARGS__)
+
+// ---- 기존 LOG_ERROR_STREAM → spdlog 브릿지 ----
+// ostringstream으로 조립 후 SLOG_ERROR로 출력 (source location 전달)
+#define LOG_ERROR_STREAM(expr) \
+    do \
+    { \
+        std::ostringstream _logErrorOss; \
+        _logErrorOss << expr; \
+        SLOG_ERROR("{}", _logErrorOss.str()); \
+    } while (0)
+
+#define WLOG_ERROR_STREAM(expr) \
+    do \
+    { \
+        std::wostringstream _logErrorOss; \
+        _logErrorOss << expr; \
+        ::shared::LogError(_logErrorOss.str()); \
+    } while (0)
+
+// ---- LOG_WSA_ERROR_STREAM → ShouldIgnoreWsaError 유지, 레벨 세분화 ----
+// 초기화 단계(WSAStartup, bind, listen 등) 실패 = ERROR
+// 런타임 Per-IO 에러 = WARN
+#define LOG_WSA_ERROR_STREAM(expr, errCodeExpr) \
+    do \
+    { \
+        const int _wsaErr = (errCodeExpr); \
+        if (!::shared::ShouldIgnoreWsaError(_wsaErr)) \
+        { \
+            std::ostringstream _logErrorOss; \
+            _logErrorOss << expr << _wsaErr; \
+            SLOG_WARN("{}", _logErrorOss.str()); \
+        } \
+    } while (0)
+
+#define WLOG_WSA_ERROR_STREAM(expr, errCodeExpr) \
+    do \
+    { \
+        const int _wsaErr = (errCodeExpr); \
+        if (!::shared::ShouldIgnoreWsaError(_wsaErr)) \
+        { \
+            std::wostringstream _logErrorOss; \
+            _logErrorOss << expr << _wsaErr; \
+            ::shared::LogError(_logErrorOss.str()); \
+        } \
+    } while (0)
+
+// ==========================================================================
+// USE_SPDLOG_LOGGER 미정의 — 기존 동작 유지 (GameClient 등)
+// ==========================================================================
+#else
+
+// SLOG_* 매크로 — spdlog 없이는 no-op
+#define SLOG_DEBUG(...) ((void)0)
+#define SLOG_INFO(...)  ((void)0)
+#define SLOG_WARN(...)  ((void)0)
+#define SLOG_ERROR(...) ((void)0)
+
 #define LOG_ERROR_STREAM(expr) \
     do \
     { \
@@ -73,3 +142,5 @@ inline void LogError(const std::wstring& message)
             ::shared::LogError(_logErrorOss.str()); \
         } \
     } while (0)
+
+#endif // USE_SPDLOG_LOGGER

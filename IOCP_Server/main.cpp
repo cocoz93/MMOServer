@@ -12,6 +12,8 @@
 #include "MonitorManager.h"
 #include "MonitorServer.h"
 #include "ServerConfig.h"
+#include "../Shared/Common/Logger.h"
+#include "../Shared/Common/ErrorLog.h"
 
 std::atomic<bool> running{true};
 std::mutex mtx;
@@ -26,13 +28,16 @@ void SignalProcessShutdown()
 
 int main()
 {
+    // 로거 초기화 (RAII — 소멸자에서 Shutdown)
+    shared::LoggerGuard loggerGuard;
+
     // INI 설정 파일 로드
     ServerConfig config;
     config.Load();
 
-    std::cout << "=== IOCP MMO Server ===" << std::endl;
-    std::cout << "Port: " << config.port << std::endl;
-    std::cout << "Max Clients: " << config.maxClients << std::endl;
+    SLOG_INFO("=== IOCP MMO Server ===");
+    SLOG_INFO("Port: {}", config.port);
+    SLOG_INFO("Max Clients: {}", config.maxClients);
 
     CMonitorManager monitor;
     std::unique_ptr<CMonitorServer> monitorSvr;
@@ -44,13 +49,13 @@ int main()
     if (!server.Init(config.mode, config.port, config.maxClients,
                      config.maps.data(), static_cast<int32_t>(config.maps.size())))
     {
-        std::cerr << "[Error] Server Init failed" << std::endl;
+        SLOG_ERROR("[Error] Server Init failed");
         return 1;
     }
 
     if (!server.Start())
     {
-        std::cerr << "[Error] Server Start failed" << std::endl;
+        SLOG_ERROR("[Error] Server Start failed");
         return 1;
     }
 
@@ -65,6 +70,6 @@ int main()
     if (monitorSvr) monitorSvr->Stop();
     server.Stop();
 
-    std::cout << "Server shutdown complete" << std::endl;
+    SLOG_INFO("Server shutdown complete");
     return 0;
 }

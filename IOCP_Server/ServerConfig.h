@@ -32,6 +32,7 @@
 
 #include "Common.h"
 #include "ZoneManager.h"
+#include "../Shared/Common/ErrorLog.h"
 
 struct ServerConfig
 {
@@ -57,7 +58,7 @@ struct ServerConfig
         DWORD attr = GetFileAttributesW(iniPath.c_str());
         if (attr == INVALID_FILE_ATTRIBUTES)
         {
-            std::cout << "[ServerConfig] ServerConfig.ini not found. Using defaults." << std::endl;
+            SLOG_INFO("[ServerConfig] ServerConfig.ini not found. Using defaults.");
             SetDefaultMaps();
             return false;
         }
@@ -118,7 +119,7 @@ private:
         if (s == L"NetWorkLib_EchoTest") return ServerMode::NetWorkLib_EchoTest;
         if (s == L"GameServer")          return ServerMode::GameServer;
 
-        std::cout << "[ServerConfig] Unknown Mode '" << WtoA(str) << "'. Defaulting to GameServer." << std::endl;
+        SLOG_WARN("[ServerConfig] Unknown Mode '{}'. Defaulting to GameServer.", WtoA(str));
         return ServerMode::GameServer;
     }
 
@@ -140,12 +141,12 @@ private:
         case ServerMode::GameServer:          modeName = "GameServer";          break;
         }
 
-        std::cout << "[ServerConfig] Loaded from INI" << std::endl;
-        std::cout << "  Mode        : " << modeName << std::endl;
-        std::cout << "  Port        : " << port << std::endl;
-        std::cout << "  MaxClients  : " << maxClients << std::endl;
-        std::cout << "  MonitorPort : " << monitorPort << std::endl;
-        std::cout << "  MonitorOn   : " << (monitorEnabled ? "true" : "false") << std::endl;
-        std::cout << "  Maps        : " << maps.size() << std::endl;
+        SLOG_INFO("[ServerConfig] Loaded from INI");
+        SLOG_INFO("  Mode        : {}", modeName);
+        SLOG_INFO("  Port        : {}", port);
+        SLOG_INFO("  MaxClients  : {}", maxClients);
+        SLOG_INFO("  MonitorPort : {}", monitorPort);
+        SLOG_INFO("  MonitorOn   : {}", monitorEnabled ? "true" : "false");
+        SLOG_INFO("  Maps        : {}", maps.size());
     }
 };

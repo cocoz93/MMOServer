@@ -119,7 +119,7 @@ bool CIOCPServer::Start()
     // 인덱스 스택 초기화 (maxClients만큼 사전 할당)
     if (!_availableIndices.Init(_maxClients))
     {
-        printf("[Error] Failed to init available indices stack\n");
+        SLOG_ERROR("[Error] Failed to init available indices stack");
         return false;
     }
 
@@ -167,7 +167,7 @@ bool CIOCPServer::Start()
     _timingWheel = std::make_unique<CTimingWheel>();
     if (!_timingWheel->Init(_maxClients, SESSION_TIMEOUT_SEC, TIMER_TICK_INTERVAL_MS))
     {
-        printf("[TimingWheel] Init failed\n");
+        SLOG_ERROR("[TimingWheel] Init failed");
         return false;
     }
     _timingWheel->Start(OnSessionTimeout, this);
@@ -182,15 +182,14 @@ bool CIOCPServer::Start()
     // Accept 스레드 생성
     _acceptThread = std::thread(&CIOCPServer::AcceptThread, this);
 
-    std::cout << "[Network] Server started with " << threadCount << " worker threads (Mode: ";
-
+    const char* modeName = "Unknown";
     switch (_serverMode)
     {
-    case ServerMode::GameCodiEchoTest:    std::cout << "GameCodiEchoTest";    break;
-    case ServerMode::NetWorkLib_EchoTest: std::cout << "NetWorkLib_EchoTest"; break;
-    case ServerMode::GameServer:          std::cout << "GameServer";          break;
+    case ServerMode::GameCodiEchoTest:    modeName = "GameCodiEchoTest";    break;
+    case ServerMode::NetWorkLib_EchoTest: modeName = "NetWorkLib_EchoTest"; break;
+    case ServerMode::GameServer:          modeName = "GameServer";          break;
     }
-    std::cout << ")" << std::endl;
+    SLOG_INFO("[Network] Server started with {} worker threads (Mode: {})", threadCount, modeName);
     return true;
 }
 
@@ -201,7 +200,7 @@ bool CIOCPServer::CreateListenSocket()
     if (_listenSocket == INVALID_SOCKET)
     {
         const int wsaErr = WSAGetLastError();
-        LOG_WSA_ERROR_STREAM("WSASocket failed: ", wsaErr);
+        SLOG_ERROR("WSASocket failed: {}", wsaErr);
         return false;
     }
 
@@ -214,7 +213,7 @@ bool CIOCPServer::CreateListenSocket()
     if (bind(_listenSocket, (SOCKADDR*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR)
     {
         const int wsaErr = WSAGetLastError();
-        LOG_WSA_ERROR_STREAM("bind failed: ", wsaErr);
+        SLOG_ERROR("bind failed: {}", wsaErr);
         closesocket(_listenSocket);
         return false;
     }
@@ -222,7 +221,7 @@ bool CIOCPServer::CreateListenSocket()
     if (listen(_listenSocket, SOMAXCONN_HINT(1024)) == SOCKET_ERROR)
     {
         const int wsaErr = WSAGetLastError();
-        LOG_WSA_ERROR_STREAM("listen failed: ", wsaErr);
+        SLOG_ERROR("listen failed: {}", wsaErr);
         closesocket(_listenSocket);
         return false;
     }
@@ -490,7 +489,7 @@ void CIOCPServer::ProcessRecv(CSession* session, DWORD bytesTransferred)
     // 방어 로직
     if (bytesTransferred == 0)
     {
-        LOG_ERROR_STREAM("[Warning] ProcessRecv called with bytesTransferred == 0 - SessionId: " << session->_sessionId);
+        SLOG_WARN("ProcessRecv called with bytesTransferred == 0 - SessionId: {}", session->_sessionId);
         RequestDisconnectSession(session);
         return;
     }
@@ -600,7 +599,7 @@ void CIOCPServer::PostRecv(CSession* session, bool skipAcquire)
         {
             if (!shared::ShouldIgnoreWsaError(wsaErr))
             {
-                LOG_WSA_ERROR_STREAM("[Error] WSARecv failed - SessionId: " << sessionId << ", WSAError: ", wsaErr);
+                LOG_WSA_ERROR_STREAM("WSARecv failed - SessionId: " << sessionId << ", WSAError: ", wsaErr);
             }
             RequestDisconnectSession(session);
             IOCountDecrement(session);
@@ -821,7 +820,7 @@ void CIOCPServer::PostSend(CSession* session)
         {
             if (!shared::ShouldIgnoreWsaError(wsaErr))
             {
-                LOG_WSA_ERROR_STREAM("[Error] WSASend failed - SessionId: " << sessionId
+                LOG_WSA_ERROR_STREAM("WSASend failed - SessionId: " << sessionId
                     << ", WSAError: ", wsaErr);
             }
             InterlockedExchange(&session->_sending, FALSE);

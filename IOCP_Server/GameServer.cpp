@@ -2,6 +2,7 @@
 #include "Player.h"
 #include "Protocol.h"
 #include "SerialBuffer.h"
+#include "../Shared/Common/ErrorLog.h"
 #include <iostream>
 #include <chrono>
 #include <cmath>
@@ -68,7 +69,7 @@ bool CGameServer::Start()
     case ServerMode::NetWorkLib_EchoTest: modeName = "NetWorkLib_EchoTest"; break;
     case ServerMode::GameServer:          modeName = "GameServer";          break;
     }
-    std::cout << "[GameServer] Started - Mode: " << modeName << std::endl;
+    SLOG_INFO("[GameServer] Started - Mode: {}", modeName);
 
     return true;
 }

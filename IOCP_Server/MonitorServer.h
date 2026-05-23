@@ -25,6 +25,7 @@
 
 #include "ThirdParty/httplib.h"
 #include "MonitorManager.h"
+#include "../Shared/Common/ErrorLog.h"
 
 class CMonitorServer
 {
@@ -65,22 +66,21 @@ private:
 
         while (!_stopFlag)
         {
-            std::cout << "[MonitorServer] Listening on port " << _port << std::endl;
+            SLOG_INFO("[MonitorServer] Listening on port {}", _port);
             bool ok = _svr->listen("0.0.0.0", _port);
 
             if (_stopFlag) break;
 
             if (!ok)
             {
-                std::cerr << "[MonitorServer] listen failed on port " << _port
-                          << ". Retrying in " << RETRY_INTERVAL_SEC << "s..." << std::endl;
+                SLOG_ERROR("[MonitorServer] listen failed on port {}. Retrying in {}s...", _port, RETRY_INTERVAL_SEC);
 
                 for (int i = 0; i < RETRY_INTERVAL_SEC * 10 && !_stopFlag; ++i)
                     std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
         }
 
-        std::cout << "[MonitorServer] Stopped" << std::endl;
+        SLOG_INFO("[MonitorServer] Stopped");
     }
 
     // ══════════════════════════════════════════════════════════════
