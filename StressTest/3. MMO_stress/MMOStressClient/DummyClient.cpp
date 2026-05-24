@@ -405,19 +405,58 @@ void DummyClient::SendHeartbeat(StatsLocal& stats)
     stats.heartbeatSent += 1;
 }
 
+// MMO 더미 채팅 문장 풀
+static const wchar_t* s_chatMessages[] = {
+    // 인사/반응
+    L"ㅎㅇ",
+    L"ㅋㅋㅋㅋ",
+    L"ㅎㅎ",
+    L"ㄱㄱ",
+    L"ㅇㅋ",
+    L"ㅁㅊ",
+    L"ㄷㄷ",
+    L"대박",
+    L"미쳤다",
+    // 파티/전투
+    L"파티 구함",
+    L"힐러 어디감",
+    L"보스 언제 젠?",
+    L"버프 좀",
+    L"탱커 구해요",
+    L"딜 세다",
+    L"어그로 잡아주세요",
+    L"부활 어디서 함?",
+    // 사냥/아이템
+    L"사냥터 어디가 좋음?",
+    L"레벨업 축하",
+    L"아이템 떨어졌다",
+    L"누가 먹었어",
+    L"포션 다 떨어짐",
+    L"여기 몹 세다",
+    L"한 번 더 가자",
+    // 거래
+    L"스태프 팝니다",
+    L"강화석 삽니다",
+    L"+9 검 얼마에 팔아요?",
+    // 잡담
+    L"마을 가야함",
+    L"수고하셨습니다",
+    L"잠수 좀 탈게요",
+    L"오늘 접속률 왜 이래",
+    L"점검 언제임?",
+    L"서버 렉 걸리는데",
+};
+static constexpr int s_chatMessageCount = _countof(s_chatMessages);
+
 void DummyClient::SendChat(StatsLocal& stats)
 {
-    // 랜덤 길이(1~511글자) 랜덤 문자열 생성
-    std::uniform_int_distribution<int> lenDist(1, CHAT_MSG_MAX_LEN - 1);
-    std::uniform_int_distribution<int> charDist(L'A', L'Z');
-
-    int len = lenDist(_rng);
+    std::uniform_int_distribution<int> dist(0, s_chatMessageCount - 1);
+    const wchar_t* text = s_chatMessages[dist(_rng)];
+    int len = static_cast<int>(wcslen(text));
 
     MSG_C2S_CHAT msg{};
     msg.header.type = MsgType::C2S_CHAT;
-    for (int i = 0; i < len; ++i)
-        msg.message[i] = static_cast<wchar_t>(charDist(_rng));
-    msg.message[len] = L'\0';
+    wcscpy_s(msg.message, text);
 
     uint16_t sendSize = static_cast<uint16_t>(
         sizeof(MsgHeader) + (len + 1) * sizeof(wchar_t));
