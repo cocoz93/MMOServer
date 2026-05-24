@@ -65,6 +65,11 @@ void CConsoleRenderer::SetMapSize(int width, int height)
     _mapHeight = height;
 }
 
+void CConsoleRenderer::SetSectorSize(int size)
+{
+    _sectorSize = size;
+}
+
 void CConsoleRenderer::Init()
 {
     _hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -217,6 +222,44 @@ void CConsoleRenderer::RenderGameView(const ClientPlayer* me,
             {
                 _viewBuffer[row][col].Char.UnicodeChar = L' ';
                 _viewBuffer[row][col].Attributes = COLOR_OUTSIDE;
+            }
+        }
+    }
+
+    // 섹터 경계선 오버레이 (타일·빈칸 위에만 덮어쓰기)
+    if (_sectorSize > 0)
+    {
+        int camTileX0 = static_cast<int>(std::floor(camX));
+        int camTileY0 = static_cast<int>(std::floor(camY));
+
+        for (int row = 0; row < VIEW_HEIGHT; ++row)
+        {
+            for (int col = 0; col < VIEW_WIDTH; ++col)
+            {
+                int worldX = camTileX0 + col;
+                int worldY = camTileY0 + row;
+
+                bool onVertLine = (worldX % _sectorSize == 0) && (worldX > 0 && worldX < _mapWidth);
+                bool onHorzLine = (worldY % _sectorSize == 0) && (worldY > 0 && worldY < _mapHeight);
+
+                if (!onVertLine && !onHorzLine)
+                    continue;
+
+                // 타일('.') 또는 빈칸(' ') 위에만 덮어쓰기
+                wchar_t existing = _viewBuffer[row][col].Char.UnicodeChar;
+                if (existing != L'.' && existing != L' ')
+                    continue;
+
+                wchar_t ch;
+                if (onVertLine && onHorzLine)
+                    ch = L'\x253C';  // ┼
+                else if (onVertLine)
+                    ch = L'\x2502';  // │
+                else
+                    ch = L'\x2500';  // ─
+
+                _viewBuffer[row][col].Char.UnicodeChar = ch;
+                _viewBuffer[row][col].Attributes = COLOR_SECTOR_LINE;
             }
         }
     }

@@ -185,6 +185,7 @@ void CGameInstance::ProcessNetworkEvents()
         case ClientNetworkEvent::Type::ZONE_INFO:
             _renderer.SetZoneInfo(event.mapId, event.channelIndex);
             _renderer.SetMapSize(event.mapWidth, event.mapHeight);
+            _renderer.SetSectorSize(event.sectorSize);
             _playerManager.SetMapSize(event.mapWidth, event.mapHeight);
             break;
 
@@ -529,6 +530,7 @@ void CGameInstance::OnZoneInfo(const MSG_S2C_ZONE_INFO* msg)
     event.channelIndex = msg->channelIndex;
     event.mapWidth = msg->mapWidth;
     event.mapHeight = msg->mapHeight;
+    event.sectorSize = msg->sectorSize;
     _eventQueue.Push(std::move(event));
 }
 

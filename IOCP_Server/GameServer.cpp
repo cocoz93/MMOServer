@@ -628,6 +628,7 @@ void CGameServer::SendZoneInfo(CPlayer* target, CZone* zone)
     msg.channelIndex = CZoneManager::GetChannelIndexFromZoneId(zone->GetZoneId());
     msg.mapWidth = zone->GetMapWidth();
     msg.mapHeight = zone->GetMapHeight();
+    msg.sectorSize = zone->GetSectorManager().GetSectorSize();
     SendPacket(target, msg);
 }
 

@@ -243,8 +243,9 @@ struct MSG_S2C_ZONE_INFO
     int32_t channelIndex;
     int32_t mapWidth;
     int32_t mapHeight;
+    int32_t sectorSize;
 
-    MSG_S2C_ZONE_INFO() : header{ sizeof(*this), TYPE }, mapId(0), channelIndex(0), mapWidth(0), mapHeight(0) {}
+    MSG_S2C_ZONE_INFO() : header{ sizeof(*this), TYPE }, mapId(0), channelIndex(0), mapWidth(0), mapHeight(0), sectorSize(0) {}
 };
 
 // C2S: 맵 이동 / 채널 이동 요청

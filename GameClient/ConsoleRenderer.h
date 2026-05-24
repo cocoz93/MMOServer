@@ -17,6 +17,7 @@ public:
     void Init();
     void SetZoneInfo(int mapId, int channelIndex);
     void SetMapSize(int width, int height);
+    void SetSectorSize(int size);
     int GetMapId() const { return _mapId; }
 
     // 매 프레임 전체 화면 갱신
@@ -49,6 +50,7 @@ private:
     int _channelIndex = -1;
     int _mapWidth = 120;
     int _mapHeight = 120;
+    int _sectorSize = 20;
     static constexpr int VIEW_WIDTH = 80;
     static constexpr int VIEW_HEIGHT = 21;
 
@@ -77,4 +79,5 @@ private:
     static constexpr WORD COLOR_CHAT_INPUT = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY;
     static constexpr WORD COLOR_CHAT_MODE = FOREGROUND_GREEN | FOREGROUND_INTENSITY;
     static constexpr WORD COLOR_BORDER = FOREGROUND_BLUE | FOREGROUND_INTENSITY;
+    static constexpr WORD COLOR_SECTOR_LINE = FOREGROUND_BLUE;
 };

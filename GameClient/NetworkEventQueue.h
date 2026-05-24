@@ -42,6 +42,7 @@ struct ClientNetworkEvent
     // 존 정보
     int32_t mapWidth;
     int32_t mapHeight;
+    int32_t sectorSize;
 
     // 존 이동
     int32_t mapId;
