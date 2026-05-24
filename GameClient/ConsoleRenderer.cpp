@@ -181,6 +181,10 @@ void CConsoleRenderer::RenderGameView(const ClientPlayer* me,
     {
         camX = me->x - VIEW_WIDTH / 2;
         camY = me->y - VIEW_HEIGHT / 2;
+
+        // 카메라 클램핑: 맵 밖이 보이지 않도록 제한 (-1은 경계벽 표시 여유)
+        camX = std::clamp(camX, -1.0f, static_cast<float>(_mapWidth) - VIEW_WIDTH + 1);
+        camY = std::clamp(camY, -1.0f, static_cast<float>(_mapHeight) - VIEW_HEIGHT + 1);
     }
 
     // 맵 경계 기반 타일 채우기
