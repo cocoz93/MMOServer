@@ -421,6 +421,22 @@ void CGameServer::RecvMoveStart(CPlayer* player, CSerialBuffer* pMsg)
             if (acceptY >= mapH)   acceptY = mapH - 1.0f;
             player->_x = acceptX;
             player->_y = acceptY;
+
+            // 좌표 수용으로 섹터가 변경되었을 수 있으므로 재계산
+            int32_t newSectorX = zone->GetSectorManager().CalcSectorX(player->_x);
+            int32_t newSectorY = zone->GetSectorManager().CalcSectorY(player->_y);
+            if (newSectorX != player->_sectorX || newSectorY != player->_sectorY)
+            {
+                int32_t oldSectorX = player->_sectorX;
+                int32_t oldSectorY = player->_sectorY;
+
+                zone->GetSectorManager().RemovePlayer(player, oldSectorX, oldSectorY);
+                player->_sectorX = newSectorX;
+                player->_sectorY = newSectorY;
+                zone->GetSectorManager().AddPlayer(player, newSectorX, newSectorY);
+
+                PushSectorChange(player, oldSectorX, oldSectorY);
+            }
         }
         // 범위 초과 시 서버 좌표 유지 (치트 방지)
     }
