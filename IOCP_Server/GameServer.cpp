@@ -287,22 +287,8 @@ void CGameServer::OnConnected(int64_t sessionId)
     // 2) 본인에게 내 캐릭터 생성
     SendCreateMyPlayer(player);
 
-    // 3) 주변 플레이어 수집
-    _eventAroundBuffer.clear();
-    zone->GetSectorManager().GetAroundPlayers(
-        player->_sectorX, player->_sectorY, _eventAroundBuffer, player);
-
-    // 4) 주변 플레이어에게 새 캐릭터 등장 (최초 접속으로 등장했음을 알림)
-    for (CPlayer* other : _eventAroundBuffer)
-    {
-        SendCreateOtherPlayer(other, player, SpawnReason::CONNECT);
-    }
-
-    // 5) 본인에게 주변 기존 플레이어들 정보
-    for (CPlayer* other : _eventAroundBuffer)
-    {
-        SendCreateOtherPlayer(player, other);
-    }
+    // 3) 주변 상호 CREATE 브로드캐스트
+    BroadcastEnterZone(zone, player, SpawnReason::CONNECT);
 }
 
 void CGameServer::OnDisconnected(int64_t sessionId)
@@ -316,25 +302,8 @@ void CGameServer::OnDisconnected(int64_t sessionId)
     if (zone == nullptr)
         return;
 
-    // 주변에 DELETE 브로드캐스트
-    _eventAroundBuffer.clear();
-    zone->GetSectorManager().GetAroundPlayers(
-        player->_sectorX, player->_sectorY, _eventAroundBuffer, player);
-
-    for (CPlayer* other : _eventAroundBuffer)
-    {
-        SendDeletePlayer(other, player);
-    }
-
-    // 섹터 변경 대기열에서 제거
-    _sectorChangedSet.erase(player);
-    _pendingSectorChanges.erase(
-        std::remove_if(_pendingSectorChanges.begin(), _pendingSectorChanges.end(),
-            [player](const SectorChangeInfo& c) { return c.player == player; }),
-        _pendingSectorChanges.end());
-
-    // 섹터 해제 + _players 맵에서 제거
-    zone->LeaveZone(player->_playerId);
+    // 주변 DELETE 브로드캐스트 + 섹터/존 해제
+    BroadcastLeaveZone(zone, player);
 
     // 경계 매핑 해제
     _sessionToPlayer.erase(it);
@@ -742,26 +711,7 @@ void CGameServer::RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg)
     }
 
     // ── 현재 존에서 퇴장 ──
-
-    // 주변에 DELETE 브로드캐스트
-    _eventAroundBuffer.clear();
-    oldZone->GetSectorManager().GetAroundPlayers(
-        player->_sectorX, player->_sectorY, _eventAroundBuffer, player);
-
-    for (CPlayer* other : _eventAroundBuffer)
-    {
-        SendDeletePlayer(other, player);
-    }
-
-    // 섹터 변경 대기열에서 제거
-    _sectorChangedSet.erase(player);
-    _pendingSectorChanges.erase(
-        std::remove_if(_pendingSectorChanges.begin(), _pendingSectorChanges.end(),
-            [player](const SectorChangeInfo& c) { return c.player == player; }),
-        _pendingSectorChanges.end());
-
-    // 섹터 해제 + _players 맵에서 제거
-    oldZone->LeaveZone(player->_playerId);
+    BroadcastLeaveZone(oldZone, player);
 
     // ── 새 존에 입장 (player 객체 재활용, playerId 유지) ──
 
@@ -781,19 +731,7 @@ void CGameServer::RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg)
             // 복귀한 존에서 본인 + 주변 상호 통보
             SendZoneInfo(player, fallback);
             SendCreateMyPlayer(player);
-
-            _eventAroundBuffer.clear();
-            fallback->GetSectorManager().GetAroundPlayers(
-                player->_sectorX, player->_sectorY, _eventAroundBuffer, player);
-
-            for (CPlayer* other : _eventAroundBuffer)
-            {
-                SendCreateOtherPlayer(other, player);
-            }
-            for (CPlayer* other : _eventAroundBuffer)
-            {
-                SendCreateOtherPlayer(player, other);
-            }
+            BroadcastEnterZone(fallback, player, SpawnReason::NORMAL);
 
             return;
         }
@@ -818,21 +756,8 @@ void CGameServer::RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg)
     int32_t channelIndex = CMapManager::GetChannelIndexFromZoneId(newZone->GetZoneId());
     SendZoneChangeOk(player, targetMapId, channelIndex);
 
-    // 주변 플레이어에게 새 캐릭터 등장 (존 이동으로 등장했음을 알림)
-    _eventAroundBuffer.clear();
-    newZone->GetSectorManager().GetAroundPlayers(
-        player->_sectorX, player->_sectorY, _eventAroundBuffer, player);
-
-    for (CPlayer* other : _eventAroundBuffer)
-    {
-        SendCreateOtherPlayer(other, player, SpawnReason::ZONE_TRANSFER);
-    }
-
-    // 본인에게 주변 기존 플레이어들 정보 (기존 플레이어는 일반 스폰)
-    for (CPlayer* other : _eventAroundBuffer)
-    {
-        SendCreateOtherPlayer(player, other);
-    }
+    // 주변 상호 CREATE 브로드캐스트
+    BroadcastEnterZone(newZone, player, SpawnReason::ZONE_TRANSFER);
 }
 
 // ── 운영자 인증 ──
@@ -904,6 +829,47 @@ bool CGameServer::IsBlockedByWall(CZone* zone, CPlayer* player, Direction dir)
     case Direction::DOWN:  return atBottom;
     default: return false;
     }
+}
+
+// ==========================================================================
+// 존 입장/퇴장 브로드캐스트
+// ==========================================================================
+
+void CGameServer::BroadcastEnterZone(CZone* zone, CPlayer* player, SpawnReason reason)
+{
+    _eventAroundBuffer.clear();
+    zone->GetSectorManager().GetAroundPlayers(
+        player->_sectorX, player->_sectorY, _eventAroundBuffer, player);
+
+    for (CPlayer* other : _eventAroundBuffer)
+    {
+        SendCreateOtherPlayer(other, player, reason);
+    }
+    for (CPlayer* other : _eventAroundBuffer)
+    {
+        SendCreateOtherPlayer(player, other);
+    }
+}
+
+void CGameServer::BroadcastLeaveZone(CZone* zone, CPlayer* player)
+{
+    _eventAroundBuffer.clear();
+    zone->GetSectorManager().GetAroundPlayers(
+        player->_sectorX, player->_sectorY, _eventAroundBuffer, player);
+
+    for (CPlayer* other : _eventAroundBuffer)
+    {
+        SendDeletePlayer(other, player);
+    }
+
+    // 섹터 변경 대기열에서 제거
+    _sectorChangedSet.erase(player);
+    _pendingSectorChanges.erase(
+        std::remove_if(_pendingSectorChanges.begin(), _pendingSectorChanges.end(),
+            [player](const SectorChangeInfo& c) { return c.player == player; }),
+        _pendingSectorChanges.end());
+
+    zone->LeaveZone(player->_playerId);
 }
 
 // ==========================================================================

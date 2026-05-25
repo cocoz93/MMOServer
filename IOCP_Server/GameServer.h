@@ -74,6 +74,10 @@ private:
     // 섹터 변경 대기열에 추가 (중복 플레이어는 최초 출발 섹터만 유지)
     void PushSectorChange(CPlayer* player, int32_t oldSectorX, int32_t oldSectorY);
 
+    // 존 입장/퇴장 브로드캐스트 (주변 상호 CREATE/DELETE 통보)
+    void BroadcastEnterZone(CZone* zone, CPlayer* player, SpawnReason reason);
+    void BroadcastLeaveZone(CZone* zone, CPlayer* player);
+
     // ── 플레이어 ID 발급 + 표시 속성 ──
 
     int32_t AllocPlayerId();
