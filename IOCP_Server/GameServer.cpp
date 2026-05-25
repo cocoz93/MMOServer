@@ -537,6 +537,7 @@ void CGameServer::RecvChat(CPlayer* player, CSerialBuffer* pMsg)
 
     // 메시지 길이 계산 (바이트 → wchar_t 글자 수)
     uint16_t msgBytes = recvSize - sizeof(MsgHeader);
+    msgBytes -= msgBytes % sizeof(wchar_t);  // wchar_t 경계 정렬 (홀수 바이트 방어)
     uint16_t msgLen = msgBytes / sizeof(wchar_t);
     if (msgLen > CHAT_MSG_MAX_LEN - 1)
         msgLen = CHAT_MSG_MAX_LEN - 1;
