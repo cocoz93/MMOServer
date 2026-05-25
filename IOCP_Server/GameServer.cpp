@@ -38,7 +38,7 @@ bool CGameServer::Init(ServerMode mode, int port, int maxClients,
     {
         for (int32_t i = 0; i < mapCount; ++i)
         {
-            if (!_zoneManager.RegisterMap(maps[i]))
+            if (!_mapManager.RegisterMap(maps[i]))
                 return false;
         }
 
@@ -126,7 +126,7 @@ void CGameServer::GameLoopThread()
         // 2) 게임 로직 갱신 (좌표 이동 + 섹터 변경 감지 + 경계 클램핑)
         _tickSectorChanges.clear();
         _tickClampedPlayers.clear();
-        _zoneManager.TickAll(deltaTime, _tickSectorChanges, _tickClampedPlayers);
+        _mapManager.TickAll(deltaTime, _tickSectorChanges, _tickClampedPlayers);
 
         // 3) 섹터 변경 배치 처리 (RecvMoveStop + TickAll 병합 → 삽입 시 중복 차단)
         for (const auto& change : _tickSectorChanges)
@@ -141,7 +141,7 @@ void CGameServer::GameLoopThread()
                 change.oldSectorY == change.player->_sectorY)
                 continue;
 
-            CZone* zone = _zoneManager.GetZone(change.player->_zoneId);
+            CZone* zone = _mapManager.GetZone(change.player->_zoneId);
             if (zone != nullptr)
             {
                 ProcessSectorChange(zone, change.player,
@@ -154,7 +154,7 @@ void CGameServer::GameLoopThread()
         // 3-1) 맵 경계 클램핑으로 정지된 플레이어에게 MOVE_STOP 브로드캐스트
         for (CPlayer* player : _tickClampedPlayers)
         {
-            CZone* zone = _zoneManager.GetZone(player->_zoneId);
+            CZone* zone = _mapManager.GetZone(player->_zoneId);
             if (zone != nullptr)
             {
                 MSG_S2C_MOVE_STOP msg;
@@ -171,7 +171,7 @@ void CGameServer::GameLoopThread()
         if (_syncFrameCount >= SYNC_INTERVAL_FRAMES)
         {
             _syncFrameCount = 0;
-            for (const auto& [zoneId, zone] : _zoneManager.GetZones())
+            _mapManager.ForEachZone([&](CZone* zone)
             {
                 for (CPlayer* player : zone->GetPlayers())
                 {
@@ -191,9 +191,9 @@ void CGameServer::GameLoopThread()
                     msg.playerId = player->_playerId;
                     msg.x = player->_x;
                     msg.y = player->_y;
-                    BroadcastAroundSector(zone.get(), player, msg, false);  // 본인 포함 (이동 중 클라-서버 좌표 드리프트 보정)
+                    BroadcastAroundSector(zone, player, msg, false);  // 본인 포함 (이동 중 클라-서버 좌표 드리프트 보정)
                 }
-            }
+            });
         }
 
         // 5) 빈 동적 채널 정리
@@ -201,7 +201,7 @@ void CGameServer::GameLoopThread()
         if (_cleanupFrameCount >= CLEANUP_INTERVAL_FRAMES)
         {
             _cleanupFrameCount = 0;
-            _zoneManager.CleanupEmptyChannels();
+            _mapManager.CleanupEmptyChannels();
         }
 
         // 6) Tick 시간 기록 + 프레임 제한
@@ -254,7 +254,7 @@ void CGameServer::OnConnected(int64_t sessionId)
     }
 
     // 기본 맵의 여유 채널에 입장
-    CZone* zone = _zoneManager.FindOrCreateChannel(_defaultMapId);
+    CZone* zone = _mapManager.FindOrCreateChannel(_defaultMapId);
     if (zone == nullptr)
     {
         _network->RequestDisconnectSession(sessionId);
@@ -312,7 +312,7 @@ void CGameServer::OnDisconnected(int64_t sessionId)
         return;
 
     CPlayer* player = it->second;
-    CZone* zone = _zoneManager.GetZone(player->_zoneId);
+    CZone* zone = _mapManager.GetZone(player->_zoneId);
     if (zone == nullptr)
         return;
 
@@ -420,7 +420,7 @@ uint16_t CGameServer::GetExpectedSize(MsgType type)
 
 void CGameServer::RecvMoveStart(CPlayer* player, CSerialBuffer* pMsg)
 {
-    CZone* zone = _zoneManager.GetZone(player->_zoneId);
+    CZone* zone = _mapManager.GetZone(player->_zoneId);
     if (zone == nullptr)
         return;
 
@@ -500,7 +500,7 @@ void CGameServer::RecvMoveStart(CPlayer* player, CSerialBuffer* pMsg)
 
 void CGameServer::RecvMoveStop(CPlayer* player, CSerialBuffer* pMsg)
 {
-    CZone* zone = _zoneManager.GetZone(player->_zoneId);
+    CZone* zone = _mapManager.GetZone(player->_zoneId);
     if (zone == nullptr)
         return;
 
@@ -550,7 +550,7 @@ void CGameServer::RecvMoveStop(CPlayer* player, CSerialBuffer* pMsg)
 
 void CGameServer::RecvChat(CPlayer* player, CSerialBuffer* pMsg)
 {
-    CZone* zone = _zoneManager.GetZone(player->_zoneId);
+    CZone* zone = _mapManager.GetZone(player->_zoneId);
     if (zone == nullptr)
         return;
 
@@ -618,7 +618,7 @@ void CGameServer::SendZoneInfo(CPlayer* target, CZone* zone)
 {
     MSG_S2C_ZONE_INFO msg;
     msg.mapId = zone->GetMapId();
-    msg.channelIndex = CZoneManager::GetChannelIndexFromZoneId(zone->GetZoneId());
+    msg.channelIndex = CMapManager::GetChannelIndexFromZoneId(zone->GetZoneId());
     msg.mapWidth = zone->GetMapWidth();
     msg.mapHeight = zone->GetMapHeight();
     msg.sectorSize = zone->GetSectorManager().GetSectorSize();
@@ -675,7 +675,7 @@ void CGameServer::RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg)
     if (sessionId == -1)
         return;
 
-    CZone* oldZone = _zoneManager.GetZone(player->_zoneId);
+    CZone* oldZone = _mapManager.GetZone(player->_zoneId);
     if (oldZone == nullptr)
         return;
 
@@ -690,9 +690,9 @@ void CGameServer::RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg)
     if (targetChannelIndex >= 0)
     {
         // ── 채널 지정 이동 (같은 맵 내) ──
-        int32_t currentMapId = CZoneManager::GetMapIdFromZoneId(oldZone->GetZoneId());
+        int32_t currentMapId = CMapManager::GetMapIdFromZoneId(oldZone->GetZoneId());
 
-        newZone = _zoneManager.FindChannel(currentMapId, targetChannelIndex);
+        newZone = _mapManager.FindChannel(currentMapId, targetChannelIndex);
         if (newZone == nullptr)
         {
             SendZoneChangeFail(player, 0);  // 채널 없음
@@ -707,7 +707,7 @@ void CGameServer::RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg)
         // 인원 제한 체크 (admin은 스킵)
         if (!player->_isAdmin)
         {
-            int32_t maxPlayers = _zoneManager.GetMaxPlayersPerChannel(currentMapId);
+            int32_t maxPlayers = _mapManager.GetMaxPlayersPerChannel(currentMapId);
             if (maxPlayers > 0 && newZone->GetPlayerCount() >= maxPlayers)
             {
                 SendZoneChangeFail(player, 1);  // 채널 가득 참
@@ -724,8 +724,8 @@ void CGameServer::RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg)
         // 랜덤 맵 이동 요청 처리
         if (targetMapId == -1)
         {
-            int32_t currentMapId = CZoneManager::GetMapIdFromZoneId(oldZone->GetZoneId());
-            targetMapId = _zoneManager.GetRandomMapId(currentMapId);
+            int32_t currentMapId = CMapManager::GetMapIdFromZoneId(oldZone->GetZoneId());
+            targetMapId = _mapManager.GetRandomMapId(currentMapId);
             if (targetMapId == -1)
             {
                 SendZoneChangeFail(player, 0);
@@ -733,7 +733,7 @@ void CGameServer::RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg)
             }
         }
 
-        newZone = _zoneManager.FindOrCreateChannel(targetMapId, player->_isAdmin);
+        newZone = _mapManager.FindOrCreateChannel(targetMapId, player->_isAdmin);
         if (newZone == nullptr)
         {
             SendZoneChangeFail(player, 0);
@@ -768,7 +768,7 @@ void CGameServer::RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg)
     if (!newZone->EnterZone(player))
     {
         // 입장 실패 시 원래 맵의 여유 채널로 복귀 시도
-        CZone* fallback = _zoneManager.FindOrCreateChannel(CZoneManager::GetMapIdFromZoneId(oldZone->GetZoneId()));
+        CZone* fallback = _mapManager.FindOrCreateChannel(CMapManager::GetMapIdFromZoneId(oldZone->GetZoneId()));
         if (fallback != nullptr && fallback->EnterZone(player))
         {
             _sessionToPlayer[sessionId] = player;
@@ -815,7 +815,7 @@ void CGameServer::RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg)
 
     // 존 메타 정보 + 존 이동 성공 통보
     SendZoneInfo(player, newZone);
-    int32_t channelIndex = CZoneManager::GetChannelIndexFromZoneId(newZone->GetZoneId());
+    int32_t channelIndex = CMapManager::GetChannelIndexFromZoneId(newZone->GetZoneId());
     SendZoneChangeOk(player, targetMapId, channelIndex);
 
     // 주변 플레이어에게 새 캐릭터 등장 (존 이동으로 등장했음을 알림)

@@ -60,7 +60,7 @@
     <ClCompile Include="Zone.cpp">
       <Filter>소스 파일\GameServer</Filter>
     </ClCompile>
-    <ClCompile Include="ZoneManager.cpp">
+    <ClCompile Include="MapManager.cpp">
       <Filter>소스 파일\GameServer</Filter>
     </ClCompile>
   </ItemGroup>
@@ -92,7 +92,7 @@
     <ClInclude Include="Zone.h">
       <Filter>소스 파일\GameServer</Filter>
     </ClInclude>
-    <ClInclude Include="ZoneManager.h">
+    <ClInclude Include="MapManager.h">
       <Filter>소스 파일\GameServer</Filter>
     </ClInclude>
     <ClInclude Include="RingBuffer.h">

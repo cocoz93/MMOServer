@@ -31,7 +31,7 @@
 #include <Windows.h>
 
 #include "Common.h"
-#include "ZoneManager.h"
+#include "MapManager.h"
 #include "../Shared/Common/ErrorLog.h"
 
 struct ServerConfig

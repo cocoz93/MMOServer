@@ -6,7 +6,7 @@
 //  - CIOCPServer로부터 NetworkEvent를 Pop하여 게임 로직 처리
 //  - 패킷 파싱 및 타입별 핸들러 호출
 //  - 게임 루프 스레드 소유 (고정 프레임 Tick)
-//  - CZoneManager를 통해 다중 존 관리
+//  - CMapManager를 통해 다중 존 관리
 //
 // [사용 흐름]
 //  1. main()에서 CGameServer 생성
@@ -24,7 +24,7 @@
 #include <unordered_set>
 
 #include "IOCPServer.h"
-#include "ZoneManager.h"
+#include "MapManager.h"
 #include "Player.h"
 #include "MonitorManager.h"
 #include "Common.h"
@@ -148,7 +148,7 @@ private:
 
     CMonitorManager& _monitor;
     std::unique_ptr<CIOCPServer> _network;
-    CZoneManager _zoneManager;
+    CMapManager _mapManager;
 
     std::thread _gameThread;
     std::atomic<bool> _running;

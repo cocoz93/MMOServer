@@ -8,7 +8,7 @@
 #include <mutex>
 
 #include "GameServer.h"
-#include "ZoneManager.h"
+#include "MapManager.h"
 #include "MonitorManager.h"
 #include "MonitorServer.h"
 #include "ServerConfig.h"

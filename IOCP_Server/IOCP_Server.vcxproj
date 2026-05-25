@@ -145,7 +145,7 @@
     <ClCompile Include="Player.cpp" />
     <ClCompile Include="SectorManager.cpp" />
     <ClCompile Include="Zone.cpp" />
-    <ClCompile Include="ZoneManager.cpp" />
+    <ClCompile Include="MapManager.cpp" />
     <ClCompile Include="GameServer.cpp" />
     <ClCompile Include="..\Shared\Common\Logger.cpp" />
   </ItemGroup>
@@ -162,7 +162,7 @@
     <ClInclude Include="Player.h" />
     <ClInclude Include="SectorManager.h" />
     <ClInclude Include="Zone.h" />
-    <ClInclude Include="ZoneManager.h" />
+    <ClInclude Include="MapManager.h" />
     <ClInclude Include="GameServer.h" />
     <ClInclude Include="Common.h" />
     <ClInclude Include="..\Shared\Protocol\Protocol.h" />
