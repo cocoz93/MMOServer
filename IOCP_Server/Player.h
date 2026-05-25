@@ -52,6 +52,8 @@ public:
     float _lastSyncX;
     float _lastSyncY;
 
+    int32_t _listIndex = -1;  // Zone::_playerList 내 인덱스 (O(1) 삭제용)
+
 private:
     int64_t _sessionId;   // 네트워크 세션 ID (CGameServer만 접근)
 };

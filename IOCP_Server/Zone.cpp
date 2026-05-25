@@ -50,6 +50,7 @@ bool CZone::EnterZone(CPlayer* player)
 
     // 플레이어 목록에 추가
     _playerMap[player->_playerId] = player;
+    player->_listIndex = static_cast<int32_t>(_playerList.size());
     _playerList.push_back(player);
 
     return true;
@@ -69,13 +70,16 @@ void CZone::LeaveZone(int32_t playerId)
     // 맵에서 제거 (delete는 CGameServer가 담당)
     _playerMap.erase(it);
 
-    // 순회용 리스트에서 O(1) 삭제 (swap-and-pop)
-    auto listIt = std::find(_playerList.begin(), _playerList.end(), player);
-    if (listIt != _playerList.end())
+    // 순회용 리스트에서 O(1) 삭제 (swap-and-pop, 인덱스 캐시 활용)
+    int32_t idx = player->_listIndex;
+    if (idx >= 0 && idx < static_cast<int32_t>(_playerList.size()))
     {
-        *listIt = _playerList.back();
+        CPlayer* back = _playerList.back();
+        _playerList[idx] = back;
+        back->_listIndex = idx;
         _playerList.pop_back();
     }
+    player->_listIndex = -1;
 }
 
 void CZone::Tick(float deltaTime, std::vector<SectorChangeInfo>& outSectorChanges,
