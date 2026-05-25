@@ -2,7 +2,6 @@
 
 CPlayer::CPlayer()
     : _sessionId(-1)
-    , _accountId(0)
     , _playerId(0)
     , _displayChar('A')
     , _colorIndex(0)
@@ -28,13 +27,4 @@ CPlayer::~CPlayer()
 {
 }
 
-int64_t CPlayer::GetAccountId() const
-{
-    return _accountId;
-}
-
-void CPlayer::SetAccountId(int64_t accountId)
-{
-    _accountId = accountId;
-}
 

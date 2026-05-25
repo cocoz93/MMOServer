@@ -29,11 +29,6 @@ public:
     CPlayer();
     ~CPlayer();
 
-    // 게임 로직 계층 식별자 (CentralizedServer용)
-    int64_t GetAccountId() const;
-    void SetAccountId(int64_t accountId);
-
-    int64_t _accountId;   // 계정 ID (로그인/DB용)
     int32_t _playerId;    // 게임 월드 내 식별자 (클라이언트에 노출)
     uint8_t _displayChar; // 표시 문자 (ASCII: A-Z, a-z, 0-9)
     uint8_t _colorIndex;  // 색상 인덱스 (0-6)

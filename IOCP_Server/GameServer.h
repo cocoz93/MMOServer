@@ -80,9 +80,6 @@ private:
     static uint8_t CalcDisplayChar(int32_t playerId);
     static uint8_t CalcColorIndex(int32_t playerId);
 
-    // 플레이어 연결 해제
-    void DisconnectPlayer(CPlayer* player);
-
     // ── 패킷 전송 추상화 ──
 
     // 단일 플레이어에게 패킷 전송 (템플릿 — 고정 크기)
@@ -136,9 +133,6 @@ private:
     void SendCreateMyPlayer(CPlayer* target);
     void SendCreateOtherPlayer(CPlayer* target, CPlayer* player, SpawnReason reason = SpawnReason::NORMAL);
     void SendDeletePlayer(CPlayer* target, CPlayer* player);
-    void SendMoveStart(CPlayer* target, CPlayer* player);
-    void SendMoveStop(CPlayer* target, CPlayer* player);
-    void SendChat(CPlayer* target, CPlayer* player, const wchar_t* message);
     void SendSyncPosition(CPlayer* target);
     void SendZoneChangeOk(CPlayer* target, int32_t mapId, int32_t channelIndex);
     void SendZoneChangeFail(CPlayer* target, uint8_t reason);

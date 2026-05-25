@@ -1,5 +1,5 @@
 ﻿#include "ZoneManager.h"
-#include <cstdlib>
+#include <random>
 
 CZoneManager::CZoneManager()
 {
@@ -114,7 +114,9 @@ int32_t CZoneManager::GetRandomMapId(int32_t excludeMapId) const
     if (candidates.empty())
         return -1;
 
-    return candidates[rand() % candidates.size()];
+    static thread_local std::mt19937 rng(std::random_device{}());
+    std::uniform_int_distribution<size_t> dist(0, candidates.size() - 1);
+    return candidates[dist(rng)];
 }
 
 int32_t CZoneManager::MakeZoneId(int32_t mapId, int32_t channelIndex)

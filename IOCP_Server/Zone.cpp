@@ -131,14 +131,6 @@ void CZone::Tick(float deltaTime, std::vector<SectorChangeInfo>& outSectorChange
     }
 }
 
-CPlayer* CZone::FindPlayer(int32_t playerId) const
-{
-    auto it = _playerMap.find(playerId);
-    if (it == _playerMap.end())
-        return nullptr;
-    return it->second;
-}
-
 void CZone::CalcSpawnPos(float& outX, float& outY) const
 {
     // 맵 전체 랜덤 스폰 (경계 1칸 여유)

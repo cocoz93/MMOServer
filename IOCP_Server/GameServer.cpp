@@ -614,13 +614,6 @@ uint8_t CGameServer::CalcColorIndex(int32_t playerId)
     return static_cast<uint8_t>((playerId / 62) % 7);
 }
 
-void CGameServer::DisconnectPlayer(CPlayer* player)
-{
-    if (player->_sessionId != -1)
-        _network->RequestDisconnectSession(player->_sessionId);
-}
-
-
 void CGameServer::SendZoneInfo(CPlayer* target, CZone* zone)
 {
     MSG_S2C_ZONE_INFO msg;
@@ -665,45 +658,6 @@ void CGameServer::SendDeletePlayer(CPlayer* target, CPlayer* player)
     MSG_S2C_DELETE_PLAYER msg;
     msg.playerId = player->_playerId;
     SendPacket(target, msg);
-}
-
-void CGameServer::SendMoveStart(CPlayer* target, CPlayer* player)
-{
-    MSG_S2C_MOVE_START msg;
-    msg.playerId = player->_playerId;
-    msg.direction = static_cast<uint8_t>(player->_direction);
-    msg.x = player->_x;
-    msg.y = player->_y;
-    SendPacket(target, msg);
-}
-
-void CGameServer::SendMoveStop(CPlayer* target, CPlayer* player)
-{
-    MSG_S2C_MOVE_STOP msg;
-    msg.playerId = player->_playerId;
-    msg.direction = static_cast<uint8_t>(player->_direction);
-    msg.x = player->_x;
-    msg.y = player->_y;
-    SendPacket(target, msg);
-}
-
-void CGameServer::SendChat(CPlayer* target, CPlayer* player, const wchar_t* message)
-{
-    MSG_S2C_CHAT msg;
-    msg.playerId = player->_playerId;
-    msg.displayChar = player->_displayChar;
-    msg.colorIndex = player->_colorIndex;
-
-    size_t msgLen = wcslen(message);
-    if (msgLen > CHAT_MSG_MAX_LEN - 1)
-        msgLen = CHAT_MSG_MAX_LEN - 1;
-    wmemcpy(msg.message, message, msgLen);
-    msg.message[msgLen] = L'\0';
-
-    uint16_t sendSize = static_cast<uint16_t>(
-        offsetof(MSG_S2C_CHAT, message) + (msgLen + 1) * sizeof(wchar_t));
-    msg.header.size = sendSize;
-    SendPacket(target, msg, sendSize);
 }
 
 void CGameServer::SendSyncPosition(CPlayer* target)

@@ -49,9 +49,6 @@ public:
     void Tick(float deltaTime, std::vector<SectorChangeInfo>& outSectorChanges,
              std::vector<CPlayer*>& outClampedPlayers);
 
-    // 플레이어 조회 (playerId 기반)
-    CPlayer* FindPlayer(int32_t playerId) const;
-
     // 존 정보
     int32_t GetZoneId() const { return _zoneId; }
     int32_t GetMapId() const { return _mapId; }
