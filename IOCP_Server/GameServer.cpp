@@ -861,11 +861,8 @@ void CGameServer::BroadcastEnterZone(CZone* zone, CPlayer* player, SpawnReason r
 
     for (CPlayer* other : _eventAroundBuffer)
     {
-        SendCreateOtherPlayer(other, player, reason);
-    }
-    for (CPlayer* other : _eventAroundBuffer)
-    {
-        SendCreateOtherPlayer(player, other);
+        SendCreateOtherPlayer(other, player, reason);  // 기존 플레이어에게 신규 플레이어 생성
+        SendCreateOtherPlayer(player, other);           // 신규 플레이어에게 기존 플레이어 생성
     }
 }
 
