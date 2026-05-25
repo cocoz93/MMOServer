@@ -35,7 +35,7 @@ public:
     volatile LONG64 _sessionDestroyed = 0;  // 세션 소멸 누적
     volatile LONG64 _acceptFailed = 0;      // Accept 거부 (인덱스 부족)
     volatile LONG64 _sessionTimedOut = 0;   // 타이밍 휠 타임아웃 킥
-    volatile LONG64 _cheatDetected = 0;     // 이동 검증 실패 (치트 감지)
+    volatile LONG64 _cheatDetected = 0;     // 이동 검증 실패 (치트 감지) — 미구현, 향후 서버 권위 좌표 검증 시 사용 예정
     volatile LONG64 _packetErrors = 0;      // 패킷 에러 (크기 검증 실패, 알 수 없는 타입)
     volatile LONG64 _sendQueueOverflow = 0; // SendQ 오버플로 (Enqueue 실패)
     volatile LONG64 _recvBufferOverflow = 0; // RecvQ 오버플로 (수신 버퍼 가득 참)

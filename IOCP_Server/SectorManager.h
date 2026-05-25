@@ -56,8 +56,6 @@ public:
                        SectorPos* outAdded, int32_t& outAddedCount,
                        SectorPos* outRemoved, int32_t& outRemovedCount) const;
 
-    int32_t GetSectorCountX() const { return _sectorCountX; }
-    int32_t GetSectorCountY() const { return _sectorCountY; }
     int32_t GetSectorSize() const { return _sectorSize; }
 
     static constexpr int32_t MAX_AROUND_SECTORS = 9;

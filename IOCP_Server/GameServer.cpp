@@ -362,6 +362,7 @@ void CGameServer::OnReceived(int64_t sessionId, CSerialBuffer* pMsg)
         break;
 
     default:
+        // C2S_HEARTBEAT 등 — 게임 로직 처리 불필요 (타임아웃 갱신은 IOCPServer 수신 시점에서 처리)
         break;
     }
 
@@ -574,13 +575,13 @@ uint8_t CGameServer::CalcDisplayChar(int32_t playerId)
 {
     static constexpr char CHARS[] =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    return static_cast<uint8_t>(CHARS[playerId % 62]);
+    return static_cast<uint8_t>(CHARS[static_cast<uint32_t>(playerId) % 62]);
 }
 
 // playerId → 고유 색상 인덱스 (0-6, 7종)
 uint8_t CGameServer::CalcColorIndex(int32_t playerId)
 {
-    return static_cast<uint8_t>((playerId / 62) % 7);
+    return static_cast<uint8_t>((static_cast<uint32_t>(playerId) / 62) % 7);
 }
 
 void CGameServer::SendZoneInfo(CPlayer* target, CZone* zone)
