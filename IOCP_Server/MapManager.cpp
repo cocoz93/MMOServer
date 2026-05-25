@@ -184,17 +184,20 @@ void CMapManager::TickAll(float deltaTime, std::vector<SectorChangeInfo>& outSec
 
 int32_t CMapManager::GetRandomMapId(int32_t excludeMapId) const
 {
-    std::vector<int32_t> candidates;
+    static constexpr int32_t MAX_MAPS = 64;
+    int32_t candidates[MAX_MAPS];
+    int32_t count = 0;
+
     for (const auto& [mapId, mapInstance] : _maps)
     {
-        if (mapId != excludeMapId)
-            candidates.push_back(mapId);
+        if (mapId != excludeMapId && count < MAX_MAPS)
+            candidates[count++] = mapId;
     }
-    if (candidates.empty())
+    if (count == 0)
         return -1;
 
     static thread_local std::mt19937 rng(std::random_device{}());
-    std::uniform_int_distribution<size_t> dist(0, candidates.size() - 1);
+    std::uniform_int_distribution<int32_t> dist(0, count - 1);
     return candidates[dist(rng)];
 }
 
