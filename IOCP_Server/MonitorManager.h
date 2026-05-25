@@ -35,11 +35,9 @@ public:
     volatile LONG64 _sessionDestroyed = 0;  // 세션 소멸 누적
     volatile LONG64 _acceptFailed = 0;      // Accept 거부 (인덱스 부족)
     volatile LONG64 _sessionTimedOut = 0;   // 타이밍 휠 타임아웃 킥
-    volatile LONG64 _cheatDetected = 0;     // 이동 검증 실패 (치트 감지) — 미구현, 향후 서버 권위 좌표 검증 시 사용 예정
     volatile LONG64 _packetErrors = 0;      // 패킷 에러 (크기 검증 실패, 알 수 없는 타입)
     volatile LONG64 _sendQueueOverflow = 0; // SendQ 오버플로 (Enqueue 실패)
     volatile LONG64 _recvBufferOverflow = 0; // RecvQ 오버플로 (수신 버퍼 가득 참)
-    volatile LONG64 _zoneChangeCount = 0;   // 존 이동 횟수
     volatile LONG64 _sendContention = 0;    // PostSend 경합 (이미 송신 중이라 건너뛴 횟수)
     volatile LONG64 _wsaRecvCalls = 0;      // WSARecv 시스템 콜 횟수
     volatile LONG64 _wsaSendCalls = 0;      // WSASend 시스템 콜 횟수
@@ -52,40 +50,49 @@ public:
     // 이벤트 큐 크기는 ThreadSafeQueue::GetSize()로 직접 조회
 
     // ══════════════════════════════════════════════════════════════
-    // Tick 히스토그램 (게임 루프 전용)
+    // 게임 루프 전용 카운터 (alignas(64)로 캐시 라인 분리)
     //
-    // 버킷 경계: 1, 5, 10, 20, 40, 60, 80, 100, 200 ms
-    // 마지막 버킷(인덱스 9)은 200ms 초과 (+Inf)
-    // 비누적 방식 저장 → Prometheus 노출 시 누적으로 변환
+    // 워커 스레드 카운터와 false sharing 방지를 위해 별도 struct로 격리
     // ══════════════════════════════════════════════════════════════
-    static constexpr int TICK_BUCKET_COUNT = 10;
-    static constexpr double TICK_BUCKET_BOUNDS[TICK_BUCKET_COUNT - 1] = {
-        1.0, 5.0, 10.0, 20.0, 40.0, 60.0, 80.0, 100.0, 200.0
-    };
-
-    volatile LONG64 _tickBuckets[TICK_BUCKET_COUNT] = {};
-    volatile LONG64 _tickSumUs = 0;   // 합계 (마이크로초)
-    volatile LONG64 _tickCount = 0;   // 총 tick 수
-
-    // Tick 시간 기록 (밀리초 단위)
-    void RecordTickTime(double ms)
+    struct alignas(64) GameLoopCounters
     {
-        LONG64 us = static_cast<LONG64>(ms * 1000.0);
-        InterlockedExchangeAdd64(&_tickSumUs, us);
-        InterlockedIncrement64(&_tickCount);
+        volatile LONG64 _zoneChangeCount = 0;   // 존 이동 횟수
+        volatile LONG64 _cheatDetected = 0;     // 이동 검증 실패 (치트 감지) — 미구현, 향후 서버 권위 좌표 검증 시 사용 예정
 
-        // 해당 버킷에 1 증가
-        for (int i = 0; i < TICK_BUCKET_COUNT - 1; ++i)
+        // Tick 히스토그램
+        //
+        // 버킷 경계: 1, 5, 10, 20, 40, 60, 80, 100, 200 ms
+        // 마지막 버킷(인덱스 9)은 200ms 초과 (+Inf)
+        // 비누적 방식 저장 → Prometheus 노출 시 누적으로 변환
+        static constexpr int TICK_BUCKET_COUNT = 10;
+        static constexpr double TICK_BUCKET_BOUNDS[TICK_BUCKET_COUNT - 1] = {
+            1.0, 5.0, 10.0, 20.0, 40.0, 60.0, 80.0, 100.0, 200.0
+        };
+
+        volatile LONG64 _tickBuckets[TICK_BUCKET_COUNT] = {};
+        volatile LONG64 _tickSumUs = 0;   // 합계 (마이크로초)
+        volatile LONG64 _tickCount = 0;   // 총 tick 수
+
+        // Tick 시간 기록 (밀리초 단위)
+        void RecordTickTime(double ms)
         {
-            if (ms <= TICK_BUCKET_BOUNDS[i])
+            LONG64 us = static_cast<LONG64>(ms * 1000.0);
+            InterlockedExchangeAdd64(&_tickSumUs, us);
+            InterlockedIncrement64(&_tickCount);
+
+            // 해당 버킷에 1 증가
+            for (int i = 0; i < TICK_BUCKET_COUNT - 1; ++i)
             {
-                InterlockedIncrement64(&_tickBuckets[i]);
-                return;
+                if (ms <= TICK_BUCKET_BOUNDS[i])
+                {
+                    InterlockedIncrement64(&_tickBuckets[i]);
+                    return;
+                }
             }
+            // 모든 경계 초과 → +Inf 버킷
+            InterlockedIncrement64(&_tickBuckets[TICK_BUCKET_COUNT - 1]);
         }
-        // 모든 경계 초과 → +Inf 버킷
-        InterlockedIncrement64(&_tickBuckets[TICK_BUCKET_COUNT - 1]);
-    }
+    } _gameLoop;
 
     // ══════════════════════════════════════════════════════════════
     // 워커 스레드별 처리량

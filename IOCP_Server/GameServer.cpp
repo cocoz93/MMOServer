@@ -207,7 +207,7 @@ void CGameServer::GameLoopThread()
         // 6) Tick 시간 기록 + 프레임 제한
         auto frameEnd = Clock::now();
         double tickMs = std::chrono::duration<double, std::milli>(frameEnd - frameStart).count();
-        _monitor.RecordTickTime(tickMs);
+        _monitor._gameLoop.RecordTickTime(tickMs);
 
         int sleepMs = FRAME_INTERVAL_MS - static_cast<int>(tickMs);
         if (sleepMs > 0)
@@ -747,7 +747,7 @@ void CGameServer::RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg)
 
     // 경계 매핑 갱신 (player 객체는 동일, playerId만 변경됨)
     _sessionToPlayer[sessionId] = player;
-    InterlockedIncrement64(&_monitor._zoneChangeCount);
+    InterlockedIncrement64(&_monitor._gameLoop._zoneChangeCount);
 
     // 델타 동기화 기준 좌표 초기화
     player->_lastSyncX = player->_x;

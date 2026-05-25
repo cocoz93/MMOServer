@@ -109,7 +109,7 @@ private:
         WriteCounter(ss, "mmo_session_timed_out_total",
                      "Total session timeouts", _monitor._sessionTimedOut);
         WriteCounter(ss, "mmo_cheat_detected_total",
-                     "Total cheat detections", _monitor._cheatDetected);
+                     "Total cheat detections", _monitor._gameLoop._cheatDetected);
         WriteCounter(ss, "mmo_packet_errors_total",
                      "Total packet errors", _monitor._packetErrors);
         WriteCounter(ss, "mmo_send_queue_overflow_total",
@@ -117,7 +117,7 @@ private:
         WriteCounter(ss, "mmo_recv_buffer_overflow_total",
                      "Total recv buffer overflows", _monitor._recvBufferOverflow);
         WriteCounter(ss, "mmo_zone_change_total",
-                     "Total zone changes", _monitor._zoneChangeCount);
+                     "Total zone changes", _monitor._gameLoop._zoneChangeCount);
         WriteCounter(ss, "mmo_send_contention_total",
                      "Total PostSend contentions (skipped due to sending flag)", _monitor._sendContention);
         WriteCounter(ss, "mmo_wsa_recv_calls_total",
@@ -153,18 +153,20 @@ private:
     void WriteTickHistogram(std::ostringstream& ss)
     {
         // 비누적 버킷 스냅샷
-        LONG64 raw[CMonitorManager::TICK_BUCKET_COUNT];
-        for (int i = 0; i < CMonitorManager::TICK_BUCKET_COUNT; ++i)
-            raw[i] = _monitor._tickBuckets[i];
+        using GLC = CMonitorManager::GameLoopCounters;
+
+        LONG64 raw[GLC::TICK_BUCKET_COUNT];
+        for (int i = 0; i < GLC::TICK_BUCKET_COUNT; ++i)
+            raw[i] = _monitor._gameLoop._tickBuckets[i];
 
         // 누적 변환
-        LONG64 cum[CMonitorManager::TICK_BUCKET_COUNT];
+        LONG64 cum[GLC::TICK_BUCKET_COUNT];
         cum[0] = raw[0];
-        for (int i = 1; i < CMonitorManager::TICK_BUCKET_COUNT; ++i)
+        for (int i = 1; i < GLC::TICK_BUCKET_COUNT; ++i)
             cum[i] = cum[i - 1] + raw[i];
 
-        LONG64 tickCount = _monitor._tickCount;
-        LONG64 tickSumUs = _monitor._tickSumUs;
+        LONG64 tickCount = _monitor._gameLoop._tickCount;
+        LONG64 tickSumUs = _monitor._gameLoop._tickSumUs;
 
         // 버킷 경계 (밀리초 → 초)
         static const char* leBounds[] = {
@@ -175,13 +177,13 @@ private:
         ss << "# HELP mmo_tick_duration_seconds Game loop tick duration\n";
         ss << "# TYPE mmo_tick_duration_seconds histogram\n";
 
-        for (int i = 0; i < CMonitorManager::TICK_BUCKET_COUNT - 1; ++i)
+        for (int i = 0; i < GLC::TICK_BUCKET_COUNT - 1; ++i)
         {
             ss << "mmo_tick_duration_seconds_bucket{le=\""
                << leBounds[i] << "\"} " << cum[i] << "\n";
         }
         ss << "mmo_tick_duration_seconds_bucket{le=\"+Inf\"} "
-           << cum[CMonitorManager::TICK_BUCKET_COUNT - 1] << "\n";
+           << cum[GLC::TICK_BUCKET_COUNT - 1] << "\n";
 
         ss << std::fixed << std::setprecision(6);
         ss << "mmo_tick_duration_seconds_sum "
