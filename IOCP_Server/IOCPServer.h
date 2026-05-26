@@ -22,7 +22,7 @@
 
 #pragma comment(lib, "ws2_32.lib")
 
-constexpr size_t MAX_PACKET_SIZE = 4096;  // 최대 패킷 크기 (4KB)
+constexpr size_t MAX_PACKET_SIZE = MSG_DEFAULT_SIZE;  // SerialBuffer 버퍼 크기와 일치 (1460B, TCP MSS 기준)
 constexpr size_t MIN_PACKET_SIZE = sizeof(EchoMsgHeader);  // 최소 패킷 크기 (가장 작은 헤더 기준)
 
 // I/O 작업 종류

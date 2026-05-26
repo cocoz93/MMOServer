@@ -63,6 +63,10 @@ public:
 private:
     bool IsValidSector(int32_t sectorX, int32_t sectorY) const;
 
+    // 평탄화 인덱스 접근 헬퍼
+    std::vector<CPlayer*>& SectorAt(int32_t y, int32_t x) { return _sectors[y * _sectorCountX + x]; }
+    const std::vector<CPlayer*>& SectorAt(int32_t y, int32_t x) const { return _sectors[y * _sectorCountX + x]; }
+
     // 주변 9섹터 좌표 수집 (경계 클램핑 포함, 고정 배열)
     // outSectors: 최대 9개, outCount: 실제 개수
     void GetAroundSectorList(int32_t sectorX, int32_t sectorY,
@@ -74,8 +78,8 @@ private:
     int32_t _sectorCountX;
     int32_t _sectorCountY;
 
-    // 2D 그리드: _sectors[y][x] = 해당 섹터의 플레이어 목록
-    std::vector<std::vector<std::vector<CPlayer*>>> _sectors;
+    // 2D 그리드 (평탄화): SectorAt(y, x)로 접근
+    std::vector<std::vector<CPlayer*>> _sectors;
 
     // GetSectorPlayers에서 범위 밖 요청 시 반환할 빈 벡터
     static const std::vector<CPlayer*> EMPTY_SECTOR;

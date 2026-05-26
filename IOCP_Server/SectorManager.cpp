@@ -19,7 +19,7 @@ CSectorManager::~CSectorManager()
 
 bool CSectorManager::Init(int32_t mapWidth, int32_t mapHeight, int32_t sectorSize)
 {
-    if (mapWidth <= 0 || mapHeight <= 0 || sectorSize <= 0)
+    if (mapWidth < 2 || mapHeight < 2 || sectorSize <= 0)
         return false;
 
     _mapWidth = mapWidth;
@@ -28,12 +28,8 @@ bool CSectorManager::Init(int32_t mapWidth, int32_t mapHeight, int32_t sectorSiz
     _sectorCountX = (mapWidth + sectorSize - 1) / sectorSize;
     _sectorCountY = (mapHeight + sectorSize - 1) / sectorSize;
 
-    // 2D 그리드 할당
-    _sectors.resize(_sectorCountY);
-    for (int32_t y = 0; y < _sectorCountY; ++y)
-    {
-        _sectors[y].resize(_sectorCountX);
-    }
+    // 2D 그리드 할당 (평탄화)
+    _sectors.resize(_sectorCountY * _sectorCountX);
 
     return true;
 }
@@ -63,7 +59,7 @@ void CSectorManager::AddPlayer(CPlayer* player, int32_t sectorX, int32_t sectorY
     if (!IsValidSector(sectorX, sectorY))
         return;
 
-    _sectors[sectorY][sectorX].push_back(player);
+    SectorAt(sectorY, sectorX).push_back(player);
 }
 
 void CSectorManager::RemovePlayer(CPlayer* player, int32_t sectorX, int32_t sectorY)
@@ -71,7 +67,7 @@ void CSectorManager::RemovePlayer(CPlayer* player, int32_t sectorX, int32_t sect
     if (!IsValidSector(sectorX, sectorY))
         return;
 
-    auto& players = _sectors[sectorY][sectorX];
+    auto& players = SectorAt(sectorY, sectorX);
     auto it = std::find(players.begin(), players.end(), player);
     if (it != players.end())
     {
@@ -86,7 +82,7 @@ const std::vector<CPlayer*>& CSectorManager::GetSectorPlayers(int32_t sectorX, i
     if (!IsValidSector(sectorX, sectorY))
         return EMPTY_SECTOR;
 
-    return _sectors[sectorY][sectorX];
+    return SectorAt(sectorY, sectorX);
 }
 
 void CSectorManager::GetAroundPlayers(int32_t sectorX, int32_t sectorY,
@@ -101,7 +97,7 @@ void CSectorManager::GetAroundPlayers(int32_t sectorX, int32_t sectorY,
 
     for (int32_t i = 0; i < count; ++i)
     {
-        const auto& players = _sectors[aroundSectors[i].y][aroundSectors[i].x];
+        const auto& players = SectorAt(aroundSectors[i].y, aroundSectors[i].x);
         for (CPlayer* p : players)
         {
             if (p != exclude)

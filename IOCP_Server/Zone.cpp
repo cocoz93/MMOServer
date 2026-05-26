@@ -14,7 +14,6 @@ CZone::CZone()
 CZone::~CZone()
 {
     // CPlayer의 생명주기는 CGameServer가 관리
-    _playerMap.clear();
     _playerList.clear();
 }
 
@@ -49,26 +48,19 @@ bool CZone::EnterZone(CPlayer* player)
     _sectorManager.AddPlayer(player, player->_sectorX, player->_sectorY);
 
     // 플레이어 목록에 추가
-    _playerMap[player->_playerId] = player;
     player->_listIndex = static_cast<int32_t>(_playerList.size());
     _playerList.push_back(player);
 
     return true;
 }
 
-void CZone::LeaveZone(int32_t playerId)
+void CZone::LeaveZone(CPlayer* player)
 {
-    auto it = _playerMap.find(playerId);
-    if (it == _playerMap.end())
+    if (player == nullptr)
         return;
-
-    CPlayer* player = it->second;
 
     // 섹터 해제
     _sectorManager.RemovePlayer(player, player->_sectorX, player->_sectorY);
-
-    // 맵에서 제거 (delete는 CGameServer가 담당)
-    _playerMap.erase(it);
 
     // 순회용 리스트에서 O(1) 삭제 (swap-and-pop, 인덱스 캐시 활용)
     int32_t idx = player->_listIndex;

@@ -34,7 +34,7 @@ bool CGameServer::Init(ServerMode mode, int port, int maxClients,
     _network = std::make_unique<CIOCPServer>(port, maxClients, _mode, _monitor);
 
     // 게임 서버 모드일 때만 맵 등록
-    if (_mode == ServerMode::GameServer && maps != nullptr)
+    if (_mode == ServerMode::GameServer && maps != nullptr && mapCount > 0)
     {
         for (int32_t i = 0; i < mapCount; ++i)
         {
@@ -44,6 +44,16 @@ bool CGameServer::Init(ServerMode mode, int port, int maxClients,
 
         // 첫 번째 맵을 기본 접속 맵으로 설정
         _defaultMapId = maps[0].mapId;
+
+        // 프레임 재사용 컨테이너 reserve (워밍업 realloc 방지)
+        int32_t maxPerChannel = maps[0].maxPlayersPerChannel;
+        _sessionToPlayer.reserve(maxClients);
+        _broadcastBuffer.reserve(maxPerChannel);
+        _eventAroundBuffer.reserve(maxPerChannel);
+        _pendingSectorChanges.reserve(maxPerChannel);
+        _tickSectorChanges.reserve(maxPerChannel);
+        _tickClampedPlayers.reserve(maxPerChannel);
+        _sectorChangedSet.reserve(maxPerChannel);
     }
 
     return true;
@@ -404,7 +414,28 @@ void CGameServer::RecvMoveStart(CPlayer* player, CSerialBuffer* pMsg)
 
     Direction dir = static_cast<Direction>(recvMsg.direction);
 
-    // 클라이언트 예측 좌표 수용: 서버 좌표와의 오차가 허용 범위 내이면 채택
+    // 이동 중 방향 전환: 같은 방향이면 무시, 다른 방향이면 갱신 + 재브로드캐스트
+    // ※ 좌표 수용보다 먼저 검사 — MOVING 중 반복 전송으로 서버 좌표를 밀어내는 치트 방지
+    if (player->_moveState == MoveState::MOVING)
+    {
+        if (dir == player->_direction)
+            return;
+
+        player->_direction = dir;
+        player->_lastSyncX = player->_x;
+        player->_lastSyncY = player->_y;
+
+        MSG_S2C_MOVE_START msg;
+        msg.playerId = player->_playerId;
+        msg.direction = static_cast<uint8_t>(dir);
+        msg.x = player->_x;
+        msg.y = player->_y;
+        BroadcastAroundSector(zone, player, msg);
+        return;
+    }
+
+    // 클라이언트 예측 좌표 수용 (IDLE → MOVING 전환 시에만):
+    // 서버 좌표와의 오차가 허용 범위 내이면 채택
     {
         float dx = recvMsg.x - player->_x;
         float dy = recvMsg.y - player->_y;
@@ -439,25 +470,6 @@ void CGameServer::RecvMoveStart(CPlayer* player, CSerialBuffer* pMsg)
             }
         }
         // 범위 초과 시 서버 좌표 유지 (치트 방지)
-    }
-
-    // 이동 중 방향 전환: 같은 방향이면 무시, 다른 방향이면 갱신 + 재브로드캐스트
-    if (player->_moveState == MoveState::MOVING)
-    {
-        if (dir == player->_direction)
-            return;
-
-        player->_direction = dir;
-        player->_lastSyncX = player->_x;
-        player->_lastSyncY = player->_y;
-
-        MSG_S2C_MOVE_START msg;
-        msg.playerId = player->_playerId;
-        msg.direction = static_cast<uint8_t>(dir);
-        msg.x = player->_x;
-        msg.y = player->_y;
-        BroadcastAroundSector(zone, player, msg);
-        return;
     }
 
     // 벽 방향 검증: 벽 위치에서 벽 쪽으로 이동 시도 시 차단
@@ -884,7 +896,7 @@ void CGameServer::BroadcastLeaveZone(CZone* zone, CPlayer* player)
             [player](const SectorChangeInfo& c) { return c.player == player; }),
         _pendingSectorChanges.end());
 
-    zone->LeaveZone(player->_playerId);
+    zone->LeaveZone(player);
 }
 
 // ==========================================================================

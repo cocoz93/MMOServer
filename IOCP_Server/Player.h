@@ -29,7 +29,7 @@ public:
     CPlayer();
     ~CPlayer();
 
-    int32_t _playerId;    // 게임 월드 내 식별자 (클라이언트에 노출)
+    int32_t _playerId;    // S2C 패킷 전용 엔티티 식별자 (서버 내부는 CPlayer*로 식별)
     uint8_t _displayChar; // 표시 문자 (ASCII: A-Z, a-z, 0-9)
     uint8_t _colorIndex;  // 색상 인덱스 (0-6)
 

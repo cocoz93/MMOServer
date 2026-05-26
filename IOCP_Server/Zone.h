@@ -13,7 +13,6 @@
 #pragma once
 
 #include <cstdint>
-#include <unordered_map>
 #include <vector>
 
 #include "SectorManager.h"
@@ -41,8 +40,8 @@ public:
     // playerId와 CPlayer의 생성/삭제는 CGameServer가 담당
     bool EnterZone(CPlayer* player);
 
-    // 플레이어 퇴장 — 섹터 해제, _players 맵에서 제거 (delete하지 않음)
-    void LeaveZone(int32_t playerId);
+    // 플레이어 퇴장 — 섹터 해제, 목록에서 제거 (delete하지 않음)
+    void LeaveZone(CPlayer* player);
 
     // 프레임 갱신 — MOVING 플레이어 좌표 갱신, 섹터 변경 감지
     // outClampedPlayers: 맵 경계 클램핑으로 IDLE 전환된 플레이어 (MOVE_STOP 브로드캐스트 필요)
@@ -71,9 +70,6 @@ private:
     int32_t _mapHeight;
 
     CSectorManager _sectorManager;
-
-    // playerId → CPlayer* (조회용)
-    std::unordered_map<int32_t, CPlayer*> _playerMap;
 
     // 순회용 (Tick 캐시 지역성)
     std::vector<CPlayer*> _playerList;

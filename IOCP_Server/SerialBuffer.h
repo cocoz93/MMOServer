@@ -6,8 +6,8 @@
 
 #include "LockFree/ExternalTlsFreeList.h"
 
-// TCP MSS(1460) 이하로 맞춰 세그먼트 분할 없이 패킷 하나가 단일 세그먼트에 수용되도록 함
-// 초과 시 세그먼트당 IP+TCP 헤더(40B) 오버헤드가 추가 발생
+// 기본 직렬화 버퍼 크기 — 현재 프로토콜 최대 패킷(~1034B)을 수용할 수 있으면 충분
+// 값 자체에 특별한 성능적 근거는 없음. 대형 패킷 추가 시 MAX_PACKET_SIZE와 함께 확장할 것
 static constexpr int MSG_DEFAULT_SIZE = 1460;
 static constexpr int HEADER_SIZE = 2;
 
