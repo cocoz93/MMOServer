@@ -770,7 +770,6 @@ void CGameServer::RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg)
         CZone* fallback = _mapManager.FindOrCreateChannel(CMapManager::GetMapIdFromZoneId(oldZone->GetZoneId()));
         if (fallback != nullptr && fallback->EnterZone(player))
         {
-            _sessionToPlayer[sessionId] = player;
             SendZoneChangeFail(player, 1);
 
             // 델타 동기화 기준 좌표 초기화
@@ -792,8 +791,6 @@ void CGameServer::RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg)
         return;
     }
 
-    // 경계 매핑 갱신 (player 객체·playerId 동일, zoneId만 변경됨)
-    _sessionToPlayer[sessionId] = player;
     InterlockedIncrement64(&_monitor._gameLoop._zoneChangeCount);
 
     // 델타 동기화 기준 좌표 초기화
