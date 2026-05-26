@@ -116,9 +116,11 @@ private:
         ss << "# TYPE stress_connected_clients gauge\n";
         ss << "stress_connected_clients " << _stats.connectedCount.load() << "\n\n";
 
-        ss << "# HELP stress_loop_duration_ms Network loop iteration duration in ms\n";
-        ss << "# TYPE stress_loop_duration_ms gauge\n";
-        ss << "stress_loop_duration_ms " << _stats.loopDurationMs.load() << "\n\n";
+        ss << "# HELP stress_loop_duration_seconds Network loop iteration duration\n";
+        ss << "# TYPE stress_loop_duration_seconds gauge\n";
+        ss << std::fixed << std::setprecision(6);
+        ss << "stress_loop_duration_seconds " << (_stats.loopDurationMs.load() / 1000.0) << "\n\n";
+        ss << std::defaultfloat;
 
         ss << "# HELP stress_pending_packets Current pending (unacked) echo packets\n";
         ss << "# TYPE stress_pending_packets gauge\n";
