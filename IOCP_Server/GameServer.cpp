@@ -959,11 +959,10 @@ void CGameServer::BroadcastLeaveZone(CZone* zone, CPlayer* player)
 
 void CGameServer::PushSectorChange(CPlayer* player, int32_t oldSectorX, int32_t oldSectorY)
 {
-    if (_sectorChangedSet.find(player) != _sectorChangedSet.end())
+    if (!_sectorChangedSet.insert(player).second)
         return;  // 이미 기록됨 → 최초 출발 섹터 유지
 
     _pendingSectorChanges.push_back({ player, oldSectorX, oldSectorY });
-    _sectorChangedSet.insert(player);
 }
 
 // ==========================================================================
