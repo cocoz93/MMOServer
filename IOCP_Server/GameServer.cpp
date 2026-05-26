@@ -313,13 +313,13 @@ void CGameServer::OnDisconnected(int64_t sessionId)
 
     CPlayer* player = it->second;
     CZone* zone = _mapManager.GetZone(player->_zoneId);
-    if (zone == nullptr)
-        return;
+    if (zone != nullptr)
+    {
+        // 주변 DELETE 브로드캐스트 + 섹터/존 해제
+        BroadcastLeaveZone(zone, player);
+    }
 
-    // 주변 DELETE 브로드캐스트 + 섹터/존 해제
-    BroadcastLeaveZone(zone, player);
-
-    // 경계 매핑 해제
+    // 경계 매핑 해제 (zone 유무와 무관하게 반드시 수행)
     _sessionToPlayer.erase(it);
 
     // 플레이어 삭제 (CGameServer가 생명주기 소유)
