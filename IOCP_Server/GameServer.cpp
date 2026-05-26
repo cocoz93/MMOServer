@@ -761,7 +761,7 @@ void CGameServer::RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg)
         return;
     }
 
-    // 경계 매핑 갱신 (player 객체는 동일, playerId만 변경됨)
+    // 경계 매핑 갱신 (player 객체·playerId 동일, zoneId만 변경됨)
     _sessionToPlayer[sessionId] = player;
     InterlockedIncrement64(&_monitor._gameLoop._zoneChangeCount);
 
