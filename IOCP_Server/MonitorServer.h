@@ -124,13 +124,28 @@ private:
                      "Total WSARecv system calls", _monitor._wsaRecvCalls);
         WriteCounter(ss, "mmo_wsa_send_calls_total",
                      "Total WSASend system calls", _monitor._wsaSendCalls);
+        WriteCounter(ss, "mmo_wsa_send_completions_total",
+                     "Total WSASend IOCP completions", _monitor._wsaSendCompletions);
         WriteCounter(ss, "mmo_send_enqueued_bytes_total",
                      "Total bytes enqueued to SendQ", _monitor._sendEnqueuedBytes);
+        WriteCounter(ss, "mmo_send_discarded_bytes_total",
+                     "Total bytes discarded from SendQ on disconnect", _monitor._sendDiscardedBytes);
+        WriteCounter(ss, "mmo_broadcast_calls_total",
+                     "Total broadcast invocations", _monitor._gameLoop._broadcastCalls);
+        WriteCounter(ss, "mmo_broadcast_targets_total",
+                     "Total broadcast target players", _monitor._gameLoop._broadcastTargets);
+
+        // ── 구간별 시간 (초 단위 counter) ──
+        WritePhaseCounters(ss);
 
         // ── 게이지 ──
         ss << "# HELP mmo_session_count Current active sessions\n";
         ss << "# TYPE mmo_session_count gauge\n";
         ss << "mmo_session_count " << _monitor._sessionCount << "\n\n";
+
+        ss << "# HELP mmo_event_queue_size Network event queue size before dispatch\n";
+        ss << "# TYPE mmo_event_queue_size gauge\n";
+        ss << "mmo_event_queue_size " << _monitor._gameLoop._eventQueueSize << "\n\n";
 
         // ── 히스토그램 (비누적 → 누적 변환) ──
         WriteTickHistogram(ss);
@@ -148,6 +163,24 @@ private:
         ss << "# HELP " << name << " " << help << "\n";
         ss << "# TYPE " << name << " counter\n";
         ss << name << " " << value << "\n\n";
+    }
+
+    void WritePhaseCounters(std::ostringstream& ss)
+    {
+        // 마이크로초 → 초 변환하여 counter로 노출
+        // rate(mmo_tick_phase_seconds_total) / rate(mmo_tick_duration_seconds_count) → 틱당 평균 구간 시간
+        ss << "# HELP mmo_tick_phase_seconds_total Cumulative time spent in each game loop phase\n";
+        ss << "# TYPE mmo_tick_phase_seconds_total counter\n";
+
+        ss << std::fixed << std::setprecision(6);
+        ss << "mmo_tick_phase_seconds_total{phase=\"network_dispatch\"} "
+           << (static_cast<double>(_monitor._gameLoop._phaseNetworkUs) / 1000000.0) << "\n";
+        ss << "mmo_tick_phase_seconds_total{phase=\"game_logic\"} "
+           << (static_cast<double>(_monitor._gameLoop._phaseGameLogicUs) / 1000000.0) << "\n";
+        ss << "mmo_tick_phase_seconds_total{phase=\"broadcast_sync\"} "
+           << (static_cast<double>(_monitor._gameLoop._phaseBroadcastSyncUs) / 1000000.0) << "\n";
+        ss << std::defaultfloat;
+        ss << "\n";
     }
 
     void WriteTickHistogram(std::ostringstream& ss)

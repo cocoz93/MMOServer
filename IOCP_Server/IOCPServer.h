@@ -210,6 +210,9 @@ public:
     // 게임 로직 레이어로 전달할 이벤트 가져오기 (QUEUE_BASED 모드용)
     bool PopNetworkEvent(NetworkEvent& event);
 
+    // 이벤트 큐 현재 크기 (모니터링용)
+    size_t GetEventQueueSize() const { return _eventQueue.GetSize(); }
+
     // 서버 모드 가져오기
     ServerMode GetServerMode() const;
 

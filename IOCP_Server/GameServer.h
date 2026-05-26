@@ -109,6 +109,10 @@ private:
         zone->GetSectorManager().GetAroundPlayers(
             player->_sectorX, player->_sectorY, _broadcastBuffer, exclude);
 
+        InterlockedIncrement64(&_monitor._gameLoop._broadcastCalls);
+        InterlockedExchangeAdd64(&_monitor._gameLoop._broadcastTargets,
+            static_cast<LONG64>(_broadcastBuffer.size()));
+
         for (CPlayer* other : _broadcastBuffer)
         {
             SendPacket(other, msg);
@@ -123,6 +127,10 @@ private:
         CPlayer* exclude = excludeSelf ? player : nullptr;
         zone->GetSectorManager().GetAroundPlayers(
             player->_sectorX, player->_sectorY, _broadcastBuffer, exclude);
+
+        InterlockedIncrement64(&_monitor._gameLoop._broadcastCalls);
+        InterlockedExchangeAdd64(&_monitor._gameLoop._broadcastTargets,
+            static_cast<LONG64>(_broadcastBuffer.size()));
 
         for (CPlayer* other : _broadcastBuffer)
         {

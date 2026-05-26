@@ -709,7 +709,7 @@ void CIOCPServer::ProcessSend(CSession* session, DWORD bytesTransferred)
 
     // 송신 지표 기록
     InterlockedExchangeAdd64(&_monitor._sendBytes, static_cast<LONG64>(bytesTransferred));
-    InterlockedIncrement64(&_monitor._sendPackets);
+    InterlockedIncrement64(&_monitor._wsaSendCompletions);
 
     // SendQ에서 송신한 만큼 Consume
     size_t consumed = session->_sendQ.Consume(bytesTransferred);
@@ -871,6 +871,9 @@ void CIOCPServer::RequestSendMsg(int64_t sessionId, const char* data, int length
         return;
     }
 
+    // 논리적 송신 패킷 카운팅 (모든 전송 경로가 이 함수를 거침)
+    InterlockedIncrement64(&_monitor._sendPackets);
+
     // Enqueue 바이트 누적 (_sendBytes와의 차이로 SendQ 체류량 산출)
     InterlockedExchangeAdd64(&_monitor._sendEnqueuedBytes, static_cast<LONG64>(length));
 
@@ -881,7 +884,7 @@ void CIOCPServer::RequestSendMsg(int64_t sessionId, const char* data, int length
 void CIOCPServer::EchoTestSend(CSession* session, CSerialBuffer* pMsg)
 {
     // 에코 테스트: 받은 패킷을 그대로 돌려보냄
-    InterlockedIncrement64(&_monitor._sendPackets);
+    // _sendPackets는 RequestSendMsg 내부에서 카운팅
     RequestSendMsg(session->_sessionId, pMsg);
 }
 
@@ -1015,6 +1018,12 @@ void CIOCPServer::ReleaseSession(CSession* session)
 
     // 타이밍 휠에서 세션 제거 (이중 만료 방지)
     _timingWheel->RequestUnregister(CSession::ExtractIndex(sessionId), sessionId);
+
+    // Disconnect 시 SendQ 잔여 바이트를 discard 카운터에 적산 (체류량 보정)
+    // IOCount==0 단일 스레드 호출이므로 SendQ 경합 없음
+    size_t residual = session->_sendQ.GetDataSize();
+    if (residual > 0)
+        InterlockedExchangeAdd64(&_monitor._sendDiscardedBytes, static_cast<LONG64>(residual));
 
     session->Close();
 

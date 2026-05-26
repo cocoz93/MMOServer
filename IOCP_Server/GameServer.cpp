@@ -135,7 +135,10 @@ void CGameServer::GameLoopThread()
         prevTime = frameStart;
 
         // 1) 네트워크 이벤트 전부 소비
+        _monitor._gameLoop._eventQueueSize = static_cast<LONG>(_network->GetEventQueueSize());
+        auto phaseT1 = Clock::now();
         ProcessNetworkEvents();
+        auto phaseT2 = Clock::now();
 
         // 2) 게임 로직 갱신 (좌표 이동 + 섹터 변경 감지 + 경계 클램핑)
         _tickSectorChanges.clear();
@@ -180,6 +183,8 @@ void CGameServer::GameLoopThread()
             }
         }
 
+        auto phaseT3 = Clock::now();
+
         // 4) 주기적 위치 동기화 (MOVING 플레이어 → 주변 브로드캐스트)
         ++_syncFrameCount;
         if (_syncFrameCount >= SYNC_INTERVAL_FRAMES)
@@ -209,6 +214,16 @@ void CGameServer::GameLoopThread()
                 }
             });
         }
+
+        auto phaseT4 = Clock::now();
+
+        // 구간별 시간 기록 (마이크로초 누적)
+        InterlockedExchangeAdd64(&_monitor._gameLoop._phaseNetworkUs,
+            std::chrono::duration_cast<std::chrono::microseconds>(phaseT2 - phaseT1).count());
+        InterlockedExchangeAdd64(&_monitor._gameLoop._phaseGameLogicUs,
+            std::chrono::duration_cast<std::chrono::microseconds>(phaseT3 - phaseT2).count());
+        InterlockedExchangeAdd64(&_monitor._gameLoop._phaseBroadcastSyncUs,
+            std::chrono::duration_cast<std::chrono::microseconds>(phaseT4 - phaseT3).count());
 
         // 5) 빈 동적 채널 정리
         ++_cleanupFrameCount;
