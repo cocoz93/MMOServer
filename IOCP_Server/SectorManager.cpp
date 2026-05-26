@@ -5,9 +5,7 @@
 const std::vector<CPlayer*> CSectorManager::EMPTY_SECTOR;
 
 CSectorManager::CSectorManager()
-    : _mapWidth(0)
-    , _mapHeight(0)
-    , _sectorSize(0)
+    : _sectorSize(0)
     , _sectorCountX(0)
     , _sectorCountY(0)
 {
@@ -22,8 +20,6 @@ bool CSectorManager::Init(int32_t mapWidth, int32_t mapHeight, int32_t sectorSiz
     if (mapWidth < 2 || mapHeight < 2 || sectorSize <= 0)
         return false;
 
-    _mapWidth = mapWidth;
-    _mapHeight = mapHeight;
     _sectorSize = sectorSize;
     _sectorCountX = (mapWidth + sectorSize - 1) / sectorSize;
     _sectorCountY = (mapHeight + sectorSize - 1) / sectorSize;

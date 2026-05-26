@@ -97,6 +97,10 @@ CZone* CMapInstance::CreateChannel(int32_t channelIndex)
 
 bool CMapManager::RegisterMap(const MapConfig& config)
 {
+    // 설정 유효성 검증
+    if (config.maxPlayersPerChannel <= 0)
+        return false;
+
     // 중복 맵 등록 방지
     if (_maps.find(config.mapId) != _maps.end())
         return false;

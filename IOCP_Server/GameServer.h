@@ -48,8 +48,6 @@ public:
     bool Start();
     void Stop();
 
-    ServerMode GetMode() const { return _mode; }
-
 private:
     // 게임 루프 (별도 스레드, GameServer 모드 전용)
     void GameLoopThread();

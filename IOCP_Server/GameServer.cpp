@@ -34,8 +34,11 @@ bool CGameServer::Init(ServerMode mode, int port, int maxClients,
     _network = std::make_unique<CIOCPServer>(port, maxClients, _mode, _monitor);
 
     // 게임 서버 모드일 때만 맵 등록
-    if (_mode == ServerMode::GameServer && maps != nullptr && mapCount > 0)
+    if (_mode == ServerMode::GameServer)
     {
+        if (maps == nullptr || mapCount <= 0)
+            return false;
+
         for (int32_t i = 0; i < mapCount; ++i)
         {
             if (!_mapManager.RegisterMap(maps[i]))
@@ -46,14 +49,15 @@ bool CGameServer::Init(ServerMode mode, int port, int maxClients,
         _defaultMapId = maps[0].mapId;
 
         // 프레임 재사용 컨테이너 reserve (워밍업 realloc 방지)
+        // 전체 서버 범위 버퍼도 maxPerChannel 기준 — 초과 시 자연 증가 후 capacity 유지
         int32_t maxPerChannel = maps[0].maxPlayersPerChannel;
         _sessionToPlayer.reserve(maxClients);
-        _broadcastBuffer.reserve(maxPerChannel);
-        _eventAroundBuffer.reserve(maxPerChannel);
-        _pendingSectorChanges.reserve(maxPerChannel);
-        _tickSectorChanges.reserve(maxPerChannel);
-        _tickClampedPlayers.reserve(maxPerChannel);
-        _sectorChangedSet.reserve(maxPerChannel);
+        _broadcastBuffer.reserve(maxPerChannel);       // 주변 9섹터 단위
+        _eventAroundBuffer.reserve(maxPerChannel);     // 주변 9섹터 단위
+        _pendingSectorChanges.reserve(maxPerChannel);  // 전체 서버 프레임 이벤트
+        _tickSectorChanges.reserve(maxPerChannel);     // 전체 서버 TickAll 결과
+        _tickClampedPlayers.reserve(maxPerChannel);    // 전체 서버 TickAll 결과
+        _sectorChangedSet.reserve(maxPerChannel);      // 전체 서버 dedup
     }
 
     return true;
@@ -420,6 +424,21 @@ void CGameServer::RecvMoveStart(CPlayer* player, CSerialBuffer* pMsg)
     {
         if (dir == player->_direction)
             return;
+
+        // 벽 방향 검증: 벽 위치에서 벽 쪽으로 방향 전환 시 정지 처리
+        if (IsBlockedByWall(zone, player, dir))
+        {
+            player->_moveState = MoveState::IDLE;
+            player->_direction = dir;
+
+            MSG_S2C_MOVE_STOP msg;
+            msg.playerId = player->_playerId;
+            msg.direction = static_cast<uint8_t>(dir);
+            msg.x = player->_x;
+            msg.y = player->_y;
+            BroadcastAroundSector(zone, player, msg, false);  // 본인 포함
+            return;
+        }
 
         player->_direction = dir;
         player->_lastSyncX = player->_x;

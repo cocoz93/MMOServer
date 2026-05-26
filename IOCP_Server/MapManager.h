@@ -58,7 +58,6 @@ public:
     void TickAll(float deltaTime, std::vector<SectorChangeInfo>& outSectorChanges,
                  std::vector<CPlayer*>& outClampedPlayers);
 
-    int32_t GetMapId() const { return _config.mapId; }
     int32_t GetMaxPlayersPerChannel() const { return _config.maxPlayersPerChannel; }
 
     // 순회용 콜백

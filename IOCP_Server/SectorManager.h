@@ -72,8 +72,6 @@ private:
     void GetAroundSectorList(int32_t sectorX, int32_t sectorY,
                              SectorPos* outSectors, int32_t& outCount) const;
 
-    int32_t _mapWidth;
-    int32_t _mapHeight;
     int32_t _sectorSize;
     int32_t _sectorCountX;
     int32_t _sectorCountY;
