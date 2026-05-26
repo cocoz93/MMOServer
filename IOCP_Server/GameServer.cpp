@@ -899,6 +899,7 @@ void CGameServer::BroadcastEnterZone(CZone* zone, CPlayer* player, SpawnReason r
 
 void CGameServer::BroadcastLeaveZone(CZone* zone, CPlayer* player)
 {
+    // 현재 섹터 기준 주변 DELETE
     _eventAroundBuffer.clear();
     zone->GetSectorManager().GetAroundPlayers(
         player->_sectorX, player->_sectorY, _eventAroundBuffer, player);
@@ -906,6 +907,40 @@ void CGameServer::BroadcastLeaveZone(CZone* zone, CPlayer* player)
     for (CPlayer* other : _eventAroundBuffer)
     {
         SendDeletePlayer(other, player);
+    }
+
+    // 미처리 섹터 변경이 있으면 이전 섹터 전용 뷰어에게도 DELETE
+    // (같은 프레임에 섹터 변경 + 존 이동/접속해제 시 고스트 방지)
+    if (_sectorChangedSet.count(player))
+    {
+        for (const auto& change : _pendingSectorChanges)
+        {
+            if (change.player != player)
+                continue;
+
+            // 이전 섹터 전용 = old 주변에만 있고 현재 주변에는 없는 섹터
+            CSectorManager::SectorPos added[CSectorManager::MAX_AROUND_SECTORS];
+            CSectorManager::SectorPos removed[CSectorManager::MAX_AROUND_SECTORS];
+            int32_t addedCount = 0;
+            int32_t removedCount = 0;
+
+            zone->GetSectorManager().GetSectorDiff(
+                player->_sectorX, player->_sectorY,    // 현재 섹터 (이미 갱신된 값)
+                change.oldSectorX, change.oldSectorY,   // 이전 섹터
+                added, addedCount,                       // old 전용 섹터
+                removed, removedCount);
+
+            for (int32_t i = 0; i < addedCount; ++i)
+            {
+                const auto& players = zone->GetSectorManager().GetSectorPlayers(
+                    added[i].x, added[i].y);
+                for (CPlayer* other : players)
+                {
+                    SendDeletePlayer(other, player);
+                }
+            }
+            break;
+        }
     }
 
     // 섹터 변경 대기열에서 제거
