@@ -77,16 +77,17 @@ private:
 
     std::string BuildMetricsText()
     {
+        using mo = std::memory_order;
         std::ostringstream ss;
 
         // ── 게이지 ──
         ss << "# HELP mmo_dummy_connected_clients Current connected clients\n";
         ss << "# TYPE mmo_dummy_connected_clients gauge\n";
-        ss << "mmo_dummy_connected_clients " << _stats.connectedCount.load() << "\n\n";
+        ss << "mmo_dummy_connected_clients " << _stats.connectedCount.load(mo::relaxed) << "\n\n";
 
         ss << "# HELP mmo_dummy_ready_clients Clients that received CREATE_MY_PLAYER\n";
         ss << "# TYPE mmo_dummy_ready_clients gauge\n";
-        ss << "mmo_dummy_ready_clients " << _stats.readyCount.load() << "\n\n";
+        ss << "mmo_dummy_ready_clients " << _stats.readyCount.load(mo::relaxed) << "\n\n";
 
         // ── 카운터 ──
         WriteCounter(ss, "mmo_dummy_send_packets_total",
@@ -116,6 +117,25 @@ private:
         WriteCounter(ss, "mmo_dummy_zone_change_fail_total",
                      "Total ZoneChange failures", _stats.zoneChangeFail);
 
+        // ── RTT 게이지 ──
+        ss << "# HELP mmo_dummy_rtt_max_seconds Worst RTT observed\n";
+        ss << "# TYPE mmo_dummy_rtt_max_seconds gauge\n";
+        ss << std::fixed << std::setprecision(6);
+        ss << "mmo_dummy_rtt_max_seconds "
+           << (static_cast<double>(_stats.rttMaxMs.load(mo::relaxed)) / 1000.0) << "\n\n";
+
+        {
+            int64_t minVal = _stats.rttMinMs.load(mo::relaxed);
+            ss << "# HELP mmo_dummy_rtt_min_seconds Best RTT observed\n";
+            ss << "# TYPE mmo_dummy_rtt_min_seconds gauge\n";
+            if (minVal < LLONG_MAX)
+                ss << "mmo_dummy_rtt_min_seconds "
+                   << (static_cast<double>(minVal) / 1000.0) << "\n\n";
+            else
+                ss << "mmo_dummy_rtt_min_seconds 0\n\n";
+        }
+        ss << std::defaultfloat;
+
         // ── RTT 히스토그램 ──
         WriteRttHistogram(ss);
 
@@ -128,7 +148,7 @@ private:
     {
         ss << "# HELP " << name << " " << help << "\n";
         ss << "# TYPE " << name << " counter\n";
-        ss << name << " " << value.load() << "\n\n";
+        ss << name << " " << value.load(std::memory_order_relaxed) << "\n\n";
     }
 
     void WriteRttHistogram(std::ostringstream& ss)
@@ -136,7 +156,7 @@ private:
         // 비누적 버킷 스냅샷
         int64_t raw[MMOStats::RTT_BUCKET_COUNT];
         for (int i = 0; i < MMOStats::RTT_BUCKET_COUNT; ++i)
-            raw[i] = _stats.rttBuckets[i].load();
+            raw[i] = _stats.rttBuckets[i].load(std::memory_order_relaxed);
 
         // 누적 변환
         int64_t cum[MMOStats::RTT_BUCKET_COUNT];
@@ -144,8 +164,8 @@ private:
         for (int i = 1; i < MMOStats::RTT_BUCKET_COUNT; ++i)
             cum[i] = cum[i - 1] + raw[i];
 
-        int64_t rttCount = _stats.rttSamples.load();
-        int64_t rttSumMs = _stats.rttSumMs.load();
+        int64_t rttCount = _stats.rttSamples.load(std::memory_order_relaxed);
+        int64_t rttSumMs = _stats.rttSumMs.load(std::memory_order_relaxed);
 
         // 버킷 경계 (밀리초 → 초)
         static const char* leBounds[] = {

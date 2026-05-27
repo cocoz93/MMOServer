@@ -85,19 +85,20 @@ int main()
         }
 
         // 1초 주기 통계 출력
-        int connected = g_Stats.connectedCount.load();
-        int ready     = g_Stats.readyCount.load();
+        using mo = std::memory_order;
+        int connected = g_Stats.connectedCount.load(mo::relaxed);
+        int ready     = g_Stats.readyCount.load(mo::relaxed);
 
-        int64_t curRecv = g_Stats.recvPackets.load();
-        int64_t curSend = g_Stats.sendPackets.load();
+        int64_t curRecv = g_Stats.recvPackets.load(mo::relaxed);
+        int64_t curSend = g_Stats.sendPackets.load(mo::relaxed);
         int64_t recvPps = curRecv - prevRecvPkts;
         int64_t sendPps = curSend - prevSendPkts;
         prevRecvPkts = curRecv;
         prevSendPkts = curSend;
 
-        int64_t err = g_Stats.disconnectFromServer.load();
-        int64_t rttMax = g_Stats.rttMaxMs.load();
-        int64_t rttSamples = g_Stats.rttSamples.load();
+        int64_t err = g_Stats.disconnectFromServer.load(mo::relaxed);
+        int64_t rttMax = g_Stats.rttMaxMs.load(mo::relaxed);
+        int64_t rttSamples = g_Stats.rttSamples.load(mo::relaxed);
 
         // RTT 근사 p50/p99 (히스토그램 버킷에서 추정)
         int64_t p50 = 0, p99 = 0;
@@ -109,7 +110,7 @@ int main()
             static const int64_t bounds[] = { 1, 5, 10, 20, 50, 100, 200, 500, 1000, 9999 };
             for (int i = 0; i < MMOStats::RTT_BUCKET_COUNT; ++i)
             {
-                cum += g_Stats.rttBuckets[i].load();
+                cum += g_Stats.rttBuckets[i].load(mo::relaxed);
                 if (p50 == 0 && cum >= target50) p50 = bounds[i];
                 if (p99 == 0 && cum >= target99) p99 = bounds[i];
             }

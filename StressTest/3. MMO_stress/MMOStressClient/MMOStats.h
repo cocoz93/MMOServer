@@ -44,32 +44,6 @@ struct MMOStats
         1.0, 5.0, 10.0, 20.0, 50.0, 100.0, 200.0, 500.0, 1000.0
     };
     std::atomic<int64_t> rttBuckets[RTT_BUCKET_COUNT] = {};
-
-    void RecordRtt(int64_t ms)
-    {
-        rttSumMs.fetch_add(ms);
-        rttSamples.fetch_add(1);
-
-        // atomic max
-        int64_t curMax = rttMaxMs.load();
-        while (ms > curMax && !rttMaxMs.compare_exchange_weak(curMax, ms)) {}
-
-        // atomic min
-        int64_t curMin = rttMinMs.load();
-        while (ms < curMin && !rttMinMs.compare_exchange_weak(curMin, ms)) {}
-
-        // 히스토그램 버킷
-        double dMs = static_cast<double>(ms);
-        for (int i = 0; i < RTT_BUCKET_COUNT - 1; ++i)
-        {
-            if (dMs <= RTT_BUCKET_BOUNDS[i])
-            {
-                rttBuckets[i].fetch_add(1);
-                return;
-            }
-        }
-        rttBuckets[RTT_BUCKET_COUNT - 1].fetch_add(1);  // +Inf
-    }
 };
 
 // ── 스레드 로컬 통계 누적기 ─────────────────────────────────────
@@ -123,42 +97,44 @@ struct StatsLocal
 
     void Flush(MMOStats& g)
     {
-        if (connectedDelta != 0)       g.connectedCount.fetch_add(connectedDelta);
-        if (readyDelta != 0)           g.readyCount.fetch_add(readyDelta);
-        if (connectTotal != 0)         g.connectTotal.fetch_add(connectTotal);
-        if (connectFail != 0)          g.connectFail.fetch_add(connectFail);
-        if (disconnectFromServer != 0) g.disconnectFromServer.fetch_add(disconnectFromServer);
-        if (sendPackets != 0)          g.sendPackets.fetch_add(sendPackets);
-        if (recvPackets != 0)          g.recvPackets.fetch_add(recvPackets);
-        if (sendBytes != 0)            g.sendBytes.fetch_add(sendBytes);
-        if (recvBytes != 0)            g.recvBytes.fetch_add(recvBytes);
-        if (moveStartSent != 0)        g.moveStartSent.fetch_add(moveStartSent);
-        if (moveStopSent != 0)         g.moveStopSent.fetch_add(moveStopSent);
-        if (heartbeatSent != 0)        g.heartbeatSent.fetch_add(heartbeatSent);
-        if (chatSent != 0)            g.chatSent.fetch_add(chatSent);
-        if (zoneChangeSent != 0)       g.zoneChangeSent.fetch_add(zoneChangeSent);
-        if (zoneChangeFail != 0)       g.zoneChangeFail.fetch_add(zoneChangeFail);
+        using mo = std::memory_order;
 
-        if (rttSumMs != 0)    g.rttSumMs.fetch_add(rttSumMs);
-        if (rttSamples != 0)  g.rttSamples.fetch_add(rttSamples);
+        if (connectedDelta != 0)       g.connectedCount.fetch_add(connectedDelta, mo::relaxed);
+        if (readyDelta != 0)           g.readyCount.fetch_add(readyDelta, mo::relaxed);
+        if (connectTotal != 0)         g.connectTotal.fetch_add(connectTotal, mo::relaxed);
+        if (connectFail != 0)          g.connectFail.fetch_add(connectFail, mo::relaxed);
+        if (disconnectFromServer != 0) g.disconnectFromServer.fetch_add(disconnectFromServer, mo::relaxed);
+        if (sendPackets != 0)          g.sendPackets.fetch_add(sendPackets, mo::relaxed);
+        if (recvPackets != 0)          g.recvPackets.fetch_add(recvPackets, mo::relaxed);
+        if (sendBytes != 0)            g.sendBytes.fetch_add(sendBytes, mo::relaxed);
+        if (recvBytes != 0)            g.recvBytes.fetch_add(recvBytes, mo::relaxed);
+        if (moveStartSent != 0)        g.moveStartSent.fetch_add(moveStartSent, mo::relaxed);
+        if (moveStopSent != 0)         g.moveStopSent.fetch_add(moveStopSent, mo::relaxed);
+        if (heartbeatSent != 0)        g.heartbeatSent.fetch_add(heartbeatSent, mo::relaxed);
+        if (chatSent != 0)            g.chatSent.fetch_add(chatSent, mo::relaxed);
+        if (zoneChangeSent != 0)       g.zoneChangeSent.fetch_add(zoneChangeSent, mo::relaxed);
+        if (zoneChangeFail != 0)       g.zoneChangeFail.fetch_add(zoneChangeFail, mo::relaxed);
+
+        if (rttSumMs != 0)    g.rttSumMs.fetch_add(rttSumMs, mo::relaxed);
+        if (rttSamples != 0)  g.rttSamples.fetch_add(rttSamples, mo::relaxed);
 
         // RTT max (CAS)
         if (rttMaxMs > 0)
         {
-            int64_t cur = g.rttMaxMs.load();
-            while (rttMaxMs > cur && !g.rttMaxMs.compare_exchange_weak(cur, rttMaxMs)) {}
+            int64_t cur = g.rttMaxMs.load(mo::relaxed);
+            while (rttMaxMs > cur && !g.rttMaxMs.compare_exchange_weak(cur, rttMaxMs, mo::relaxed)) {}
         }
         // RTT min (CAS)
         if (rttMinMs < LLONG_MAX)
         {
-            int64_t cur = g.rttMinMs.load();
-            while (rttMinMs < cur && !g.rttMinMs.compare_exchange_weak(cur, rttMinMs)) {}
+            int64_t cur = g.rttMinMs.load(mo::relaxed);
+            while (rttMinMs < cur && !g.rttMinMs.compare_exchange_weak(cur, rttMinMs, mo::relaxed)) {}
         }
 
         for (int i = 0; i < MMOStats::RTT_BUCKET_COUNT; ++i)
         {
             if (rttBuckets[i] != 0)
-                g.rttBuckets[i].fetch_add(rttBuckets[i]);
+                g.rttBuckets[i].fetch_add(rttBuckets[i], mo::relaxed);
         }
 
         Reset();
