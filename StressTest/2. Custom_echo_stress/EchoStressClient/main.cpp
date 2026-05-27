@@ -38,7 +38,8 @@ int main(int argc, char* argv[])
     Sleep(1000);
 
     DummyManager         manager(cfg);
-    StressMonitorServer  monitor(manager.GetStats(), cfg.monitorPort);
+    StressMonitorServer  monitor([&manager]() { return manager.GetMergedStats(); },
+                                 cfg.monitorPort);
 
     manager.Start();
     monitor.Start();
@@ -72,16 +73,16 @@ int main(int argc, char* argv[])
     manager.Stop();
 
     // ── 최종 리포트 ─────────────────────────────────────────────
-    const Stats& s = manager.GetStats();
+    MergedStats s = manager.GetMergedStats();
     int mm = static_cast<int>(elapsedSec / 60);
     int ss = static_cast<int>(elapsedSec % 60);
 
-    int64_t samples = s.rttSamples.load();
-    int64_t avgRtt  = (samples > 0) ? (s.rttSumMs.load() / samples) : 0;
-    int64_t minRtt  = (samples > 0) ? s.rttMinMs.load() : 0;
-    int64_t maxRtt  = s.rttMaxMs.load();
+    int64_t samples = s.rttSamples;
+    int64_t avgRtt  = (samples > 0) ? (s.rttSumMs / samples) : 0;
+    int64_t minRtt  = (samples > 0) ? s.rttMinMs : 0;
+    int64_t maxRtt  = s.rttMaxMs;
 
-    int64_t avgTps = (elapsedSec > 0) ? (s.recvCount.load() / elapsedSec) : 0;
+    int64_t avgTps = (elapsedSec > 0) ? (s.recvCount / elapsedSec) : 0;
 
     // 리포트 문자열 생성 (콘솔 + 파일 공용)
     wchar_t report[2048];
@@ -116,17 +117,17 @@ int main(int argc, char* argv[])
         cfg.serverIp.c_str(), cfg.port,
         cfg.clientCount,
         cfg.minPacketSize, cfg.maxPacketSize,
-        s.connectTotal.load(),
-        s.connectFail.load(),
-        s.disconnectFromServer.load(),
-        s.sendCount.load(),
-        s.recvCount.load(),
+        s.connectTotal,
+        s.connectFail,
+        s.disconnectFromServer,
+        s.sendCount,
+        s.recvCount,
         avgTps,
         avgRtt, minRtt, maxRtt, samples,
-        s.echoNotRecv.load(),
-        s.packetError.load(),
-        s.lateArrival.load(),
-        s.sendBufferFull.load());
+        s.echoNotRecv,
+        s.packetError,
+        s.lateArrival,
+        s.sendBufferFull);
 
     // 콘솔 출력
     wprintf(L"%s", report);
