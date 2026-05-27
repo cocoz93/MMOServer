@@ -6,7 +6,7 @@
 //  - GET /metrics → Stats 지표를 Prometheus 텍스트 형식으로 노출
 //
 // [사용법]
-//  StressMonitorServer monitorSvr(stats, 9092);
+//  StressMonitorServer monitorSvr(getMergedFn, 9092);
 //  monitorSvr.Start();
 //  monitorSvr.Stop();
 // ==========================================================================
@@ -20,6 +20,7 @@
 #include <iomanip>
 #include <memory>
 #include <atomic>
+#include <functional>
 #include <cstdio>
 
 
@@ -29,8 +30,8 @@
 class StressMonitorServer
 {
 public:
-    explicit StressMonitorServer(const Stats& stats, int port = 9092)
-        : _stats(stats), _port(port) {}
+    explicit StressMonitorServer(std::function<MergedStats()> getMergedFn, int port = 9092)
+        : _getMergedStats(std::move(getMergedFn)), _port(port) {}
 
     ~StressMonitorServer() { Stop(); }
 
@@ -89,73 +90,82 @@ private:
 
     std::string BuildMetricsText()
     {
+        MergedStats m = _getMergedStats();
         std::ostringstream ss;
 
         // ── 카운터 ──
         WriteCounter(ss, "stress_send_packets_total",
-                     "Total sent packets", _stats.sendCount);
+                     "Total sent packets", m.sendCount);
         WriteCounter(ss, "stress_recv_packets_total",
-                     "Total received packets", _stats.recvCount);
+                     "Total received packets", m.recvCount);
         WriteCounter(ss, "stress_connect_total",
-                     "Total connection attempts", _stats.connectTotal);
+                     "Total connection attempts", m.connectTotal);
         WriteCounter(ss, "stress_connect_fail_total",
-                     "Total connection failures", _stats.connectFail);
+                     "Total connection failures", m.connectFail);
         WriteCounter(ss, "stress_disconnect_from_server_total",
-                     "Total server-initiated disconnects", _stats.disconnectFromServer);
+                     "Total server-initiated disconnects", m.disconnectFromServer);
         WriteCounter(ss, "stress_echo_not_recv_total",
-                     "Total echo timeout (no response)", _stats.echoNotRecv);
+                     "Total echo timeout (no response)", m.echoNotRecv);
         WriteCounter(ss, "stress_packet_error_total",
-                     "Total packet errors", _stats.packetError);
+                     "Total packet errors", m.packetError);
         WriteCounter(ss, "stress_late_arrival_total",
-                     "Total late arrivals", _stats.lateArrival);
+                     "Total late arrivals", m.lateArrival);
         WriteCounter(ss, "stress_send_buffer_full_total",
-                     "Total send buffer full events", _stats.sendBufferFull);
+                     "Total send buffer full events", m.sendBufferFull);
+
+        WriteCounter(ss, "stress_attack_packets_total",
+                     "Total attack packets sent", m.attackPacketsSent);
 
         // ── 게이지 ──
         ss << "# HELP stress_connected_clients Current connected clients\n";
         ss << "# TYPE stress_connected_clients gauge\n";
-        ss << "stress_connected_clients " << _stats.connectedCount.load() << "\n\n";
+        ss << "stress_connected_clients " << m.connectedCount << "\n\n";
 
         ss << "# HELP stress_loop_duration_seconds Network loop iteration duration\n";
         ss << "# TYPE stress_loop_duration_seconds gauge\n";
         ss << std::fixed << std::setprecision(6);
-        ss << "stress_loop_duration_seconds " << (_stats.loopDurationMs.load() / 1000.0) << "\n\n";
+        for (int i = 0; i < m.threadCount && i < MergedStats::MAX_THREADS; ++i)
+        {
+            ss << "stress_loop_duration_seconds{thread=\""
+               << i << "\"} " << (m.loopDurationMs[i] / 1000.0) << "\n";
+        }
+        ss << "\n";
         ss << std::defaultfloat;
 
         ss << "# HELP stress_pending_packets Current pending (unacked) echo packets\n";
         ss << "# TYPE stress_pending_packets gauge\n";
-        ss << "stress_pending_packets " << _stats.pendingPackets.load() << "\n\n";
+        ss << "stress_pending_packets " << m.pendingPackets << "\n\n";
 
         // ── RTT 히스토그램 ──
-        WriteRttHistogram(ss);
+        WriteRttHistogram(ss, m);
 
         return ss.str();
     }
 
     static void WriteCounter(std::ostringstream& ss,
                               const char* name, const char* help,
-                              const std::atomic<int64_t>& value)
+                              int64_t value)
     {
         ss << "# HELP " << name << " " << help << "\n";
         ss << "# TYPE " << name << " counter\n";
-        ss << name << " " << value.load() << "\n\n";
+        ss << name << " " << value << "\n\n";
     }
 
-    void WriteRttHistogram(std::ostringstream& ss)
+    static void WriteRttHistogram(std::ostringstream& ss, const MergedStats& m)
     {
         // 비누적 버킷 스냅샷
-        int64_t raw[Stats::RTT_BUCKET_COUNT];
-        for (int i = 0; i < Stats::RTT_BUCKET_COUNT; ++i)
-            raw[i] = _stats.rttBuckets[i].load();
+        int64_t raw[ThreadStats::RTT_BUCKET_COUNT];
+        for (int i = 0; i < ThreadStats::RTT_BUCKET_COUNT; ++i)
+            raw[i] = m.rttBuckets[i];
 
         // 누적 변환
-        int64_t cum[Stats::RTT_BUCKET_COUNT];
+        int64_t cum[ThreadStats::RTT_BUCKET_COUNT];
         cum[0] = raw[0];
-        for (int i = 1; i < Stats::RTT_BUCKET_COUNT; ++i)
+        for (int i = 1; i < ThreadStats::RTT_BUCKET_COUNT; ++i)
             cum[i] = cum[i - 1] + raw[i];
 
-        int64_t rttCount = _stats.rttSamples.load();
-        int64_t rttSumMs = _stats.rttSumMs.load();
+        int64_t rttCount = m.rttSamples;
+        int64_t rttSumMs = m.rttSumMs;
 
         // 버킷 경계 (밀리초 → 초)
         static const char* leBounds[] = {
@@ -166,13 +176,13 @@ private:
         ss << "# HELP stress_rtt_seconds Echo round-trip time\n";
         ss << "# TYPE stress_rtt_seconds histogram\n";
 
-        for (int i = 0; i < Stats::RTT_BUCKET_COUNT - 1; ++i)
+        for (int i = 0; i < ThreadStats::RTT_BUCKET_COUNT - 1; ++i)
         {
             ss << "stress_rtt_seconds_bucket{le=\""
                << leBounds[i] << "\"} " << cum[i] << "\n";
         }
         ss << "stress_rtt_seconds_bucket{le=\"+Inf\"} "
-           << cum[Stats::RTT_BUCKET_COUNT - 1] << "\n";
+           << cum[ThreadStats::RTT_BUCKET_COUNT - 1] << "\n";
 
         ss << std::fixed << std::setprecision(6);
         ss << "stress_rtt_seconds_sum "
@@ -183,7 +193,7 @@ private:
     }
 
 private:
-    const Stats& _stats;
+    std::function<MergedStats()> _getMergedStats;
     int _port;
     std::atomic<bool> _stopFlag{false};
     std::unique_ptr<httplib::Server> _svr;
