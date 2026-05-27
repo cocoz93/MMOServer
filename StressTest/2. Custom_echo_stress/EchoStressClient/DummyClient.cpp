@@ -59,17 +59,17 @@ void DummyClient::ResetEchoState()
     _sendBuf.Clear();
 }
 
-void DummyClient::Disconnect(int reconnectDelayMs, Stats& stats)
+void DummyClient::Disconnect(int reconnectDelayMs, ThreadStats& stats)
 {
     if (_state == ClientState::CONNECTED)
-        stats.connectedCount.fetch_sub(1);
+        stats.connectedCount--;
 
     CloseSocket();
     _state               = ClientState::DISCONNECTED;
     _connectReadyMs      = NowMs() + reconnectDelayMs;
     _disconnectScheduled = false;
     if (_pendingCount > 0)
-        stats.pendingPackets.fetch_sub(_pendingCount);
+        stats.pendingPackets -= _pendingCount;
     ResetEchoState();
 }
 
@@ -82,12 +82,12 @@ bool DummyClient::IsReadyToConnect() const
 // 연결
 // ─────────────────────────────────────────────────────────────────
 void DummyClient::StartConnect(const std::string& ip, int port,
-                               Stats& stats, int reconnectDelayMs)
+                               ThreadStats& stats, int reconnectDelayMs)
 {
     _sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (_sock == INVALID_SOCKET)
     {
-        stats.connectFail.fetch_add(1);
+        stats.connectFail++;
         _connectReadyMs = NowMs() + reconnectDelayMs;
         return;
     }
@@ -118,13 +118,13 @@ void DummyClient::StartConnect(const std::string& ip, int port,
     }
     else
     {
-        stats.connectFail.fetch_add(1);
+        stats.connectFail++;
         CloseSocket();
         _connectReadyMs = NowMs() + reconnectDelayMs;
     }
 }
 
-void DummyClient::OnConnected(Stats& stats, int reconnectDelayMs)
+void DummyClient::OnConnected(ThreadStats& stats, int reconnectDelayMs)
 {
     // SO_ERROR 확인 (writable이어도 실패일 수 있음)
     int sockErr = 0;
@@ -138,14 +138,14 @@ void DummyClient::OnConnected(Stats& stats, int reconnectDelayMs)
     }
 
     _state = ClientState::CONNECTED;
-    stats.connectedCount.fetch_add(1);
-    stats.connectTotal.fetch_add(1);
+    stats.connectedCount++;
+    stats.connectTotal++;
     ResetEchoState();
 }
 
-void DummyClient::OnConnectFailed(Stats& stats, int reconnectDelayMs)
+void DummyClient::OnConnectFailed(ThreadStats& stats, int reconnectDelayMs)
 {
-    stats.connectFail.fetch_add(1);
+    stats.connectFail++;
     CloseSocket();
     _state          = ClientState::DISCONNECTED;
     _connectReadyMs = NowMs() + reconnectDelayMs;
@@ -154,7 +154,7 @@ void DummyClient::OnConnectFailed(Stats& stats, int reconnectDelayMs)
 // ─────────────────────────────────────────────────────────────────
 // 수신
 // ─────────────────────────────────────────────────────────────────
-void DummyClient::OnRecv(Stats& stats, int reconnectDelayMs)
+void DummyClient::OnRecv(ThreadStats& stats, int reconnectDelayMs)
 {
     char buf[4096];
     int bytes = recv(_sock, buf, static_cast<int>(sizeof(buf)), 0);
@@ -172,13 +172,13 @@ void DummyClient::OnRecv(Stats& stats, int reconnectDelayMs)
     if (bytes == 0)
     {
         // 서버가 먼저 연결을 끊음
-        stats.disconnectFromServer.fetch_add(1);
+        stats.disconnectFromServer++;
     }
     else
     {
         int err = WSAGetLastError();
         if (err == WSAEWOULDBLOCK) return; // select 오탐, 정상
-        stats.disconnectFromServer.fetch_add(1);
+        stats.disconnectFromServer++;
     }
 
     Disconnect(reconnectDelayMs, stats);
@@ -187,7 +187,7 @@ void DummyClient::OnRecv(Stats& stats, int reconnectDelayMs)
 // ─────────────────────────────────────────────────────────────────
 // 패킷 파싱
 // ─────────────────────────────────────────────────────────────────
-void DummyClient::ProcessPackets(Stats& stats, int reconnectDelayMs, int maxPacketSize)
+void DummyClient::ProcessPackets(ThreadStats& stats, int reconnectDelayMs, int maxPacketSize)
 {
     while (true)
     {
@@ -234,14 +234,14 @@ void DummyClient::ProcessPackets(Stats& stats, int reconnectDelayMs, int maxPack
                 size_t padLen = totalSize - ECHO_TOTAL_SIZE;
                 FillDeterministicPadding(expected, padLen, recvVal);
                 if (std::memcmp(packet + ECHO_TOTAL_SIZE, expected, padLen) != 0)
-                    stats.packetError.fetch_add(1);
+                    stats.packetError++;
             }
 
             _expectedRecv++;
             if (_pendingCount > 0)
             {
                 _pendingCount--;
-                stats.pendingPackets.fetch_sub(1);
+                stats.pendingPackets--;
             }
         }
         else if (recvVal < _expectedRecv)
@@ -249,29 +249,29 @@ void DummyClient::ProcessPackets(Stats& stats, int reconnectDelayMs, int maxPack
             // 타임아웃 후 뒤늦게 도착한 패킷
             // sendTimes는 CheckTimeout에서 이미 pop됨 → 여기서 pop하면 안 됨
             // pendingCount도 CheckTimeout에서 이미 차감됨 → 건드리지 않음
-            stats.lateArrival.fetch_add(1);
+            stats.lateArrival++;
         }
         else
         {
             // recvVal > _expectedRecv: 예상 밖 값 → 진짜 패킷 에러
-            stats.packetError.fetch_add(1);
+            stats.packetError++;
             _expectedRecv = recvVal + 1;
             if (_pendingCount > 0)
             {
                 _pendingCount--;
-                stats.pendingPackets.fetch_sub(1);
+                stats.pendingPackets--;
             }
             if (!_sendTimes.empty()) _sendTimes.pop_front();
         }
 
-        stats.recvCount.fetch_add(1);
+        stats.recvCount++;
     }
 }
 
 // ─────────────────────────────────────────────────────────────────
 // 공격 테스트: 비정상 패킷 크기 송신 (mode 1)
 // ─────────────────────────────────────────────────────────────────
-void DummyClient::SendAttackInvalidSize(Stats& stats)
+void DummyClient::SendAttackInvalidSize(ThreadStats& stats)
 {
     if (!IsConnected()) return;
     if (_sendBuf.GetDataSize() > 0) return;  // 이전 공격 패킷 미전송 시 대기
@@ -285,13 +285,13 @@ void DummyClient::SendAttackInvalidSize(Stats& stats)
     hdr.type = MsgType::ECHO;
 
     _sendBuf.Enqueue(reinterpret_cast<const char*>(&hdr), sizeof(MsgHeader));
-    stats.attackPacketsSent.fetch_add(1);
+    stats.attackPacketsSent++;
 }
 
 // ─────────────────────────────────────────────────────────────────
 // 에코 송신 (송신 링버퍼에 enqueue)
 // ─────────────────────────────────────────────────────────────────
-void DummyClient::TrySend(int overSendCount, int minPacketSize, int maxPacketSize, int reconnectDelayMs, Stats& stats)
+void DummyClient::TrySend(int overSendCount, int minPacketSize, int maxPacketSize, int reconnectDelayMs, ThreadStats& stats)
 {
     if (!IsConnected()) return;
 
@@ -316,21 +316,21 @@ void DummyClient::TrySend(int overSendCount, int minPacketSize, int maxPacketSiz
         {
             // 송신 버퍼 가득참 - 다음 루프에서 재시도
             _sentValue--;
-            stats.sendBufferFull.fetch_add(1);
+            stats.sendBufferFull++;
             return;
         }
 
         _pendingCount++;
-        stats.pendingPackets.fetch_add(1);
+        stats.pendingPackets++;
         _sendTimes.push_back(NowMs());
-        stats.sendCount.fetch_add(1);
+        stats.sendCount++;
     }
 }
 
 // ─────────────────────────────────────────────────────────────────
 // 송신 링버퍼 flush (partial send 안전 처리)
 // ─────────────────────────────────────────────────────────────────
-void DummyClient::FlushSend(int reconnectDelayMs, Stats& stats)
+void DummyClient::FlushSend(int reconnectDelayMs, ThreadStats& stats)
 {
     if (!IsConnected()) return;
 
@@ -360,20 +360,20 @@ void DummyClient::FlushSend(int reconnectDelayMs, Stats& stats)
 // ─────────────────────────────────────────────────────────────────
 // 타임아웃 검사
 // ─────────────────────────────────────────────────────────────────
-void DummyClient::CheckTimeout(int echoTimeoutMs, Stats& stats)
+void DummyClient::CheckTimeout(int echoTimeoutMs, ThreadStats& stats)
 {
     if (_sendTimes.empty()) return;
 
     int64_t now = NowMs();
     while (!_sendTimes.empty() && (now - _sendTimes.front()) >= echoTimeoutMs)
     {
-        stats.echoNotRecv.fetch_add(1);
+        stats.echoNotRecv++;
         _sendTimes.pop_front();
         _expectedRecv++;
         if (_pendingCount > 0)
         {
             _pendingCount--;
-            stats.pendingPackets.fetch_sub(1);
+            stats.pendingPackets--;
         }
     }
 }
@@ -391,7 +391,7 @@ void DummyClient::ScheduleDisconnect(int reconnectIntervalMs)
     _disconnectScheduled = true;
 }
 
-void DummyClient::CheckForcedDisconnect(int reconnectDelayMs, Stats& stats)
+void DummyClient::CheckForcedDisconnect(int reconnectDelayMs, ThreadStats& stats)
 {
     if (!IsConnected() || !_disconnectScheduled) return;
     if (NowMs() < _nextDisconMs) return;
