@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <vector>
 #include <memory>
 #include <thread>
@@ -17,16 +17,17 @@ public:
     void Start();
     void Stop();
 
-    const Stats&  GetStats()  const { return _stats;  }
-    const Config& GetConfig() const { return _config; }
+    MergedStats   GetMergedStats()   const { return MergeThreadStats(_threadStats, _threadStatCount); }
+    const Config& GetConfig()        const { return _config; }
     int GetTotalCount() const { return _config.clientCount; }
 
 private:
-    void NetworkLoop(int begin, int end);
+    void NetworkLoop(int begin, int end, int threadIdx);
     void DisplayLoop();
 
     Config  _config;
-    Stats   _stats;
+    ThreadStats _threadStats[MergedStats::MAX_THREADS];
+    int         _threadStatCount = 0;
 
     std::vector<std::unique_ptr<DummyClient>> _clients;
     std::vector<std::thread> _threads;
