@@ -137,6 +137,7 @@ void DummyClient::OnConnectFailed(StatsLocal& stats, int reconnectDelayMs)
 // ─────────────────────────────────────────────────────────────────
 void DummyClient::OnRecv(StatsLocal& stats, int reconnectDelayMs)
 {
+    _lastRecvMs = NowMs();
     char buf[4096];
     int bytes = recv(_sock, buf, static_cast<int>(sizeof(buf)), 0);
 
@@ -279,7 +280,7 @@ void DummyClient::HandleMoveStart(const char* packet)
     // 자기 playerId와 매칭될 때만 RTT 측정
     if (msg->playerId == _playerId && _moveStartSentMs > 0)
     {
-        int64_t rtt = NowMs() - _moveStartSentMs;
+        int64_t rtt = _lastRecvMs - _moveStartSentMs;
         if (rtt < 0) rtt = 0;
         _moveStartSentMs = 0;
         // stats는 ProcessPackets에서 접근 → 여기서는 임시 저장

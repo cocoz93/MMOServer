@@ -97,6 +97,7 @@ private:
     int64_t     _lastHeartbeatMs = 0;
     int64_t     _moveStartSentMs = 0;  // RTT 측정용: SendMoveStart 전송 시각
     int64_t     _lastRttMs       = -1; // HandleMoveStart에서 측정한 RTT (-1 = 미측정)
+    int64_t     _lastRecvMs      = 0;  // OnRecv 시점 타임스탬프 (RTT 보정용)
 
     // 난수 생성기 (스레드 로컬이 아닌 인스턴스별)
     std::minstd_rand _rng{std::random_device{}()};
