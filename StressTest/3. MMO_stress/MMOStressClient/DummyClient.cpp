@@ -139,31 +139,39 @@ void DummyClient::OnRecv(StatsLocal& stats, int reconnectDelayMs)
 {
     _lastRecvMs = NowMs();
     char buf[4096];
-    int bytes = recv(_sock, buf, static_cast<int>(sizeof(buf)), 0);
 
-    if (bytes > 0)
+    // WOULDBLOCK까지 반복 수신 — 커널 버퍼에 4096B 이상 쌓여 있을 때 대응
+    while (true)
     {
-        stats.recvBytes += bytes;
-        if (_recvBuf.Enqueue(buf, static_cast<size_t>(bytes)) == 0)
+        int bytes = recv(_sock, buf, static_cast<int>(sizeof(buf)), 0);
+
+        if (bytes > 0)
         {
-            // 링버퍼 오버플로우
-            Disconnect(stats, reconnectDelayMs);
+            stats.recvBytes += bytes;
+            if (_recvBuf.Enqueue(buf, static_cast<size_t>(bytes)) == 0)
+            {
+                // 링버퍼 오버플로우
+                Disconnect(stats, reconnectDelayMs);
+                return;
+            }
+            continue;
         }
+
+        if (bytes == 0)
+        {
+            stats.disconnectFromServer += 1;
+            Disconnect(stats, reconnectDelayMs);
+            return;
+        }
+
+        // bytes < 0 (SOCKET_ERROR)
+        int err = WSAGetLastError();
+        if (err == WSAEWOULDBLOCK) return;  // 정상: 더 이상 읽을 데이터 없음
+
+        stats.disconnectFromServer += 1;
+        Disconnect(stats, reconnectDelayMs);
         return;
     }
-
-    if (bytes == 0)
-    {
-        stats.disconnectFromServer += 1;
-    }
-    else
-    {
-        int err = WSAGetLastError();
-        if (err == WSAEWOULDBLOCK) return;
-        stats.disconnectFromServer += 1;
-    }
-
-    Disconnect(stats, reconnectDelayMs);
 }
 
 // ─────────────────────────────────────────────────────────────────

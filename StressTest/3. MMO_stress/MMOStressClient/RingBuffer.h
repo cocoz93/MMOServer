@@ -36,7 +36,7 @@ public:
         , _writePos(0)
         , _buffer(nullptr)
     {
-        if (capacity <= 0)
+        if (capacity == 0)
             return;
 
         _buffer = new (std::nothrow) char[_capacity];

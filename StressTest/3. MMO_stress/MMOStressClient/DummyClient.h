@@ -103,5 +103,5 @@ private:
     std::minstd_rand _rng{std::random_device{}()};
 
     CRingBufferST  _recvBuf{65535};
-    CRingBufferST  _sendBuf{4096};
+    CRingBufferST  _sendBuf{16384};
 };
