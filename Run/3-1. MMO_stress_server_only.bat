@@ -1,5 +1,8 @@
 @echo off
-REM === 창이 바로 닫히지 않도록 cmd /k 로 재실행 ===
+REM ============================================
+REM   MMO Stress - Server Only
+REM   서버 + 모니터링만 실행 (클라이언트 없음)
+REM ============================================
 if not defined _RELAUNCH (
     set "_RELAUNCH=1"
     cmd /k "%~f0" %*
@@ -8,56 +11,38 @@ if not defined _RELAUNCH (
 setlocal
 
 echo ============================================
-echo   MMO Stress Test - GameServer Mode
+echo   MMO Stress - Server Only
 echo ============================================
 echo.
 
 REM === 1. Kill running processes ===
-tasklist /FI "IMAGENAME eq IOCP_Server.exe" | findstr /I "IOCP_Server.exe" >nul
-if %ERRORLEVEL% EQU 0 (
-    echo [1/5] Killing running processes...
-    taskkill /F /IM IOCP_Server.exe >nul 2>nul
-    echo   - Server killed
-    taskkill /F /IM MMOStressClient.exe >nul 2>nul
-    echo   - MMOStressClient killed
-    taskkill /F /IM prometheus.exe >nul 2>nul
-    taskkill /F /IM windows_exporter.exe >nul 2>nul
-    taskkill /F /IM grafana-server.exe >nul 2>nul
-    echo   - Monitoring killed
-    echo.
-) else (
-    echo [1/5] No running processes found.
-    echo.
-)
+echo [1/4] Killing running processes...
+taskkill /F /IM IOCP_Server.exe >nul 2>nul
+taskkill /F /IM prometheus.exe >nul 2>nul
+taskkill /F /IM windows_exporter.exe >nul 2>nul
+taskkill /F /IM grafana-server.exe >nul 2>nul
+echo   - Done
+echo.
 
-REM === 2. MSBuild path ===
+REM === 2. MSBuild ===
 set "MSBUILD=C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"
 if not exist "%MSBUILD%" (
     echo [ERROR] MSBuild not found!
     goto :ERROR
 )
 
-REM === 3. Build (Release x64) ===
-echo [2/5] Building...
-echo   - Building Server...
+REM === 3. Build Server ===
+echo [2/4] Building Server...
 "%MSBUILD%" "%~dp0..\IOCP_Server\IOCP_Server.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
 if %ERRORLEVEL% NEQ 0 (
     echo [ERROR] Server build failed!
     goto :ERROR
 )
 echo   - Server build OK
-
-echo   - Building MMOStressClient...
-"%MSBUILD%" "%~dp0..\StressTest\3. MMO_stress\MMOStressClient.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
-if %ERRORLEVEL% NEQ 0 (
-    echo [ERROR] MMOStressClient build failed!
-    goto :ERROR
-)
-echo   - MMOStressClient build OK
 echo.
 
 REM === 4. Configure ===
-echo [3/5] Configuring...
+echo [3/4] Configuring...
 powershell -Command "(Get-Content -Encoding UTF8 '%~dp0bin\ServerConfig.ini') -replace '^Mode=.*', 'Mode=GameServer' -replace '^MonitorEnabled=.*', 'MonitorEnabled=1' | Set-Content -Encoding UTF8 '%~dp0bin\ServerConfig.ini'"
 if %ERRORLEVEL% NEQ 0 (
     echo [ERROR] ServerConfig.ini update failed!
@@ -67,7 +52,7 @@ echo   - ServerConfig.ini updated (Mode=GameServer, MonitorEnabled=1)
 echo.
 
 REM === 5. Start Monitoring ===
-echo [4/5] Starting monitoring...
+echo [4/4] Starting...
 start "" "%~dp0..\Monitoring\windows_exporter.exe"
 echo   - windows_exporter started (:9182)
 
@@ -80,10 +65,8 @@ echo   - Grafana started (:3000)
 timeout /t 3 /nobreak >nul
 start http://localhost:9091
 start http://localhost:3000
-echo.
 
-REM === 6. Run ===
-echo [5/5] Starting...
+REM === 6. Start Server ===
 start "" /D "%~dp0bin" IOCP_Server.exe
 echo   - Server started
 
@@ -101,19 +84,12 @@ timeout /t 1 /nobreak >nul
 goto WAIT_SERVER
 :SERVER_READY
 echo   - Server is ready
-
-start "" /D "%~dp0bin" MMOStressClient.exe
-echo   - MMOStressClient started
-
-start "" /D "%~dp0bin" GameClient.exe
-echo   - GameClient started (manual play)
 echo.
 
 echo ============================================
-echo   Done! All services running.
-echo   Prometheus UI : http://localhost:9091
-echo   Grafana       : http://localhost:3000
-echo   (Grafana login: admin / admin)
+echo   Server running on :6000 (GameServer mode)
+echo   Prometheus : http://localhost:9091
+echo   Grafana    : http://localhost:3000
 echo ============================================
 pause
 exit /b 0
