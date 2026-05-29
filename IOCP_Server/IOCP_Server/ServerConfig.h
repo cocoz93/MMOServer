@@ -32,7 +32,7 @@
 
 #include "Common.h"
 #include "MapManager.h"
-#include "../Shared/Common/ErrorLog.h"
+#include "../../Shared/Common/ErrorLog.h"
 
 struct ServerConfig
 {

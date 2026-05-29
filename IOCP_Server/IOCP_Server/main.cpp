@@ -12,8 +12,8 @@
 #include "MonitorManager.h"
 #include "MonitorServer.h"
 #include "ServerConfig.h"
-#include "../Shared/Common/Logger.h"
-#include "../Shared/Common/ErrorLog.h"
+#include "../../Shared/Common/Logger.h"
+#include "../../Shared/Common/ErrorLog.h"
 
 std::atomic<bool> running{true};
 std::mutex mtx;

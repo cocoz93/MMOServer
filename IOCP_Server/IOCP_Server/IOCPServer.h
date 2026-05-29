@@ -14,7 +14,7 @@
 
 #include "RingBuffer.h"
 #include "SerialBuffer.h"
-#include "Protocol.h"
+#include "../../Shared/Protocol/Protocol.h"
 #include "LockFree/LockFreeStack.h"
 #define USE_LOCKFREE_SENDQ 0  // 1로 바꾸면 LockFreeQ 경로, 0이면 기존 RingBuffer 경로
 #if USE_LOCKFREE_SENDQ

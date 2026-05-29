@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "Protocol.h"
+#include "../Shared/Protocol/Protocol.h"
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #define NOMINMAX

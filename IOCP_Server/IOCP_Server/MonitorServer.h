@@ -25,7 +25,7 @@
 
 #include "ThirdParty/httplib.h"
 #include "MonitorManager.h"
-#include "../Shared/Common/ErrorLog.h"
+#include "../../Shared/Common/ErrorLog.h"
 
 class CMonitorServer
 {

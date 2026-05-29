@@ -104,13 +104,13 @@
     <ClInclude Include="GameServer.h">
       <Filter>소스 파일\GameServer</Filter>
     </ClInclude>
-    <ClInclude Include="..\Shared\Common\ErrorLog.h">
+    <ClInclude Include="..\..\Shared\Common\ErrorLog.h">
       <Filter>소스 파일\GameServer</Filter>
     </ClInclude>
     <ClInclude Include="SectorManager.h">
       <Filter>소스 파일\GameServer</Filter>
     </ClInclude>
-    <ClInclude Include="..\Shared\Protocol\Protocol.h">
+    <ClInclude Include="..\..\Shared\Protocol\Protocol.h">
       <Filter>소스 파일\GameServer</Filter>
     </ClInclude>
     <ClInclude Include="MonitorManager.h">
