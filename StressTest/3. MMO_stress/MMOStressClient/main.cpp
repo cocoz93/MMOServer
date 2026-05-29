@@ -164,6 +164,7 @@ int main()
         wprintf(L"=============================================\n");
     }
 
+    managers.clear();
     WSACleanup();
     wprintf(L"[Main] Done.\n");
     return 0;
