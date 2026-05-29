@@ -16,6 +16,10 @@
 #include "SerialBuffer.h"
 #include "Protocol.h"
 #include "LockFree/LockFreeStack.h"
+#define USE_LOCKFREE_SENDQ 0  // 1로 바꾸면 LockFreeQ 경로, 0이면 기존 RingBuffer 경로
+#if USE_LOCKFREE_SENDQ
+#include "LockFree/LockFreeQueue.h"
+#endif
 #include "TimingWheel.h"
 #include "MonitorManager.h"
 #include "Common.h"
@@ -82,7 +86,32 @@ public:
     volatile LONG _sending;         // 송신 중 플래그 (InterlockedExchange 사용)
 
     CRingBufferST _recvQ; // 한 스레드에서만 접근
+
+#if USE_LOCKFREE_SENDQ
+    LockFree::CLockFreeQueue<CSerialBuffer*, false, true> _sendQ;
+
+    static constexpr int MAX_SEND_BUFS = 64;
+    static constexpr INT64 MAX_SENDQ_DEPTH = 512;  // SendQ 깊이 상한 (OOM 방어)
+    CSerialBuffer* _pendingSendBufs[MAX_SEND_BUFS];
+    int _pendingSendCount = 0;
+    int _pendingSendBytes = 0;
+
+    void ReleasePendingSendBufs()
+    {
+        for (int i = 0; i < _pendingSendCount; ++i)
+        {
+            if (_pendingSendBufs[i])
+            {
+                _pendingSendBufs[i]->SubRef();
+                _pendingSendBufs[i] = nullptr;
+            }
+        }
+        _pendingSendCount = 0;
+        _pendingSendBytes = 0;
+    }
+#else
     CRingBufferMT _sendQ; // 다중 스레드에서 접근
+#endif
 
 
     // IOCount가 0이 되어 세션이 재사용되기 전까지 OVERLAPPED 주소는 유지된다.

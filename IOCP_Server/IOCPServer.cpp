@@ -19,6 +19,12 @@ CSession::CSession()
     _recvOverlapped.operation = IOOperation::RECV;
     ZeroMemory(&_sendOverlapped.overlapped, sizeof(OVERLAPPED));
     _sendOverlapped.operation = IOOperation::SEND;
+
+#if USE_LOCKFREE_SENDQ
+    _pendingSendCount = 0;
+    _pendingSendBytes = 0;
+    memset(_pendingSendBufs, 0, sizeof(_pendingSendBufs));
+#endif
 }
 
 void CSession::Initialize(SOCKET socket, int64_t sessionId)
@@ -28,7 +34,20 @@ void CSession::Initialize(SOCKET socket, int64_t sessionId)
     _disconnecting = FALSE;
     _sending = FALSE;
     _recvQ.Clear();
+#if USE_LOCKFREE_SENDQ
+    // 방어코드 : 정상 흐름에서는 ReleaseSession에서 SendQ 비움
+    // CLockFreeQueue::Clear()는 내부 노드만 free list로 반환하므로
+    // <T>타입인 CSerialBuffer의 SubRef를 명시 호출한다.
+    {
+        CSerialBuffer* stale = nullptr;
+        while (_sendQ.Dequeue(&stale))
+            stale->SubRef();
+    }
+    _pendingSendCount = 0;
+    _pendingSendBytes = 0;
+#else
     _sendQ.Clear();
+#endif
 
     // 세션 고정 Overlapped 방식: IO 요청마다 재사용하므로 요청 전 OVERLAPPED만 초기화한다.
     ZeroMemory(&_recvOverlapped.overlapped, sizeof(OVERLAPPED));
@@ -99,7 +118,11 @@ bool CIOCPServer::Start()
     {
         // INVALID_SOCKET과 0 세션ID로 미리 생성
         _sessions[i] = std::make_unique<CSession>();
+#if USE_LOCKFREE_SENDQ
+        if (!_sessions[i]->_recvQ.Init() || !_sessions[i]->_sendQ.Init(256))
+#else
         if (!_sessions[i]->_recvQ.Init() || !_sessions[i]->_sendQ.Init())
+#endif
         {
             LOG_ERROR_STREAM("Failed to init session RingBuffer [index=" << i << "]");
             return false;
@@ -703,14 +726,36 @@ void CIOCPServer::ParsePackets(CSession* session)
 void CIOCPServer::ProcessSend(CSession* session, DWORD bytesTransferred)
 {
     if (!session || session->_disconnecting == TRUE)
-    {
         return;
-    }
 
     // 송신 지표 기록
     InterlockedExchangeAdd64(&_monitor._sendBytes, static_cast<LONG64>(bytesTransferred));
     InterlockedIncrement64(&_monitor._wsaSendCompletions);
 
+#if USE_LOCKFREE_SENDQ
+    if (static_cast<int>(bytesTransferred) == session->_pendingSendBytes)
+    {
+        // 정상 완료: 전체 해제
+        session->ReleasePendingSendBufs();
+    }
+    else
+    {
+        // Partial send → 비정상 완료로 간주, 세션 종료
+        LOG_ERROR_STREAM("[Error] Partial send - SessionId: " << session->_sessionId
+            << ", Expected: " << session->_pendingSendBytes
+            << ", Transferred: " << bytesTransferred);
+        session->ReleasePendingSendBufs();
+        RequestDisconnectSession(session);
+        InterlockedExchange(&session->_sending, FALSE);
+        return;
+    }
+
+    InterlockedExchange(&session->_sending, FALSE);
+
+    // Double-check: _sending 해제 직후 큐 확인 (다른 스레드가 Enqueue했을 수 있음)
+    if (!session->_sendQ.IsEmpty())
+        PostSend(session);
+#else
     // SendQ에서 송신한 만큼 Consume
     size_t consumed = session->_sendQ.Consume(bytesTransferred);
     if (consumed != bytesTransferred)
@@ -729,10 +774,105 @@ void CIOCPServer::ProcessSend(CSession* session, DWORD bytesTransferred)
     {
         PostSend(session);
     }
+#endif
 }
 
 // Send는 1회로 제한
 // Send I/O 제출. 제출 전 IOCount로 세션을 pin한다.
+#if USE_LOCKFREE_SENDQ
+void CIOCPServer::PostSend(CSession* session)
+{
+    if (!session)
+        return;
+
+    if (!AcquireSession(session))
+        return;
+
+    const int64_t sessionId = session->_sessionId;
+
+    if (InterlockedExchange(&session->_sending, TRUE) == TRUE)
+    {
+        InterlockedIncrement64(&_monitor._sendContention);
+        IOCountDecrement(session);
+        return;
+    }
+
+    // Dequeue up to MAX_SEND_BUFS
+    WSABUF wsaBuf[CSession::MAX_SEND_BUFS];
+    int bufCount = 0;
+    int totalBytes = 0;
+    CSerialBuffer* pBuf = nullptr;
+
+    while (bufCount < CSession::MAX_SEND_BUFS && session->_sendQ.Dequeue(&pBuf))
+    {
+        session->_pendingSendBufs[bufCount] = pBuf;
+        wsaBuf[bufCount].buf = pBuf->GetReadBufferPtr();
+        wsaBuf[bufCount].len = static_cast<ULONG>(pBuf->GetDataSize());
+        totalBytes += wsaBuf[bufCount].len;
+        bufCount++;
+    }
+    session->_pendingSendCount = bufCount;
+    session->_pendingSendBytes = totalBytes;
+
+    if (bufCount == 0)
+    {
+        InterlockedExchange(&session->_sending, FALSE);
+        IOCountDecrement(session);
+        return;
+    }
+
+    if (session->_disconnecting == TRUE)
+    {
+        session->ReleasePendingSendBufs();
+        InterlockedExchange(&session->_sending, FALSE);
+        IOCountDecrement(session);
+        return;
+    }
+
+    SOCKET socket = session->_socket;
+    if (socket == INVALID_SOCKET)
+    {
+        session->ReleasePendingSendBufs();
+        InterlockedExchange(&session->_sending, FALSE);
+        RequestDisconnectSession(session);
+        IOCountDecrement(session);
+        return;
+    }
+
+    CSession::OverlappedEx* ex = &session->_sendOverlapped;
+    ZeroMemory(&ex->overlapped, sizeof(OVERLAPPED));
+    ex->operation = IOOperation::SEND;
+
+    DWORD sendBytes = 0;
+    InterlockedIncrement64(&_monitor._wsaSendCalls);
+    int result = WSASend(socket, wsaBuf, bufCount, &sendBytes, 0,
+        &ex->overlapped, NULL);
+
+    if (result == SOCKET_ERROR)
+    {
+        const int wsaErr = WSAGetLastError();
+        if (wsaErr != WSA_IO_PENDING)
+        {
+            if (!shared::ShouldIgnoreWsaError(wsaErr))
+            {
+                LOG_WSA_ERROR_STREAM("WSASend failed - SessionId: " << sessionId
+                    << ", WSAError: ", wsaErr);
+            }
+            session->ReleasePendingSendBufs();
+            InterlockedExchange(&session->_sending, FALSE);
+            RequestDisconnectSession(session);
+            IOCountDecrement(session);
+            return;
+        }
+    }
+
+    // Post-check: pre-check ~ WSASend 사이에 끼어든 disconnect race 회수.
+    if (session->_disconnecting == TRUE)
+    {
+        CancelIoEx(reinterpret_cast<HANDLE>(socket), &ex->overlapped);
+    }
+}
+#else
 void CIOCPServer::PostSend(CSession* session)
 {
     if (!session)
@@ -762,10 +902,6 @@ void CIOCPServer::PostSend(CSession* session)
         return;
     }
 
-    CSession::OverlappedEx* ex = &session->_sendOverlapped;
-    ZeroMemory(&ex->overlapped, sizeof(OVERLAPPED));
-    ex->operation = IOOperation::SEND;
-
     WSABUF wsaBuf[2];
     int bufCount = 0;
 
@@ -793,7 +929,6 @@ void CIOCPServer::PostSend(CSession* session)
 
     if (session->_disconnecting == TRUE)
     {
-        // WSABUF 준비 ~ IO 제출 사이에 세션이 disconnect되면 제출하지 않는다.
         InterlockedExchange(&session->_sending, FALSE);
         IOCountDecrement(session);
         return;
@@ -807,6 +942,10 @@ void CIOCPServer::PostSend(CSession* session)
         IOCountDecrement(session);
         return;
     }
+
+    CSession::OverlappedEx* ex = &session->_sendOverlapped;
+    ZeroMemory(&ex->overlapped, sizeof(OVERLAPPED));
+    ex->operation = IOOperation::SEND;
 
     DWORD sendBytes = 0;
     InterlockedIncrement64(&_monitor._wsaSendCalls);
@@ -836,29 +975,76 @@ void CIOCPServer::PostSend(CSession* session)
         CancelIoEx(reinterpret_cast<HANDLE>(socket), &ex->overlapped);
     }
 }
+#endif
 
 // 게임 로직 레이어가 사용할 인터페이스
 // 송신 요청: SendQ에 데이터 Enqueue 후 송신 시작
 void CIOCPServer::RequestSendMsg(int64_t sessionId, const char* data, int length)
 {
-    // 3단계 Session ABA 검증
-    // 1단계: sessionId의 상위 16비트(index)로 세션을 찾고, 저장된 sessionId가 일치하는지 확인
+    // 입력 검증
+    if (data == nullptr || length <= 0)
+    {
+        LOG_ERROR_STREAM("[Error] RequestSendMsg(char*) invalid args - data: "
+            << (data ? "valid" : "nullptr") << ", length: " << length);
+        return;
+    }
+
+    // Session ABA 검증 (3-step)
+    // Step 1: index로 세션 조회 + sessionId 일치 확인
     auto session = FindSession(sessionId);
     if (!session)
         return;
 
-    // 2단계: IOCount를 증가시켜 세션을 pin. 해제 진행 중이면 실패한다.
+    // Step 2: IOCount pin (해제 진행 중이면 실패)
     if (!AcquireSession(session))
         return;
 
-    // 3단계: pin 성공 후 sessionId 재확인. FindSession ~ AcquireSession 사이에
-    //        세션이 해제되고 같은 index에 재할당되었을 경우를 검출한다.
+    // Step 3: pin 후 sessionId 재확인 (pin 사이 재할당 검출)
     if (session->_sessionId != sessionId)
     {
         IOCountDecrement(session);
         return;
     }
 
+#if USE_LOCKFREE_SENDQ
+    // CSerialBuffer 최대 용량 검증
+    if (length > MSG_DEFAULT_SIZE - HEADER_SIZE)
+    {
+        LOG_ERROR_STREAM("[Error] RequestSendMsg(char*) length exceeds CSerialBuffer capacity - length: " << length);
+        IOCountDecrement(session);
+        return;
+    }
+
+    CSerialBuffer* pMsg = CSerialBuffer::Alloc();
+    memcpy(pMsg->GetWriteBufferPtr(), data, length);
+    pMsg->MoveWritePos(length);
+    pMsg->AddRef();   // RefCount: 0→1, sendQ 소유권용
+
+    // SendQ 깊이 상한 체크 (OOM 방어)
+    if (session->_sendQ.GetApproxSize() >= CSession::MAX_SENDQ_DEPTH)
+    {
+        LOG_ERROR_STREAM("[Error] SendQ depth limit reached - SessionId: " << sessionId
+            << ", Depth: " << session->_sendQ.GetApproxSize());
+        InterlockedIncrement64(&_monitor._sendQueueOverflow);
+        pMsg->SubRef();
+        RequestDisconnectSession(session);
+        IOCountDecrement(session);
+        return;
+    }
+
+    if (!session->_sendQ.Enqueue(pMsg))
+    {
+        LOG_ERROR_STREAM("[Error] Send queue enqueue failed - SessionId: " << sessionId);
+        InterlockedIncrement64(&_monitor._sendQueueOverflow);
+        pMsg->SubRef();
+        RequestDisconnectSession(session);
+        IOCountDecrement(session);
+        return;
+    }
+
+    InterlockedIncrement64(&_monitor._sendPackets);
+    InterlockedExchangeAdd64(&_monitor._sendEnqueuedBytes, static_cast<LONG64>(pMsg->GetDataSize()));
+#else
     // SendQ에 데이터 Enqueue
     size_t enqueued = session->_sendQ.Enqueue(data, length);
     if (enqueued != length)
@@ -876,6 +1062,7 @@ void CIOCPServer::RequestSendMsg(int64_t sessionId, const char* data, int length
 
     // Enqueue 바이트 누적 (_sendBytes와의 차이로 SendQ 체류량 산출)
     InterlockedExchangeAdd64(&_monitor._sendEnqueuedBytes, static_cast<LONG64>(length));
+#endif
 
     PostSend(session);
     IOCountDecrement(session);
@@ -888,14 +1075,51 @@ void CIOCPServer::EchoTestSend(CSession* session, CSerialBuffer* pMsg)
     RequestSendMsg(session->_sessionId, pMsg);
 }
 
-// TODO: 송신 최적화 단계별 적용 예정
-// 1단계(현재): CSerialBuffer → sendQ(RingBuffer) memcpy → WSASend (버퍼 복사)
-// 2단계: sendQ를 CSerialBuffer* 포인터 큐로 교체 (데이터 복사 제거)
-// 3단계: SO_SNDBUF=0 적용 (커널 복사까지 제거, 진정한 zero-copy)
+// 소유권 계약: 호출자는 RefCount >= 1인 pMsg를 넘긴다. 이 함수는 해당 1개 ref를 소비한다.
+// - Enqueue 성공 → ref가 sendQ로 이전, ProcessSend 완료 시 SubRef()로 반환
+// - 실패(세션 무효, Enqueue 실패 등) → 즉시 SubRef()로 반환
 void CIOCPServer::RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg)
 {
+#if USE_LOCKFREE_SENDQ
+    // Session ABA 검증 (3-step)
+    auto session = FindSession(sessionId);
+    if (!session) { pMsg->SubRef(); return; }
+    if (!AcquireSession(session)) { pMsg->SubRef(); return; }
+    if (session->_sessionId != sessionId) { IOCountDecrement(session); pMsg->SubRef(); return; }
+
+    // SendQ 깊이 상한 체크 (OOM 방어 — CLockFreeQueue는 Enqueue 실패를 반환하지 않으므로)
+    if (session->_sendQ.GetApproxSize() >= CSession::MAX_SENDQ_DEPTH)
+    {
+        LOG_ERROR_STREAM("[Error] SendQ depth limit reached - SessionId: " << sessionId
+            << ", Depth: " << session->_sendQ.GetApproxSize());
+        InterlockedIncrement64(&_monitor._sendQueueOverflow);
+        pMsg->SubRef();
+        RequestDisconnectSession(session);
+        IOCountDecrement(session);
+        return;
+    }
+
+    // 포인터 직접 Enqueue — 소유권이 sendQ로 이전 (SubRef는 ProcessSend에서)
+    if (!session->_sendQ.Enqueue(pMsg))
+    {
+        LOG_ERROR_STREAM("[Error] Send queue enqueue failed - SessionId: " << sessionId);
+        InterlockedIncrement64(&_monitor._sendQueueOverflow);
+        pMsg->SubRef();
+        RequestDisconnectSession(session);
+        IOCountDecrement(session);
+        return;
+    }
+
+    InterlockedIncrement64(&_monitor._sendPackets);
+    InterlockedExchangeAdd64(&_monitor._sendEnqueuedBytes, static_cast<LONG64>(pMsg->GetDataSize()));
+
+    PostSend(session);
+    IOCountDecrement(session);
+#else
+    // RingBuffer 경로: char* 오버로드로 위임 (ABA 검증은 char* 쪽에서 수행)
     RequestSendMsg(sessionId, pMsg->GetReadBufferPtr(), pMsg->GetDataSize());
     pMsg->SubRef();
+#endif
 }
 
 // ParsePackets 쪽에서 호출
@@ -1021,9 +1245,23 @@ void CIOCPServer::ReleaseSession(CSession* session)
 
     // Disconnect 시 SendQ 잔여 바이트를 discard 카운터에 적산 (체류량 보정)
     // IOCount==0 단일 스레드 호출이므로 SendQ 경합 없음
+#if USE_LOCKFREE_SENDQ
+    size_t residual = 0;
+    CSerialBuffer* orphan = nullptr;
+    while (session->_sendQ.Dequeue(&orphan))
+    {
+        residual += orphan->GetDataSize();
+        orphan->SubRef();
+    }
+    residual += session->_pendingSendBytes;  // WSASend 미완료 버퍼도 discard 집계
+    session->ReleasePendingSendBufs();
+    if (residual > 0)
+        InterlockedExchangeAdd64(&_monitor._sendDiscardedBytes, static_cast<LONG64>(residual));
+#else
     size_t residual = session->_sendQ.GetDataSize();
     if (residual > 0)
         InterlockedExchangeAdd64(&_monitor._sendDiscardedBytes, static_cast<LONG64>(residual));
+#endif
 
     session->Close();
 
@@ -1039,17 +1277,17 @@ void CIOCPServer::ReleaseSession(CSession* session)
 
 bool CIOCPServer::RequestDisconnectSession(int64_t sessionId)
 {
-    // 3단계 Session ABA 검증
-    // 1단계: index로 세션 조회 + sessionId 일치 확인
+    // Session ABA 검증 (3-step)
+    // Step 1: index로 세션 조회 + sessionId 일치 확인
     auto session = FindSession(sessionId);
     if (!session)
         return false;
 
-    // 2단계: IOCount pin
+    // Step 2: IOCount pin (해제 진행 중이면 실패)
     if (!AcquireSession(session))
         return false;
 
-    // 3단계: pin 후 sessionId 재확인 (FindSession ~ AcquireSession 사이 재할당 검출)
+    // Step 3: pin 후 sessionId 재확인 (pin 사이 재할당 검출)
     if (session->_sessionId != sessionId)
     {
         IOCountDecrement(session);
