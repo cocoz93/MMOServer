@@ -19,7 +19,7 @@ public:
 
     // DummyManager가 상태 전이를 트리거
     void StartConnect(const std::string& ip, int port, StatsLocal& stats, int reconnectDelayMs);
-    void OnConnected(StatsLocal& stats);
+    void OnConnected(StatsLocal& stats, int reconnectDelayMs);
     void OnConnectFailed(StatsLocal& stats, int reconnectDelayMs);
 
     // select()가 읽기 가능 표시 시 호출

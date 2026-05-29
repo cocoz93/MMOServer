@@ -138,7 +138,7 @@ void DummyManager::NetworkLoop()
                     }
                     else if (FD_ISSET(s, &writeSet))
                     {
-                        c.OnConnected(local);
+                        c.OnConnected(local, reconnectDelay);
                     }
                 }
 

@@ -106,7 +106,7 @@ void DummyClient::StartConnect(const std::string& ip, int port,
     }
 }
 
-void DummyClient::OnConnected(StatsLocal& stats)
+void DummyClient::OnConnected(StatsLocal& stats, int reconnectDelayMs)
 {
     // SO_ERROR 확인 (writable이어도 실패일 수 있음)
     int sockErr = 0;
@@ -115,7 +115,7 @@ void DummyClient::OnConnected(StatsLocal& stats)
 
     if (sockErr != 0)
     {
-        OnConnectFailed(stats, 1000);
+        OnConnectFailed(stats, reconnectDelayMs);
         return;
     }
 
