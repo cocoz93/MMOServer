@@ -96,6 +96,7 @@ void DummyClient::StartConnect(const std::string& ip, int port,
     if (result == 0 || err == WSAEWOULDBLOCK || err == WSAEINPROGRESS)
     {
         _state = ClientState::CONNECTING;
+        _connectStartMs = NowMs();
     }
     else
     {
@@ -381,7 +382,12 @@ void DummyClient::SendMoveStart(StatsLocal& stats, int64_t nowMs)
     msg.x           = _x;
     msg.y           = _y;
 
-    _sendBuf.Enqueue(&msg, sizeof(msg));
+    if (_sendBuf.Enqueue(&msg, sizeof(msg)) == 0)
+    {
+        _moving = false;
+        stats.sendBufferFull += 1;
+        return;
+    }
     _moveStartSentMs = nowMs;
     stats.sendPackets += 1;
     stats.moveStartSent += 1;
@@ -398,7 +404,12 @@ void DummyClient::SendMoveStop(StatsLocal& stats)
     msg.x           = _x;
     msg.y           = _y;
 
-    _sendBuf.Enqueue(&msg, sizeof(msg));
+    if (_sendBuf.Enqueue(&msg, sizeof(msg)) == 0)
+    {
+        _moving = true;
+        stats.sendBufferFull += 1;
+        return;
+    }
     stats.sendPackets += 1;
     stats.moveStopSent += 1;
 }
@@ -409,7 +420,11 @@ void DummyClient::SendHeartbeat(StatsLocal& stats)
     msg.header.size = sizeof(msg);
     msg.header.type = MsgType::C2S_HEARTBEAT;
 
-    _sendBuf.Enqueue(&msg, sizeof(msg));
+    if (_sendBuf.Enqueue(&msg, sizeof(msg)) == 0)
+    {
+        stats.sendBufferFull += 1;
+        return;
+    }
     stats.sendPackets += 1;
     stats.heartbeatSent += 1;
 }
@@ -492,7 +507,11 @@ void DummyClient::SendChat(StatsLocal& stats)
         sizeof(MsgHeader) + (len + 1) * sizeof(wchar_t));
     msg.header.size = sendSize;
 
-    _sendBuf.Enqueue(&msg, sendSize);
+    if (_sendBuf.Enqueue(&msg, sendSize) == 0)
+    {
+        stats.sendBufferFull += 1;
+        return;
+    }
     stats.sendPackets += 1;
     stats.chatSent += 1;
 }
@@ -505,7 +524,11 @@ void DummyClient::SendZoneChange(StatsLocal& stats, int targetMapId)
     msg.targetMapId  = targetMapId;
     msg.targetChannelIndex = -1;  // 자동배정
 
-    _sendBuf.Enqueue(&msg, sizeof(msg));
+    if (_sendBuf.Enqueue(&msg, sizeof(msg)) == 0)
+    {
+        stats.sendBufferFull += 1;
+        return;
+    }
     stats.sendPackets += 1;
     stats.zoneChangeSent += 1;
 }

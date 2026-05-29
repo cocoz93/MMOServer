@@ -79,6 +79,14 @@ void DummyManager::NetworkLoop()
                 c.StartConnect(ip, port, local, reconnectDelay);
         }
 
+        // ── 1.5. CONNECTING 타임아웃 체크 ────────────────────────
+        for (int i = 0; i < total; ++i)
+        {
+            auto& c = *_clients[i];
+            if (c.IsConnectTimedOut(nowMs, _config.connectTimeoutMs))
+                c.OnConnectFailed(local, reconnectDelay);
+        }
+
         // ── 2. select() 배치 루프 (읽기/연결완료 감지) ───────────
         for (int base = 0; base < total; base += BATCH)
         {

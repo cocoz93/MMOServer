@@ -77,17 +77,16 @@ private:
 
     std::string BuildMetricsText()
     {
-        using mo = std::memory_order;
         std::ostringstream ss;
 
         // ── 게이지 ──
         ss << "# HELP mmo_dummy_connected_clients Current connected clients\n";
         ss << "# TYPE mmo_dummy_connected_clients gauge\n";
-        ss << "mmo_dummy_connected_clients " << _stats.connectedCount.load(mo::relaxed) << "\n\n";
+        ss << "mmo_dummy_connected_clients " << _stats.connectedCount.load(std::memory_order_relaxed) << "\n\n";
 
         ss << "# HELP mmo_dummy_ready_clients Clients that received CREATE_MY_PLAYER\n";
         ss << "# TYPE mmo_dummy_ready_clients gauge\n";
-        ss << "mmo_dummy_ready_clients " << _stats.readyCount.load(mo::relaxed) << "\n\n";
+        ss << "mmo_dummy_ready_clients " << _stats.readyCount.load(std::memory_order_relaxed) << "\n\n";
 
         // ── 카운터 ──
         WriteCounter(ss, "mmo_dummy_send_packets_total",
@@ -116,16 +115,18 @@ private:
                      "Total ZoneChange sent", _stats.zoneChangeSent);
         WriteCounter(ss, "mmo_dummy_zone_change_fail_total",
                      "Total ZoneChange failures", _stats.zoneChangeFail);
+        WriteCounter(ss, "mmo_dummy_send_buffer_full_total",
+                     "Total send buffer full events", _stats.sendBufferFull);
 
         // ── RTT 게이지 ──
         ss << "# HELP mmo_dummy_rtt_max_seconds Worst RTT observed\n";
         ss << "# TYPE mmo_dummy_rtt_max_seconds gauge\n";
         ss << std::fixed << std::setprecision(6);
         ss << "mmo_dummy_rtt_max_seconds "
-           << (static_cast<double>(_stats.rttMaxMs.load(mo::relaxed)) / 1000.0) << "\n\n";
+           << (static_cast<double>(_stats.rttMaxMs.load(std::memory_order_relaxed)) / 1000.0) << "\n\n";
 
         {
-            int64_t minVal = _stats.rttMinMs.load(mo::relaxed);
+            int64_t minVal = _stats.rttMinMs.load(std::memory_order_relaxed);
             ss << "# HELP mmo_dummy_rtt_min_seconds Best RTT observed\n";
             ss << "# TYPE mmo_dummy_rtt_min_seconds gauge\n";
             if (minVal < LLONG_MAX)

@@ -11,6 +11,7 @@ struct MMOStressConfig
     int         clientCount         = 100;
     int         clientsPerThread    = 2000;
     int         reconnectIntervalMs = 1000;
+    int         connectTimeoutMs    = 5000;
 
     // ── [Timing] ────────────────────────────────────────────────
     int         loopDelayMs         = 1;
@@ -63,6 +64,7 @@ struct MMOStressConfig
         clientCount         = GetPrivateProfileIntW(L"Connection", L"ClientCount", 100, path);
         clientsPerThread    = GetPrivateProfileIntW(L"Connection", L"ClientsPerThread", 2000, path);
         reconnectIntervalMs = GetPrivateProfileIntW(L"Connection", L"ReconnectIntervalMs", 1000, path);
+        connectTimeoutMs    = GetPrivateProfileIntW(L"Connection", L"ConnectTimeoutMs", 5000, path);
 
         // [Timing]
         loopDelayMs         = GetPrivateProfileIntW(L"Timing", L"LoopDelayMs", 1, path);
@@ -97,6 +99,7 @@ private:
         wprintf(L"  ClientCount       : %d\n", clientCount);
         wprintf(L"  ClientsPerThread  : %d\n", clientsPerThread);
         wprintf(L"  ReconnectMs       : %d\n", reconnectIntervalMs);
+        wprintf(L"  ConnectTimeoutMs  : %d\n", connectTimeoutMs);
         wprintf(L"  ── Timing ──\n");
         wprintf(L"  LoopDelayMs       : %d\n", loopDelayMs);
         wprintf(L"  TickIntervalMs    : %d\n", tickIntervalMs);

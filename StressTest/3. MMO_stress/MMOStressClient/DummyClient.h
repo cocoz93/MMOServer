@@ -1,6 +1,5 @@
 ﻿#pragma once
-#include <WinSock2.h>
-#include <WS2tcpip.h>
+#include "WinSockDef.h"
 #include <cstdint>
 #include <string>
 #include <random>
@@ -39,6 +38,11 @@ public:
     void FlushSend(StatsLocal& stats, int reconnectDelayMs);
 
     bool IsReadyToConnect(int64_t nowMs) const;
+    bool IsConnectTimedOut(int64_t nowMs, int timeoutMs) const
+    {
+        return _state == ClientState::CONNECTING
+            && (nowMs - _connectStartMs) >= timeoutMs;
+    }
     bool IsReady()        const { return _ready; }
     bool IsConnected()    const { return _state == ClientState::CONNECTED;    }
     bool IsConnecting()   const { return _state == ClientState::CONNECTING;   }
@@ -78,6 +82,7 @@ private:
     SOCKET      _sock           = INVALID_SOCKET;
     ClientState _state          = ClientState::DISCONNECTED;
     int64_t     _connectReadyMs = 0;
+    int64_t     _connectStartMs = 0;   // CONNECTING 진입 시각 (타임아웃 감지용)
 
     // 게임 상태
     bool        _ready          = false;

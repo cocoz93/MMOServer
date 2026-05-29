@@ -30,6 +30,7 @@ struct MMOStats
     std::atomic<int64_t> chatSent             {0};
     std::atomic<int64_t> zoneChangeSent       {0};
     std::atomic<int64_t> zoneChangeFail       {0};
+    std::atomic<int64_t> sendBufferFull       {0};   // 송신 버퍼 오버플로우 횟수
 
     // ── RTT (누적 통계) ─────────────────────────────────────────
     std::atomic<int64_t> rttSumMs             {0};
@@ -68,6 +69,7 @@ struct StatsLocal
     int64_t chatSent             = 0;
     int64_t zoneChangeSent       = 0;
     int64_t zoneChangeFail       = 0;
+    int64_t sendBufferFull       = 0;
 
     // RTT
     int64_t rttSumMs    = 0;
@@ -97,44 +99,43 @@ struct StatsLocal
 
     void Flush(MMOStats& g)
     {
-        using mo = std::memory_order;
+        if (connectedDelta != 0)       g.connectedCount.fetch_add(connectedDelta, std::memory_order_relaxed);
+        if (readyDelta != 0)           g.readyCount.fetch_add(readyDelta, std::memory_order_relaxed);
+        if (connectTotal != 0)         g.connectTotal.fetch_add(connectTotal, std::memory_order_relaxed);
+        if (connectFail != 0)          g.connectFail.fetch_add(connectFail, std::memory_order_relaxed);
+        if (disconnectFromServer != 0) g.disconnectFromServer.fetch_add(disconnectFromServer, std::memory_order_relaxed);
+        if (sendPackets != 0)          g.sendPackets.fetch_add(sendPackets, std::memory_order_relaxed);
+        if (recvPackets != 0)          g.recvPackets.fetch_add(recvPackets, std::memory_order_relaxed);
+        if (sendBytes != 0)            g.sendBytes.fetch_add(sendBytes, std::memory_order_relaxed);
+        if (recvBytes != 0)            g.recvBytes.fetch_add(recvBytes, std::memory_order_relaxed);
+        if (moveStartSent != 0)        g.moveStartSent.fetch_add(moveStartSent, std::memory_order_relaxed);
+        if (moveStopSent != 0)         g.moveStopSent.fetch_add(moveStopSent, std::memory_order_relaxed);
+        if (heartbeatSent != 0)        g.heartbeatSent.fetch_add(heartbeatSent, std::memory_order_relaxed);
+        if (chatSent != 0)            g.chatSent.fetch_add(chatSent, std::memory_order_relaxed);
+        if (zoneChangeSent != 0)       g.zoneChangeSent.fetch_add(zoneChangeSent, std::memory_order_relaxed);
+        if (zoneChangeFail != 0)       g.zoneChangeFail.fetch_add(zoneChangeFail, std::memory_order_relaxed);
+        if (sendBufferFull != 0)       g.sendBufferFull.fetch_add(sendBufferFull, std::memory_order_relaxed);
 
-        if (connectedDelta != 0)       g.connectedCount.fetch_add(connectedDelta, mo::relaxed);
-        if (readyDelta != 0)           g.readyCount.fetch_add(readyDelta, mo::relaxed);
-        if (connectTotal != 0)         g.connectTotal.fetch_add(connectTotal, mo::relaxed);
-        if (connectFail != 0)          g.connectFail.fetch_add(connectFail, mo::relaxed);
-        if (disconnectFromServer != 0) g.disconnectFromServer.fetch_add(disconnectFromServer, mo::relaxed);
-        if (sendPackets != 0)          g.sendPackets.fetch_add(sendPackets, mo::relaxed);
-        if (recvPackets != 0)          g.recvPackets.fetch_add(recvPackets, mo::relaxed);
-        if (sendBytes != 0)            g.sendBytes.fetch_add(sendBytes, mo::relaxed);
-        if (recvBytes != 0)            g.recvBytes.fetch_add(recvBytes, mo::relaxed);
-        if (moveStartSent != 0)        g.moveStartSent.fetch_add(moveStartSent, mo::relaxed);
-        if (moveStopSent != 0)         g.moveStopSent.fetch_add(moveStopSent, mo::relaxed);
-        if (heartbeatSent != 0)        g.heartbeatSent.fetch_add(heartbeatSent, mo::relaxed);
-        if (chatSent != 0)            g.chatSent.fetch_add(chatSent, mo::relaxed);
-        if (zoneChangeSent != 0)       g.zoneChangeSent.fetch_add(zoneChangeSent, mo::relaxed);
-        if (zoneChangeFail != 0)       g.zoneChangeFail.fetch_add(zoneChangeFail, mo::relaxed);
-
-        if (rttSumMs != 0)    g.rttSumMs.fetch_add(rttSumMs, mo::relaxed);
-        if (rttSamples != 0)  g.rttSamples.fetch_add(rttSamples, mo::relaxed);
+        if (rttSumMs != 0)    g.rttSumMs.fetch_add(rttSumMs, std::memory_order_relaxed);
+        if (rttSamples != 0)  g.rttSamples.fetch_add(rttSamples, std::memory_order_relaxed);
 
         // RTT max (CAS)
         if (rttMaxMs > 0)
         {
-            int64_t cur = g.rttMaxMs.load(mo::relaxed);
-            while (rttMaxMs > cur && !g.rttMaxMs.compare_exchange_weak(cur, rttMaxMs, mo::relaxed)) {}
+            int64_t cur = g.rttMaxMs.load(std::memory_order_relaxed);
+            while (rttMaxMs > cur && !g.rttMaxMs.compare_exchange_weak(cur, rttMaxMs, std::memory_order_relaxed)) {}
         }
         // RTT min (CAS)
         if (rttMinMs < LLONG_MAX)
         {
-            int64_t cur = g.rttMinMs.load(mo::relaxed);
-            while (rttMinMs < cur && !g.rttMinMs.compare_exchange_weak(cur, rttMinMs, mo::relaxed)) {}
+            int64_t cur = g.rttMinMs.load(std::memory_order_relaxed);
+            while (rttMinMs < cur && !g.rttMinMs.compare_exchange_weak(cur, rttMinMs, std::memory_order_relaxed)) {}
         }
 
         for (int i = 0; i < MMOStats::RTT_BUCKET_COUNT; ++i)
         {
             if (rttBuckets[i] != 0)
-                g.rttBuckets[i].fetch_add(rttBuckets[i], mo::relaxed);
+                g.rttBuckets[i].fetch_add(rttBuckets[i], std::memory_order_relaxed);
         }
 
         Reset();
@@ -157,6 +158,7 @@ struct StatsLocal
         chatSent = 0;
         zoneChangeSent = 0;
         zoneChangeFail = 0;
+        sendBufferFull = 0;
         rttSumMs = 0;
         rttSamples = 0;
         rttMaxMs = 0;
