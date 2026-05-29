@@ -31,6 +31,9 @@ struct MMOStats
     std::atomic<int64_t> zoneChangeSent       {0};
     std::atomic<int64_t> zoneChangeFail       {0};
     std::atomic<int64_t> sendBufferFull       {0};   // 송신 버퍼 오버플로우 횟수
+    std::atomic<int64_t> recvBufferOverflow  {0};   // 수신 링버퍼 오버플로우 횟수
+    std::atomic<int64_t> sendError           {0};   // 송신 소켓 에러 횟수
+    std::atomic<int64_t> packetParseFail     {0};   // 패킷 파싱 실패 횟수
 
     // ── RTT (누적 통계) ─────────────────────────────────────────
     std::atomic<int64_t> rttSumMs             {0};
@@ -70,6 +73,9 @@ struct StatsLocal
     int64_t zoneChangeSent       = 0;
     int64_t zoneChangeFail       = 0;
     int64_t sendBufferFull       = 0;
+    int64_t recvBufferOverflow  = 0;
+    int64_t sendError           = 0;
+    int64_t packetParseFail     = 0;
 
     // RTT
     int64_t rttSumMs    = 0;
@@ -115,6 +121,9 @@ struct StatsLocal
         if (zoneChangeSent != 0)       g.zoneChangeSent.fetch_add(zoneChangeSent, std::memory_order_relaxed);
         if (zoneChangeFail != 0)       g.zoneChangeFail.fetch_add(zoneChangeFail, std::memory_order_relaxed);
         if (sendBufferFull != 0)       g.sendBufferFull.fetch_add(sendBufferFull, std::memory_order_relaxed);
+        if (recvBufferOverflow != 0)  g.recvBufferOverflow.fetch_add(recvBufferOverflow, std::memory_order_relaxed);
+        if (sendError != 0)           g.sendError.fetch_add(sendError, std::memory_order_relaxed);
+        if (packetParseFail != 0)     g.packetParseFail.fetch_add(packetParseFail, std::memory_order_relaxed);
 
         if (rttSumMs != 0)    g.rttSumMs.fetch_add(rttSumMs, std::memory_order_relaxed);
         if (rttSamples != 0)  g.rttSamples.fetch_add(rttSamples, std::memory_order_relaxed);
@@ -159,6 +168,9 @@ struct StatsLocal
         zoneChangeSent = 0;
         zoneChangeFail = 0;
         sendBufferFull = 0;
+        recvBufferOverflow = 0;
+        sendError = 0;
+        packetParseFail = 0;
         rttSumMs = 0;
         rttSamples = 0;
         rttMaxMs = 0;

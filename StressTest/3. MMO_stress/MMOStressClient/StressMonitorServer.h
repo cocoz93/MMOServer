@@ -117,6 +117,12 @@ private:
                      "Total ZoneChange failures", _stats.zoneChangeFail);
         WriteCounter(ss, "mmo_dummy_send_buffer_full_total",
                      "Total send buffer full events", _stats.sendBufferFull);
+        WriteCounter(ss, "mmo_dummy_recv_buffer_overflow_total",
+                     "Total recv buffer overflow disconnects", _stats.recvBufferOverflow);
+        WriteCounter(ss, "mmo_dummy_send_error_total",
+                     "Total send error disconnects", _stats.sendError);
+        WriteCounter(ss, "mmo_dummy_packet_parse_fail_total",
+                     "Total packet parse failure disconnects", _stats.packetParseFail);
 
         // ── RTT 게이지 ──
         ss << "# HELP mmo_dummy_rtt_max_seconds Worst RTT observed\n";

@@ -152,6 +152,7 @@ void DummyClient::OnRecv(StatsLocal& stats, int reconnectDelayMs)
             if (_recvBuf.Enqueue(buf, static_cast<size_t>(bytes)) == 0)
             {
                 // 링버퍼 오버플로우
+                stats.recvBufferOverflow += 1;
                 Disconnect(stats, reconnectDelayMs);
                 return;
             }
@@ -201,6 +202,8 @@ uint16_t DummyClient::GetPacketSize(MsgType type)
 // ─────────────────────────────────────────────────────────────────
 void DummyClient::ProcessPackets(StatsLocal& stats, const MMOStressConfig& config)
 {
+    static constexpr size_t MAX_PACKET_SIZE = 2048;
+
     while (true)
     {
         if (_recvBuf.GetDataSize() < sizeof(MsgHeader)) break;
@@ -215,14 +218,22 @@ void DummyClient::ProcessPackets(StatsLocal& stats, const MMOStressConfig& confi
         if (expected == 0 || totalSize < expected)
         {
             // 알 수 없는 패킷 타입 또는 크기 부족 → 연결 종료
+            stats.packetParseFail += 1;
+            Disconnect(stats, config.reconnectIntervalMs);
+            return;
+        }
+
+        // 상한 검증 — 서버 버그로 비정상 크기 수신 시 스택 오버플로 방지
+        if (totalSize > MAX_PACKET_SIZE)
+        {
+            stats.packetParseFail += 1;
             Disconnect(stats, config.reconnectIntervalMs);
             return;
         }
 
         if (_recvBuf.GetDataSize() < totalSize) break;
 
-        // 최대 패킷 크기 (MSG_S2C_CHAT 가변, 최대 ~1034B)
-        char packet[2048];
+        char packet[MAX_PACKET_SIZE];
         if (_recvBuf.Dequeue(packet, totalSize) == 0) break;
 
         stats.recvPackets += 1;
@@ -616,6 +627,7 @@ void DummyClient::FlushSend(StatsLocal& stats, int reconnectDelayMs)
             int err = WSAGetLastError();
             if (err == WSAEWOULDBLOCK)
                 return;
+            stats.sendError += 1;
             Disconnect(stats, reconnectDelayMs);
             return;
         }

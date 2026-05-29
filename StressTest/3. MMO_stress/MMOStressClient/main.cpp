@@ -127,6 +127,43 @@ int main()
     for (auto& mgr : managers)
         mgr->Stop();
 
+    // ── 최종 통계 요약 ──────────────────────────────────────────
+    {
+        int64_t elapsedSec = (static_cast<int64_t>(GetTickCount64()) - startMs) / 1000;
+
+        int64_t totalSendPkts = g_Stats.sendPackets.load(std::memory_order_relaxed);
+        int64_t totalRecvPkts = g_Stats.recvPackets.load(std::memory_order_relaxed);
+        int64_t totalSendBytes = g_Stats.sendBytes.load(std::memory_order_relaxed);
+        int64_t totalRecvBytes = g_Stats.recvBytes.load(std::memory_order_relaxed);
+        int64_t rttSamples = g_Stats.rttSamples.load(std::memory_order_relaxed);
+        int64_t rttSumMs   = g_Stats.rttSumMs.load(std::memory_order_relaxed);
+        int64_t rttMax     = g_Stats.rttMaxMs.load(std::memory_order_relaxed);
+        int64_t rttMinRaw  = g_Stats.rttMinMs.load(std::memory_order_relaxed);
+        int64_t rttMin     = (rttMinRaw < LLONG_MAX) ? rttMinRaw : 0;
+        int64_t rttAvg     = (rttSamples > 0) ? (rttSumMs / rttSamples) : 0;
+
+        int64_t connTotal  = g_Stats.connectTotal.load(std::memory_order_relaxed);
+        int64_t connFail   = g_Stats.connectFail.load(std::memory_order_relaxed);
+        int64_t disconnSvr = g_Stats.disconnectFromServer.load(std::memory_order_relaxed);
+        int64_t recvOvf    = g_Stats.recvBufferOverflow.load(std::memory_order_relaxed);
+        int64_t sendErr    = g_Stats.sendError.load(std::memory_order_relaxed);
+        int64_t parseFail  = g_Stats.packetParseFail.load(std::memory_order_relaxed);
+        int64_t bufFull    = g_Stats.sendBufferFull.load(std::memory_order_relaxed);
+
+        wprintf(L"\n");
+        wprintf(L"=============================================\n");
+        wprintf(L"  Test Summary\n");
+        wprintf(L"  Duration      : %lld s\n", elapsedSec);
+        wprintf(L"  Connections   : total=%lld  fail=%lld\n", connTotal, connFail);
+        wprintf(L"  Send          : %lld pkts / %lld bytes\n", totalSendPkts, totalSendBytes);
+        wprintf(L"  Recv          : %lld pkts / %lld bytes\n", totalRecvPkts, totalRecvBytes);
+        wprintf(L"  RTT           : avg=%lld ms  max=%lld ms  min=%lld ms  (samples=%lld)\n",
+                rttAvg, rttMax, rttMin, rttSamples);
+        wprintf(L"  Errors        : disconn=%lld  sendErr=%lld  parseFail=%lld  recvOvf=%lld  bufFull=%lld\n",
+                disconnSvr, sendErr, parseFail, recvOvf, bufFull);
+        wprintf(L"=============================================\n");
+    }
+
     WSACleanup();
     wprintf(L"[Main] Done.\n");
     return 0;
