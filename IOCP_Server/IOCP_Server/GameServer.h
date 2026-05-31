@@ -83,26 +83,22 @@ private:
     static uint8_t CalcColorIndex(int32_t playerId);
 
     // ── 패킷 전송 추상화 ──
+    // 모든 S2C는 직렬화 버퍼(CSerialBuffer)로 조립 후 아래 오버로드로 전송한다.
 
-    // 단일 플레이어에게 패킷 전송 (템플릿 — 고정 크기)
-    template <typename T>
-    void SendPacket(CPlayer* target, const T& msg)
+    // 단일 플레이어에게 패킷 전송 (CSerialBuffer — 소유권 1을 소비)
+    // 빌더가 반환한 RefCount=1 버퍼를 넘기면, 송신 후 SubRef로 소유권을 회수한다.
+    void SendPacket(CPlayer* target, CSerialBuffer* pMsg)
     {
         if (target->_sessionId != -1)
-            _network->RequestSendMsg(target->_sessionId, reinterpret_cast<const char*>(&msg), sizeof(T));
+        {
+            pMsg->AddRef();   // 송신용 소유권 — RequestSendMsg(CSerialBuffer*)가 소비
+            _network->RequestSendMsg(target->_sessionId, pMsg);
+        }
+        pMsg->SubRef();       // 빌더가 넘긴 소유권 1 회수 (세션 무효여도 안전 회수)
     }
 
-    // 단일 플레이어에게 패킷 전송 (가변 크기)
-    template <typename T>
-    void SendPacket(CPlayer* target, const T& msg, uint16_t size)
-    {
-        if (target->_sessionId != -1)
-            _network->RequestSendMsg(target->_sessionId, reinterpret_cast<const char*>(&msg), size);
-    }
-
-    // 주변 브로드캐스트 (excludeSelf=true: 본인 제외, 고정 크기)
-    template <typename T>
-    void BroadcastAroundSector(CZone* zone, CPlayer* player, const T& msg, bool excludeSelf = true)
+    // 주변 브로드캐스트 (CSerialBuffer — 빌더 RefCount=1 버퍼를 소비)
+    void BroadcastAroundSector(CZone* zone, CPlayer* player, CSerialBuffer* pMsg, bool excludeSelf = true)
     {
         _broadcastBuffer.clear();
         CPlayer* exclude = excludeSelf ? player : nullptr;
@@ -115,27 +111,12 @@ private:
 
         for (CPlayer* other : _broadcastBuffer)
         {
-            SendPacket(other, msg);
+            if (other->_sessionId == -1)
+                continue;
+            pMsg->AddRef();   // 타겟별 소유권 — RequestSendMsg(CSerialBuffer*)가 소비
+            _network->RequestSendMsg(other->_sessionId, pMsg);
         }
-    }
-
-    // 주변 브로드캐스트 (가변 크기)
-    template <typename T>
-    void BroadcastAroundSector(CZone* zone, CPlayer* player, const T& msg, uint16_t size, bool excludeSelf = true)
-    {
-        _broadcastBuffer.clear();
-        CPlayer* exclude = excludeSelf ? player : nullptr;
-        zone->GetSectorManager().GetAroundPlayers(
-            player->_sectorX, player->_sectorY, _broadcastBuffer, exclude);
-
-        InterlockedIncrement64(&_monitor._gameLoop._broadcastCalls);
-        InterlockedExchangeAdd64(&_monitor._gameLoop._broadcastTargets,
-            static_cast<LONG64>(_broadcastBuffer.size()));
-
-        for (CPlayer* other : _broadcastBuffer)
-        {
-            SendPacket(other, msg, size);
-        }
+        pMsg->SubRef();   // 빌더가 넘긴 소유권 1 회수 (타겟 0명이어도 안전 회수)
     }
 
     // 패킷별 전송 함수 (Fill + Send)

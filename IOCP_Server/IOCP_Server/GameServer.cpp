@@ -8,6 +8,196 @@
 #include <cmath>
 #include <algorithm>
 #include <cstddef>  // offsetof
+#include <cassert>  // 직렬화 필드 누락/폭 검증
+
+// ==========================================================================
+// S2C 직렬화 헬퍼 (파일 로컬)
+//
+// 와이어 = payload 영역 바이트 그대로 (WSASend가 GetReadBufferPtr()+GetDataSize()만 전송).
+// pack(1)이라 패딩이 없으므로 필드를 선언 순서/폭대로 쓰면 구조체와 바이트 동일.
+// 스칼라는 <<, 고정배열/문자열은 SetData(raw) — << 문자열 연산자는 길이접두(2B)가 끼어
+// 와이어가 깨지므로 사용 금지.
+//
+// [소유권 계약] 빌더는 RefCount=1(소유권 1개)인 버퍼를 반환하고,
+//   송신 함수(BroadcastAroundSector/SendPacket의 CSerialBuffer* 오버로드)가 이를 소비한다.
+// ==========================================================================
+namespace
+{
+    // 헤더 시작: size placeholder(아래서 백패치) + type
+    inline void BeginPacket(CSerialBuffer* buf, MsgType type)
+    {
+        *buf << static_cast<WORD>(0);                 // header.size (placeholder)
+        *buf << static_cast<WORD>(type);              // header.type
+    }
+
+    // 헤더 종료: size 백패치(= 전체 payload 바이트) + Seal + 소유권 1 확보
+    inline void FinalizePacket(CSerialBuffer* buf)
+    {
+        *reinterpret_cast<uint16_t*>(buf->GetPayloadBufferPtr()) =
+            static_cast<uint16_t>(buf->GetDataSize());
+        buf->Seal();
+        buf->AddRef();   // 송신 함수가 소비할 소유권 (0→1)
+    }
+
+    // MOVE_START / MOVE_STOP은 레이아웃 동일 — 3곳/2곳에서 재사용되므로 빌더로 DRY 처리
+    CSerialBuffer* MakeMoveStart(int32_t playerId, uint8_t direction, float x, float y)
+    {
+        CSerialBuffer* buf = CSerialBuffer::Alloc();
+        BeginPacket(buf, MSG_S2C_MOVE_START::TYPE);
+        *buf << static_cast<int>(playerId);
+        *buf << static_cast<BYTE>(direction);
+        *buf << x;
+        *buf << y;
+        FinalizePacket(buf);
+        assert(buf->GetDataSize() == sizeof(MSG_S2C_MOVE_START));
+        return buf;
+    }
+
+    CSerialBuffer* MakeMoveStop(int32_t playerId, uint8_t direction, float x, float y)
+    {
+        CSerialBuffer* buf = CSerialBuffer::Alloc();
+        BeginPacket(buf, MSG_S2C_MOVE_STOP::TYPE);
+        *buf << static_cast<int>(playerId);
+        *buf << static_cast<BYTE>(direction);
+        *buf << x;
+        *buf << y;
+        FinalizePacket(buf);
+        assert(buf->GetDataSize() == sizeof(MSG_S2C_MOVE_STOP));
+        return buf;
+    }
+
+    CSerialBuffer* MakeSyncPosition(int32_t playerId, float x, float y)
+    {
+        CSerialBuffer* buf = CSerialBuffer::Alloc();
+        BeginPacket(buf, MSG_S2C_SYNC_POSITION::TYPE);
+        *buf << static_cast<int>(playerId);
+        *buf << x;
+        *buf << y;
+        FinalizePacket(buf);
+        assert(buf->GetDataSize() == sizeof(MSG_S2C_SYNC_POSITION));
+        return buf;
+    }
+
+    CSerialBuffer* MakeZoneInfo(CZone* zone)
+    {
+        CSerialBuffer* buf = CSerialBuffer::Alloc();
+        BeginPacket(buf, MSG_S2C_ZONE_INFO::TYPE);
+        *buf << static_cast<int>(zone->GetMapId());
+        *buf << static_cast<int>(CMapManager::GetChannelIndexFromZoneId(zone->GetZoneId()));
+        *buf << static_cast<int>(zone->GetMapWidth());
+        *buf << static_cast<int>(zone->GetMapHeight());
+        *buf << static_cast<int>(zone->GetSectorManager().GetSectorSize());
+        FinalizePacket(buf);
+        assert(buf->GetDataSize() == sizeof(MSG_S2C_ZONE_INFO));
+        return buf;
+    }
+
+    CSerialBuffer* MakeCreateMyPlayer(CPlayer* target)
+    {
+        CSerialBuffer* buf = CSerialBuffer::Alloc();
+        BeginPacket(buf, MSG_S2C_CREATE_MY_PLAYER::TYPE);
+        *buf << static_cast<int>(target->_playerId);
+        *buf << static_cast<BYTE>(target->_direction);
+        *buf << static_cast<BYTE>(target->_displayChar);
+        *buf << static_cast<BYTE>(target->_colorIndex);
+        *buf << target->_x;
+        *buf << target->_y;
+        *buf << static_cast<int>(target->_speed);
+        FinalizePacket(buf);
+        assert(buf->GetDataSize() == sizeof(MSG_S2C_CREATE_MY_PLAYER));
+        return buf;
+    }
+
+    CSerialBuffer* MakeCreateOtherPlayer(CPlayer* player, SpawnReason reason)
+    {
+        CSerialBuffer* buf = CSerialBuffer::Alloc();
+        BeginPacket(buf, MSG_S2C_CREATE_OTHER_PLAYER::TYPE);
+        *buf << static_cast<int>(player->_playerId);
+        *buf << static_cast<BYTE>(player->_direction);
+        *buf << static_cast<BYTE>(player->_moveState);
+        *buf << static_cast<BYTE>(player->_displayChar);
+        *buf << static_cast<BYTE>(player->_colorIndex);
+        *buf << static_cast<BYTE>(reason);
+        *buf << player->_x;
+        *buf << player->_y;
+        *buf << static_cast<int>(player->_speed);
+        FinalizePacket(buf);
+        assert(buf->GetDataSize() == sizeof(MSG_S2C_CREATE_OTHER_PLAYER));
+        return buf;
+    }
+
+    CSerialBuffer* MakeDeletePlayer(int32_t playerId)
+    {
+        CSerialBuffer* buf = CSerialBuffer::Alloc();
+        BeginPacket(buf, MSG_S2C_DELETE_PLAYER::TYPE);
+        *buf << static_cast<int>(playerId);
+        FinalizePacket(buf);
+        assert(buf->GetDataSize() == sizeof(MSG_S2C_DELETE_PLAYER));
+        return buf;
+    }
+
+    CSerialBuffer* MakeZoneChangeOk(CPlayer* target, int32_t mapId, int32_t channelIndex)
+    {
+        CSerialBuffer* buf = CSerialBuffer::Alloc();
+        BeginPacket(buf, MSG_S2C_ZONE_CHANGE_OK::TYPE);
+        *buf << static_cast<int>(mapId);
+        *buf << static_cast<int>(channelIndex);
+        *buf << static_cast<int>(target->_playerId);
+        *buf << static_cast<BYTE>(target->_displayChar);
+        *buf << static_cast<BYTE>(target->_colorIndex);
+        *buf << static_cast<BYTE>(target->_direction);
+        *buf << target->_x;
+        *buf << target->_y;
+        FinalizePacket(buf);
+        assert(buf->GetDataSize() == sizeof(MSG_S2C_ZONE_CHANGE_OK));
+        return buf;
+    }
+
+    CSerialBuffer* MakeZoneChangeFail(uint8_t reason)
+    {
+        CSerialBuffer* buf = CSerialBuffer::Alloc();
+        BeginPacket(buf, MSG_S2C_ZONE_CHANGE_FAIL::TYPE);
+        *buf << static_cast<BYTE>(reason);
+        FinalizePacket(buf);
+        assert(buf->GetDataSize() == sizeof(MSG_S2C_ZONE_CHANGE_FAIL));
+        return buf;
+    }
+
+    CSerialBuffer* MakeAdminLoginOk()
+    {
+        CSerialBuffer* buf = CSerialBuffer::Alloc();
+        BeginPacket(buf, MSG_S2C_ADMIN_LOGIN_OK::TYPE);    // 페이로드 없음 (헤더만)
+        FinalizePacket(buf);
+        assert(buf->GetDataSize() == sizeof(MSG_S2C_ADMIN_LOGIN_OK));
+        return buf;
+    }
+
+    CSerialBuffer* MakeAdminLoginFail()
+    {
+        CSerialBuffer* buf = CSerialBuffer::Alloc();
+        BeginPacket(buf, MSG_S2C_ADMIN_LOGIN_FAIL::TYPE);  // 페이로드 없음 (헤더만)
+        FinalizePacket(buf);
+        assert(buf->GetDataSize() == sizeof(MSG_S2C_ADMIN_LOGIN_FAIL));
+        return buf;
+    }
+
+    // 가변 길이 — message는 고정배열/문자열이라 SetData(raw). msgLen은 null 제외 글자 수.
+    CSerialBuffer* MakeChat(int32_t playerId, uint8_t displayChar, uint8_t colorIndex,
+                             wchar_t* message, uint16_t msgLen)
+    {
+        CSerialBuffer* buf = CSerialBuffer::Alloc();
+        BeginPacket(buf, MSG_S2C_CHAT::TYPE);
+        *buf << static_cast<int>(playerId);
+        *buf << static_cast<BYTE>(displayChar);
+        *buf << static_cast<BYTE>(colorIndex);
+        buf->SetData(reinterpret_cast<char*>(message),
+            (msgLen + 1) * sizeof(wchar_t));               // message (가변, null 포함, raw)
+        FinalizePacket(buf);
+        assert(buf->GetDataSize() ==
+            offsetof(MSG_S2C_CHAT, message) + (msgLen + 1) * sizeof(wchar_t));
+        return buf;
+    }
+}
 
 CGameServer::CGameServer(CMonitorManager& monitor)
     : _mode(ServerMode::GameServer)
@@ -174,12 +364,9 @@ void CGameServer::GameLoopThread()
             CZone* zone = _mapManager.GetZone(player->_zoneId);
             if (zone != nullptr)
             {
-                MSG_S2C_MOVE_STOP msg;
-                msg.playerId = player->_playerId;
-                msg.direction = static_cast<uint8_t>(player->_direction);
-                msg.x = player->_x;
-                msg.y = player->_y;
-                BroadcastAroundSector(zone, player, msg, false);  // 본인 포함
+                BroadcastAroundSector(zone, player,
+                    MakeMoveStop(player->_playerId, static_cast<uint8_t>(player->_direction),
+                        player->_x, player->_y), false);  // 본인 포함
             }
         }
 
@@ -206,11 +393,9 @@ void CGameServer::GameLoopThread()
                     player->_lastSyncX = player->_x;
                     player->_lastSyncY = player->_y;
 
-                    MSG_S2C_SYNC_POSITION msg;
-                    msg.playerId = player->_playerId;
-                    msg.x = player->_x;
-                    msg.y = player->_y;
-                    BroadcastAroundSector(zone, player, msg, false);  // 본인 포함 (이동 중 클라-서버 좌표 드리프트 보정)
+                    BroadcastAroundSector(zone, player,
+                        MakeSyncPosition(player->_playerId, player->_x, player->_y),
+                        false);  // 본인 포함 (이동 중 클라-서버 좌표 드리프트 보정)
                 }
             });
         }
@@ -446,12 +631,9 @@ void CGameServer::RecvMoveStart(CPlayer* player, CSerialBuffer* pMsg)
             player->_moveState = MoveState::IDLE;
             player->_direction = dir;
 
-            MSG_S2C_MOVE_STOP msg;
-            msg.playerId = player->_playerId;
-            msg.direction = static_cast<uint8_t>(dir);
-            msg.x = player->_x;
-            msg.y = player->_y;
-            BroadcastAroundSector(zone, player, msg, false);  // 본인 포함
+            BroadcastAroundSector(zone, player,
+                MakeMoveStop(player->_playerId, static_cast<uint8_t>(dir),
+                    player->_x, player->_y), false);  // 본인 포함
             return;
         }
 
@@ -459,12 +641,9 @@ void CGameServer::RecvMoveStart(CPlayer* player, CSerialBuffer* pMsg)
         player->_lastSyncX = player->_x;
         player->_lastSyncY = player->_y;
 
-        MSG_S2C_MOVE_START msg;
-        msg.playerId = player->_playerId;
-        msg.direction = static_cast<uint8_t>(dir);
-        msg.x = player->_x;
-        msg.y = player->_y;
-        BroadcastAroundSector(zone, player, msg);
+        BroadcastAroundSector(zone, player,
+            MakeMoveStart(player->_playerId, static_cast<uint8_t>(dir),
+                player->_x, player->_y));
         return;
     }
 
@@ -522,12 +701,9 @@ void CGameServer::RecvMoveStart(CPlayer* player, CSerialBuffer* pMsg)
     player->_lastSyncY = player->_y;
 
     // 주변에 MOVE_START 브로드캐스트
-    MSG_S2C_MOVE_START msg;
-    msg.playerId = player->_playerId;
-    msg.direction = static_cast<uint8_t>(dir);
-    msg.x = player->_x;
-    msg.y = player->_y;
-    BroadcastAroundSector(zone, player, msg);
+    BroadcastAroundSector(zone, player,
+        MakeMoveStart(player->_playerId, static_cast<uint8_t>(dir),
+            player->_x, player->_y));
 }
 
 void CGameServer::RecvMoveStop(CPlayer* player, CSerialBuffer* pMsg)
@@ -572,12 +748,9 @@ void CGameServer::RecvMoveStop(CPlayer* player, CSerialBuffer* pMsg)
     }
 
     // 주변에 MOVE_STOP 브로드캐스트
-    MSG_S2C_MOVE_STOP msg;
-    msg.playerId = player->_playerId;
-    msg.direction = static_cast<uint8_t>(player->_direction);
-    msg.x = player->_x;
-    msg.y = player->_y;
-    BroadcastAroundSector(zone, player, msg);
+    BroadcastAroundSector(zone, player,
+        MakeMoveStop(player->_playerId, static_cast<uint8_t>(player->_direction),
+            player->_x, player->_y));
 }
 
 void CGameServer::RecvChat(CPlayer* player, CSerialBuffer* pMsg)
@@ -605,19 +778,10 @@ void CGameServer::RecvChat(CPlayer* player, CSerialBuffer* pMsg)
         msgLen = CHAT_MSG_MAX_LEN - 1;
     recvMsg.message[msgLen] = L'\0';  // null 종단 보장
 
-    // 가변 길이 S2C 패킷 조립
-    MSG_S2C_CHAT msg;
-    msg.playerId = player->_playerId;
-    msg.displayChar = player->_displayChar;
-    msg.colorIndex = player->_colorIndex;
-    memcpy(msg.message, recvMsg.message, (msgLen + 1) * sizeof(wchar_t));
-
-    // 실제 전송 크기 설정 (가변)
-    uint16_t sendSize = static_cast<uint16_t>(
-        offsetof(MSG_S2C_CHAT, message) + (msgLen + 1) * sizeof(wchar_t));
-    msg.header.size = sendSize;
-
-    BroadcastAroundSector(zone, player, msg, sendSize, false);
+    // 본인 포함 브로드캐스트 (송신 함수가 소유권 소비)
+    BroadcastAroundSector(zone, player,
+        MakeChat(player->_playerId, player->_displayChar, player->_colorIndex,
+            recvMsg.message, msgLen), false);
 }
 
 // ==========================================================================
@@ -649,57 +813,27 @@ uint8_t CGameServer::CalcColorIndex(int32_t playerId)
 
 void CGameServer::SendZoneInfo(CPlayer* target, CZone* zone)
 {
-    MSG_S2C_ZONE_INFO msg;
-    msg.mapId = zone->GetMapId();
-    msg.channelIndex = CMapManager::GetChannelIndexFromZoneId(zone->GetZoneId());
-    msg.mapWidth = zone->GetMapWidth();
-    msg.mapHeight = zone->GetMapHeight();
-    msg.sectorSize = zone->GetSectorManager().GetSectorSize();
-    SendPacket(target, msg);
+    SendPacket(target, MakeZoneInfo(zone));
 }
 
 void CGameServer::SendCreateMyPlayer(CPlayer* target)
 {
-    MSG_S2C_CREATE_MY_PLAYER msg;
-    msg.playerId = target->_playerId;
-    msg.direction = static_cast<uint8_t>(target->_direction);
-    msg.displayChar = target->_displayChar;
-    msg.colorIndex = target->_colorIndex;
-    msg.x = target->_x;
-    msg.y = target->_y;
-    msg.speed = target->_speed;
-    SendPacket(target, msg);
+    SendPacket(target, MakeCreateMyPlayer(target));
 }
 
 void CGameServer::SendCreateOtherPlayer(CPlayer* target, CPlayer* player, SpawnReason reason)
 {
-    MSG_S2C_CREATE_OTHER_PLAYER msg;
-    msg.playerId = player->_playerId;
-    msg.direction = static_cast<uint8_t>(player->_direction);
-    msg.moveState = static_cast<uint8_t>(player->_moveState);
-    msg.displayChar = player->_displayChar;
-    msg.colorIndex = player->_colorIndex;
-    msg.spawnReason = static_cast<uint8_t>(reason);
-    msg.x = player->_x;
-    msg.y = player->_y;
-    msg.speed = player->_speed;
-    SendPacket(target, msg);
+    SendPacket(target, MakeCreateOtherPlayer(player, reason));
 }
 
 void CGameServer::SendDeletePlayer(CPlayer* target, CPlayer* player)
 {
-    MSG_S2C_DELETE_PLAYER msg;
-    msg.playerId = player->_playerId;
-    SendPacket(target, msg);
+    SendPacket(target, MakeDeletePlayer(player->_playerId));
 }
 
 void CGameServer::SendSyncPosition(CPlayer* target)
 {
-    MSG_S2C_SYNC_POSITION msg;
-    msg.playerId = target->_playerId;
-    msg.x = target->_x;
-    msg.y = target->_y;
-    SendPacket(target, msg);
+    SendPacket(target, MakeSyncPosition(target->_playerId, target->_x, target->_y));
 }
 
 void CGameServer::RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg)
@@ -836,36 +970,22 @@ void CGameServer::RecvAdminLogin(CPlayer* player, CSerialBuffer* pMsg)
     if (strcmp(recvMsg.key, ADMIN_KEY) == 0)
     {
         player->_isAdmin = true;
-
-        MSG_S2C_ADMIN_LOGIN_OK msg;
-        SendPacket(player, msg);
+        SendPacket(player, MakeAdminLoginOk());
     }
     else
     {
-        MSG_S2C_ADMIN_LOGIN_FAIL msg;
-        SendPacket(player, msg);
+        SendPacket(player, MakeAdminLoginFail());
     }
 }
 
 void CGameServer::SendZoneChangeOk(CPlayer* target, int32_t mapId, int32_t channelIndex)
 {
-    MSG_S2C_ZONE_CHANGE_OK msg;
-    msg.mapId = mapId;
-    msg.channelIndex = channelIndex;
-    msg.playerId = target->_playerId;
-    msg.displayChar = target->_displayChar;
-    msg.colorIndex = target->_colorIndex;
-    msg.direction = static_cast<uint8_t>(target->_direction);
-    msg.x = target->_x;
-    msg.y = target->_y;
-    SendPacket(target, msg);
+    SendPacket(target, MakeZoneChangeOk(target, mapId, channelIndex));
 }
 
 void CGameServer::SendZoneChangeFail(CPlayer* target, uint8_t reason)
 {
-    MSG_S2C_ZONE_CHANGE_FAIL msg;
-    msg.reason = reason;
-    SendPacket(target, msg);
+    SendPacket(target, MakeZoneChangeFail(reason));
 }
 
 // ==========================================================================
