@@ -741,6 +741,7 @@ void CIOCPServer::ProcessSend(CSession* session, DWORD bytesTransferred)
     else
     {
         // Partial send → 비정상 완료로 간주, 세션 종료
+        InterlockedIncrement64(&_monitor._partialSend);
         LOG_ERROR_STREAM("[Error] Partial send - SessionId: " << session->_sessionId
             << ", Expected: " << session->_pendingSendBytes
             << ", Transferred: " << bytesTransferred);

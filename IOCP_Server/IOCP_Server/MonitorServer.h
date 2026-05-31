@@ -114,6 +114,8 @@ private:
                      "Total packet errors", _monitor._packetErrors);
         WriteCounter(ss, "mmo_send_queue_overflow_total",
                      "Total send queue overflows", _monitor._sendQueueOverflow);
+        WriteCounter(ss, "mmo_partial_send_total",
+                     "Total partial sends (success but fewer bytes than requested)", _monitor._partialSend);
         WriteCounter(ss, "mmo_recv_buffer_overflow_total",
                      "Total recv buffer overflows", _monitor._recvBufferOverflow);
         WriteCounter(ss, "mmo_zone_change_total",

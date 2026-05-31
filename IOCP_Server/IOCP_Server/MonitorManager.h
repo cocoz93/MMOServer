@@ -51,6 +51,7 @@ public:
     volatile LONG64 _sessionTimedOut = 0;                // 타이밍 휠 타임아웃 킥
     volatile LONG64 _packetErrors = 0;                   // 패킷 에러 (크기 검증 실패, 알 수 없는 타입)
     volatile LONG64 _sendQueueOverflow = 0;              // SendQ 오버플로 (Enqueue 실패)
+    volatile LONG64 _partialSend = 0;                    // 진짜 partial send (WSASend 성공이나 일부만 전송) → disconnect 횟수
     volatile LONG64 _recvBufferOverflow = 0;             // RecvQ 오버플로 (수신 버퍼 가득 참)
     volatile LONG64 _sendDiscardedBytes = 0;             // Disconnect 시 SendQ 잔여 바이트 (체류량 보정용)
 
