@@ -978,97 +978,6 @@ void CIOCPServer::PostSend(CSession* session)
 }
 #endif
 
-// 게임 로직 레이어가 사용할 인터페이스
-// 송신 요청: SendQ에 데이터 Enqueue 후 송신 시작
-void CIOCPServer::RequestSendMsg(int64_t sessionId, const char* data, int length)
-{
-    // 입력 검증
-    if (data == nullptr || length <= 0)
-    {
-        LOG_ERROR_STREAM("[Error] RequestSendMsg(char*) invalid args - data: "
-            << (data ? "valid" : "nullptr") << ", length: " << length);
-        return;
-    }
-
-    // Session ABA 검증 (3-step)
-    // Step 1: index로 세션 조회 + sessionId 일치 확인
-    auto session = FindSession(sessionId);
-    if (!session)
-        return;
-
-    // Step 2: IOCount pin (해제 진행 중이면 실패)
-    if (!AcquireSession(session))
-        return;
-
-    // Step 3: pin 후 sessionId 재확인 (pin 사이 재할당 검출)
-    if (session->_sessionId != sessionId)
-    {
-        IOCountDecrement(session);
-        return;
-    }
-
-#if USE_LOCKFREE_SENDQ
-    // CSerialBuffer 최대 용량 검증
-    if (length > MSG_DEFAULT_SIZE - HEADER_SIZE)
-    {
-        LOG_ERROR_STREAM("[Error] RequestSendMsg(char*) length exceeds CSerialBuffer capacity - length: " << length);
-        IOCountDecrement(session);
-        return;
-    }
-
-    CSerialBuffer* pMsg = CSerialBuffer::Alloc();
-    memcpy(pMsg->GetWriteBufferPtr(), data, length);
-    pMsg->MoveWritePos(length);
-    pMsg->AddRef();   // RefCount: 0→1, sendQ 소유권용
-
-    // SendQ 깊이 상한 체크 (OOM 방어)
-    if (session->_sendQ.GetApproxSize() >= CSession::MAX_SENDQ_DEPTH)
-    {
-        LOG_ERROR_STREAM("[Error] SendQ depth limit reached - SessionId: " << sessionId
-            << ", Depth: " << session->_sendQ.GetApproxSize());
-        InterlockedIncrement64(&_monitor._sendQueueOverflow);
-        pMsg->SubRef();
-        RequestDisconnectSession(session);
-        IOCountDecrement(session);
-        return;
-    }
-
-    if (!session->_sendQ.Enqueue(pMsg))
-    {
-        LOG_ERROR_STREAM("[Error] Send queue enqueue failed - SessionId: " << sessionId);
-        InterlockedIncrement64(&_monitor._sendQueueOverflow);
-        pMsg->SubRef();
-        RequestDisconnectSession(session);
-        IOCountDecrement(session);
-        return;
-    }
-
-    InterlockedIncrement64(&_monitor._sendPackets);
-    InterlockedExchangeAdd64(&_monitor._sendEnqueuedBytes, static_cast<LONG64>(pMsg->GetDataSize()));
-#else
-    // SendQ에 데이터 Enqueue
-    size_t enqueued = session->_sendQ.Enqueue(data, length);
-    if (enqueued != length)
-    {
-        LOG_ERROR_STREAM("[Error] Send buffer overflow - SessionId: " << sessionId
-            << ", Requested: " << length << ", Enqueued: " << enqueued);
-        InterlockedIncrement64(&_monitor._sendQueueOverflow);
-        RequestDisconnectSession(session);
-        IOCountDecrement(session);
-        return;
-    }
-
-    // 논리적 송신 패킷 카운팅 (모든 전송 경로가 이 함수를 거침)
-    InterlockedIncrement64(&_monitor._sendPackets);
-
-    // Enqueue 바이트 누적 (_sendBytes와의 차이로 SendQ 체류량 산출)
-    InterlockedExchangeAdd64(&_monitor._sendEnqueuedBytes, static_cast<LONG64>(length));
-#endif
-
-    PostSend(session);
-    IOCountDecrement(session);
-}
-
 void CIOCPServer::EchoTestSend(CSession* session, CSerialBuffer* pMsg)
 {
     // 에코 테스트: 받은 패킷을 그대로 돌려보냄
@@ -1076,18 +985,28 @@ void CIOCPServer::EchoTestSend(CSession* session, CSerialBuffer* pMsg)
     RequestSendMsg(session->_sessionId, pMsg);
 }
 
+// 게임 로직 레이어가 사용할 송신 인터페이스 (콘텐츠가 조립한 CSerialBuffer를 그대로 전달)
+//
 // 소유권 계약: 호출자는 RefCount >= 1인 pMsg를 넘긴다. 이 함수는 해당 1개 ref를 소비한다.
-// - Enqueue 성공 → ref가 sendQ로 이전, ProcessSend 완료 시 SubRef()로 반환
-// - 실패(세션 무효, Enqueue 실패 등) → 즉시 SubRef()로 반환
+//  - LockFreeQ : Enqueue 성공 → ref가 sendQ로 이전, ProcessSend 완료 시 SubRef()로 반환
+//  - RingBuffer: 바이트를 세션 링버퍼에 복사 후 즉시 SubRef()
+//  - 실패(세션 무효, ABA, Enqueue 실패 등) → 즉시 SubRef()로 반환
 void CIOCPServer::RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg)
 {
-#if USE_LOCKFREE_SENDQ
-    // Session ABA 검증 (3-step)
+    // ── Session ABA 검증 (3-step) — 두 모드 공통 ──
+    // Step 1: index로 세션 조회 + sessionId 일치 확인
     auto session = FindSession(sessionId);
     if (!session) { pMsg->SubRef(); return; }
+
+    // Step 2: IOCount pin (해제 진행 중이면 실패)
     if (!AcquireSession(session)) { pMsg->SubRef(); return; }
+
+    // Step 3: pin 후 sessionId 재확인 (pin 사이 재할당 검출)
     if (session->_sessionId != sessionId) { IOCountDecrement(session); pMsg->SubRef(); return; }
 
+    const int dataSize = pMsg->GetDataSize();
+
+#if USE_LOCKFREE_SENDQ
     // SendQ 깊이 상한 체크 (OOM 방어 — CLockFreeQueue는 Enqueue 실패를 반환하지 않으므로)
     if (session->_sendQ.GetApproxSize() >= CSession::MAX_SENDQ_DEPTH)
     {
@@ -1112,15 +1031,28 @@ void CIOCPServer::RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg)
     }
 
     InterlockedIncrement64(&_monitor._sendPackets);
-    InterlockedExchangeAdd64(&_monitor._sendEnqueuedBytes, static_cast<LONG64>(pMsg->GetDataSize()));
+    InterlockedExchangeAdd64(&_monitor._sendEnqueuedBytes, static_cast<LONG64>(dataSize));
+#else
+    // RingBuffer 경로: 버퍼 바이트를 세션 링버퍼에 복사 (ref는 복사 직후 소비)
+    size_t enqueued = session->_sendQ.Enqueue(pMsg->GetReadBufferPtr(), dataSize);
+    if (enqueued != static_cast<size_t>(dataSize))
+    {
+        LOG_ERROR_STREAM("[Error] Send buffer overflow - SessionId: " << sessionId
+            << ", Requested: " << dataSize << ", Enqueued: " << enqueued);
+        InterlockedIncrement64(&_monitor._sendQueueOverflow);
+        pMsg->SubRef();
+        RequestDisconnectSession(session);
+        IOCountDecrement(session);
+        return;
+    }
+
+    InterlockedIncrement64(&_monitor._sendPackets);
+    InterlockedExchangeAdd64(&_monitor._sendEnqueuedBytes, static_cast<LONG64>(dataSize));
+    pMsg->SubRef();   // 링버퍼가 바이트 사본 보유 → 버퍼 소유권(ref) 소비
+#endif
 
     PostSend(session);
     IOCountDecrement(session);
-#else
-    // RingBuffer 경로: char* 오버로드로 위임 (ABA 검증은 char* 쪽에서 수행)
-    RequestSendMsg(sessionId, pMsg->GetReadBufferPtr(), pMsg->GetDataSize());
-    pMsg->SubRef();
-#endif
 }
 
 // ParsePackets 쪽에서 호출

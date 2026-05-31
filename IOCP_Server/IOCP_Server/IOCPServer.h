@@ -232,7 +232,7 @@ public:
 
     // 게임 로직 레이어가 사용할 인터페이스 (직접 호출)
     // thread-safe하다면 굳이 큐방식으로 부하를 줄 필요가 없음.
-    void RequestSendMsg(int64_t sessionId, const char* data, int length);
+    // 송신은 콘텐츠가 조립한 CSerialBuffer 단일 경로로 통일 (모드 분기는 .cpp 내부 #if)
     void RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg);
     bool RequestDisconnectSession(int64_t sessionId);
 
