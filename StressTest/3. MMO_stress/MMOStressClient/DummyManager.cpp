@@ -39,6 +39,9 @@ void DummyManager::Stop()
 // ─────────────────────────────────────────────────────────────────
 void DummyManager::NetworkLoop()
 {
+    // BATCH는 키우지 말 것. Windows FD_SET/FD_ISSET이 O(fd_count)라
+    // 배치당 비용이 O(B^2) → B를 키우면 시스콜은 줄지만 비교가 더 빨리 늘어 손해.
+    // 더 큰 확장은 WSAPoll/IOCP로.
     const int   BATCH          = 64;
     const int   total          = _clientCount;
     const auto& ip             = _config.serverIp;
