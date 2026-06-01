@@ -10,7 +10,18 @@
 // ─────────────────────────────────────────────────────────────────
 int64_t DummyClient::NowMs()
 {
-    return static_cast<int64_t>(GetTickCount64());
+    // QueryPerformanceCounter 기반 ms. GetTickCount64는 분해능이 15~16ms라
+    // (timeBeginPeriod(1)로도 안 바뀜 — 실측 확인) RTT가 0/15/16ms로 양자화돼
+    // 히스토그램 하위 버킷이 무의미해진다. QPC는 syscall이 아니라 비용도 낮다.
+    static const int64_t s_freq = []() -> int64_t {
+        LARGE_INTEGER f;
+        QueryPerformanceFrequency(&f);   // Win7+ 항상 성공
+        return f.QuadPart;
+    }();
+    LARGE_INTEGER c;
+    QueryPerformanceCounter(&c);
+    // 곱셈 먼저로 ms 정밀도 보존 (부팅 이후 단조 증가, 상대 비교만 사용)
+    return c.QuadPart * 1000 / s_freq;
 }
 
 void DummyClient::CloseSocket()

@@ -49,6 +49,10 @@ public:
     bool IsDisconnected() const { return _state == ClientState::DISCONNECTED; }
     SOCKET GetSocket()    const { return _sock; }
 
+    // 고해상도 단조 증가 ms 클럭 (QPC 기반).
+    // RTT 측정과 틱/타임아웃 타이밍이 동일 클럭을 쓰도록 매니저도 이걸 사용.
+    static int64_t NowMs();
+
 private:
     void CloseSocket();
     void Disconnect(StatsLocal& stats, int reconnectDelayMs);
@@ -76,8 +80,6 @@ private:
 
     // 패킷 크기 테이블
     static uint16_t GetPacketSize(MsgType type);
-
-    static int64_t NowMs();
 
     SOCKET      _sock           = INVALID_SOCKET;
     ClientState _state          = ClientState::DISCONNECTED;

@@ -53,13 +53,13 @@ void DummyManager::NetworkLoop()
 
     // rampUp 비활성(0) → 전체 허용, 활성 → 1개부터 시작
     _rampUpCount  = (rampUpMs <= 0) ? total : 1;
-    _lastRampUpMs = static_cast<int64_t>(GetTickCount64());
+    _lastRampUpMs = DummyClient::NowMs();
 
     StatsLocal local;
 
     while (_running)
     {
-        int64_t nowMs = static_cast<int64_t>(GetTickCount64());
+        int64_t nowMs = DummyClient::NowMs();
 
         // ── RampUp: 점진적 접속 허용 수 증가 ─────────────────────
         if (rampUpMs > 0 && _rampUpCount < total)
