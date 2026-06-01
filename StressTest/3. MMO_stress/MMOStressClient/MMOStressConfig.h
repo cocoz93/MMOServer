@@ -54,36 +54,43 @@ struct MMOStressConfig
         const wchar_t* path = iniPath.c_str();
 
         // [Connection]
+        // 기본값도 멤버 현재값(구조체 기본값)에서 가져온다 — 정수 키와 동일하게
+        // 기본값 정의처를 구조체 한 곳으로 단일화 (string이라 wide 변환 1단계 경유)
+        wchar_t defIp[256];
+        MultiByteToWideChar(CP_ACP, 0, serverIp.c_str(), -1, defIp, 256);
         wchar_t buf[256];
-        GetPrivateProfileStringW(L"Connection", L"ServerIp", L"127.0.0.1", buf, 256, path);
+        GetPrivateProfileStringW(L"Connection", L"ServerIp", defIp, buf, 256, path);
         char mbBuf[256];
         WideCharToMultiByte(CP_ACP, 0, buf, -1, mbBuf, 256, nullptr, nullptr);
         serverIp = mbBuf;
 
-        port                = GetPrivateProfileIntW(L"Connection", L"Port", 6000, path);
-        clientCount         = GetPrivateProfileIntW(L"Connection", L"ClientCount", 100, path);
-        clientsPerThread    = GetPrivateProfileIntW(L"Connection", L"ClientsPerThread", 2000, path);
-        reconnectIntervalMs = GetPrivateProfileIntW(L"Connection", L"ReconnectIntervalMs", 1000, path);
-        connectTimeoutMs    = GetPrivateProfileIntW(L"Connection", L"ConnectTimeoutMs", 5000, path);
+        // 기본값(nDefault)은 멤버의 현재값(= 구조체 기본값)을 그대로 전달한다.
+        // → 기본값 정의처를 구조체 한 곳으로 단일화: "파일 없음"과 "키 누락"이
+        //   항상 동일한 값을 가지며, 양쪽 기본값이 어긋나는 일을 원천 차단한다.
+        port                = GetPrivateProfileIntW(L"Connection", L"Port", port, path);
+        clientCount         = GetPrivateProfileIntW(L"Connection", L"ClientCount", clientCount, path);
+        clientsPerThread    = GetPrivateProfileIntW(L"Connection", L"ClientsPerThread", clientsPerThread, path);
+        reconnectIntervalMs = GetPrivateProfileIntW(L"Connection", L"ReconnectIntervalMs", reconnectIntervalMs, path);
+        connectTimeoutMs    = GetPrivateProfileIntW(L"Connection", L"ConnectTimeoutMs", connectTimeoutMs, path);
 
         // [Timing]
-        loopDelayMs         = GetPrivateProfileIntW(L"Timing", L"LoopDelayMs", 1, path);
-        tickIntervalMs      = GetPrivateProfileIntW(L"Timing", L"TickIntervalMs", 40, path);
+        loopDelayMs         = GetPrivateProfileIntW(L"Timing", L"LoopDelayMs", loopDelayMs, path);
+        tickIntervalMs      = GetPrivateProfileIntW(L"Timing", L"TickIntervalMs", tickIntervalMs, path);
 
         // [Scenario]
-        moveProbability         = GetPrivateProfileIntW(L"Scenario", L"MoveProbability", 40, path);
-        stopProbability         = GetPrivateProfileIntW(L"Scenario", L"StopProbability", 30, path);
-        chatProbability         = GetPrivateProfileIntW(L"Scenario", L"ChatProbability", 5, path);
-        zoneChangeProbability   = GetPrivateProfileIntW(L"Scenario", L"ZoneChangeProbability", 1, path);
-        heartbeatIntervalSec    = GetPrivateProfileIntW(L"Scenario", L"HeartbeatIntervalSec", 20, path);
-        targetMapId             = GetPrivateProfileIntW(L"Scenario", L"TargetMapId", 1, path);
+        moveProbability         = GetPrivateProfileIntW(L"Scenario", L"MoveProbability", moveProbability, path);
+        stopProbability         = GetPrivateProfileIntW(L"Scenario", L"StopProbability", stopProbability, path);
+        chatProbability         = GetPrivateProfileIntW(L"Scenario", L"ChatProbability", chatProbability, path);
+        zoneChangeProbability   = GetPrivateProfileIntW(L"Scenario", L"ZoneChangeProbability", zoneChangeProbability, path);
+        heartbeatIntervalSec    = GetPrivateProfileIntW(L"Scenario", L"HeartbeatIntervalSec", heartbeatIntervalSec, path);
+        targetMapId             = GetPrivateProfileIntW(L"Scenario", L"TargetMapId", targetMapId, path);
 
         // [Monitor]
-        monitorPort         = GetPrivateProfileIntW(L"Monitor", L"MonitorPort", 9101, path);
+        monitorPort         = GetPrivateProfileIntW(L"Monitor", L"MonitorPort", monitorPort, path);
 
         // [Test]
-        testDurationSec     = GetPrivateProfileIntW(L"Test", L"TestDurationSec", 0, path);
-        rampUpIntervalMs    = GetPrivateProfileIntW(L"Test", L"RampUpIntervalMs", 0, path);
+        testDurationSec     = GetPrivateProfileIntW(L"Test", L"TestDurationSec", testDurationSec, path);
+        rampUpIntervalMs    = GetPrivateProfileIntW(L"Test", L"RampUpIntervalMs", rampUpIntervalMs, path);
 
         wprintf(L"[Config] Loaded from MMOStressConfig.ini\n");
         PrintConfig();
