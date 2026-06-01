@@ -1,7 +1,7 @@
 @echo off
 REM ============================================
-REM   MMO Release Upload - Run 폴더 패키징 + GitHub Release 업로드
-REM   사용법: .release_upload.bat [tag]
+REM   MMO Release Push - Run 폴더 패키징 + GitHub Release 업로드
+REM   사용법: release_push.bat [tag]
 REM     (없음) : bin-latest (고정 태그, 다운로드 URL 항상 동일)
 REM     v0.1   : 지정한 태그로 릴리스
 REM   zip 이름: MMO_Run_<날짜>_<git해시>.zip  (예: MMO_Run_20260601_a1b2c3d.zip)
@@ -36,7 +36,7 @@ if not exist "%GH%" if /I not "%GH%"=="gh" (
 )
 
 echo ============================================
-echo   MMO Release Upload  -  tag: %TAG%
+echo   MMO Release Push  -  tag: %TAG%
 echo   version: %VERSION%
 echo ============================================
 echo.
