@@ -717,6 +717,10 @@ void CIOCPServer::ParsePackets(CSession* session)
             PushNetworkEvent(NetworkEvent(NetworkEvent::Type::RECEIVED,
                 session->_sessionId, pMsg));
             break;
+        default:
+            // 알 수 없는 모드 — 어느 경로로도 소비되지 않으므로 소유권 회수 (누수 방어)
+            pMsg->SubRef();
+            break;
         }
 
     }
