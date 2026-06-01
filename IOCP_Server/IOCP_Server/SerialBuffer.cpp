@@ -24,7 +24,7 @@ CSerialBuffer* CSerialBuffer::Alloc()
 	CSerialBuffer* msg = _TlsMsgFreeList->Alloc();
 	//________________________________________________________
 
-	msg->Clear();
+	msg->Clear();   // Clear()가 RefCount=1로 초기화 → 반환 버퍼는 "생성자 소유권 1개" 보유
 	//profile.End((WCHAR*)L"CSerialBuffer::Alloc");
 
 	return msg;
@@ -108,7 +108,7 @@ void CSerialBuffer::Clear(void)
 	this->_front = 0;
 	this->_rear = 0;
 	this->_DataSize = 0;
-	this->_RefCount = 0;
+	this->_RefCount = 1;   // 생성자 소유권 — Alloc()이 반환하는 버퍼는 항상 RefCount=1 (사용처가 SubRef/Free로 회수)
 	this->_Sealed = false;
 }
 

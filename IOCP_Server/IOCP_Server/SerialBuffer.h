@@ -19,9 +19,14 @@ public:
 
 public:
 	static CSerialBuffer* Alloc();
-	static void Free(CSerialBuffer* msg);
 	void AddRef();
 	void SubRef();
+
+private:
+	// 수명 회수는 SubRef()로만 — RefCount=0일 때 SubRef 내부에서만 호출 (외부 직접 호출 금지)
+	static void Free(CSerialBuffer* msg);
+
+public:
 
 	// 쓰기 완료 후 호출. 봉인 이후 SetData/GetData 차단
 	// 멀티스레드 브로드캐스트 시 내부 상태(_front, _rear) 보호 목적

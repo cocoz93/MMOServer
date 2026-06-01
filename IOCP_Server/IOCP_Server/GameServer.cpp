@@ -30,13 +30,13 @@ namespace
         *buf << static_cast<WORD>(type);              // header.type
     }
 
-    // 헤더 종료: size 백패치(= 전체 payload 바이트) + Seal + 소유권 1 확보
+    // 헤더 종료: size 백패치(= 전체 payload 바이트) + Seal
+    // 소유권 1은 Alloc()/Clear()에서 이미 확보됨(RefCount=1) → 여기서 AddRef 불필요
     inline void FinalizePacket(CSerialBuffer* buf)
     {
         *reinterpret_cast<uint16_t*>(buf->GetPayloadBufferPtr()) =
             static_cast<uint16_t>(buf->GetDataSize());
         buf->Seal();
-        buf->AddRef();   // 송신 함수가 소비할 소유권 (0→1)
     }
 
     // MOVE_START / MOVE_STOP은 레이아웃 동일 — 3곳/2곳에서 재사용되므로 빌더로 DRY 처리
@@ -294,7 +294,7 @@ void CGameServer::Stop()
         while (_network->PopNetworkEvent(event))
         {
             if (event.pMsg != nullptr)
-                CSerialBuffer::Free(event.pMsg);
+                event.pMsg->SubRef();
         }
     }
 
@@ -540,7 +540,7 @@ void CGameServer::OnReceived(int64_t sessionId, CSerialBuffer* pMsg)
     if (expectedSize == 0 || header.size < expectedSize)
     {
         InterlockedIncrement64(&_monitor._packetErrors);
-        CSerialBuffer::Free(pMsg);
+        pMsg->SubRef();
         return;
     }
 
@@ -548,7 +548,7 @@ void CGameServer::OnReceived(int64_t sessionId, CSerialBuffer* pMsg)
     auto it = _sessionToPlayer.find(sessionId);
     if (it == _sessionToPlayer.end())
     {
-        CSerialBuffer::Free(pMsg);
+        pMsg->SubRef();
         return;
     }
     CPlayer* player = it->second;
@@ -580,8 +580,8 @@ void CGameServer::OnReceived(int64_t sessionId, CSerialBuffer* pMsg)
         break;
     }
 
-    // SerialBuffer 해제
-    CSerialBuffer::Free(pMsg);
+    // SerialBuffer 해제 (소유권 1 반환 — RefCount=0이면 프리리스트로)
+    pMsg->SubRef();
 }
 
 uint16_t CGameServer::GetExpectedSize(MsgType type)

@@ -693,7 +693,7 @@ void CIOCPServer::ParsePackets(CSession* session)
         if (dequeuedSize != totalPacketSize)
         {
             LOG_ERROR_STREAM("[Error] Packet dequeue failed - SessionId: " << session->_sessionId);
-            CSerialBuffer::Free(pMsg);
+            pMsg->SubRef();
             RequestDisconnectSession(session);
             return;
         }
@@ -704,7 +704,7 @@ void CIOCPServer::ParsePackets(CSession* session)
 
         // 수신 버퍼는 단일 소비자(GameLogicThread)이므로 Seal 불필요
         // Seal하면 operator>>/GetData가 차단되어 역직렬화 불가
-        pMsg->AddRef();
+        // 소유권 1은 Alloc()/Clear()에서 이미 확보됨(RefCount=1) → 여기서 AddRef 불필요
 
         // 7. 컨텐츠쪽 전달 또는 처리
         switch (_serverMode)
