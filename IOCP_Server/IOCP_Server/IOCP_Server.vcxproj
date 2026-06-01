@@ -164,6 +164,7 @@
     <ClInclude Include="Zone.h" />
     <ClInclude Include="MapManager.h" />
     <ClInclude Include="GameServer.h" />
+    <ClInclude Include="BuildConfig.h" />
     <ClInclude Include="Common.h" />
     <ClInclude Include="..\..\Shared\Protocol\Protocol.h" />
     <ClInclude Include="RingBuffer.h" />

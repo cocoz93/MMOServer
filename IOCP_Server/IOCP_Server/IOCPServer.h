@@ -1,5 +1,7 @@
 ﻿#pragma once
 
+#include "BuildConfig.h"  // USE_LOCKFREE_SENDQ 등 빌드 토글 (가장 먼저 include)
+
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #include <Windows.h>
@@ -16,7 +18,6 @@
 #include "SerialBuffer.h"
 #include "../../Shared/Protocol/Protocol.h"
 #include "LockFree/LockFreeStack.h"
-#define USE_LOCKFREE_SENDQ 0  // 1로 바꾸면 LockFreeQ 경로, 0이면 기존 RingBuffer 경로
 #if USE_LOCKFREE_SENDQ
 #include "LockFree/LockFreeQueue.h"
 #endif
