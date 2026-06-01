@@ -308,9 +308,17 @@ void DummyClient::HandleMoveStart(const char* packet)
     }
 }
 
-void DummyClient::HandleMoveStop(const char* /*packet*/)
+void DummyClient::HandleMoveStop(const char* packet)
 {
-    // 읽고 버림
+    // 서버 권위 정지 통보: 본인 것만 좌표/상태 동기화
+    // (경계 클램핑 등으로 서버가 IDLE 처리한 경우 더미도 _moving을 꺼야
+    //  로컬 예측이 서버와 어긋나지 않는다)
+    auto* msg = reinterpret_cast<const MSG_S2C_MOVE_STOP*>(packet);
+    if (msg->playerId != _playerId)
+        return;  // 타 플레이어 정지는 더미가 추적하지 않음 → 무시
+    _x      = msg->x;
+    _y      = msg->y;
+    _moving = false;
 }
 
 void DummyClient::HandleSyncPosition(const char* packet)
@@ -355,11 +363,12 @@ void DummyClient::HandleZoneChangeFail(const char* packet)
 // ─────────────────────────────────────────────────────────────────
 // 이동 로직
 // ─────────────────────────────────────────────────────────────────
-void DummyClient::UpdateLocalPosition(int mapWidth, int mapHeight)
+void DummyClient::UpdateLocalPosition(float deltaTime, int mapWidth, int mapHeight)
 {
-    static constexpr float DELTA_TIME = 0.04f;  // 서버 FRAME_PER_SEC=25 → 1/25=0.04
-
-    float dist = static_cast<float>(_speed) * DELTA_TIME;
+    // 실측 경과시간 기반 예측 — 고정 0.04 대신 실제 틱 간격을 사용해야
+    // 서버(실측 deltaTime)와 이동 속도가 일치한다 (틱 게이트 분해능/부하로 인한
+    // 체계적 좌표 지연 방지)
+    float dist = static_cast<float>(_speed) * deltaTime;
 
     switch (_direction)
     {
@@ -551,11 +560,13 @@ void DummyClient::Tick(StatsLocal& stats, const MMOStressConfig& config, int64_t
     // tickIntervalMs(40ms) 도달 체크
     if (nowMs - _lastTickMs < config.tickIntervalMs)
         return;
+    // _lastTickMs를 덮어쓰기 전에 실제 경과시간을 확보 (예측 deltaTime)
+    float deltaTime = static_cast<float>(nowMs - _lastTickMs) / 1000.0f;
     _lastTickMs = nowMs;
 
     // 이동 중이면 좌표 갱신
     if (_moving)
-        UpdateLocalPosition(_mapWidth, _mapHeight);
+        UpdateLocalPosition(deltaTime, _mapWidth, _mapHeight);
 
     // 랜덤 행동 결정
     std::uniform_int_distribution<int> roll(1, 100);

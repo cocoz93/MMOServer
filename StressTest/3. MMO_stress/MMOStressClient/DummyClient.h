@@ -67,7 +67,7 @@ private:
     void HandleZoneChangeFail(const char* packet);
 
     // 이동 로직
-    void UpdateLocalPosition(int mapWidth, int mapHeight);
+    void UpdateLocalPosition(float deltaTime, int mapWidth, int mapHeight);
     void SendMoveStart(StatsLocal& stats, int64_t nowMs);
     void SendMoveStop(StatsLocal& stats);
     void SendHeartbeat(StatsLocal& stats);
