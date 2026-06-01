@@ -1,10 +1,4 @@
 @echo off
-REM === 창이 바로 닫히지 않도록 cmd /k 로 재실행 ===
-if not defined _RELAUNCH (
-    set "_RELAUNCH=1"
-    cmd /k "%~f0" %*
-    exit /b
-)
 setlocal EnableDelayedExpansion
 
 REM === Client count (default: 1) ===
@@ -26,30 +20,17 @@ taskkill /F /IM grafana-server.exe >nul 2>nul
 echo   - Done
 echo.
 
-REM === 2. MSBuild path ===
-set "MSBUILD=C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"
-if not exist "%MSBUILD%" (
-    echo [ERROR] MSBuild not found!
-    goto :ERROR
+REM === 2. bin 산출물 확인 (없으면 .build.bat 먼저) ===
+echo [2/5] Checking build output...
+if not exist "%~dp0bin\IOCP_Server.exe" (
+    echo [MISSING] bin\IOCP_Server.exe
+    goto :NEED_BUILD
 )
-
-REM === 3. Build (Release x64) ===
-echo [2/5] Building...
-echo   - Building Server...
-"%MSBUILD%" "%~dp0..\IOCP_Server\IOCP_Server.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
-if %ERRORLEVEL% NEQ 0 (
-    echo [ERROR] Server build failed!
-    goto :ERROR
+if not exist "%~dp0bin\EchoStressClient.exe" (
+    echo [MISSING] bin\EchoStressClient.exe
+    goto :NEED_BUILD
 )
-echo   - Server build OK
-
-echo   - Building EchoStressClient...
-"%MSBUILD%" "%~dp0..\StressTest\2. Custom_echo_stress\EchoStressClient.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
-if %ERRORLEVEL% NEQ 0 (
-    echo [ERROR] EchoStressClient build failed!
-    goto :ERROR
-)
-echo   - EchoStressClient build OK
+echo   - OK
 echo.
 
 REM === 4. Configure ===
@@ -148,6 +129,15 @@ echo   (Grafana login: admin / admin)
 echo ============================================
 pause
 exit /b 0
+
+:NEED_BUILD
+echo.
+echo ============================================
+echo   [STOP] bin\ 에 실행 파일이 없습니다.
+echo   먼저 .build.bat 을 실행하세요. (전체 빌드: .build.bat)
+echo ============================================
+pause
+exit /b 1
 
 :ERROR
 echo.

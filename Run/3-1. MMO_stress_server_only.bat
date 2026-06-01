@@ -3,11 +3,6 @@ REM ============================================
 REM   MMO Stress - Server Only
 REM   서버 + 모니터링만 실행 (클라이언트 없음)
 REM ============================================
-if not defined _RELAUNCH (
-    set "_RELAUNCH=1"
-    cmd /k "%~f0" %*
-    exit /b
-)
 setlocal
 
 echo ============================================
@@ -24,21 +19,13 @@ taskkill /F /IM grafana-server.exe >nul 2>nul
 echo   - Done
 echo.
 
-REM === 2. MSBuild ===
-set "MSBUILD=C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"
-if not exist "%MSBUILD%" (
-    echo [ERROR] MSBuild not found!
-    goto :ERROR
+REM === 2. bin 산출물 확인 (없으면 .build.bat 먼저) ===
+echo [2/4] Checking build output...
+if not exist "%~dp0bin\IOCP_Server.exe" (
+    echo [MISSING] bin\IOCP_Server.exe
+    goto :NEED_BUILD
 )
-
-REM === 3. Build Server ===
-echo [2/4] Building Server...
-"%MSBUILD%" "%~dp0..\IOCP_Server\IOCP_Server.sln" /p:Configuration=Release /p:Platform=x64 /m /nologo /v:minimal
-if %ERRORLEVEL% NEQ 0 (
-    echo [ERROR] Server build failed!
-    goto :ERROR
-)
-echo   - Server build OK
+echo   - OK
 echo.
 
 REM === 4. Configure ===
@@ -93,6 +80,15 @@ echo   Grafana    : http://localhost:3000
 echo ============================================
 pause
 exit /b 0
+
+:NEED_BUILD
+echo.
+echo ============================================
+echo   [STOP] bin\ 에 실행 파일이 없습니다.
+echo   먼저 .build.bat 을 실행하세요. (전체 빌드: .build.bat)
+echo ============================================
+pause
+exit /b 1
 
 :ERROR
 echo.
