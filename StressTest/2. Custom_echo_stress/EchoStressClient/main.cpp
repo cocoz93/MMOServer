@@ -7,11 +7,41 @@
 #include <fcntl.h>
 #include <ctime>
 #include <string>
+#include <atomic>
 #include "Config.h"
 #include "DummyManager.h"
 #include "StressMonitorServer.h"
 
 #pragma comment(lib, "ws2_32.lib")
+
+// ─────────────────────────────────────────────────────────────────
+// 콘솔 종료 핸들러 — q 입력 외에 창 X 클릭(CTRL_CLOSE) / Ctrl+C 에서도
+// 정상 종료 경로를 타도록 종료 플래그를 세운다.
+//   CLOSE/LOGOFF/SHUTDOWN 이벤트는 핸들러가 "반환"하는 즉시 OS가 프로세스를
+//   죽이므로, 메인 스레드가 리포트 저장을 끝낼 때까지 여기서 대기한다.
+//   (taskkill /F 강제 종료는 핸들러를 거치지 않으므로 보호 불가)
+// ─────────────────────────────────────────────────────────────────
+static std::atomic<bool> g_shutdownRequested{ false };
+static std::atomic<bool> g_reportDone{ false };
+
+static BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType)
+{
+    switch (ctrlType)
+    {
+    case CTRL_C_EVENT:
+    case CTRL_BREAK_EVENT:
+    case CTRL_CLOSE_EVENT:    // 창 X 클릭
+    case CTRL_LOGOFF_EVENT:
+    case CTRL_SHUTDOWN_EVENT:
+        g_shutdownRequested.store(true, std::memory_order_release);
+        // 메인 스레드가 리포트를 저장할 때까지 대기 (최대 ~4.5초, CLOSE 유예 내)
+        for (int i = 0; i < 4500 && !g_reportDone.load(std::memory_order_acquire); ++i)
+            Sleep(1);
+        return TRUE;
+    default:
+        return FALSE;
+    }
+}
 
 // ─────────────────────────────────────────────────────────────────
 // 진입점
@@ -27,6 +57,9 @@ int main(int argc, char* argv[])
         wprintf(L"[Error] WSAStartup 실패\n");
         return 1;
     }
+
+    // 창 X 클릭 / Ctrl+C 에서도 리포트를 남기도록 핸들러 등록
+    SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE);
 
     Config cfg;
     cfg.Load(argc > 1 ? argv[1] : nullptr);
@@ -47,7 +80,7 @@ int main(int argc, char* argv[])
     // ── 종료 조건 대기 ──────────────────────────────────────────
     int64_t startMs = static_cast<int64_t>(GetTickCount64());
 
-    while (true)
+    while (!g_shutdownRequested.load(std::memory_order_acquire))
     {
         // 시간 제한 종료
         if (cfg.testDurationSec > 0)
@@ -164,6 +197,9 @@ int main(int argc, char* argv[])
             wprintf(L"\n  [Warning] Failed to save report file.\n");
         }
     }
+
+    // 리포트 저장 완료 — CTRL_CLOSE 핸들러 대기 해제
+    g_reportDone.store(true, std::memory_order_release);
 
     WSACleanup();
     wprintf(L"\n[Custom Echo Stress] 종료 완료.\n");
