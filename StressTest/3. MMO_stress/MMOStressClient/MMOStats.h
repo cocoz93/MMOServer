@@ -11,7 +11,7 @@ struct MMOStats
     std::atomic<int>     readyCount           {0};   // S2C_CREATE_MY_PLAYER 수신 완료 수
 
     // ── 접속 누적 ───────────────────────────────────────────────
-    std::atomic<int64_t> connectTotal         {0};   // 총 접속 시도 횟수
+    std::atomic<int64_t> connectTotal         {0};   // 총 접속 성공 횟수 (OnConnected에서만 증가)
     std::atomic<int64_t> connectFail          {0};   // 접속 실패 횟수
 
     // ── 에러 ────────────────────────────────────────────────────
