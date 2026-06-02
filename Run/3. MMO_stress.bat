@@ -49,6 +49,22 @@ if %ERRORLEVEL% NEQ 0 (
     goto :ERROR
 )
 echo   - ServerConfig.ini updated (Mode=GameServer, MonitorEnabled=1)
+
+REM 단일 PC 전용: 서버/클라가 같은 머신이므로 접속 IP를 127.0.0.1로 강제한다.
+REM (3-2 클라 PC 배치는 IP를 건드리지 않지만, 3은 무조건 로컬 보장이 목적)
+powershell -Command "(Get-Content -Encoding UTF8 '%~dp0bin\MMOStressConfig.ini') -replace '^ServerIp=.*', 'ServerIp=127.0.0.1' | Set-Content -Encoding UTF8 '%~dp0bin\MMOStressConfig.ini'"
+if %ERRORLEVEL% NEQ 0 (
+    echo [ERROR] MMOStressConfig.ini update failed!
+    goto :ERROR
+)
+echo   - MMOStressConfig.ini updated (ServerIp=127.0.0.1, single-PC local)
+
+powershell -Command "(Get-Content -Encoding UTF8 '%~dp0bin\ClientConfig.ini') -replace '^IP=.*', 'IP=127.0.0.1' | Set-Content -Encoding UTF8 '%~dp0bin\ClientConfig.ini'"
+if %ERRORLEVEL% NEQ 0 (
+    echo [ERROR] ClientConfig.ini update failed!
+    goto :ERROR
+)
+echo   - ClientConfig.ini updated (IP=127.0.0.1, single-PC local)
 echo.
 
 REM === 5. Start Monitoring ===
