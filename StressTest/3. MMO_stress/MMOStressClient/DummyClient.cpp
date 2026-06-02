@@ -44,7 +44,7 @@ void DummyClient::ResetState()
     _moving         = false;
     _lastTickMs      = 0;
     _lastHeartbeatMs = 0;
-    _moveStartSentMs = 0;
+    _chatSentMs      = 0;
     _lastRttMs       = -1;
     _recvBuf.Clear();
     _sendBuf.Clear();
@@ -258,19 +258,19 @@ void DummyClient::ProcessPackets(StatsLocal& stats, const MMOStressConfig& confi
             if (_ready && !wasReady) stats.readyDelta += 1;
             break;
         }
-        case MsgType::S2C_MOVE_START:
-            HandleMoveStart(packet);
+        case MsgType::S2C_MOVE_START:          HandleMoveStart(packet);         break;
+        case MsgType::S2C_MOVE_STOP:           HandleMoveStop(packet);          break;
+        case MsgType::S2C_SYNC_POSITION:       HandleSyncPosition(packet);      break;
+        case MsgType::S2C_CREATE_OTHER_PLAYER: HandleCreateOtherPlayer(packet); break;
+        case MsgType::S2C_DELETE_PLAYER:       HandleDeletePlayer(packet);      break;
+        case MsgType::S2C_CHAT:
+            HandleChat(packet);
             if (_lastRttMs >= 0)
             {
                 stats.RecordRtt(_lastRttMs);
                 _lastRttMs = -1;
             }
             break;
-        case MsgType::S2C_MOVE_STOP:           HandleMoveStop(packet);          break;
-        case MsgType::S2C_SYNC_POSITION:       HandleSyncPosition(packet);      break;
-        case MsgType::S2C_CREATE_OTHER_PLAYER: HandleCreateOtherPlayer(packet); break;
-        case MsgType::S2C_DELETE_PLAYER:       HandleDeletePlayer(packet);      break;
-        case MsgType::S2C_CHAT:                HandleChat(packet);              break;
         case MsgType::S2C_ZONE_CHANGE_OK:      HandleZoneChangeOk(packet);      break;
         case MsgType::S2C_ZONE_CHANGE_FAIL:
             HandleZoneChangeFail(packet);
@@ -304,19 +304,11 @@ void DummyClient::HandleCreateMyPlayer(const char* packet)
     _ready    = true;
 }
 
-void DummyClient::HandleMoveStart(const char* packet)
+void DummyClient::HandleMoveStart(const char* /*packet*/)
 {
-    auto* msg = reinterpret_cast<const MSG_S2C_MOVE_START*>(packet);
-
-    // 자기 playerId와 매칭될 때만 RTT 측정
-    if (msg->playerId == _playerId && _moveStartSentMs > 0)
-    {
-        int64_t rtt = _lastRecvMs - _moveStartSentMs;
-        if (rtt < 0) rtt = 0;
-        _moveStartSentMs = 0;
-        // stats는 ProcessPackets에서 접근 → 여기서는 임시 저장
-        _lastRttMs = rtt;
-    }
+    // 타 플레이어 이동 시작 통보 — 더미는 추적하지 않으므로 읽고 버림.
+    // (RTT는 채팅 왕복으로 측정한다: 서버가 MOVE_START를 발신자 본인에게는
+    //  보내지 않아 자기 echo 기반 측정이 불가능하기 때문)
 }
 
 void DummyClient::HandleMoveStop(const char* packet)
@@ -351,9 +343,18 @@ void DummyClient::HandleDeletePlayer(const char* /*packet*/)
     // 읽고 버림
 }
 
-void DummyClient::HandleChat(const char* /*packet*/)
+void DummyClient::HandleChat(const char* packet)
 {
-    // 읽고 버림
+    // RTT 측정: 서버는 발신자 본인에게도 S2C_CHAT(playerId=자기)을 돌려준다
+    // (RecvChat의 excludeSelf=false). 보낸 시각과의 차이가 채팅 왕복 RTT.
+    auto* msg = reinterpret_cast<const MSG_S2C_CHAT*>(packet);
+    if (msg->playerId == _playerId && _chatSentMs > 0)
+    {
+        int64_t rtt = _lastRecvMs - _chatSentMs;  // OnRecv 배치 수신 시각 기준
+        if (rtt < 0) rtt = 0;
+        _chatSentMs = 0;
+        _lastRttMs  = rtt;  // stats 접근 가능한 ProcessPackets에서 RecordRtt
+    }
 }
 
 void DummyClient::HandleZoneChangeOk(const char* packet)
@@ -399,7 +400,7 @@ void DummyClient::UpdateLocalPosition(float deltaTime, int mapWidth, int mapHeig
     if (_y >= static_cast<float>(mapHeight)) _y = maxY;
 }
 
-void DummyClient::SendMoveStart(StatsLocal& stats, int64_t nowMs)
+void DummyClient::SendMoveStart(StatsLocal& stats)
 {
     // 랜덤 방향 (1~4)
     std::uniform_int_distribution<int> dist(1, 4);
@@ -419,7 +420,6 @@ void DummyClient::SendMoveStart(StatsLocal& stats, int64_t nowMs)
         stats.sendBufferFull += 1;
         return;
     }
-    _moveStartSentMs = nowMs;
     stats.sendPackets += 1;
     stats.moveStartSent += 1;
 }
@@ -524,7 +524,7 @@ static const wchar_t* s_chatMessages[] = {
 };
 static constexpr int s_chatMessageCount = _countof(s_chatMessages);
 
-void DummyClient::SendChat(StatsLocal& stats)
+void DummyClient::SendChat(StatsLocal& stats, int64_t nowMs)
 {
     std::uniform_int_distribution<int> dist(0, s_chatMessageCount - 1);
     const wchar_t* text = s_chatMessages[dist(_rng)];
@@ -543,6 +543,10 @@ void DummyClient::SendChat(StatsLocal& stats)
         stats.sendBufferFull += 1;
         return;
     }
+    // RTT 프로브 무장(single outstanding): 미측정 중이거나, 직전 프로브가
+    // 응답 없이 오래 묵었으면(존 이동/유실) 재무장해 측정이 멈추지 않게 한다.
+    if (_chatSentMs == 0 || (nowMs - _chatSentMs) > RTT_PROBE_TIMEOUT_MS)
+        _chatSentMs = nowMs;
     stats.sendPackets += 1;
     stats.chatSent += 1;
 }
@@ -597,14 +601,14 @@ void DummyClient::Tick(StatsLocal& stats, const MMOStressConfig& config, int64_t
         cursor += config.moveProbability;
         if (r <= cursor)
         {
-            SendMoveStart(stats, nowMs);
+            SendMoveStart(stats);
             return;
         }
 
         cursor += config.chatProbability;
         if (r <= cursor)
         {
-            SendChat(stats);
+            SendChat(stats, nowMs);
             return;
         }
 

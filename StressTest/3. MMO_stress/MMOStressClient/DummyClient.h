@@ -72,10 +72,10 @@ private:
 
     // 이동 로직
     void UpdateLocalPosition(float deltaTime, int mapWidth, int mapHeight);
-    void SendMoveStart(StatsLocal& stats, int64_t nowMs);
+    void SendMoveStart(StatsLocal& stats);
     void SendMoveStop(StatsLocal& stats);
     void SendHeartbeat(StatsLocal& stats);
-    void SendChat(StatsLocal& stats);
+    void SendChat(StatsLocal& stats, int64_t nowMs);
     void SendZoneChange(StatsLocal& stats, int targetMapId);
 
     // 패킷 크기 테이블
@@ -102,8 +102,11 @@ private:
     // 타이밍
     int64_t     _lastTickMs      = 0;
     int64_t     _lastHeartbeatMs = 0;
-    int64_t     _moveStartSentMs = 0;  // RTT 측정용: SendMoveStart 전송 시각
-    int64_t     _lastRttMs       = -1; // HandleMoveStart에서 측정한 RTT (-1 = 미측정)
+    // RTT 측정 (채팅 왕복): 서버가 발신자 본인에게도 S2C_CHAT을 돌려주는 것을 이용.
+    // 한 번에 1개만 측정(single outstanding) → 보낸 채팅과 돌아온 채팅이 1:1 매칭.
+    static constexpr int64_t RTT_PROBE_TIMEOUT_MS = 3000; // 프로브 유실 시 재무장 임계
+    int64_t     _chatSentMs      = 0;  // RTT 프로브 송신 시각 (0 = 미측정 중)
+    int64_t     _lastRttMs       = -1; // HandleChat에서 측정한 RTT (-1 = 미측정)
     int64_t     _lastRecvMs      = 0;  // OnRecv 시점 타임스탬프 (RTT 보정용)
 
     // 난수 생성기 (스레드 로컬이 아닌 인스턴스별)
