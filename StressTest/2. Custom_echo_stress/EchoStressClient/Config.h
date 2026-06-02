@@ -22,25 +22,15 @@ struct Config
     int         attackMode       = 0;            // 0=정상 에코, 1=비정상 패킷 크기, 2=패킷 폭주, 3=idle(타임아웃), 4=sendQ 압박
     int         attackClientCount = 5;           // 0=전원 공격, N=앞에서 N명만 공격 (나머지 정상 에코)
 
-    // 실행 파일 경로 기준으로 ini 로드 (인자 없으면 EchoStressConfig.ini)
-    bool Load(const char* iniFileName = nullptr)
+    // 실행 파일 경로 기준으로 EchoStressConfig.ini 로드
+    bool Load()
     {
         wchar_t exePath[MAX_PATH];
         GetModuleFileNameW(NULL, exePath, MAX_PATH);
 
         std::wstring iniPath(exePath);
         size_t pos = iniPath.find_last_of(L"\\/");
-
-        if (iniFileName)
-        {
-            wchar_t wBuf[MAX_PATH];
-            MultiByteToWideChar(CP_ACP, 0, iniFileName, -1, wBuf, MAX_PATH);
-            iniPath = iniPath.substr(0, pos + 1) + wBuf;
-        }
-        else
-        {
-            iniPath = iniPath.substr(0, pos + 1) + L"EchoStressConfig.ini";
-        }
+        iniPath = iniPath.substr(0, pos + 1) + L"EchoStressConfig.ini";
 
         // 파일 존재 확인
         DWORD attr = GetFileAttributesW(iniPath.c_str());

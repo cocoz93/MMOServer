@@ -46,7 +46,7 @@ static BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType)
 // ─────────────────────────────────────────────────────────────────
 // 진입점
 // ─────────────────────────────────────────────────────────────────
-int main(int argc, char* argv[])
+int main()
 {
     _setmode(_fileno(stdout), _O_U16TEXT);
     _setmode(_fileno(stderr), _O_U16TEXT);
@@ -62,7 +62,7 @@ int main(int argc, char* argv[])
     SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE);
 
     Config cfg;
-    cfg.Load(argc > 1 ? argv[1] : nullptr);
+    cfg.Load();
 
         wprintf(L"\n[Custom Echo Stress] start. Server=%hs:%d, Clients=%d\n",
             cfg.serverIp.c_str(), cfg.port, cfg.clientCount);

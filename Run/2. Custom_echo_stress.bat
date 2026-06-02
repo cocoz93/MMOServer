@@ -1,12 +1,8 @@
 @echo off
-setlocal EnableDelayedExpansion
-
-REM === Client count (default: 1) ===
-set CLIENT_COUNT=1
-if not "%~1"=="" set CLIENT_COUNT=%~1
+setlocal
 
 echo ============================================
-echo   Echo Test + Monitor (x%CLIENT_COUNT%)
+echo   Echo Test + Monitor
 echo ============================================
 echo.
 
@@ -44,10 +40,6 @@ echo   - ServerConfig.ini updated (Mode=NetWorkLib_EchoTest, MonitorEnabled=1)
 
 set "PROM_YML=%~dp0..\Monitoring\prometheus-3.4.1.windows-amd64\prometheus.yml"
 set STRESS_TARGETS="localhost:9092"
-for /L %%i in (2,1,%CLIENT_COUNT%) do (
-    set /a PORT=9091+%%i
-    set STRESS_TARGETS=!STRESS_TARGETS!, "localhost:!PORT!"
-)
 (
 echo global:
 echo   scrape_interval: 5s
@@ -114,15 +106,11 @@ goto WAIT_SERVER
 echo   - Server is ready
 
 start "" /D "%~dp0bin" EchoStressClient.exe
-echo   - EchoStressClient #1 started (MonitorPort=9092)
-for /L %%i in (2,1,%CLIENT_COUNT%) do (
-    start "" /D "%~dp0bin" EchoStressClient.exe StressConfig%%i.ini
-    echo   - EchoStressClient #%%i started (StressConfig%%i.ini)
-)
+echo   - EchoStressClient started (MonitorPort=9092)
 echo.
 
 echo ============================================
-echo   Done! All services running. (Clients: %CLIENT_COUNT%)
+echo   Done! All services running.
 echo   Prometheus UI : http://localhost:9091
 echo   Grafana       : http://localhost:3000
 echo   (Grafana login: admin / admin)
