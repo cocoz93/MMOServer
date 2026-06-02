@@ -180,7 +180,7 @@ private:
             "0.1", "0.2", "0.5", "1.0"
         };
 
-        ss << "# HELP mmo_dummy_rtt_seconds MoveStart round-trip time\n";
+        ss << "# HELP mmo_dummy_rtt_seconds Chat round-trip time\n";
         ss << "# TYPE mmo_dummy_rtt_seconds histogram\n";
 
         for (int i = 0; i < MMOStats::RTT_BUCKET_COUNT - 1; ++i)
