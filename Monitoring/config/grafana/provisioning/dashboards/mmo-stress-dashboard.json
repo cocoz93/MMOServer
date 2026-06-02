@@ -1,0 +1,316 @@
+{
+  "uid": "mmo-stress-client",
+  "title": "MMO Stress Client",
+  "tags": ["mmo", "stress", "client"],
+  "timezone": "browser",
+  "refresh": "5s",
+  "time": { "from": "now-15m", "to": "now" },
+  "panels": [
+    {
+      "type": "row",
+      "title": "연결 & 트래픽",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "collapsed": false
+    },
+    {
+      "type": "stat",
+      "title": "연결 수",
+      "gridPos": { "h": 6, "w": 4, "x": 0, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 500 },
+              { "color": "red", "value": 1000 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": { "graphMode": "area", "colorMode": "background", "textMode": "auto" },
+      "targets": [{
+        "expr": "mmo_dummy_connected_clients",
+        "legendFormat": "Connected",
+        "refId": "A"
+      }]
+    },
+    {
+      "type": "stat",
+      "title": "Ready 수",
+      "gridPos": { "h": 6, "w": 4, "x": 4, "y": 1 },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 500 },
+              { "color": "red", "value": 1000 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": { "graphMode": "area", "colorMode": "background", "textMode": "auto" },
+      "targets": [{
+        "expr": "mmo_dummy_ready_clients",
+        "legendFormat": "Ready",
+        "refId": "A"
+      }]
+    },
+    {
+      "type": "timeseries",
+      "title": "초당 패킷 (send / recv)",
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 1 },
+      "fieldConfig": {
+        "defaults": { "unit": "pps", "custom": { "fillOpacity": 10 } },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "rate(mmo_dummy_send_packets_total[1m])", "legendFormat": "send pkt/s", "refId": "A" },
+        { "expr": "rate(mmo_dummy_recv_packets_total[1m])", "legendFormat": "recv pkt/s", "refId": "B" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "트래픽 (KB/s)",
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 1 },
+      "fieldConfig": {
+        "defaults": { "unit": "KBs", "custom": { "fillOpacity": 10 } },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "rate(mmo_dummy_send_bytes_total[1m]) / 1024", "legendFormat": "send KB/s", "refId": "A" },
+        { "expr": "rate(mmo_dummy_recv_bytes_total[1m]) / 1024", "legendFormat": "recv KB/s", "refId": "B" }
+      ]
+    },
+
+    {
+      "type": "row",
+      "title": "RTT (Round-Trip Time)",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 7 },
+      "collapsed": false
+    },
+    {
+      "type": "stat",
+      "title": "RTT 평균 (ms)",
+      "gridPos": { "h": 6, "w": 4, "x": 0, "y": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 10 },
+              { "color": "red", "value": 50 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": { "graphMode": "area", "colorMode": "background", "textMode": "auto" },
+      "targets": [{
+        "expr": "rate(mmo_dummy_rtt_seconds_sum[1m]) / rate(mmo_dummy_rtt_seconds_count[1m]) * 1000",
+        "legendFormat": "avg RTT",
+        "refId": "A"
+      }]
+    },
+    {
+      "type": "stat",
+      "title": "RTT Min / Max (ms)",
+      "gridPos": { "h": 6, "w": 4, "x": 4, "y": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 50 },
+              { "color": "red", "value": 200 }
+            ]
+          }
+        },
+        "overrides": [{
+          "matcher": { "id": "byName", "options": "Min" },
+          "properties": [{ "id": "thresholds", "value": { "steps": [{ "color": "blue", "value": null }] } }]
+        }]
+      },
+      "options": { "graphMode": "area", "colorMode": "background", "textMode": "auto" },
+      "targets": [
+        { "expr": "mmo_dummy_rtt_min_seconds * 1000", "legendFormat": "Min", "refId": "A" },
+        { "expr": "mmo_dummy_rtt_max_seconds * 1000", "legendFormat": "Max", "refId": "B" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "RTT Percentile (ms)",
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 8 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 20 },
+              { "color": "red", "value": 100 }
+            ]
+          },
+          "custom": { "fillOpacity": 10, "thresholdsStyle": { "mode": "line" } }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, rate(mmo_dummy_rtt_seconds_bucket[1m])) * 1000", "legendFormat": "p50", "refId": "A" },
+        { "expr": "histogram_quantile(0.99, rate(mmo_dummy_rtt_seconds_bucket[1m])) * 1000", "legendFormat": "p99", "refId": "B" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "RTT 분포 (버킷별 rate)",
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 8 },
+      "fieldConfig": {
+        "defaults": { "custom": { "fillOpacity": 20, "stacking": { "mode": "normal" } } },
+        "overrides": []
+      },
+      "targets": [{
+        "expr": "rate(mmo_dummy_rtt_seconds_bucket[1m])",
+        "legendFormat": "le={{le}}",
+        "refId": "A"
+      }]
+    },
+
+    {
+      "type": "row",
+      "title": "행동 패턴",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 },
+      "collapsed": false
+    },
+    {
+      "type": "timeseries",
+      "title": "행동별 발생률 (/s)",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 15 },
+      "fieldConfig": {
+        "defaults": { "unit": "ops", "custom": { "fillOpacity": 10 } },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "rate(mmo_dummy_move_start_total[1m])", "legendFormat": "move start/s", "refId": "A" },
+        { "expr": "rate(mmo_dummy_move_stop_total[1m])", "legendFormat": "move stop/s", "refId": "B" },
+        { "expr": "rate(mmo_dummy_heartbeat_total[1m])", "legendFormat": "heartbeat/s", "refId": "C" },
+        { "expr": "rate(mmo_dummy_chat_total[1m])", "legendFormat": "chat/s", "refId": "D" },
+        { "expr": "rate(mmo_dummy_zone_change_total[1m])", "legendFormat": "zone change/s", "refId": "E" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "행동 누적",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 15 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "steps": [{ "color": "blue", "value": null }] }
+        },
+        "overrides": []
+      },
+      "options": { "graphMode": "area", "colorMode": "background", "textMode": "auto" },
+      "targets": [
+        { "expr": "mmo_dummy_move_start_total", "legendFormat": "MoveStart", "refId": "A" },
+        { "expr": "mmo_dummy_move_stop_total", "legendFormat": "MoveStop", "refId": "B" },
+        { "expr": "mmo_dummy_heartbeat_total", "legendFormat": "Heartbeat", "refId": "C" },
+        { "expr": "mmo_dummy_chat_total", "legendFormat": "Chat", "refId": "D" },
+        { "expr": "mmo_dummy_zone_change_total", "legendFormat": "ZoneChange", "refId": "E" }
+      ]
+    },
+
+    {
+      "type": "row",
+      "title": "에러",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 21 },
+      "collapsed": false
+    },
+    {
+      "type": "timeseries",
+      "title": "에러 발생률",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 22 },
+      "fieldConfig": {
+        "defaults": { "custom": { "fillOpacity": 10 } },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "rate(mmo_dummy_connect_fail_total[1m])", "legendFormat": "connect fail/s", "refId": "A" },
+        { "expr": "rate(mmo_dummy_disconnect_from_server_total[1m])", "legendFormat": "server disconnect/s", "refId": "B" },
+        { "expr": "rate(mmo_dummy_zone_change_fail_total[1m])", "legendFormat": "zone change fail/s", "refId": "C" },
+        { "expr": "rate(mmo_dummy_send_buffer_full_total[1m])", "legendFormat": "send buf full/s", "refId": "D" },
+        { "expr": "rate(mmo_dummy_recv_buffer_overflow_total[1m])", "legendFormat": "recv overflow/s", "refId": "E" },
+        { "expr": "rate(mmo_dummy_send_error_total[1m])", "legendFormat": "send error/s", "refId": "F" },
+        { "expr": "rate(mmo_dummy_packet_parse_fail_total[1m])", "legendFormat": "parse fail/s", "refId": "G" }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "에러 누적",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 22 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": { "graphMode": "area", "colorMode": "background", "textMode": "auto" },
+      "targets": [
+        { "expr": "mmo_dummy_connect_fail_total", "legendFormat": "Connect Fail", "refId": "A" },
+        { "expr": "mmo_dummy_disconnect_from_server_total", "legendFormat": "Server Disconnect", "refId": "B" },
+        { "expr": "mmo_dummy_zone_change_fail_total", "legendFormat": "ZoneChange Fail", "refId": "C" },
+        { "expr": "mmo_dummy_send_buffer_full_total", "legendFormat": "SendBuf Full", "refId": "D" },
+        { "expr": "mmo_dummy_recv_buffer_overflow_total", "legendFormat": "RecvOverflow", "refId": "E" },
+        { "expr": "mmo_dummy_send_error_total", "legendFormat": "SendError", "refId": "F" },
+        { "expr": "mmo_dummy_packet_parse_fail_total", "legendFormat": "ParseFail", "refId": "G" }
+      ]
+    },
+
+    {
+      "type": "row",
+      "title": "접속 이력",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 28 },
+      "collapsed": false
+    },
+    {
+      "type": "timeseries",
+      "title": "연결 수 추이",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 29 },
+      "fieldConfig": {
+        "defaults": { "custom": { "fillOpacity": 10 } },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "mmo_dummy_connected_clients", "legendFormat": "Connected", "refId": "A" },
+        { "expr": "mmo_dummy_ready_clients", "legendFormat": "Ready", "refId": "B" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "접속 시도율",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 29 },
+      "fieldConfig": {
+        "defaults": { "unit": "ops", "custom": { "fillOpacity": 10 } },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "rate(mmo_dummy_connect_total[1m])", "legendFormat": "connect/s", "refId": "A" },
+        { "expr": "rate(mmo_dummy_connect_fail_total[1m])", "legendFormat": "fail/s", "refId": "B" }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "version": 1
+}

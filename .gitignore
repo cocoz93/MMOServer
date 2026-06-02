@@ -109,7 +109,13 @@ LanServer_StressT12est_20191125.exe
 # ======================
 # Third-party / Monitoring
 # ======================
-Monitoring/
+# 바이너리 트리(grafana/, prometheus-*/, windows_exporter.exe 등 ~1.5GB)는 전부 무시하고
+# 설정만 담은 Monitoring/config/ 만 트래킹.
+# 주의: 전역 gitignore(gitignore_global.txt)에도 `Monitoring/`가 있어 디렉토리 자체가 prune됨.
+#       따라서 !Monitoring/ 로 디렉토리를 먼저 재포함한 뒤 children을 다시 제외해야 한다.
+!Monitoring/
+Monitoring/*
+!Monitoring/config/
 ThirdParty/
 
 
