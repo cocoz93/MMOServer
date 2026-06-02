@@ -5,7 +5,7 @@
 //
 // [사용법]
 //  ServerConfig config;
-//  config.Load();  // 실행 파일 옆의 ServerConfig.ini 로드
+//  config.Load();  // 실행 파일 옆의 IOCP_ServerConfig.ini 로드
 //
 // [INI 포맷]
 //  [Server]
@@ -43,7 +43,7 @@ struct ServerConfig
     bool        monitorEnabled = false;
     std::vector<MapConfig> maps;
 
-    // 실행 파일 경로 기준으로 ServerConfig.ini 로드
+    // 실행 파일 경로 기준으로 IOCP_ServerConfig.ini 로드
     bool Load()
     {
         // 실행 파일 디렉토리에서 INI 경로 구성
@@ -52,13 +52,13 @@ struct ServerConfig
 
         std::wstring iniPath(exePath);
         size_t pos = iniPath.find_last_of(L"\\/");
-        iniPath = iniPath.substr(0, pos + 1) + L"ServerConfig.ini";
+        iniPath = iniPath.substr(0, pos + 1) + L"IOCP_ServerConfig.ini";
 
         // 파일 존재 확인
         DWORD attr = GetFileAttributesW(iniPath.c_str());
         if (attr == INVALID_FILE_ATTRIBUTES)
         {
-            SLOG_INFO("[ServerConfig] ServerConfig.ini not found. Using defaults.");
+            SLOG_INFO("[ServerConfig] IOCP_ServerConfig.ini not found. Using defaults.");
             SetDefaultMaps();
             return false;
         }

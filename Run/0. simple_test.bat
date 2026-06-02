@@ -28,12 +28,12 @@ echo.
 
 REM === 4. Configure ===
 echo [3/4] Configuring...
-powershell -Command "(Get-Content -Encoding UTF8 '%~dp0bin\ServerConfig.ini') -replace '^Mode=.*', 'Mode=GameServer' -replace '^MonitorEnabled=.*', 'MonitorEnabled=0' | Set-Content -Encoding UTF8 '%~dp0bin\ServerConfig.ini'"
+powershell -Command "(Get-Content -Encoding UTF8 '%~dp0bin\IOCP_ServerConfig.ini') -replace '^Mode=.*', 'Mode=GameServer' -replace '^MonitorEnabled=.*', 'MonitorEnabled=0' | Set-Content -Encoding UTF8 '%~dp0bin\IOCP_ServerConfig.ini'"
 if %ERRORLEVEL% NEQ 0 (
-    echo [ERROR] ServerConfig.ini update failed!
+    echo [ERROR] IOCP_ServerConfig.ini update failed!
     goto :ERROR
 )
-echo   - ServerConfig.ini updated (Mode=GameServer, MonitorEnabled=0)
+echo   - IOCP_ServerConfig.ini updated (Mode=GameServer, MonitorEnabled=0)
 echo.
 
 REM === 5. Run ===
