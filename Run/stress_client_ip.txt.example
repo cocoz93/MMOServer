@@ -1,0 +1,6 @@
+# [템플릿] 이 파일을 stress_client_ip.txt 로 복사한 뒤 실제 IP 로 바꾸세요.
+# 부하 클라(3-2)가 도는 PC 의 IP. 서버 PC 의 3-1(Prometheus)이 이 주소:9101 을 긁는다.
+#
+# '#' 줄과 빈 줄은 무시되고, 첫 유효 줄의 첫 토큰만 IP 로 쓰인다.
+# stress_client_ip.txt 가 없으면 자동으로 localhost 로 폴백한다.
+localhost

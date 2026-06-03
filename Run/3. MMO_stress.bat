@@ -7,22 +7,17 @@ echo ============================================
 echo.
 
 REM === 1. Kill running processes ===
-tasklist /FI "IMAGENAME eq IOCP_Server.exe" | findstr /I "IOCP_Server.exe" >nul
-if %ERRORLEVEL% EQU 0 (
-    echo [1/5] Killing running processes...
-    taskkill /F /IM IOCP_Server.exe >nul 2>nul
-    echo   - Server killed
-    taskkill /F /IM MMOStressClient.exe >nul 2>nul
-    echo   - MMOStressClient killed
-    taskkill /F /IM prometheus.exe >nul 2>nul
-    taskkill /F /IM windows_exporter.exe >nul 2>nul
-    taskkill /F /IM grafana-server.exe >nul 2>nul
-    echo   - Monitoring killed
-    echo.
-) else (
-    echo [1/5] No running processes found.
-    echo.
-)
+REM 모니터링은 서버 실행 여부와 무관하게 무조건 종료 후 재기동해야
+REM setup.ps1 로 재주입한 prometheus.yml 이 확실히 반영된다. (taskkill 은 대상 없어도 무해)
+echo [1/5] Killing running processes...
+taskkill /F /IM IOCP_Server.exe >nul 2>nul
+taskkill /F /IM MMOStressClient.exe >nul 2>nul
+taskkill /F /IM GameClient.exe >nul 2>nul
+taskkill /F /IM prometheus.exe >nul 2>nul
+taskkill /F /IM windows_exporter.exe >nul 2>nul
+taskkill /F /IM grafana-server.exe >nul 2>nul
+echo   - Done
+echo.
 
 REM === 2. bin 산출물 확인 (없으면 .build.bat 먼저) ===
 echo [2/5] Checking build output...
@@ -65,6 +60,14 @@ if %ERRORLEVEL% NEQ 0 (
     goto :ERROR
 )
 echo   - ClientConfig.ini updated (IP=127.0.0.1, single-PC local)
+
+REM 단일 PC 전용: 부하 클라가 로컬에 있으므로 Prometheus stress_client 타깃을 localhost로 주입.
+powershell -ExecutionPolicy Bypass -File "%~dp0..\Monitoring\config\setup.ps1" -StressClientIp localhost
+if %ERRORLEVEL% NEQ 0 (
+    echo [ERROR] setup.ps1 injection failed!
+    goto :ERROR
+)
+echo   - Prometheus config injected (stress_client=localhost:9101)
 echo.
 
 REM === 5. Start Monitoring ===

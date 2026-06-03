@@ -5,6 +5,23 @@ REM   서버 + 모니터링만 실행 (클라이언트 없음)
 REM ============================================
 setlocal
 
+REM ============================================
+REM   [부하 클라 IP] 서버/클라가 다른 PC이므로 Prometheus 가 긁을 원격 부하 클라 IP.
+REM   공인 IP 를 git 에 박지 않으려고 로컬 파일에서 읽는다(추적 제외).
+REM     - Run\stress_client_ip.txt 에 부하 클라 IP 를 적는다. (3-2 가 도는 PC IP)
+REM     - '#' 로 시작하는 줄과 빈 줄은 주석으로 무시, 첫 유효 줄의 첫 토큰만 IP 로 사용.
+REM     - 파일이 없으면 localhost 로 폴백. 템플릿: stress_client_ip.txt.example
+REM ============================================
+set "STRESS_CLIENT_IP=localhost"
+set "STRESS_CLIENT_IP_SET="
+if exist "%~dp0stress_client_ip.txt" (
+    for /f "usebackq eol=# tokens=1" %%i in ("%~dp0stress_client_ip.txt") do if not defined STRESS_CLIENT_IP_SET (
+        set "STRESS_CLIENT_IP=%%i"
+        set "STRESS_CLIENT_IP_SET=1"
+    )
+)
+set "STRESS_CLIENT_IP_SET="
+
 echo ============================================
 echo   MMO Stress - Server Only
 echo ============================================
@@ -36,6 +53,14 @@ if %ERRORLEVEL% NEQ 0 (
     goto :ERROR
 )
 echo   - IOCP_ServerConfig.ini updated (Mode=GameServer, MonitorEnabled=1)
+
+REM 서버/클라 분리: Prometheus stress_client 타깃을 원격 부하 클라 IP로 주입.
+powershell -ExecutionPolicy Bypass -File "%~dp0..\Monitoring\config\setup.ps1" -StressClientIp %STRESS_CLIENT_IP%
+if %ERRORLEVEL% NEQ 0 (
+    echo [ERROR] setup.ps1 injection failed!
+    goto :ERROR
+)
+echo   - Prometheus config injected (stress_client=%STRESS_CLIENT_IP%:9101)
 echo.
 
 REM === 5. Start Monitoring ===
