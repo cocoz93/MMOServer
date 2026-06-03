@@ -314,6 +314,17 @@ void CGameServer::GameLoopThread()
 {
     using Clock = std::chrono::steady_clock;
 
+    // CPU 점유율 측정용: 자기 실핸들을 복제해 모니터에 등록 (진단정리 6 사각지대 보강)
+    // GetCurrentThread()는 의사핸들(호출 스레드 기준)이라 HTTP 스레드에서 못 씀 → 실핸들로 복제
+    {
+        HANDLE dup = nullptr;
+        if (DuplicateHandle(GetCurrentProcess(), GetCurrentThread(),
+                            GetCurrentProcess(), &dup, 0, FALSE, DUPLICATE_SAME_ACCESS))
+        {
+            _monitor._gameLoopThreadHandle = dup;
+        }
+    }
+
     auto prevTime = Clock::now();
 
     while (_running)

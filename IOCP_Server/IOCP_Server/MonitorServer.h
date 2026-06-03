@@ -22,6 +22,8 @@
 #include <memory>
 #include <atomic>
 #include <iostream>
+#include <cstdio>
+#include <cstdint>
 
 #include "ThirdParty/httplib.h"
 #include "MonitorManager.h"
@@ -155,6 +157,9 @@ private:
         // ── 워커 스레드 카운터 ──
         WriteWorkerCounters(ss);
 
+        // ── 스레드별 CPU 점유율 (외부 관측: 게임루프 동결 사각지대 보강) ──
+        WriteThreadCpu(ss);
+
         return ss.str();
     }
 
@@ -244,10 +249,86 @@ private:
         ss << "\n";
     }
 
+    // ══════════════════════════════════════════════════════════════
+    // 스레드별 CPU 점유율 (gauge, 1.0 = 코어 1개 풀)
+    //
+    // HTTP 스레드(외부 관측자)가 각 스레드 핸들에 GetThreadTimes를 호출.
+    // 두 스크레이프 사이의 ΔCPU시간 / Δ벽시계시간 = 그 구간 평균 점유율.
+    // 게임루프가 드레인 루프에 갇혀도 외부에서 읽으니 동결되지 않음(진단정리 6 보강).
+    // GetThreadTimes/벽시계 모두 100ns 단위 → 무차원 비율.
+    // ══════════════════════════════════════════════════════════════
+    struct CpuSample
+    {
+        uint64_t lastCpu100ns = 0;
+        uint64_t lastWall100ns = 0;
+        bool primed = false;
+    };
+
+    static uint64_t FileTimeToU64(const FILETIME& ft)
+    {
+        return (static_cast<uint64_t>(ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
+    }
+
+    void SampleThreadCpu(std::ostringstream& ss, const char* label,
+                         HANDLE h, CpuSample& s, uint64_t wallNow)
+    {
+        if (h == nullptr) return;   // 아직 미등록(예: 에코 모드엔 게임루프 없음)
+
+        FILETIME ftCreate, ftExit, ftKernel, ftUser;
+        if (!GetThreadTimes(h, &ftCreate, &ftExit, &ftKernel, &ftUser))
+            return;
+
+        uint64_t cpuNow = FileTimeToU64(ftKernel) + FileTimeToU64(ftUser);
+
+        double ratio = 0.0;
+        if (s.primed && wallNow > s.lastWall100ns)
+        {
+            uint64_t dCpu = cpuNow - s.lastCpu100ns;
+            uint64_t dWall = wallNow - s.lastWall100ns;
+            ratio = static_cast<double>(dCpu) / static_cast<double>(dWall);
+        }
+        s.lastCpu100ns = cpuNow;
+        s.lastWall100ns = wallNow;
+        s.primed = true;
+
+        ss << "mmo_thread_cpu_ratio{thread=\"" << label << "\"} " << ratio << "\n";
+    }
+
+    void WriteThreadCpu(std::ostringstream& ss)
+    {
+        FILETIME ftNow;
+        GetSystemTimeAsFileTime(&ftNow);   // 100ns 단위 벽시계 (GetThreadTimes와 동일 단위)
+        uint64_t wallNow = FileTimeToU64(ftNow);
+
+        ss << "# HELP mmo_thread_cpu_ratio Per-thread CPU utilization (1.0 = one full core)\n";
+        ss << "# TYPE mmo_thread_cpu_ratio gauge\n";
+        ss << std::fixed << std::setprecision(4);
+
+        // 게임루프 (진단정리 4-🔴 capacity-bound 판정 핵심 지표)
+        SampleThreadCpu(ss, "gameloop",
+                        _monitor._gameLoopThreadHandle, _cpuGameLoop, wallNow);
+
+        // IOCP 워커 ("게임루프만 타고 워커는 노나" 대조용)
+        LONG workerCount = _monitor._workerThreadCount;
+        for (int i = 0; i < workerCount && i < CMonitorManager::MAX_WORKER_THREADS; ++i)
+        {
+            char label[24];
+            std::snprintf(label, sizeof(label), "worker-%d", i);
+            SampleThreadCpu(ss, label,
+                            _monitor._workerCounters[i].threadHandle, _cpuWorker[i], wallNow);
+        }
+
+        ss << std::defaultfloat << "\n";
+    }
+
 private:
     CMonitorManager& _monitor;
     int _port;
     std::atomic<bool> _stopFlag{false};
     std::unique_ptr<httplib::Server> _svr;
     std::thread _httpThread;
+
+    // CPU 점유율 직전 샘플 상태 (HTTP 스레드 단독 접근 → 락 불필요)
+    CpuSample _cpuGameLoop;
+    CpuSample _cpuWorker[CMonitorManager::MAX_WORKER_THREADS];
 };

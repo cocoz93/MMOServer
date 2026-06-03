@@ -131,10 +131,22 @@ public:
     struct alignas(64) WorkerCounter
     {
         volatile LONG64 completionCount = 0;
+        volatile HANDLE threadHandle = nullptr;   // CPU 점유율 측정용 복제 핸들 (워커 시작 시 등록)
     };
 
     WorkerCounter _workerCounters[MAX_WORKER_THREADS] = {};
     volatile LONG _workerThreadCount = 0;
+
+    // ══════════════════════════════════════════════════════════════
+    // 스레드 CPU 점유율 측정용 핸들
+    //
+    // [목적] 진단정리 6의 "계측 사각지대" 보강 — 게임루프가 무제한 드레인
+    //        루프에 갇혀도 외부 관측자(HTTP 스레드)가 GetThreadTimes로 CPU를 읽음
+    // [원리] 게임루프 스레드가 시작 시 DuplicateHandle로 실핸들을 복제해 등록
+    //        (GetCurrentThread() 의사핸들은 호출 스레드 기준이라 타 스레드에서 못 씀)
+    // [수명] 프로세스 종료까지 유지 (단일 핸들, 명시적 Close 생략 — 진단용)
+    // ══════════════════════════════════════════════════════════════
+    volatile HANDLE _gameLoopThreadHandle = nullptr;
 
     // 워커 스레드 시작 시 호출 → 슬롯 인덱스 반환 (-1: 슬롯 초과)
     int RegisterWorkerThread()

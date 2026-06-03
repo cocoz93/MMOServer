@@ -450,6 +450,17 @@ void CIOCPServer::WorkerThread()
 {
     int workerIndex = _monitor.RegisterWorkerThread();
 
+    // CPU 점유율 측정용: 자기 실핸들을 복제해 슬롯에 등록 (HTTP 스레드가 GetThreadTimes로 읽음)
+    if (workerIndex >= 0 && workerIndex < CMonitorManager::MAX_WORKER_THREADS)
+    {
+        HANDLE dup = nullptr;
+        if (DuplicateHandle(GetCurrentProcess(), GetCurrentThread(),
+                            GetCurrentProcess(), &dup, 0, FALSE, DUPLICATE_SAME_ACCESS))
+        {
+            _monitor._workerCounters[workerIndex].threadHandle = dup;
+        }
+    }
+
     while (true)
     {
         DWORD bytesTransferred = 0;
