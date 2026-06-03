@@ -8,6 +8,7 @@
 .PARAMETER StressClientIp
   stress_client scrape 대상 IP. 부하 PC가 별도면 그 IP, 단일 PC면 localhost(기본값).
 .EXAMPLE
+  # 203.0.113.10 은 RFC 5737 문서용 예시 IP. 실제 부하 클라의 공인 IP 로 바꿔서 실행할 것.
   .\setup.ps1 -StressClientIp 203.0.113.10
 #>
 param(

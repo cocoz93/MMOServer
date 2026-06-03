@@ -41,6 +41,7 @@ PowerShell 에서 실행합니다.
 Monitoring\config\setup.ps1
 
 # 부하 클라가 별도 PC 인 경우 그 IP 지정
+# (아래 203.0.113.10 은 RFC 5737 문서용 예시 IP. 실제 부하 클라 공인 IP 로 교체)
 Monitoring\config\setup.ps1 -StressClientIp 203.0.113.10
 ```
 
