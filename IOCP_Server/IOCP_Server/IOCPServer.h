@@ -201,6 +201,14 @@ public:
         return true;
     }
 
+    // 공유 큐를 통째로 빼고 즉시 해제 (단일 소비자 전용 — 락 보유 구간을 swap 1회로 축소)
+    // out에 남은 잔여가 있으면 그대로 두고 뒤에 이어붙지 않으므로, 소비자는 비운 큐를 넘길 것
+    void SwapOut(std::queue<T>& out)
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _queue.swap(out);
+    }
+
     bool IsEmpty() const
     {
         std::lock_guard<std::mutex> lock(_mutex);
@@ -239,6 +247,10 @@ public:
 
     // 게임 로직 레이어로 전달할 이벤트 가져오기 (QUEUE_BASED 모드용)
     bool PopNetworkEvent(NetworkEvent& event);
+
+    // 프레임 진입 시점의 이벤트를 통째로 스왑해 가져오기 (게임 루프 단일 소비자 전용)
+    // 건당 락(N회/프레임)을 swap 1회/프레임로 축소. out은 비운 큐를 넘길 것
+    void SwapOutNetworkEvents(std::queue<NetworkEvent>& out) { _eventQueue.SwapOut(out); }
 
     // 이벤트 큐 현재 크기 (모니터링용)
     size_t GetEventQueueSize() const { return _eventQueue.GetSize(); }

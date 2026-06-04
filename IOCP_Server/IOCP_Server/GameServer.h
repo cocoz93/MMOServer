@@ -21,6 +21,7 @@
 #include <atomic>
 #include <memory>
 #include <vector>
+#include <queue>
 #include <unordered_set>
 
 #include "IOCPServer.h"
@@ -157,6 +158,9 @@ private:
 
     // 네트워크 경계: sessionId → CPlayer* (수신 시 플레이어 조회)
     std::unordered_map<int64_t, CPlayer*> _sessionToPlayer;
+
+    // 프레임 진입 시점 이벤트를 스왑해 받는 로컬 큐 (멤버 재사용 → deque 블록 보존으로 매 프레임 재할당 방지)
+    std::queue<NetworkEvent> _localEvents;
     int _cleanupFrameCount = 0;
     int _syncFrameCount = 0;
 

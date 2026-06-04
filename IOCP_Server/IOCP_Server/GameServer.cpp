@@ -448,10 +448,13 @@ void CGameServer::GameLoopThread()
 
 void CGameServer::ProcessNetworkEvents()
 {
-    NetworkEvent event(NetworkEvent::Type::CONNECTED, 0);
+    // 프레임 진입 시점 스냅샷을 통째로 스왑 (락 1회). 처리 중 도착분은 다음 프레임으로 이월
+    // _localEvents는 직전 프레임에 모두 소비되어 비어 있음 (멤버 재사용으로 deque 블록 보존)
+    _network->SwapOutNetworkEvents(_localEvents);
 
-    while (_network->PopNetworkEvent(event))
+    while (!_localEvents.empty())
     {
+        NetworkEvent& event = _localEvents.front();
         switch (event.type)
         {
         case NetworkEvent::Type::CONNECTED:
@@ -466,6 +469,7 @@ void CGameServer::ProcessNetworkEvents()
             OnReceived(event.sessionId, event.pMsg);
             break;
         }
+        _localEvents.pop();
     }
 }
 
