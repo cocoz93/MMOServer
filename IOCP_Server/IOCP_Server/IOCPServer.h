@@ -134,6 +134,7 @@ struct NetworkEvent
     Type type;
     int64_t sessionId;
     CSerialBuffer* pMsg;
+    int64_t enqueueTimeNs = 0;   // PushNetworkEvent에서 스탬프 (handle-latency 측정용 steady_clock ns)
 
     NetworkEvent(Type t, int64_t id)
         : type(t), sessionId(id), pMsg(nullptr)

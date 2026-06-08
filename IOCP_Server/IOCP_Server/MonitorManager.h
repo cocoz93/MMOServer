@@ -119,6 +119,38 @@ public:
             // 모든 경계 초과 → +Inf 버킷
             InterlockedIncrement64(&_tickBuckets[TICK_BUCKET_COUNT - 1]);
         }
+
+        // Handle-latency 히스토그램
+        //
+        // recv 이벤트 enqueue → 게임루프 처리완료(응답 송신 포함) 시간 (ms).
+        // 클라 RTT(왕복)에서 이 값을 빼면 네트워크+클라(더미) 기여분이 분리된다.
+        // 버킷 경계는 틱과 동일(1~200ms): 40ms 틱 게이트 대기가 지배적이라 범위가 겹침.
+        static constexpr int HANDLE_BUCKET_COUNT = 10;
+        static constexpr double HANDLE_BUCKET_BOUNDS[HANDLE_BUCKET_COUNT - 1] = {
+            1.0, 5.0, 10.0, 20.0, 40.0, 60.0, 80.0, 100.0, 200.0
+        };
+
+        volatile LONG64 _handleBuckets[HANDLE_BUCKET_COUNT] = {};
+        volatile LONG64 _handleSumUs = 0;   // 합계 (마이크로초)
+        volatile LONG64 _handleCount = 0;   // 총 처리 이벤트 수
+
+        // Handle-latency 기록 (밀리초 단위)
+        void RecordHandleLatency(double ms)
+        {
+            LONG64 us = static_cast<LONG64>(ms * 1000.0);
+            InterlockedExchangeAdd64(&_handleSumUs, us);
+            InterlockedIncrement64(&_handleCount);
+
+            for (int i = 0; i < HANDLE_BUCKET_COUNT - 1; ++i)
+            {
+                if (ms <= HANDLE_BUCKET_BOUNDS[i])
+                {
+                    InterlockedIncrement64(&_handleBuckets[i]);
+                    return;
+                }
+            }
+            InterlockedIncrement64(&_handleBuckets[HANDLE_BUCKET_COUNT - 1]);
+        }
     } _gameLoop;
 
     // ══════════════════════════════════════════════════════════════

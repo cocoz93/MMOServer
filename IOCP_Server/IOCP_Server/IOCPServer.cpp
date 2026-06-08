@@ -1,6 +1,7 @@
 ﻿#include "IOCPServer.h"
 #include "../../Shared/Common/ErrorLog.h"
 #include <iostream>
+#include <chrono>
 
 #pragma comment(lib, "winmm.lib")
 
@@ -1073,6 +1074,10 @@ void CIOCPServer::RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg)
 // ParsePackets 쪽에서 호출
 void CIOCPServer::PushNetworkEvent(NetworkEvent&& event)
 {
+    // enqueue 시각 스탬프 (게임루프에서 handle-latency = 처리완료시각 - 이 값 으로 계산)
+    // steady_clock은 프로세스 전역 단조 → 워커 push / 게임루프 pop 간 비교 안전
+    event.enqueueTimeNs = std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
     _eventQueue.Push(std::move(event));
 }
 

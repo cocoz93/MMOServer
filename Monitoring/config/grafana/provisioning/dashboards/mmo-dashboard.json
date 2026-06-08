@@ -388,6 +388,75 @@
         { "expr": "rate(windows_net_bytes_received_total[1m]) / 1024", "legendFormat": "recv {{nic}}", "refId": "A" },
         { "expr": "rate(windows_net_bytes_sent_total[1m]) / 1024", "legendFormat": "send {{nic}}", "refId": "B" }
       ]
+    },
+
+    {
+      "type": "row",
+      "title": "서버 처리 지연 (handle-latency / RTT 분해)",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 49 },
+      "collapsed": false
+    },
+    {
+      "type": "stat",
+      "title": "Handle Latency 평균 (ms)",
+      "gridPos": { "h": 6, "w": 4, "x": 0, "y": 50 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 20 },
+              { "color": "red", "value": 40 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": { "graphMode": "area", "colorMode": "background", "textMode": "auto" },
+      "targets": [{
+        "expr": "rate(mmo_handle_latency_seconds_sum[1m]) / rate(mmo_handle_latency_seconds_count[1m]) * 1000",
+        "legendFormat": "avg",
+        "refId": "A"
+      }]
+    },
+    {
+      "type": "timeseries",
+      "title": "Handle Latency p50 / p99 (ms)",
+      "gridPos": { "h": 6, "w": 10, "x": 4, "y": 50 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 40 },
+              { "color": "red", "value": 80 }
+            ]
+          },
+          "custom": { "fillOpacity": 10, "thresholdsStyle": { "mode": "line" } }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, rate(mmo_handle_latency_seconds_bucket[1m])) * 1000", "legendFormat": "p50", "refId": "A" },
+        { "expr": "histogram_quantile(0.99, rate(mmo_handle_latency_seconds_bucket[1m])) * 1000", "legendFormat": "p99", "refId": "B" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "RTT 분해: 클라RTT = 서버handle + (네트워크+더미)",
+      "gridPos": { "h": 6, "w": 10, "x": 14, "y": 50 },
+      "fieldConfig": {
+        "defaults": { "unit": "ms", "custom": { "fillOpacity": 10 } },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "rate(mmo_dummy_rtt_seconds_sum[1m]) / rate(mmo_dummy_rtt_seconds_count[1m]) * 1000", "legendFormat": "클라 RTT(왕복)", "refId": "A" },
+        { "expr": "rate(mmo_handle_latency_seconds_sum[1m]) / rate(mmo_handle_latency_seconds_count[1m]) * 1000", "legendFormat": "서버 handle", "refId": "B" },
+        { "expr": "(rate(mmo_dummy_rtt_seconds_sum[1m]) / rate(mmo_dummy_rtt_seconds_count[1m]) - rate(mmo_handle_latency_seconds_sum[1m]) / rate(mmo_handle_latency_seconds_count[1m])) * 1000", "legendFormat": "네트워크+더미(나머지)", "refId": "C" }
+      ]
     }
   ],
   "schemaVersion": 39,

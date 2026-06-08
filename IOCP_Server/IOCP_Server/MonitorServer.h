@@ -153,6 +153,7 @@ private:
 
         // ── 히스토그램 (비누적 → 누적 변환) ──
         WriteTickHistogram(ss);
+        WriteHandleLatencyHistogram(ss);
 
         // ── 워커 스레드 카운터 ──
         WriteWorkerCounters(ss);
@@ -231,6 +232,49 @@ private:
         ss << std::defaultfloat;
 
         ss << "mmo_tick_duration_seconds_count " << tickCount << "\n\n";
+    }
+
+    void WriteHandleLatencyHistogram(std::ostringstream& ss)
+    {
+        // 서버 handle-latency: recv enqueue → 처리완료(응답 송신) 시간.
+        // 클라 mmo_dummy_rtt(왕복)의 분해용 대조군. 비누적 버킷 스냅샷 → 누적 변환.
+        using GLC = CMonitorManager::GameLoopCounters;
+
+        LONG64 raw[GLC::HANDLE_BUCKET_COUNT];
+        for (int i = 0; i < GLC::HANDLE_BUCKET_COUNT; ++i)
+            raw[i] = _monitor._gameLoop._handleBuckets[i];
+
+        LONG64 cum[GLC::HANDLE_BUCKET_COUNT];
+        cum[0] = raw[0];
+        for (int i = 1; i < GLC::HANDLE_BUCKET_COUNT; ++i)
+            cum[i] = cum[i - 1] + raw[i];
+
+        LONG64 handleCount = _monitor._gameLoop._handleCount;
+        LONG64 handleSumUs = _monitor._gameLoop._handleSumUs;
+
+        // 버킷 경계 (밀리초 → 초), HANDLE_BUCKET_BOUNDS와 일치
+        static const char* leBounds[] = {
+            "0.001", "0.005", "0.01", "0.02", "0.04",
+            "0.06", "0.08", "0.1", "0.2"
+        };
+
+        ss << "# HELP mmo_handle_latency_seconds Server handle latency: recv enqueue to processed (response sent)\n";
+        ss << "# TYPE mmo_handle_latency_seconds histogram\n";
+
+        for (int i = 0; i < GLC::HANDLE_BUCKET_COUNT - 1; ++i)
+        {
+            ss << "mmo_handle_latency_seconds_bucket{le=\""
+               << leBounds[i] << "\"} " << cum[i] << "\n";
+        }
+        ss << "mmo_handle_latency_seconds_bucket{le=\"+Inf\"} "
+           << cum[GLC::HANDLE_BUCKET_COUNT - 1] << "\n";
+
+        ss << std::fixed << std::setprecision(6);
+        ss << "mmo_handle_latency_seconds_sum "
+           << (static_cast<double>(handleSumUs) / 1000000.0) << "\n";
+        ss << std::defaultfloat;
+
+        ss << "mmo_handle_latency_seconds_count " << handleCount << "\n\n";
     }
 
     void WriteWorkerCounters(std::ostringstream& ss)

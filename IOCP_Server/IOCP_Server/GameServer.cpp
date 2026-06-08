@@ -467,6 +467,15 @@ void CGameServer::ProcessNetworkEvents()
 
         case NetworkEvent::Type::RECEIVED:
             OnReceived(event.sessionId, event.pMsg);
+            // handle-latency: enqueue(recv) → 처리완료(응답 송신 포함) 시간.
+            // 틱 게이트 대기 + 핸들러 비용 = RTT의 서버 기여분. RECEIVED만 측정.
+            if (event.enqueueTimeNs != 0)
+            {
+                int64_t nowNs = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                    std::chrono::steady_clock::now().time_since_epoch()).count();
+                _monitor._gameLoop.RecordHandleLatency(
+                    static_cast<double>(nowNs - event.enqueueTimeNs) / 1.0e6);
+            }
             break;
         }
         _localEvents.pop();
