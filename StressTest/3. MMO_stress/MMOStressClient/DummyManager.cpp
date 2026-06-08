@@ -165,7 +165,9 @@ void DummyManager::NetworkLoop()
             c.FlushSend(local, reconnectDelay);
         }
 
-        // ── 4. 로컬 통계 → 글로벌 flush ─────────────────────────
+        // ── 4. 루프 work 시간 기록 (Sleep 제외) → 글로벌 flush ──
+        // nowMs = 이 바퀴 시작 시각(상단). Sleep 전까지가 실제 처리 비용 = 더미 포화 진단.
+        local.RecordLoop(DummyClient::NowMs() - nowMs);
         local.Flush(_stats);
 
         // ── 5. 루프 딜레이 ────────────────────────────────────────

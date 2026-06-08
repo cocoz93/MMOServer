@@ -146,6 +146,16 @@ private:
         // ── RTT 히스토그램 ──
         WriteRttHistogram(ss);
 
+        // ── 더미 루프 비용 (계측기 포화 진단) ──
+        ss << "# HELP mmo_dummy_loop_max_seconds Worst NetworkLoop iteration work time\n";
+        ss << "# TYPE mmo_dummy_loop_max_seconds gauge\n";
+        ss << std::fixed << std::setprecision(6);
+        ss << "mmo_dummy_loop_max_seconds "
+           << (static_cast<double>(_stats.loopMaxMs.load(std::memory_order_relaxed)) / 1000.0) << "\n\n";
+        ss << std::defaultfloat;
+
+        WriteLoopHistogram(ss);
+
         return ss.str();
     }
 
@@ -197,6 +207,47 @@ private:
         ss << std::defaultfloat;
 
         ss << "mmo_dummy_rtt_seconds_count " << rttCount << "\n\n";
+    }
+
+    void WriteLoopHistogram(std::ostringstream& ss)
+    {
+        // 더미 NetworkLoop 1바퀴 work 시간(Sleep 제외). 서버 mmo_tick_duration의 더미판.
+        // 부하 따라 치솟으면 select 단일스레드 포화 → RTT 신뢰 불가. 비누적 → 누적 변환.
+        int64_t raw[MMOStats::LOOP_BUCKET_COUNT];
+        for (int i = 0; i < MMOStats::LOOP_BUCKET_COUNT; ++i)
+            raw[i] = _stats.loopBuckets[i].load(std::memory_order_relaxed);
+
+        int64_t cum[MMOStats::LOOP_BUCKET_COUNT];
+        cum[0] = raw[0];
+        for (int i = 1; i < MMOStats::LOOP_BUCKET_COUNT; ++i)
+            cum[i] = cum[i - 1] + raw[i];
+
+        int64_t loopCount = _stats.loopSamples.load(std::memory_order_relaxed);
+        int64_t loopSumMs = _stats.loopSumMs.load(std::memory_order_relaxed);
+
+        // 버킷 경계 (밀리초 → 초), LOOP_BUCKET_BOUNDS와 일치
+        static const char* leBounds[] = {
+            "0.001", "0.002", "0.005", "0.01", "0.02",
+            "0.05", "0.1", "0.2", "0.5"
+        };
+
+        ss << "# HELP mmo_dummy_loop_duration_seconds NetworkLoop iteration work time (excl. sleep)\n";
+        ss << "# TYPE mmo_dummy_loop_duration_seconds histogram\n";
+
+        for (int i = 0; i < MMOStats::LOOP_BUCKET_COUNT - 1; ++i)
+        {
+            ss << "mmo_dummy_loop_duration_seconds_bucket{le=\""
+               << leBounds[i] << "\"} " << cum[i] << "\n";
+        }
+        ss << "mmo_dummy_loop_duration_seconds_bucket{le=\"+Inf\"} "
+           << cum[MMOStats::LOOP_BUCKET_COUNT - 1] << "\n";
+
+        ss << std::fixed << std::setprecision(6);
+        ss << "mmo_dummy_loop_duration_seconds_sum "
+           << (static_cast<double>(loopSumMs) / 1000.0) << "\n";
+        ss << std::defaultfloat;
+
+        ss << "mmo_dummy_loop_duration_seconds_count " << loopCount << "\n\n";
     }
 
 private:

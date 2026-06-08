@@ -309,6 +309,99 @@
         { "expr": "rate(mmo_dummy_connect_total[1m])", "legendFormat": "connect/s", "refId": "A" },
         { "expr": "rate(mmo_dummy_connect_fail_total[1m])", "legendFormat": "fail/s", "refId": "B" }
       ]
+    },
+
+    {
+      "type": "row",
+      "title": "더미 루프 비용 (계측기 포화 진단)",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 35 },
+      "collapsed": false
+    },
+    {
+      "type": "stat",
+      "title": "루프 시간 평균 (ms)",
+      "gridPos": { "h": 6, "w": 4, "x": 0, "y": 36 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 20 },
+              { "color": "red", "value": 50 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "options": { "graphMode": "area", "colorMode": "background", "textMode": "auto" },
+      "targets": [{
+        "expr": "rate(mmo_dummy_loop_duration_seconds_sum[1m]) / rate(mmo_dummy_loop_duration_seconds_count[1m]) * 1000",
+        "legendFormat": "avg",
+        "refId": "A"
+      }]
+    },
+    {
+      "type": "stat",
+      "title": "루프 시간 Max (ms)",
+      "gridPos": { "h": 6, "w": 4, "x": 4, "y": 36 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 50 },
+              { "color": "red", "value": 200 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": { "graphMode": "area", "colorMode": "background", "textMode": "auto" },
+      "targets": [{
+        "expr": "mmo_dummy_loop_max_seconds * 1000",
+        "legendFormat": "max",
+        "refId": "A"
+      }]
+    },
+    {
+      "type": "timeseries",
+      "title": "루프 시간 p50 / p99 (ms) — 치솟으면 select 단일스레드 포화",
+      "gridPos": { "h": 6, "w": 8, "x": 8, "y": 36 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 20 },
+              { "color": "red", "value": 50 }
+            ]
+          },
+          "custom": { "fillOpacity": 10, "thresholdsStyle": { "mode": "line" } }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, rate(mmo_dummy_loop_duration_seconds_bucket[1m])) * 1000", "legendFormat": "p50", "refId": "A" },
+        { "expr": "histogram_quantile(0.99, rate(mmo_dummy_loop_duration_seconds_bucket[1m])) * 1000", "legendFormat": "p99", "refId": "B" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "RTT vs 루프시간 — 근접하면 RTT 오염 = 더미 탓",
+      "gridPos": { "h": 6, "w": 8, "x": 16, "y": 36 },
+      "fieldConfig": {
+        "defaults": { "unit": "ms", "custom": { "fillOpacity": 10 } },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "rate(mmo_dummy_rtt_seconds_sum[1m]) / rate(mmo_dummy_rtt_seconds_count[1m]) * 1000", "legendFormat": "RTT avg", "refId": "A" },
+        { "expr": "rate(mmo_dummy_loop_duration_seconds_sum[1m]) / rate(mmo_dummy_loop_duration_seconds_count[1m]) * 1000", "legendFormat": "loop avg", "refId": "B" }
+      ]
     }
   ],
   "schemaVersion": 39,
