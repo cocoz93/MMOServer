@@ -34,6 +34,7 @@ void CSession::Initialize(SOCKET socket, int64_t sessionId)
     _sessionId = sessionId;
     _disconnecting = FALSE;
     _sending = FALSE;
+    _sendDirty = false;
     _recvQ.Clear();
 #if USE_LOCKFREE_SENDQ
     // 방어코드 : 정상 흐름에서는 ReleaseSession에서 SendQ 비움
@@ -1007,7 +1008,7 @@ void CIOCPServer::EchoTestSend(CSession* session, CSerialBuffer* pMsg)
 //  - LockFreeQ : Enqueue 성공 → ref가 sendQ로 이전, ProcessSend 완료 시 SubRef()로 반환
 //  - RingBuffer: 바이트를 세션 링버퍼에 복사 후 즉시 SubRef()
 //  - 실패(세션 무효, ABA, Enqueue 실패 등) → 즉시 SubRef()로 반환
-void CIOCPServer::RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg)
+void CIOCPServer::RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg, [[maybe_unused]] SendFlush flush)
 {
     // ── Session ABA 검증 (3-step) — 두 모드 공통 ──
     // Step 1: index로 세션 조회 + sessionId 일치 확인
@@ -1067,8 +1068,35 @@ void CIOCPServer::RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg)
     pMsg->SubRef();   // 링버퍼가 바이트 사본 보유 → 버퍼 소유권(ref) 소비
 #endif
 
-    PostSend(session);
+#if USE_SEND_COALESCING
+    if (flush == SendFlush::Immediate)
+    {
+        PostSend(session);
+    }
+    else if (!session->_sendDirty)   // SendFlush::Deferred — 틱 끝 FlushPendingSends에서 묶어 송신
+    {
+        // 이번 틱 첫 enqueue 세션만 dirty 등록(중복 방지)
+        session->_sendDirty = true;
+        _dirtySessions.push_back(session);
+    }
+#else
+    PostSend(session);   // coalescing off: Deferred 요청도 즉시 송신 (flush 인자 무시)
+#endif
     IOCountDecrement(session);
+}
+
+// [coalescing] 게임 루프가 틱 끝에 1회 호출 — 이번 틱에 송신 데이터가 쌓인 세션을 한 번에 flush.
+// PostSend가 내부에서 AcquireSession/_disconnecting을 재검증하므로 dirty 등록 후 세션이 끊겨도 안전.
+void CIOCPServer::FlushPendingSends()
+{
+#if USE_SEND_COALESCING
+    for (CSession* session : _dirtySessions)
+    {
+        session->_sendDirty = false;
+        PostSend(session);
+    }
+    _dirtySessions.clear();
+#endif
 }
 
 // ParsePackets 쪽에서 호출

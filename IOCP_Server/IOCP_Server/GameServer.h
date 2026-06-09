@@ -93,7 +93,8 @@ private:
         if (target->_sessionId != -1)
         {
             pMsg->AddRef();   // 송신용 소유권 — RequestSendMsg(CSerialBuffer*)가 소비
-            _network->RequestSendMsg(target->_sessionId, pMsg);
+            // 게임루프 송신은 묶어 보낼 수 있음을 표시(Deferred) — 실제 지연 여부는 USE_SEND_COALESCING이 결정
+            _network->RequestSendMsg(target->_sessionId, pMsg, SendFlush::Deferred);
         }
         pMsg->SubRef();       // 빌더가 넘긴 소유권 1 회수 (세션 무효여도 안전 회수)
     }
@@ -115,7 +116,7 @@ private:
             if (other->_sessionId == -1)
                 continue;
             pMsg->AddRef();   // 타겟별 소유권 — RequestSendMsg(CSerialBuffer*)가 소비
-            _network->RequestSendMsg(other->_sessionId, pMsg);
+            _network->RequestSendMsg(other->_sessionId, pMsg, SendFlush::Deferred);
         }
         pMsg->SubRef();   // 빌더가 넘긴 소유권 1 회수 (타겟 0명이어도 안전 회수)
     }

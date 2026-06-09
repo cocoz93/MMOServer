@@ -85,6 +85,7 @@ public:
     volatile SOCKET _socket;
     volatile int64_t _sessionId;    // Initialize에서 설정, IOCount>0 동안 유효
     volatile LONG _sending;         // 송신 중 플래그 (InterlockedExchange 사용)
+    bool _sendDirty = false;        // [coalescing] 틱 내 송신 대기 표식 (게임 스레드 전용, Initialize에서 리셋)
 
     CRingBufferST _recvQ; // 한 스레드에서만 접근
 
@@ -229,6 +230,12 @@ private:
 
 //TODO: 모드별 설계..
 
+// 송신 디스패치 시점 — 호출부는 의도만 표시하고, Deferred의 실제 지연 여부는
+// USE_SEND_COALESCING(BuildConfig.h)이 결정한다. (coalescing off면 Deferred도 즉시 송신)
+//   Immediate : 즉시 PostSend (echo·워커 등 단발 송신)
+//   Deferred  : 묶어 보내도 되는 게임루프 송신 → 틱 끝 FlushPendingSends에서 일괄
+enum class SendFlush { Immediate, Deferred };
+
 // IOCP 기반 네트워크 서버
 class CIOCPServer
 {
@@ -243,8 +250,11 @@ public:
     // 게임 로직 레이어가 사용할 인터페이스 (직접 호출)
     // thread-safe하다면 굳이 큐방식으로 부하를 줄 필요가 없음.
     // 송신은 콘텐츠가 조립한 CSerialBuffer 단일 경로로 통일 (모드 분기는 .cpp 내부 #if)
-    void RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg);
+    void RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg, SendFlush flush = SendFlush::Immediate);
     bool RequestDisconnectSession(int64_t sessionId);
+
+    // [coalescing] 게임 루프가 틱 끝에 1회 호출 — 이번 틱에 enqueue된 세션을 한 번에 flush (게임 스레드 단독)
+    void FlushPendingSends();
 
     // 게임 로직 레이어로 전달할 이벤트 가져오기 (QUEUE_BASED 모드용)
     bool PopNetworkEvent(NetworkEvent& event);
@@ -308,6 +318,9 @@ private:
 
     std::vector<std::unique_ptr<CSession>> _sessions;  // Index 기반 접근가능
     LockFree::CLockFreeStack<uint16_t> _availableIndices;  // 재사용 가능한 인덱스 스택
+
+    // [coalescing] 틱 내 송신 대기 세션 목록 (게임 스레드 단독 접근 → 무락)
+    std::vector<CSession*> _dirtySessions;
 
     // 레이어 간 통신 큐 (QUEUE_BASED 모드용)
     ThreadSafeQueue<NetworkEvent> _eventQueue;    // 네트워크 -> 게임 로직

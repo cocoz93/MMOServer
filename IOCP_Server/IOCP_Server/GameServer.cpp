@@ -411,6 +411,9 @@ void CGameServer::GameLoopThread()
             });
         }
 
+        // [coalescing] 이번 틱에 쌓인 송신을 세션당 1회 WSASend로 flush (broadcast_sync 페이즈에 계상)
+        _network->FlushPendingSends();
+
         auto phaseT4 = Clock::now();
 
         // 구간별 시간 기록 (마이크로초 누적)

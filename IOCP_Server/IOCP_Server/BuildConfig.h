@@ -12,3 +12,8 @@
 //   1: LockFreeQueue 경로
 //   0: 기존 RingBuffer 경로
 #define USE_LOCKFREE_SENDQ 0
+
+// Send flush 시점 선택 (USE_LOCKFREE_SENDQ와 직교 — PostSend 공통 경로에 적용)
+//   1: 틱 끝에 세션당 1회 flush (송신 coalescing → WSASend 시스콜 절감, WSABUF↑)
+//   0: 기존 baseline — RequestSendMsg마다 즉시 PostSend
+#define USE_SEND_COALESCING 1
