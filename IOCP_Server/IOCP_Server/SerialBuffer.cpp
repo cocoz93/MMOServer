@@ -59,6 +59,12 @@ void CSerialBuffer::AddRef()
 	InterlockedIncrement64(&_RefCount);
 }
 
+// 배치 AddRef — 타겟별 AddRef를 호출당 1회로 압축 (BroadcastAroundSector)
+void CSerialBuffer::AddRef(LONG64 count)
+{
+	InterlockedExchangeAdd64(&_RefCount, count);
+}
+
 // Alloc() → operator<< → Seal() → AddRef(N) → WSASend × N → SubRef()
 void CSerialBuffer::Seal()
 {

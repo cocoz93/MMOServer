@@ -111,11 +111,22 @@ private:
         InterlockedExchangeAdd64(&_monitor._gameLoop._broadcastTargets,
             static_cast<LONG64>(_broadcastBuffer.size()));
 
+        // 유효 타겟(세션 보유) 수 선카운트 → 타겟별 AddRef를 1회 배치 AddRef로 압축 (원자연산 N→1)
+        // 단일 게임루프 스레드 내 호출이라 두 패스 사이 _sessionId 변동 없음 → 카운트 정합 보장
+        size_t validCount = 0;
+        for (CPlayer* other : _broadcastBuffer)
+        {
+            if (other->_sessionId != -1)
+                ++validCount;
+        }
+
+        if (validCount > 0)
+            pMsg->AddRef(static_cast<LONG64>(validCount));   // 타겟별 소유권 일괄 확보
+
         for (CPlayer* other : _broadcastBuffer)
         {
             if (other->_sessionId == -1)
                 continue;
-            pMsg->AddRef();   // 타겟별 소유권 — RequestSendMsg(CSerialBuffer*)가 소비
             _network->RequestSendMsg(other->_sessionId, pMsg, SendFlush::Deferred);
         }
         pMsg->SubRef();   // 빌더가 넘긴 소유권 1 회수 (타겟 0명이어도 안전 회수)

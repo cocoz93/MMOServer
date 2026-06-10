@@ -20,6 +20,7 @@ public:
 public:
 	static CSerialBuffer* Alloc();
 	void AddRef();
+	void AddRef(LONG64 count);   // 배치 AddRef — 브로드캐스트 타겟 수만큼 1회 (원자연산 N→1)
 	void SubRef();
 
 private:
