@@ -88,64 +88,10 @@ private:
 
     // 단일 플레이어에게 패킷 전송 (CSerialBuffer — 소유권 1을 소비)
     // 빌더가 반환한 RefCount=1 버퍼를 넘기면, 송신 후 SubRef로 소유권을 회수한다.
-    void SendPacket(CPlayer* target, CSerialBuffer* pMsg)
-    {
-        if (target->_sessionId != -1)
-        {
-            pMsg->AddRef();   // 송신용 소유권 — RequestSendMsg(CSerialBuffer*)가 소비
-            // 게임루프 송신은 묶어 보낼 수 있음을 표시(Deferred) — 실제 지연 여부는 USE_SEND_COALESCING이 결정
-            const int dataSize = pMsg->GetDataSize();
-            if (_network->RequestSendMsg(target->_sessionId, pMsg, SendFlush::Deferred))
-            {
-                InterlockedIncrement64(&_monitor._sendPackets);
-                InterlockedExchangeAdd64(&_monitor._sendEnqueuedBytes, static_cast<LONG64>(dataSize));
-            }
-        }
-        pMsg->SubRef();       // 빌더가 넘긴 소유권 1 회수 (세션 무효여도 안전 회수)
-    }
+    void SendPacket(CPlayer* target, CSerialBuffer* pMsg);
 
     // 주변 브로드캐스트 (CSerialBuffer — 빌더 RefCount=1 버퍼를 소비)
-    void BroadcastAroundSector(CZone* zone, CPlayer* player, CSerialBuffer* pMsg, bool excludeSelf = true)
-    {
-        _broadcastBuffer.clear();
-        CPlayer* exclude = excludeSelf ? player : nullptr;
-        zone->GetSectorManager().GetAroundPlayers(
-            player->_sectorX, player->_sectorY, _broadcastBuffer, exclude);
-
-        InterlockedIncrement64(&_monitor._gameLoop._broadcastCalls);
-        InterlockedExchangeAdd64(&_monitor._gameLoop._broadcastTargets,
-            static_cast<LONG64>(_broadcastBuffer.size()));
-
-        // 유효 타겟(세션 보유) 수 선카운트 → 타겟별 AddRef를 1회 배치 AddRef로 압축 (원자연산 N→1)
-        // 단일 게임루프 스레드 내 호출이라 두 패스 사이 _sessionId 변동 없음 → 카운트 정합 보장
-        size_t validCount = 0;
-        for (CPlayer* other : _broadcastBuffer)
-        {
-            if (other->_sessionId != -1)
-                ++validCount;
-        }
-
-        if (validCount > 0)
-            pMsg->AddRef(static_cast<LONG64>(validCount));   // 타겟별 소유권 일괄 확보
-
-        // 송신 메트릭은 타겟별 원자증가 대신 성공분을 지역 누적 후 1회 반영 (원자연산 N→1)
-        const int dataSize = pMsg->GetDataSize();
-        size_t sentPkts = 0;
-        for (CPlayer* other : _broadcastBuffer)
-        {
-            if (other->_sessionId == -1)
-                continue;
-            if (_network->RequestSendMsg(other->_sessionId, pMsg, SendFlush::Deferred))
-                ++sentPkts;
-        }
-        if (sentPkts > 0)
-        {
-            InterlockedExchangeAdd64(&_monitor._sendPackets, static_cast<LONG64>(sentPkts));
-            InterlockedExchangeAdd64(&_monitor._sendEnqueuedBytes,
-                static_cast<LONG64>(sentPkts) * dataSize);
-        }
-        pMsg->SubRef();   // 빌더가 넘긴 소유권 1 회수 (타겟 0명이어도 안전 회수)
-    }
+    void BroadcastAroundSector(CZone* zone, CPlayer* player, CSerialBuffer* pMsg, bool excludeSelf = true);
 
     // 패킷별 전송 함수 (Fill + Send)
     void SendZoneInfo(CPlayer* target, CZone* zone);
