@@ -998,8 +998,13 @@ void CIOCPServer::PostSend(CSession* session)
 void CIOCPServer::EchoTestSend(CSession* session, CSerialBuffer* pMsg)
 {
     // 에코 테스트: 받은 패킷을 그대로 돌려보냄
-    // _sendPackets는 RequestSendMsg 내부에서 카운팅
-    RequestSendMsg(session->_sessionId, pMsg);
+    // 송신 메트릭은 호출자(여기)가 집계 (RequestSendMsg는 enqueue 성공 여부만 반환)
+    const int dataSize = pMsg->GetDataSize();
+    if (RequestSendMsg(session->_sessionId, pMsg))
+    {
+        InterlockedIncrement64(&_monitor._sendPackets);
+        InterlockedExchangeAdd64(&_monitor._sendEnqueuedBytes, static_cast<LONG64>(dataSize));
+    }
 }
 
 // 게임 로직 레이어가 사용할 송신 인터페이스 (콘텐츠가 조립한 CSerialBuffer를 그대로 전달)
@@ -1008,20 +1013,21 @@ void CIOCPServer::EchoTestSend(CSession* session, CSerialBuffer* pMsg)
 //  - LockFreeQ : Enqueue 성공 → ref가 sendQ로 이전, ProcessSend 완료 시 SubRef()로 반환
 //  - RingBuffer: 바이트를 세션 링버퍼에 복사 후 즉시 SubRef()
 //  - 실패(세션 무효, ABA, Enqueue 실패 등) → 즉시 SubRef()로 반환
-void CIOCPServer::RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg, [[maybe_unused]] SendFlush flush)
+bool CIOCPServer::RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg, [[maybe_unused]] SendFlush flush)
 {
     // ── Session ABA 검증 (3-step) — 두 모드 공통 ──
     // Step 1: index로 세션 조회 + sessionId 일치 확인
     auto session = FindSession(sessionId);
-    if (!session) { pMsg->SubRef(); return; }
+    if (!session) { pMsg->SubRef(); return false; }
 
     // Step 2: IOCount pin (해제 진행 중이면 실패)
-    if (!AcquireSession(session)) { pMsg->SubRef(); return; }
+    if (!AcquireSession(session)) { pMsg->SubRef(); return false; }
 
     // Step 3: pin 후 sessionId 재확인 (pin 사이 재할당 검출)
-    if (session->_sessionId != sessionId) { IOCountDecrement(session); pMsg->SubRef(); return; }
+    if (session->_sessionId != sessionId) { IOCountDecrement(session); pMsg->SubRef(); return false; }
 
-    const int dataSize = pMsg->GetDataSize();
+    // 송신 메트릭(_sendPackets/_sendEnqueuedBytes)은 호출자가 집계 (broadcast 타겟별 원자연산 배치)
+    [[maybe_unused]] const int dataSize = pMsg->GetDataSize();
 
 #if USE_LOCKFREE_SENDQ
     // SendQ 깊이 상한 체크 (OOM 방어 — CLockFreeQueue는 Enqueue 실패를 반환하지 않으므로)
@@ -1033,7 +1039,7 @@ void CIOCPServer::RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg, [[maybe
         pMsg->SubRef();
         RequestDisconnectSession(session);
         IOCountDecrement(session);
-        return;
+        return false;
     }
 
     // 포인터 직접 Enqueue — 소유권이 sendQ로 이전 (SubRef는 ProcessSend에서)
@@ -1044,11 +1050,8 @@ void CIOCPServer::RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg, [[maybe
         pMsg->SubRef();
         RequestDisconnectSession(session);
         IOCountDecrement(session);
-        return;
+        return false;
     }
-
-    InterlockedIncrement64(&_monitor._sendPackets);
-    InterlockedExchangeAdd64(&_monitor._sendEnqueuedBytes, static_cast<LONG64>(dataSize));
 #else
     // RingBuffer 경로: 버퍼 바이트를 세션 링버퍼에 복사 (ref는 복사 직후 소비)
     size_t enqueued = session->_sendQ.Enqueue(pMsg->GetReadBufferPtr(), dataSize);
@@ -1060,11 +1063,9 @@ void CIOCPServer::RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg, [[maybe
         pMsg->SubRef();
         RequestDisconnectSession(session);
         IOCountDecrement(session);
-        return;
+        return false;
     }
 
-    InterlockedIncrement64(&_monitor._sendPackets);
-    InterlockedExchangeAdd64(&_monitor._sendEnqueuedBytes, static_cast<LONG64>(dataSize));
     pMsg->SubRef();   // 링버퍼가 바이트 사본 보유 → 버퍼 소유권(ref) 소비
 #endif
 
@@ -1083,6 +1084,7 @@ void CIOCPServer::RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg, [[maybe
     PostSend(session);   // coalescing off: Deferred 요청도 즉시 송신 (flush 인자 무시)
 #endif
     IOCountDecrement(session);
+    return true;
 }
 
 // [coalescing] 게임 루프가 틱 끝에 1회 호출 — 이번 틱에 송신 데이터가 쌓인 세션을 한 번에 flush.

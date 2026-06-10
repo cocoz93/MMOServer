@@ -94,7 +94,12 @@ private:
         {
             pMsg->AddRef();   // 송신용 소유권 — RequestSendMsg(CSerialBuffer*)가 소비
             // 게임루프 송신은 묶어 보낼 수 있음을 표시(Deferred) — 실제 지연 여부는 USE_SEND_COALESCING이 결정
-            _network->RequestSendMsg(target->_sessionId, pMsg, SendFlush::Deferred);
+            const int dataSize = pMsg->GetDataSize();
+            if (_network->RequestSendMsg(target->_sessionId, pMsg, SendFlush::Deferred))
+            {
+                InterlockedIncrement64(&_monitor._sendPackets);
+                InterlockedExchangeAdd64(&_monitor._sendEnqueuedBytes, static_cast<LONG64>(dataSize));
+            }
         }
         pMsg->SubRef();       // 빌더가 넘긴 소유권 1 회수 (세션 무효여도 안전 회수)
     }
@@ -123,11 +128,21 @@ private:
         if (validCount > 0)
             pMsg->AddRef(static_cast<LONG64>(validCount));   // 타겟별 소유권 일괄 확보
 
+        // 송신 메트릭은 타겟별 원자증가 대신 성공분을 지역 누적 후 1회 반영 (원자연산 N→1)
+        const int dataSize = pMsg->GetDataSize();
+        size_t sentPkts = 0;
         for (CPlayer* other : _broadcastBuffer)
         {
             if (other->_sessionId == -1)
                 continue;
-            _network->RequestSendMsg(other->_sessionId, pMsg, SendFlush::Deferred);
+            if (_network->RequestSendMsg(other->_sessionId, pMsg, SendFlush::Deferred))
+                ++sentPkts;
+        }
+        if (sentPkts > 0)
+        {
+            InterlockedExchangeAdd64(&_monitor._sendPackets, static_cast<LONG64>(sentPkts));
+            InterlockedExchangeAdd64(&_monitor._sendEnqueuedBytes,
+                static_cast<LONG64>(sentPkts) * dataSize);
         }
         pMsg->SubRef();   // 빌더가 넘긴 소유권 1 회수 (타겟 0명이어도 안전 회수)
     }

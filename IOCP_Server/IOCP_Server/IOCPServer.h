@@ -250,7 +250,8 @@ public:
     // 게임 로직 레이어가 사용할 인터페이스 (직접 호출)
     // thread-safe하다면 굳이 큐방식으로 부하를 줄 필요가 없음.
     // 송신은 콘텐츠가 조립한 CSerialBuffer 단일 경로로 통일 (모드 분기는 .cpp 내부 #if)
-    void RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg, SendFlush flush = SendFlush::Immediate);
+    // 반환: enqueue 성공 true / 실패(세션무효·ABA·큐오버플로) false — 송신 메트릭은 호출자가 집계 (broadcast 배치)
+    bool RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg, SendFlush flush = SendFlush::Immediate);
     bool RequestDisconnectSession(int64_t sessionId);
 
     // [coalescing] 게임 루프가 틱 끝에 1회 호출 — 이번 틱에 enqueue된 세션을 한 번에 flush (게임 스레드 단독)
