@@ -432,8 +432,10 @@ void CGameServer::GameLoopThread()
         InterlockedExchangeAdd64(&_monitor._gameLoop._broadcastEnqueueUs, _tickBroadcastEnqueueUs);
         InterlockedExchangeAdd64(&_monitor._gameLoop._flushSendUs,
             std::chrono::duration_cast<std::chrono::microseconds>(flushT1 - flushT0).count());
+        InterlockedExchangeAdd64(&_monitor._gameLoop._membershipSends, _tickMembershipSends);  // 멤버십 변경 복사량
         _tickBroadcastGatherUs = 0;
         _tickBroadcastEnqueueUs = 0;
+        _tickMembershipSends = 0;
 
         // 5) 빈 동적 채널 정리
         ++_cleanupFrameCount;
@@ -937,11 +939,13 @@ void CGameServer::SendCreateMyPlayer(CPlayer* target)
 
 void CGameServer::SendCreateOtherPlayer(CPlayer* target, CPlayer* player, SpawnReason reason)
 {
+    ++_tickMembershipSends;   // 멤버십 변경 복사 집계 (BroadcastAroundSector 밖 경로)
     SendPacket(target, MakeCreateOtherPlayer(player, reason));
 }
 
 void CGameServer::SendDeletePlayer(CPlayer* target, CPlayer* player)
 {
+    ++_tickMembershipSends;   // 멤버십 변경 복사 집계 (BroadcastAroundSector 밖 경로)
     SendPacket(target, MakeDeletePlayer(player->_playerId));
 }
 

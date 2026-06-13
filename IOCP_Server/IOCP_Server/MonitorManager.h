@@ -86,6 +86,12 @@ public:
         volatile LONG64 _broadcastCalls = 0;        // 브로드캐스트 호출 횟수
         volatile LONG64 _broadcastTargets = 0;      // 브로드캐스트 대상 수 누적
 
+        // 멤버십 변경 복사량 — BroadcastAroundSector(gather/enqueue 계측 대상) 밖의 송신(복사) 횟수.
+        //   ProcessSectorChange·BroadcastEnterZone·BroadcastLeaveZone 전용인
+        //   SendCreateOtherPlayer/SendDeletePlayer 호출 수. _broadcastTargets(계측 대상 복사)와
+        //   비교해 비계측 복사의 비중을 가늠 → 정밀 측정(choke-point) 필요 여부 판단용.
+        volatile LONG64 _membershipSends = 0;
+
         // 비용종류별 계측 (counter, 마이크로초 누적) — 1단계: BroadcastAroundSector hot path 전용
         //
         // 기존 _phase*Us는 "루프 단계별"이라 하나의 브로드캐스트 비용이 network/broadcast_sync에

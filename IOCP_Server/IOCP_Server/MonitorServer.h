@@ -138,6 +138,9 @@ private:
                      "Total broadcast invocations", _monitor._gameLoop._broadcastCalls);
         WriteCounter(ss, "mmo_broadcast_targets_total",
                      "Total broadcast target players", _monitor._gameLoop._broadcastTargets);
+        WriteCounter(ss, "mmo_membership_sends_total",
+                     "Uncounted membership-change copies (sector-change/enter/leave); compare vs broadcast_targets",
+                     _monitor._gameLoop._membershipSends);
 
         // ── 구간별 시간 (초 단위 counter) ──
         WritePhaseCounters(ss);

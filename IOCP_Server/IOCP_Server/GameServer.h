@@ -151,4 +151,5 @@ private:
     // BroadcastAroundSector가 network/game_logic/broadcast_sync 어느 단계에서 호출돼도 이 멤버에 합산된다.
     int64_t _tickBroadcastGatherUs = 0;   // GetAroundPlayers 주변 모으기
     int64_t _tickBroadcastEnqueueUs = 0;  // 수신자별 처리(복사 포함)
+    int64_t _tickMembershipSends = 0;     // 멤버십 변경 복사(BroadcastAroundSector 밖 경로) 송신 횟수
 };

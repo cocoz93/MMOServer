@@ -208,7 +208,8 @@
       "targets": [
         { "expr": "rate(mmo_broadcast_calls_total[1m])", "legendFormat": "calls/s", "refId": "A" },
         { "expr": "rate(mmo_broadcast_targets_total[1m])", "legendFormat": "targets/s", "refId": "B" },
-        { "expr": "rate(mmo_broadcast_targets_total[1m]) / rate(mmo_broadcast_calls_total[1m])", "legendFormat": "avg targets/call", "refId": "C" }
+        { "expr": "rate(mmo_broadcast_targets_total[1m]) / rate(mmo_broadcast_calls_total[1m])", "legendFormat": "avg targets/call", "refId": "C" },
+        { "expr": "rate(mmo_membership_sends_total[1m])", "legendFormat": "membership sends/s", "refId": "D" }
       ]
     },
 
