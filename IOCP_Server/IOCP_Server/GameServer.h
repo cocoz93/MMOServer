@@ -146,4 +146,9 @@ private:
     std::vector<CPlayer*> _eventAroundBuffer;     // 접속/해제/존이동 전용
     std::vector<SectorChangeInfo> _tickSectorChanges;
     std::vector<CPlayer*> _tickClampedPlayers;
+
+    // 비용종류별 계측 — 틱 내 누적 후 틱 끝 1회 모니터 반영 (단일 게임루프 스레드 전용 → 누적 자체엔 원자연산 불필요)
+    // BroadcastAroundSector가 network/game_logic/broadcast_sync 어느 단계에서 호출돼도 이 멤버에 합산된다.
+    int64_t _tickBroadcastGatherUs = 0;   // GetAroundPlayers 주변 모으기
+    int64_t _tickBroadcastEnqueueUs = 0;  // 수신자별 처리(복사 포함)
 };

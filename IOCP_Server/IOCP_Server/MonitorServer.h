@@ -189,6 +189,20 @@ private:
            << (static_cast<double>(_monitor._gameLoop._phaseBroadcastSyncUs) / 1000000.0) << "\n";
         ss << std::defaultfloat;
         ss << "\n";
+
+        // 비용종류별 계측 (단계 경계와 무관한 축) — gather/enqueue(복사) vs flush_send(WSASend) 비교용.
+        // 복사 vs 송신: rate(enqueue) vs rate(flush_send). USE_LOCKFREE_SENDQ A/B로 enqueue 변화 관찰.
+        ss << "# HELP mmo_broadcast_cost_seconds_total Cumulative broadcast cost by type (1-stage: BroadcastAroundSector hot path)\n";
+        ss << "# TYPE mmo_broadcast_cost_seconds_total counter\n";
+        ss << std::fixed << std::setprecision(6);
+        ss << "mmo_broadcast_cost_seconds_total{type=\"gather\"} "
+           << (static_cast<double>(_monitor._gameLoop._broadcastGatherUs) / 1000000.0) << "\n";
+        ss << "mmo_broadcast_cost_seconds_total{type=\"enqueue\"} "
+           << (static_cast<double>(_monitor._gameLoop._broadcastEnqueueUs) / 1000000.0) << "\n";
+        ss << "mmo_broadcast_cost_seconds_total{type=\"flush_send\"} "
+           << (static_cast<double>(_monitor._gameLoop._flushSendUs) / 1000000.0) << "\n";
+        ss << std::defaultfloat;
+        ss << "\n";
     }
 
     void WriteTickHistogram(std::ostringstream& ss)

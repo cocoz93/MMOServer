@@ -86,6 +86,18 @@ public:
         volatile LONG64 _broadcastCalls = 0;        // 브로드캐스트 호출 횟수
         volatile LONG64 _broadcastTargets = 0;      // 브로드캐스트 대상 수 누적
 
+        // 비용종류별 계측 (counter, 마이크로초 누적) — 1단계: BroadcastAroundSector hot path 전용
+        //
+        // 기존 _phase*Us는 "루프 단계별"이라 하나의 브로드캐스트 비용이 network/broadcast_sync에
+        // 흩어져 섞인다. 아래 3개는 "비용 종류별"로, 호출이 어느 단계든 같은 통에 누적한다.
+        // 이로써 "복사(enqueue) vs 송신(flush) 누가 큰가"를 단계 경계와 무관하게 비교 가능.
+        //   주의(1단계 범위): BroadcastAroundSector(move/stop/chat/sync/clamp)만 계측.
+        //         BroadcastEnter/LeaveZone·ProcessSectorChange(접속/해제/존이동·섹터변경)의
+        //         GetAroundPlayers·복사는 미포함 → 필요 시 2단계(RequestSendMsg choke point)로 확장.
+        volatile LONG64 _broadcastGatherUs = 0;     // GetAroundPlayers 주변 모으기 (수신자 수 비례)
+        volatile LONG64 _broadcastEnqueueUs = 0;    // 수신자별 처리(precount+배치AddRef+RequestSendMsg 복사)
+        volatile LONG64 _flushSendUs = 0;           // FlushPendingSends 실제 송신(WSASend) — 틱 끝 1회
+
         // Tick 히스토그램
         //
         // 버킷 경계: 1, 5, 10, 20, 40, 60, 80, 100, 200 ms

@@ -412,7 +412,10 @@ void CGameServer::GameLoopThread()
         }
 
         // [coalescing] 이번 틱에 쌓인 송신을 세션당 1회 WSASend로 flush (broadcast_sync 페이즈에 계상)
+        // [계측] flush 구간을 별도 측정 → 비용종류별 "송신(WSASend)" 분리. _phaseBroadcastSyncUs는 그대로 둠(이 값을 포함).
+        auto flushT0 = Clock::now();
         _network->FlushPendingSends();
+        auto flushT1 = Clock::now();
 
         auto phaseT4 = Clock::now();
 
@@ -423,6 +426,14 @@ void CGameServer::GameLoopThread()
             std::chrono::duration_cast<std::chrono::microseconds>(phaseT3 - phaseT2).count());
         InterlockedExchangeAdd64(&_monitor._gameLoop._phaseBroadcastSyncUs,
             std::chrono::duration_cast<std::chrono::microseconds>(phaseT4 - phaseT3).count());
+
+        // [계측] 비용종류별 — 틱 내 누적분을 1회씩 원자 반영 후 리셋 (송신은 flush 구간 직접 측정)
+        InterlockedExchangeAdd64(&_monitor._gameLoop._broadcastGatherUs, _tickBroadcastGatherUs);
+        InterlockedExchangeAdd64(&_monitor._gameLoop._broadcastEnqueueUs, _tickBroadcastEnqueueUs);
+        InterlockedExchangeAdd64(&_monitor._gameLoop._flushSendUs,
+            std::chrono::duration_cast<std::chrono::microseconds>(flushT1 - flushT0).count());
+        _tickBroadcastGatherUs = 0;
+        _tickBroadcastEnqueueUs = 0;
 
         // 5) 빈 동적 채널 정리
         ++_cleanupFrameCount;
@@ -860,10 +871,18 @@ void CGameServer::SendPacket(CPlayer* target, CSerialBuffer* pMsg)
 // 주변 브로드캐스트 (CSerialBuffer — 빌더 RefCount=1 버퍼를 소비)
 void CGameServer::BroadcastAroundSector(CZone* zone, CPlayer* player, CSerialBuffer* pMsg, bool excludeSelf)
 {
+    // [계측] 비용종류별 — gather(주변 모으기) / enqueue(수신자별 복사) 구간을 호출당 2~3회 now()로 분리.
+    //   per-call 측정이라 오버헤드가 수신자 수가 아닌 호출 수에 비례. 누적은 틱 끝 1회만 원자반영.
+    auto _measGatherT0 = std::chrono::steady_clock::now();
+
     _broadcastBuffer.clear();
     CPlayer* exclude = excludeSelf ? player : nullptr;
     zone->GetSectorManager().GetAroundPlayers(
         player->_sectorX, player->_sectorY, _broadcastBuffer, exclude);
+
+    auto _measGatherT1 = std::chrono::steady_clock::now();
+    _tickBroadcastGatherUs += std::chrono::duration_cast<std::chrono::microseconds>(
+        _measGatherT1 - _measGatherT0).count();
 
     InterlockedIncrement64(&_monitor._gameLoop._broadcastCalls);
     InterlockedExchangeAdd64(&_monitor._gameLoop._broadcastTargets,
@@ -898,6 +917,12 @@ void CGameServer::BroadcastAroundSector(CZone* zone, CPlayer* player, CSerialBuf
             static_cast<LONG64>(sentPkts) * dataSize);
     }
     pMsg->SubRef();   // 빌더가 넘긴 소유권 1 회수 (타겟 0명이어도 안전 회수)
+
+    // [계측] enqueue 구간 = gather 직후 ~ 여기 (precount + 배치 AddRef + 수신자별 RequestSendMsg 복사 + 메트릭).
+    //   복사가 곧 USE_LOCKFREE_SENDQ 토글이 없애려는 비용 → A/B로 이 값의 변화를 본다.
+    auto _measEnqueueT1 = std::chrono::steady_clock::now();
+    _tickBroadcastEnqueueUs += std::chrono::duration_cast<std::chrono::microseconds>(
+        _measEnqueueT1 - _measGatherT1).count();
 }
 
 void CGameServer::SendZoneInfo(CPlayer* target, CZone* zone)
