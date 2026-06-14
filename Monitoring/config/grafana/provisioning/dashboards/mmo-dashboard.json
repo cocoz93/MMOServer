@@ -458,8 +458,49 @@
         { "expr": "rate(mmo_handle_latency_seconds_sum[1m]) / rate(mmo_handle_latency_seconds_count[1m]) * 1000", "legendFormat": "서버 handle", "refId": "B" },
         { "expr": "(rate(mmo_dummy_rtt_seconds_sum[1m]) / rate(mmo_dummy_rtt_seconds_count[1m]) - rate(mmo_handle_latency_seconds_sum[1m]) / rate(mmo_handle_latency_seconds_count[1m])) * 1000", "legendFormat": "네트워크+더미(나머지)", "refId": "C" }
       ]
+    },
+
+    {
+      "type": "row",
+      "title": "브로드캐스트 비용 분해 (1단계: 브로드캐스트 vs 잔여 / 2단계: gather·copy·send)",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 56 },
+      "collapsed": false
+    },
+    {
+      "type": "timeseries",
+      "title": "[2단계] 브로드캐스트 비용 종류별 (ms/tick) — gather·copy(enqueue)·send(flush)",
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 57 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": { "fillOpacity": 25, "stacking": { "mode": "normal", "group": "A" } }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "rate(mmo_broadcast_cost_seconds_total{type=\"gather\"}[1m]) / rate(mmo_tick_duration_seconds_count[1m]) * 1000", "legendFormat": "gather(모으기)", "refId": "A" },
+        { "expr": "rate(mmo_broadcast_cost_seconds_total{type=\"enqueue\"}[1m]) / rate(mmo_tick_duration_seconds_count[1m]) * 1000", "legendFormat": "copy(enqueue)", "refId": "B" },
+        { "expr": "rate(mmo_broadcast_cost_seconds_total{type=\"flush_send\"}[1m]) / rate(mmo_tick_duration_seconds_count[1m]) * 1000", "legendFormat": "send(flush, 전체송신)", "refId": "C" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "[1단계] 브로드캐스트 vs 그 외 잔여 (share %)",
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 57 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0, "max": 100,
+          "custom": { "fillOpacity": 25, "stacking": { "mode": "normal", "group": "A" } }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "sum(rate(mmo_broadcast_cost_seconds_total[1m])) / scalar(rate(mmo_tick_duration_seconds_sum[1m])) * 100", "legendFormat": "브로드캐스트", "refId": "A" },
+        { "expr": "100 - sum(rate(mmo_broadcast_cost_seconds_total[1m])) / scalar(rate(mmo_tick_duration_seconds_sum[1m])) * 100", "legendFormat": "그 외 잔여", "refId": "B" }
+      ]
     }
   ],
   "schemaVersion": 39,
-  "version": 4
+  "version": 5
 }
