@@ -17,3 +17,10 @@
 //   1: 틱 끝에 세션당 1회 flush (송신 coalescing → WSASend 시스콜 절감, WSABUF↑)
 //   0: 기존 baseline — RequestSendMsg마다 즉시 PostSend
 #define USE_SEND_COALESCING 1
+
+// 커널 송신버퍼 크기 0 실험 (accept 소켓마다 SO_SNDBUF=0)
+//   목적: WSASend 호출비용 중 "커널 송신버퍼 복사(③)"가 실제로 미미한지 실측 검증.
+//   1: SO_SNDBUF=0 (zero-copy, 송신은 ACK까지 pending) / 0: 기존 OS 기본값
+//   주의: 세션당 _sending 직렬화와 겹쳐 flush_send가 호출수 감소로 줄 수 있음 →
+//         mmo_wsa_send_calls_total(틱당 호출수)을 반드시 함께 봐야 해석 가능.
+#define USE_ZERO_SNDBUF 0

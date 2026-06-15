@@ -268,6 +268,13 @@ bool CIOCPServer::SetSocketOptions(SOCKET socket)
     //int flag = 1;
     //setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
 
+#if USE_ZERO_SNDBUF
+    // [실험] 커널 송신버퍼 0 → WSASend 시 커널 복사(③) 제거, 유저버퍼에서 직접 송신(zero-copy).
+    //        ③가 미미하다는 가정의 실측 검증용 (BuildConfig.h 토글).
+    int sndBufSize = 0;
+    setsockopt(socket, SOL_SOCKET, SO_SNDBUF, reinterpret_cast<char*>(&sndBufSize), sizeof(sndBufSize));
+#endif
+
     // 필요시 추가 옵션 설정 가능
     return true;
 }
