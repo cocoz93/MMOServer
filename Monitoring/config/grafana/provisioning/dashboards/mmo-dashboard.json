@@ -499,8 +499,59 @@
         { "expr": "sum(rate(mmo_broadcast_cost_seconds_total[1m])) / scalar(rate(mmo_tick_duration_seconds_sum[1m])) * 100", "legendFormat": "브로드캐스트", "refId": "A" },
         { "expr": "100 - sum(rate(mmo_broadcast_cost_seconds_total[1m])) / scalar(rate(mmo_tick_duration_seconds_sum[1m])) * 100", "legendFormat": "그 외 잔여", "refId": "B" }
       ]
+    },
+
+    {
+      "type": "row",
+      "title": "[실험] 송신 스레드 분리 (USE_SEND_THREAD) — 비용 이전 판정 (토글 OFF면 sendthread 계열 비어있음)",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 64 },
+      "collapsed": false
+    },
+    {
+      "type": "timeseries",
+      "title": "스레드 CPU 점유 (core) — 전체합이 비용 이전(게임루프→send) 판정 핵심",
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 65 },
+      "fieldConfig": {
+        "defaults": { "unit": "none", "custom": { "fillOpacity": 10 } },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "avg_over_time(mmo_thread_cpu_ratio{thread=\"gameloop\"}[1m])", "legendFormat": "gameloop", "refId": "A" },
+        { "expr": "sum(avg_over_time(mmo_thread_cpu_ratio{thread=~\"worker-.*\"}[1m]))", "legendFormat": "worker 합", "refId": "B" },
+        { "expr": "avg_over_time(mmo_thread_cpu_ratio{thread=\"sendthread\"}[1m])", "legendFormat": "sendthread", "refId": "C" },
+        { "expr": "sum(avg_over_time(mmo_thread_cpu_ratio[1m]))", "legendFormat": "★ 전체합 (A/B 비교)", "refId": "D" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "송신 비용 위치 (ms/tick) — flush_send(게임루프) vs sendthread_send",
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 65 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": { "fillOpacity": 25, "stacking": { "mode": "normal", "group": "A" } }
+        },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "rate(mmo_broadcast_cost_seconds_total{type=\"flush_send\"}[1m]) / ignoring(type) rate(mmo_tick_duration_seconds_count[1m]) * 1000", "legendFormat": "flush_send(게임루프)", "refId": "A" },
+        { "expr": "rate(mmo_send_thread_flush_seconds_total[1m]) / rate(mmo_tick_duration_seconds_count[1m]) * 1000", "legendFormat": "sendthread_send", "refId": "B" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "핸드오프 백로그 (sessions/drain) — 지속 상승 = send 스레드가 못 따라감",
+      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 65 },
+      "fieldConfig": {
+        "defaults": { "unit": "none", "custom": { "fillOpacity": 10 } },
+        "overrides": []
+      },
+      "targets": [
+        { "expr": "mmo_send_flush_backlog", "legendFormat": "backlog(drain 인출 수)", "refId": "A" },
+        { "expr": "max_over_time(mmo_send_flush_backlog[1m])", "legendFormat": "1m max", "refId": "B" }
+      ]
     }
   ],
   "schemaVersion": 39,
-  "version": 5
+  "version": 6
 }

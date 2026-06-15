@@ -154,6 +154,14 @@ private:
         ss << "# TYPE mmo_event_queue_size gauge\n";
         ss << "mmo_event_queue_size " << _monitor._gameLoop._eventQueueSize << "\n\n";
 
+        // [USE_SEND_THREAD] 송신 핸드오프 백로그 — send 스레드 핸들이 등록된 경우(토글 ON)에만 노출.
+        if (_monitor._sendThreadHandle != nullptr)
+        {
+            ss << "# HELP mmo_send_flush_backlog Sessions pulled per send-thread drain (sustained > 1-tick dirty count = send thread falling behind)\n";
+            ss << "# TYPE mmo_send_flush_backlog gauge\n";
+            ss << "mmo_send_flush_backlog " << _monitor._flushQueueBacklog << "\n\n";
+        }
+
         // ── 히스토그램 (비누적 → 누적 변환) ──
         WriteTickHistogram(ss);
         WriteHandleLatencyHistogram(ss);
@@ -204,6 +212,17 @@ private:
            << (static_cast<double>(_monitor._gameLoop._broadcastEnqueueUs) / 1000000.0) << "\n";
         ss << "mmo_broadcast_cost_seconds_total{type=\"flush_send\"} "
            << (static_cast<double>(_monitor._gameLoop._flushSendUs) / 1000000.0) << "\n";
+        ss << std::defaultfloat;
+        ss << "\n";
+
+        // [USE_SEND_THREAD] send 스레드의 실제 WSASend 시간 — broadcast_cost와 "별도 메트릭"으로 노출.
+        //   broadcast_cost 합산 쿼리(broadcast_total/share)에 섞이면 다른 스레드 비용이 게임루프 틱
+        //   분해를 오염시키므로 분리한다. 토글 OFF면 0 (A/B에서 baseline=0으로 비교 가능).
+        ss << "# HELP mmo_send_thread_flush_seconds_total Cumulative WSASend time on the dedicated send thread (flush_send offloaded here when USE_SEND_THREAD=1)\n";
+        ss << "# TYPE mmo_send_thread_flush_seconds_total counter\n";
+        ss << std::fixed << std::setprecision(6);
+        ss << "mmo_send_thread_flush_seconds_total "
+           << (static_cast<double>(_monitor._sendThreadFlushUs) / 1000000.0) << "\n";
         ss << std::defaultfloat;
         ss << "\n";
     }
@@ -379,6 +398,11 @@ private:
                             _monitor._workerCounters[i].threadHandle, _cpuWorker[i], wallNow);
         }
 
+        // [USE_SEND_THREAD] 전용 송신 스레드 (비용 이전 판정 핵심 — 게임루프 flush가 여기로 샜는지).
+        //   토글 OFF면 핸들이 nullptr이라 SampleThreadCpu가 라인을 생략한다.
+        SampleThreadCpu(ss, "sendthread",
+                        _monitor._sendThreadHandle, _cpuSendThread, wallNow);
+
         ss << std::defaultfloat << "\n";
     }
 
@@ -392,4 +416,5 @@ private:
     // CPU 점유율 직전 샘플 상태 (HTTP 스레드 단독 접근 → 락 불필요)
     CpuSample _cpuGameLoop;
     CpuSample _cpuWorker[CMonitorManager::MAX_WORKER_THREADS];
+    CpuSample _cpuSendThread;   // [USE_SEND_THREAD] 전용 송신 스레드 CPU 직전 샘플
 };

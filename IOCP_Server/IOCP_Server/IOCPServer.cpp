@@ -1145,6 +1145,17 @@ void CIOCPServer::FlushPendingSends()
 // PostSend 내부의 AcquireSession/_sending 가드가 lifetime·세션당 단일 송신을 보장한다.
 void CIOCPServer::SendThread()
 {
+    // [계측] CPU 점유율 측정용 — 자기 실핸들을 복제해 모니터에 등록 (게임루프/워커와 동일 패턴).
+    //   GetCurrentThread()는 의사핸들(호출 스레드 기준)이라 HTTP 스레드에서 못 씀 → 실핸들로 복제.
+    {
+        HANDLE dup = nullptr;
+        if (DuplicateHandle(GetCurrentProcess(), GetCurrentThread(),
+                            GetCurrentProcess(), &dup, 0, FALSE, DUPLICATE_SAME_ACCESS))
+        {
+            _monitor._sendThreadHandle = dup;
+        }
+    }
+
     std::vector<int64_t> local;
     while (true)
     {
@@ -1156,12 +1167,22 @@ void CIOCPServer::SendThread()
             local.swap(_flushQueue);         // 누적분을 통째로 인출 (백로그 시 여러 틱 병합 가능)
         }
 
+        // [계측] 핸드오프 백로그 — 이번 drain에서 인출한 세션 수 (1틱 dirty 수 초과 = send 스레드가 못 따라감)
+        _monitor._flushQueueBacklog = static_cast<LONG64>(local.size());
+
+        // [계측] send 스레드의 실제 WSASend 시간 — USE_SEND_THREAD=1이면 게임루프 flush_send가 여기로 이전됨.
+        //   게임루프는 더 이상 WSASend를 안 하므로 이 카운터의 단독 writer는 send 스레드(원자 누적).
+        const auto sendT0 = std::chrono::steady_clock::now();
         for (int64_t sessionId : local)
         {
             CSession* session = FindSession(sessionId);  // id 일치·미종료 검증
             if (session)
                 PostSend(session);
         }
+        const auto sendT1 = std::chrono::steady_clock::now();
+        InterlockedExchangeAdd64(&_monitor._sendThreadFlushUs,
+            std::chrono::duration_cast<std::chrono::microseconds>(sendT1 - sendT0).count());
+
         local.clear();
     }
 }

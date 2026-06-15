@@ -43,6 +43,7 @@ public:
     volatile LONG64 _wsaSendCompletions = 0;         // WSASend 완료 횟수 (ProcessSend IOCP 콜백)
     volatile LONG64 _sendEnqueuedBytes = 0;          // SendQ Enqueue 바이트 누적 (_sendBytes와의 차이 = 체류량)
     volatile LONG64 _sendContention = 0;             // PostSend 경합 (이미 송신 중이라 건너뛴 횟수)
+    volatile LONG64 _sendThreadFlushUs = 0;          // [USE_SEND_THREAD] send 스레드 WSASend 누적(us) — 게임루프 flush_send가 이전된 분
 
     // ── 세션/에러 카운터 (per-session 또는 rare, 낮은 빈도) ──
     alignas(64) volatile LONG64 _sessionCreated = 0;    // 세션 생성 누적
@@ -197,6 +198,12 @@ public:
     // [수명] 프로세스 종료까지 유지 (단일 핸들, 명시적 Close 생략 — 진단용)
     // ══════════════════════════════════════════════════════════════
     volatile HANDLE _gameLoopThreadHandle = nullptr;
+
+    // [USE_SEND_THREAD] 전용 송신 스레드 — 토글 OFF면 SendThread 자체가 안 돌아 nullptr 유지.
+    //   핸들이 nullptr이면 CPU 샘플러·백로그 게이지가 자동으로 라인을 생략(메트릭이 토글과 함께 꺼짐).
+    volatile HANDLE _sendThreadHandle = nullptr;
+    // 핸드오프 백로그 — 마지막 drain 시 인출한 세션 수. 1틱 dirty 수를 지속 초과하면 send 스레드가 송신을 못 따라감.
+    volatile LONG64 _flushQueueBacklog = 0;
 
     // 워커 스레드 시작 시 호출 → 슬롯 인덱스 반환 (-1: 슬롯 초과)
     int RegisterWorkerThread()
