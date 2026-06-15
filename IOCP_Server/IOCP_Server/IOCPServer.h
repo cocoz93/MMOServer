@@ -9,6 +9,7 @@
 #include <memory>
 #include <thread>
 #include <mutex>
+#include <condition_variable>
 #include <unordered_map>
 #include <queue>
 #include <functional>
@@ -284,6 +285,9 @@ private:
 
     void AcceptThread();
     void WorkerThread();
+#if USE_SEND_THREAD
+    void SendThread();   // 전용 송신 스레드 — dirty 배치를 받아 WSASend 수행
+#endif
 
     bool CreateListenSocket();
     bool SetSocketOptions(SOCKET socket);
@@ -322,6 +326,15 @@ private:
 
     // [coalescing] 틱 내 송신 대기 세션 목록 (게임 스레드 단독 접근 → 무락)
     std::vector<CSession*> _dirtySessions;
+
+#if USE_SEND_THREAD
+    // 송신 스레드 핸드오프 — 게임루프가 dirty 배치(sessionId)를 넘기고 send 스레드가 WSASend.
+    std::thread             _sendThread;
+    std::mutex              _flushMutex;
+    std::condition_variable _flushCv;
+    std::vector<int64_t>    _flushQueue;             // 게임스레드 push(lock) / send스레드 swap-out
+    bool                    _sendThreadStop = false; // _flushMutex로 보호
+#endif
 
     // 레이어 간 통신 큐 (QUEUE_BASED 모드용)
     ThreadSafeQueue<NetworkEvent> _eventQueue;    // 네트워크 -> 게임 로직

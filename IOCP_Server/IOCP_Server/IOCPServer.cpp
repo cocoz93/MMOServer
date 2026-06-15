@@ -204,6 +204,11 @@ bool CIOCPServer::Start()
         _workerThreads.emplace_back(&CIOCPServer::WorkerThread, this);
     }
 
+#if USE_SEND_THREAD
+    // 전용 송신 스레드 생성 (게임루프 flush 오프로딩)
+    _sendThread = std::thread(&CIOCPServer::SendThread, this);
+#endif
+
     // Accept 스레드 생성
     _acceptThread = std::thread(&CIOCPServer::AcceptThread, this);
 
@@ -310,6 +315,19 @@ void CIOCPServer::ShutdownServer()
     {
         _acceptThread.join();
     }
+
+#if USE_SEND_THREAD
+    // send 스레드 정지·드레인 — 아래 IOCount 0 대기 루프 *이전*에 멈춰야
+    //      PostSend가 pin한 IOCount 잔존으로 인한 데드락을 막는다.
+    //      게임루프는 CGameServer::Stop에서 이미 join된 상태라 새 handoff는 들어오지 않는다.
+    {
+        std::lock_guard<std::mutex> lk(_flushMutex);
+        _sendThreadStop = true;
+    }
+    _flushCv.notify_one();
+    if (_sendThread.joinable())
+        _sendThread.join();
+#endif
 
     // 타이밍 휠 정지 (더 이상 타임아웃 disconnect 발생하지 않음)
     if (_timingWheel)
@@ -1098,7 +1116,20 @@ bool CIOCPServer::RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg, [[maybe
 // PostSend가 내부에서 AcquireSession/_disconnecting을 재검증하므로 dirty 등록 후 세션이 끊겨도 안전.
 void CIOCPServer::FlushPendingSends()
 {
-#if USE_SEND_COALESCING
+#if USE_SEND_THREAD
+    // dirty 배치(sessionId)를 send 스레드에 핸드오프. 게임루프는 WSASend(PostSend)를 하지 않는다.
+    {
+        std::lock_guard<std::mutex> lk(_flushMutex);
+        for (CSession* session : _dirtySessions)
+        {
+            const int64_t sessionId = session->_sessionId; // volatile → 일반 복사 후 사용
+            session->_sendDirty = false;                   // 게임 스레드 단독 접근 → 안전
+            _flushQueue.push_back(sessionId);              // raw ptr 아닌 id (비동기 release/재할당 대비)
+        }
+    }
+    _dirtySessions.clear();
+    _flushCv.notify_one();
+#elif USE_SEND_COALESCING
     for (CSession* session : _dirtySessions)
     {
         session->_sendDirty = false;
@@ -1107,6 +1138,34 @@ void CIOCPServer::FlushPendingSends()
     _dirtySessions.clear();
 #endif
 }
+
+#if USE_SEND_THREAD
+// 전용 송신 스레드 — 게임루프가 넘긴 dirty 배치를 받아 세션당 1회 WSASend(PostSend)를 수행.
+// sessionId로 받아 FindSession으로 재검증(_sessionId 일치·미종료 = ABA-safe)한 뒤 PostSend를 호출하며,
+// PostSend 내부의 AcquireSession/_sending 가드가 lifetime·세션당 단일 송신을 보장한다.
+void CIOCPServer::SendThread()
+{
+    std::vector<int64_t> local;
+    while (true)
+    {
+        {
+            std::unique_lock<std::mutex> lk(_flushMutex);
+            _flushCv.wait(lk, [this] { return !_flushQueue.empty() || _sendThreadStop; });
+            if (_flushQueue.empty() && _sendThreadStop)
+                break;                       // 정지 요청 + 잔여 배치 드레인 완료 → 종료
+            local.swap(_flushQueue);         // 누적분을 통째로 인출 (백로그 시 여러 틱 병합 가능)
+        }
+
+        for (int64_t sessionId : local)
+        {
+            CSession* session = FindSession(sessionId);  // id 일치·미종료 검증
+            if (session)
+                PostSend(session);
+        }
+        local.clear();
+    }
+}
+#endif
 
 // ParsePackets 쪽에서 호출
 void CIOCPServer::PushNetworkEvent(NetworkEvent&& event)
