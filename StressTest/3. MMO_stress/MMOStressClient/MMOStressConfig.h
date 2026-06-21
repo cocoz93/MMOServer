@@ -2,6 +2,7 @@
 #include <string>
 #include <Windows.h>
 #include <cstdio>
+#include <cstdlib>      // wcstol (ClientCores 범위 파싱)
 
 struct MMOStressConfig
 {
@@ -12,6 +13,7 @@ struct MMOStressConfig
     int         clientsPerThread    = 2000;
     int         reconnectIntervalMs = 1000;
     int         connectTimeoutMs    = 5000;
+    unsigned long long affinityMask = 0;   // 클라 프로세스 코어 핀 (0=미적용)
 
     // ── [Timing] ────────────────────────────────────────────────
     int         loopDelayMs         = 1;
@@ -73,6 +75,12 @@ struct MMOStressConfig
         reconnectIntervalMs = GetPrivateProfileIntW(L"Connection", L"ReconnectIntervalMs", reconnectIntervalMs, path);
         connectTimeoutMs    = GetPrivateProfileIntW(L"Connection", L"ConnectTimeoutMs", connectTimeoutMs, path);
 
+        // ClientCores: 물리코어 범위("6-9") → 논리코어 비트마스크 (HT 형제 자동 포함)
+        // 서버와 코어가 겹치지 않게 잡아 한 PC 동시 측정 시 격리한다.
+        wchar_t coresBuf[64];
+        GetPrivateProfileStringW(L"Connection", L"ClientCores", L"", coresBuf, 64, path);
+        affinityMask = ParsePhysicalCoreMask(coresBuf);
+
         // [Timing]
         loopDelayMs         = GetPrivateProfileIntW(L"Timing", L"LoopDelayMs", loopDelayMs, path);
         tickIntervalMs      = GetPrivateProfileIntW(L"Timing", L"TickIntervalMs", tickIntervalMs, path);
@@ -98,6 +106,25 @@ struct MMOStressConfig
     }
 
 private:
+    // "6-9" 또는 "3" 형태의 물리코어 범위 → 논리코어 비트마스크.
+    // 가정: 물리코어 k = 논리코어 2k, 2k+1 (Intel HT 표준 매핑).
+    // 빈 문자열·숫자 아님 → 0(미적용).
+    static unsigned long long ParsePhysicalCoreMask(const wchar_t* s)
+    {
+        if (!s) return 0;
+        wchar_t* end = nullptr;
+        long first = wcstol(s, &end, 10);
+        if (end == s) return 0;                          // 숫자로 시작 안 함
+        long last = first;
+        if (*end == L'-') last = wcstol(end + 1, &end, 10);
+        if (first < 0 || last < first) return 0;
+        if (last > 31) last = 31;                        // 64비트 마스크 상한 (물리코어 0~31)
+        unsigned long long mask = 0;
+        for (long k = first; k <= last; ++k)
+            mask |= (0x3ull << (2 * k));                 // HT 형제 2논리코어
+        return mask;
+    }
+
     void PrintConfig() const
     {
         wprintf(L"  ── Connection ──\n");
@@ -107,6 +134,7 @@ private:
         wprintf(L"  ClientsPerThread  : %d\n", clientsPerThread);
         wprintf(L"  ReconnectMs       : %d\n", reconnectIntervalMs);
         wprintf(L"  ConnectTimeoutMs  : %d\n", connectTimeoutMs);
+        wprintf(L"  AffinityMask      : 0x%llX\n", affinityMask);
         wprintf(L"  ── Timing ──\n");
         wprintf(L"  LoopDelayMs       : %d\n", loopDelayMs);
         wprintf(L"  TickIntervalMs    : %d\n", tickIntervalMs);

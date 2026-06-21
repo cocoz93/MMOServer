@@ -33,6 +33,15 @@ int main()
     // 설정 로드
     g_Config.Load();
 
+    // CPU 코어 핀 — DummyManager 스레드 생성 전에 걸어야 전부 마스크를 상속한다.
+    if (g_Config.affinityMask != 0)
+    {
+        if (SetProcessAffinityMask(GetCurrentProcess(), (DWORD_PTR)g_Config.affinityMask))
+            wprintf(L"[Affinity] ProcessAffinityMask = 0x%llX\n", g_Config.affinityMask);
+        else
+            wprintf(L"[Affinity] SetProcessAffinityMask failed: %lu\n", GetLastError());
+    }
+
     // ── DummyManager N개 분산 생성 ──────────────────────────────
     const int totalClients    = g_Config.clientCount;
     const int perThread       = g_Config.clientsPerThread;

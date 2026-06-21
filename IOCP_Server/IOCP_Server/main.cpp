@@ -35,6 +35,16 @@ int main()
     ServerConfig config;
     config.Load();
 
+    // CPU 코어 핀(affinity) — Init/Start 전에 걸어야 이후 생성되는
+    // worker/send/accept/gameloop 스레드가 전부 이 마스크를 상속한다.
+    if (config.affinityMask != 0)
+    {
+        if (SetProcessAffinityMask(GetCurrentProcess(), static_cast<DWORD_PTR>(config.affinityMask)))
+            SLOG_INFO("[Affinity] ProcessAffinityMask = 0x{:X}", config.affinityMask);
+        else
+            SLOG_WARN("[Affinity] SetProcessAffinityMask failed: {}", GetLastError());
+    }
+
     SLOG_INFO("=== IOCP MMO Server ===");
     SLOG_INFO("Port: {}", config.port);
     SLOG_INFO("Max Clients: {}", config.maxClients);
