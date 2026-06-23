@@ -63,7 +63,12 @@ enum class MsgType : uint16_t
     //--------------------------------------------------
     // 에러
     //--------------------------------------------------
-    S2C_ERROR
+    S2C_ERROR,
+
+    //--------------------------------------------------
+    // 섹터 묶음 업데이트 (USE_SECTOR_AGGREGATION)
+    //--------------------------------------------------
+    S2C_SECTOR_UPDATES      // 서버 → 클라이언트: 한 섹터의 이번 틱 최종 위치/상태 묶음
 };
 
 // 패킷 헤더 (모든 패킷 공통)
@@ -228,6 +233,38 @@ struct MSG_S2C_SYNC_POSITION
     float y;
 
     MSG_S2C_SYNC_POSITION() : header{ sizeof(*this), TYPE }, playerId(0), x(0), y(0) {}
+};
+
+//==================================================
+// 섹터 묶음 업데이트 (USE_SECTOR_AGGREGATION)
+//==================================================
+
+// 묶음 1엔트리 — 한 플레이어의 이번 틱 최종 상태 (14B, pack(1))
+struct SectorUpdateEntry
+{
+    int32_t playerId;
+    uint8_t direction;    // Direction enum
+    uint8_t moveState;    // MoveState enum (0=IDLE, 1=MOVING)
+    float   x;
+    float   y;
+};
+
+// 한 섹터 최대 엔트리 수. 패킷이 1460B를 넘지 않게:
+//   (MSG_DEFAULT_SIZE 1460 - 헤더4 - count2) / 엔트리14 = 최대 103개 → 여유 두고 100.
+// 균등 부하 평균 섹터 ~55명이라 평소엔 1패킷, 초과 시 청크 분할
+constexpr int SECTOR_UPDATE_MAX_ENTRIES = 100;
+
+// S2C: 한 섹터의 이번 틱 변경분 묶음 (이동 1건당 즉시 전달을 대체)
+// 가변 길이 — 와이어에는 header + count + SectorUpdateEntry × count 만 실린다.
+// entries는 최대치 배열로 선언하되 빌더가 count개만 직렬화하고 header.size를 백패치한다.
+struct MSG_S2C_SECTOR_UPDATES
+{
+    static constexpr MsgType TYPE = MsgType::S2C_SECTOR_UPDATES;
+    MsgHeader header;
+    uint16_t  count;
+    SectorUpdateEntry entries[SECTOR_UPDATE_MAX_ENTRIES];
+
+    MSG_S2C_SECTOR_UPDATES() : header{ sizeof(*this), TYPE }, count(0), entries{} {}
 };
 
 //==================================================

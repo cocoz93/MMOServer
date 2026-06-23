@@ -197,6 +197,30 @@ namespace
             offsetof(MSG_S2C_CHAT, message) + (msgLen + 1) * sizeof(wchar_t));
         return buf;
     }
+
+#if USE_SECTOR_AGGREGATION
+    // 섹터 묶음 — dirty 플레이어 [0,count)의 최종 상태(위치·방향·이동상태)를 직렬화.
+    // 스칼라 시퀀스(<<)라 SetData 불필요. count는 선기록(백패치 불필요).
+    CSerialBuffer* MakeSectorUpdates(CPlayer** players, int count)
+    {
+        CSerialBuffer* buf = CSerialBuffer::Alloc();
+        BeginPacket(buf, MSG_S2C_SECTOR_UPDATES::TYPE);
+        *buf << static_cast<WORD>(count);
+        for (int i = 0; i < count; ++i)
+        {
+            CPlayer* p = players[i];
+            *buf << static_cast<int>(p->_playerId);
+            *buf << static_cast<BYTE>(p->_direction);
+            *buf << static_cast<BYTE>(p->_moveState);
+            *buf << p->_x;
+            *buf << p->_y;
+        }
+        FinalizePacket(buf);
+        assert(buf->GetDataSize() ==
+            static_cast<int>(sizeof(uint16_t) + count * sizeof(SectorUpdateEntry)));
+        return buf;
+    }
+#endif
 }
 
 CGameServer::CGameServer(CMonitorManager& monitor)
@@ -248,6 +272,7 @@ bool CGameServer::Init(ServerMode mode, int port, int maxClients,
         _tickSectorChanges.reserve(maxPerChannel);     // 전체 서버 TickAll 결과
         _tickClampedPlayers.reserve(maxPerChannel);    // 전체 서버 TickAll 결과
         _sectorChangedSet.reserve(maxPerChannel);      // 전체 서버 dedup
+        _dirtyMovers.reserve(maxClients);              // 전체 서버 dirty (이동/sync 묶음 대상)
     }
 
     return true;
@@ -375,9 +400,13 @@ void CGameServer::GameLoopThread()
             CZone* zone = _mapManager.GetZone(player->_zoneId);
             if (zone != nullptr)
             {
+#if USE_SECTOR_AGGREGATION
+                MarkMoveDirty(player);
+#else
                 BroadcastAroundSector(zone, player,
                     MakeMoveStop(player->_playerId, static_cast<uint8_t>(player->_direction),
                         player->_x, player->_y), false);  // 본인 포함
+#endif
             }
         }
 
@@ -404,12 +433,21 @@ void CGameServer::GameLoopThread()
                     player->_lastSyncX = player->_x;
                     player->_lastSyncY = player->_y;
 
+#if USE_SECTOR_AGGREGATION
+                    MarkMoveDirty(player);
+#else
                     BroadcastAroundSector(zone, player,
                         MakeSyncPosition(player->_playerId, player->_x, player->_y),
                         false);  // 본인 포함 (이동 중 클라-서버 좌표 드리프트 보정)
+#endif
                 }
             });
         }
+
+#if USE_SECTOR_AGGREGATION
+        // [묶음] 이번 틱 dirty를 섹터별 묶음으로 송신 (RequestSendMsg는 Deferred → 아래 flush가 묶어 보냄)
+        FlushSectorUpdates();
+#endif
 
         // [coalescing] 이번 틱에 쌓인 송신을 세션당 1회 WSASend로 flush (broadcast_sync 페이즈에 계상)
         // [계측] flush 구간을 별도 측정 → 비용종류별 "송신(WSASend)" 분리. _phaseBroadcastSyncUs는 그대로 둠(이 값을 포함).
@@ -671,9 +709,13 @@ void CGameServer::RecvMoveStart(CPlayer* player, CSerialBuffer* pMsg)
             player->_moveState = MoveState::IDLE;
             player->_direction = dir;
 
+#if USE_SECTOR_AGGREGATION
+            MarkMoveDirty(player);
+#else
             BroadcastAroundSector(zone, player,
                 MakeMoveStop(player->_playerId, static_cast<uint8_t>(dir),
                     player->_x, player->_y), false);  // 본인 포함
+#endif
             return;
         }
 
@@ -681,9 +723,13 @@ void CGameServer::RecvMoveStart(CPlayer* player, CSerialBuffer* pMsg)
         player->_lastSyncX = player->_x;
         player->_lastSyncY = player->_y;
 
+#if USE_SECTOR_AGGREGATION
+        MarkMoveDirty(player);
+#else
         BroadcastAroundSector(zone, player,
             MakeMoveStart(player->_playerId, static_cast<uint8_t>(dir),
                 player->_x, player->_y));
+#endif
         return;
     }
 
@@ -740,10 +786,14 @@ void CGameServer::RecvMoveStart(CPlayer* player, CSerialBuffer* pMsg)
     player->_lastSyncX = player->_x;
     player->_lastSyncY = player->_y;
 
-    // 주변에 MOVE_START 브로드캐스트
+    // 주변에 MOVE_START 브로드캐스트 (묶음 모드: dirty 마킹만)
+#if USE_SECTOR_AGGREGATION
+    MarkMoveDirty(player);
+#else
     BroadcastAroundSector(zone, player,
         MakeMoveStart(player->_playerId, static_cast<uint8_t>(dir),
             player->_x, player->_y));
+#endif
 }
 
 void CGameServer::RecvMoveStop(CPlayer* player, CSerialBuffer* pMsg)
@@ -787,10 +837,14 @@ void CGameServer::RecvMoveStop(CPlayer* player, CSerialBuffer* pMsg)
         PushSectorChange(player, oldSectorX, oldSectorY);
     }
 
-    // 주변에 MOVE_STOP 브로드캐스트
+    // 주변에 MOVE_STOP 브로드캐스트 (묶음 모드: dirty 마킹만)
+#if USE_SECTOR_AGGREGATION
+    MarkMoveDirty(player);
+#else
     BroadcastAroundSector(zone, player,
         MakeMoveStop(player->_playerId, static_cast<uint8_t>(player->_direction),
             player->_x, player->_y));
+#endif
 }
 
 void CGameServer::RecvChat(CPlayer* player, CSerialBuffer* pMsg)
@@ -1193,6 +1247,16 @@ void CGameServer::BroadcastLeaveZone(CZone* zone, CPlayer* player)
         }
     }
 
+#if USE_SECTOR_AGGREGATION
+    // 섹터 묶음 dirty에서도 제거 (틱 끝 FlushSectorUpdates dangling 방지 — 같은 틱 move→퇴장/존이동)
+    if (player->_moveDirty)
+    {
+        player->_moveDirty = false;
+        _dirtyMovers.erase(std::remove(_dirtyMovers.begin(), _dirtyMovers.end(), player),
+            _dirtyMovers.end());
+    }
+#endif
+
     // 섹터 변경 대기열에서 제거
     _sectorChangedSet.erase(player);
     _pendingSectorChanges.erase(
@@ -1256,3 +1320,119 @@ void CGameServer::ProcessSectorChange(CZone* zone, CPlayer* player,
         }
     }
 }
+
+#if USE_SECTOR_AGGREGATION
+// ==========================================================================
+// 섹터 묶음 (USE_SECTOR_AGGREGATION)
+// ==========================================================================
+
+// 즉시 브로드캐스트 대신 dirty 등록 — 같은 플레이어는 틱당 1회만.
+// 묶음은 틱 끝 최종 상태를 읽으므로 여기선 등록만 (상태는 호출 직전에 이미 갱신됨).
+void CGameServer::MarkMoveDirty(CPlayer* player)
+{
+    if (player->_moveDirty)
+        return;
+    player->_moveDirty = true;
+    _dirtyMovers.push_back(player);
+}
+
+// 틱 끝: dirty 플레이어를 (zone, sector)별로 묶어 그 섹터 주변에 송신.
+void CGameServer::FlushSectorUpdates()
+{
+    if (_dirtyMovers.empty())
+        return;
+
+    // [계측] 묶음 빌드+송신 전체를 enqueue 축에 합산 (baseline의 broadcast_enqueue와 같은 비용종류로 A/B 비교)
+    auto measT0 = std::chrono::steady_clock::now();
+
+    // (zoneId, sectorY, sectorX)로 정렬 → 같은 섹터가 연속 구간이 되어 그룹 단위로 처리
+    std::sort(_dirtyMovers.begin(), _dirtyMovers.end(),
+        [](CPlayer* a, CPlayer* b)
+        {
+            if (a->_zoneId != b->_zoneId)   return a->_zoneId < b->_zoneId;
+            if (a->_sectorY != b->_sectorY) return a->_sectorY < b->_sectorY;
+            return a->_sectorX < b->_sectorX;
+        });
+
+    const size_t total = _dirtyMovers.size();
+    size_t i = 0;
+    while (i < total)
+    {
+        CPlayer* head = _dirtyMovers[i];
+        const int32_t zoneId = head->_zoneId;
+        const int32_t sx = head->_sectorX;
+        const int32_t sy = head->_sectorY;
+
+        // head와 같은 섹터가 이어지는 끝(j)을 찾는다 → [i, j)가 한 섹터 묶음
+        size_t j = i;
+        while (j < total &&  // 배열 끝을 넘지 않는 동안
+            _dirtyMovers[j]->_zoneId == zoneId &&  // j번째가 기준과 같은 zone이고
+            _dirtyMovers[j]->_sectorX == sx &&     // 같은 sectorX이고
+            _dirtyMovers[j]->_sectorY == sy)       // 같은 sectorY이면
+            ++j;
+
+        // [i, j) 묶음을 SECTOR_UPDATE_MAX_ENTRIES씩 잘라 패킷화 → 섹터(sx,sy) 주변에 broadcast
+        CZone* zone = _mapManager.GetZone(zoneId);
+        if (zone != nullptr)
+        {
+            // 한 섹터를 SECTOR_UPDATE_MAX_ENTRIES씩 끊어 송신 (버퍼 한계 가드 — 균등 부하엔 1청크)
+            size_t k = i;
+            while (k < j)
+            {
+                int chunk = static_cast<int>((std::min)(j - k, static_cast<size_t>(SECTOR_UPDATE_MAX_ENTRIES)));
+                CSerialBuffer* buf = MakeSectorUpdates(&_dirtyMovers[k], chunk);
+                BroadcastSectorPacket(zone, sx, sy, buf);
+                k += chunk;
+            }
+        }
+        i = j;
+    }
+
+    // dirty 리셋 (다음 틱 이월 없음)
+    for (CPlayer* p : _dirtyMovers)
+        p->_moveDirty = false;
+    _dirtyMovers.clear();
+
+    auto measT1 = std::chrono::steady_clock::now();
+    _tickBroadcastEnqueueUs += std::chrono::duration_cast<std::chrono::microseconds>(measT1 - measT0).count();
+}
+
+// 섹터 좌표 기준 주변 9섹터에 묶음 패킷 전송.
+// BroadcastAroundSector의 소유권(배치 AddRef)·송신 메트릭 패턴을 그대로 복제 (본인 포함).
+void CGameServer::BroadcastSectorPacket(CZone* zone, int32_t sectorX, int32_t sectorY, CSerialBuffer* pMsg)
+{
+    _broadcastBuffer.clear();
+    zone->GetSectorManager().GetAroundPlayers(sectorX, sectorY, _broadcastBuffer, nullptr);
+
+    InterlockedIncrement64(&_monitor._gameLoop._broadcastCalls);
+    InterlockedExchangeAdd64(&_monitor._gameLoop._broadcastTargets,
+        static_cast<LONG64>(_broadcastBuffer.size()));
+
+    // 유효 타겟(세션 보유) 선카운트 → 배치 AddRef (원자연산 N→1)
+    size_t validCount = 0;
+    for (CPlayer* other : _broadcastBuffer)
+    {
+        if (other->_sessionId != -1)
+            ++validCount;
+    }
+    if (validCount > 0)
+        pMsg->AddRef(static_cast<LONG64>(validCount));
+
+    const int dataSize = pMsg->GetDataSize();
+    size_t sentPkts = 0;
+    for (CPlayer* other : _broadcastBuffer)
+    {
+        if (other->_sessionId == -1)
+            continue;
+        if (_network->RequestSendMsg(other->_sessionId, pMsg, SendFlush::Deferred))
+            ++sentPkts;
+    }
+    if (sentPkts > 0)
+    {
+        InterlockedExchangeAdd64(&_monitor._sendPackets, static_cast<LONG64>(sentPkts));
+        InterlockedExchangeAdd64(&_monitor._sendEnqueuedBytes,
+            static_cast<LONG64>(sentPkts) * dataSize);
+    }
+    pMsg->SubRef();   // 빌더가 넘긴 소유권 1 회수 (타겟 0명이어도 안전 회수)
+}
+#endif // USE_SECTOR_AGGREGATION

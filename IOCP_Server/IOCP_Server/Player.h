@@ -54,6 +54,9 @@ public:
 
     int32_t _listIndex = -1;  // Zone::_playerList 내 인덱스 (O(1) 삭제용)
 
+    // USE_SECTOR_AGGREGATION: 이번 틱 섹터 묶음 dirty 등록 여부 (중복 방지, 틱 끝 리셋)
+    bool _moveDirty = false;
+
 private:
     int64_t _sessionId;   // 네트워크 세션 ID (CGameServer만 접근)
 };

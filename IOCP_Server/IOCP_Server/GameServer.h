@@ -93,6 +93,12 @@ private:
     // 주변 브로드캐스트 (CSerialBuffer — 빌더 RefCount=1 버퍼를 소비)
     void BroadcastAroundSector(CZone* zone, CPlayer* player, CSerialBuffer* pMsg, bool excludeSelf = true);
 
+    // ── 섹터 묶음 경로 (USE_SECTOR_AGGREGATION) ──
+    void MarkMoveDirty(CPlayer* player);   // 즉시 브로드캐스트 대신 dirty 등록 (중복 방지)
+    void FlushSectorUpdates();             // 틱 끝: dirty를 섹터별로 묶어 주변에 송신
+    // 섹터 좌표 기준 주변 9섹터에 묶음 패킷 전송 (BroadcastAroundSector의 소유권/계측 패턴 복제)
+    void BroadcastSectorPacket(CZone* zone, int32_t sectorX, int32_t sectorY, CSerialBuffer* pMsg);
+
     // 패킷별 전송 함수 (Fill + Send)
     void SendZoneInfo(CPlayer* target, CZone* zone);
     void SendCreateMyPlayer(CPlayer* target);
@@ -146,6 +152,9 @@ private:
     std::vector<CPlayer*> _eventAroundBuffer;     // 접속/해제/존이동 전용
     std::vector<SectorChangeInfo> _tickSectorChanges;
     std::vector<CPlayer*> _tickClampedPlayers;
+
+    // USE_SECTOR_AGGREGATION: 이번 틱 이동/sync로 상태가 바뀐 플레이어 (틱 끝에 섹터별 묶음 송신)
+    std::vector<CPlayer*> _dirtyMovers;
 
     // 비용종류별 계측 — 틱 내 누적 후 틱 끝 1회 모니터 반영 (단일 게임루프 스레드 전용 → 누적 자체엔 원자연산 불필요)
     // BroadcastAroundSector가 network/game_logic/broadcast_sync 어느 단계에서 호출돼도 이 멤버에 합산된다.

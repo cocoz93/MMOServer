@@ -623,6 +623,34 @@ void CGameInstance::OnSyncPosition(const MSG_S2C_SYNC_POSITION* msg)
     _eventQueue.Push(std::move(event));
 }
 
+// 섹터 묶음(USE_SECTOR_AGGREGATION): 한 섹터의 이번 틱 변경분.
+// 엔트리마다 최종 상태를 기존 MOVE_START/STOP 이벤트로 분해해 큐에 넣는다(소비측·이벤트타입 재사용).
+// 가변 길이라 header.size로 실제 엔트리 수를 역산해 상한 방어(서버 비정상 시 오버런 차단 — 더미 HandleSectorUpdates와 동일).
+void CGameInstance::OnSectorUpdates(const MSG_S2C_SECTOR_UPDATES* msg)
+{
+    uint16_t count = msg->count;
+    uint16_t avail = static_cast<uint16_t>(
+        (msg->header.size - offsetof(MSG_S2C_SECTOR_UPDATES, entries)) / sizeof(SectorUpdateEntry));
+    if (count > avail)
+        count = avail;
+
+    for (uint16_t i = 0; i < count; ++i)
+    {
+        const SectorUpdateEntry& e = msg->entries[i];
+
+        // moveState: 0=IDLE → MOVE_STOP, 그 외=MOVING → MOVE_START (두 이벤트 모두 x/y/direction 사용)
+        ClientNetworkEvent event{};
+        event.type      = (e.moveState != 0)
+            ? ClientNetworkEvent::Type::MOVE_START
+            : ClientNetworkEvent::Type::MOVE_STOP;
+        event.playerId  = e.playerId;
+        event.x         = e.x;
+        event.y         = e.y;
+        event.direction = e.direction;
+        _eventQueue.Push(std::move(event));
+    }
+}
+
 void CGameInstance::OnZoneChangeOk(const MSG_S2C_ZONE_CHANGE_OK* msg)
 {
     ClientNetworkEvent event{};

@@ -333,6 +333,12 @@ void CClientNetwork::DispatchPacket(const char* data, uint16_t size)
             _gameInstance->OnError(reinterpret_cast<const MSG_S2C_ERROR*>(data));
         break;
 
+    case MsgType::S2C_SECTOR_UPDATES:
+        // 가변 길이: 최소 크기 = header + count (entries 0개) — 채팅과 동일한 검증 패턴
+        if (size >= offsetof(MSG_S2C_SECTOR_UPDATES, entries))
+            _gameInstance->OnSectorUpdates(reinterpret_cast<const MSG_S2C_SECTOR_UPDATES*>(data));
+        break;
+
     default:
         LOG_ERROR_STREAM("Unknown message type: " << static_cast<int>(header->type));
         break;

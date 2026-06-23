@@ -201,6 +201,7 @@ uint16_t DummyClient::GetPacketSize(MsgType type)
     case MsgType::S2C_MOVE_START:          return sizeof(MSG_S2C_MOVE_START);
     case MsgType::S2C_MOVE_STOP:           return sizeof(MSG_S2C_MOVE_STOP);
     case MsgType::S2C_CHAT:               return static_cast<uint16_t>(offsetof(MSG_S2C_CHAT, message) + sizeof(wchar_t)); // 가변 길이: 최소 크기
+    case MsgType::S2C_SECTOR_UPDATES:     return static_cast<uint16_t>(offsetof(MSG_S2C_SECTOR_UPDATES, entries));        // 가변 길이: 최소 = header+count
     case MsgType::S2C_SYNC_POSITION:      return sizeof(MSG_S2C_SYNC_POSITION);
     case MsgType::S2C_ZONE_CHANGE_OK:     return sizeof(MSG_S2C_ZONE_CHANGE_OK);
     case MsgType::S2C_ZONE_CHANGE_FAIL:   return sizeof(MSG_S2C_ZONE_CHANGE_FAIL);
@@ -271,6 +272,7 @@ void DummyClient::ProcessPackets(StatsLocal& stats, const MMOStressConfig& confi
                 _lastRttMs = -1;
             }
             break;
+        case MsgType::S2C_SECTOR_UPDATES:      HandleSectorUpdates(packet);     break;
         case MsgType::S2C_ZONE_CHANGE_OK:      HandleZoneChangeOk(packet);      break;
         case MsgType::S2C_ZONE_CHANGE_FAIL:
             HandleZoneChangeFail(packet);
@@ -354,6 +356,30 @@ void DummyClient::HandleChat(const char* packet)
         if (rtt < 0) rtt = 0;
         _chatSentMs = 0;
         _lastRttMs  = rtt;  // stats 접근 가능한 ProcessPackets에서 RecordRtt
+    }
+}
+
+void DummyClient::HandleSectorUpdates(const char* packet)
+{
+    // 섹터 묶음: count개 엔트리 중 본인 것만 좌표/상태 동기화 (타 플레이어는 더미가 추적 안 함).
+    // 가변 길이라 header.size로 실제 엔트리 수를 역산해 상한 방어(서버 비정상 시 오버런 차단).
+    auto* msg = reinterpret_cast<const MSG_S2C_SECTOR_UPDATES*>(packet);
+
+    uint16_t count = msg->count;
+    uint16_t avail = static_cast<uint16_t>(
+        (msg->header.size - offsetof(MSG_S2C_SECTOR_UPDATES, entries)) / sizeof(SectorUpdateEntry));
+    if (count > avail)
+        count = avail;
+
+    for (uint16_t i = 0; i < count; ++i)
+    {
+        const SectorUpdateEntry& e = msg->entries[i];
+        if (e.playerId == _playerId)
+        {
+            _x      = e.x;
+            _y      = e.y;
+            _moving = (e.moveState != 0);
+        }
     }
 }
 

@@ -42,3 +42,11 @@
 #if USE_SEND_THREAD && !USE_SEND_COALESCING
 	#error "USE_SEND_THREAD requires USE_SEND_COALESCING=1 (dirty 배치 핸드오프 의존)"
 #endif
+
+// 섹터 단위 묶음 패킷 실험 — 이동/sync를 이벤트마다 즉시 브로드캐스트하지 않고,
+// 틱 끝에 "섹터별 최종 상태(위치·방향·이동상태)"를 한 패킷(S2C_SECTOR_UPDATES)으로 묶어 그 섹터 주변 9섹터에만 전달.
+// 목적: 수신자별 복사 횟수를 이벤트 수와 무관하게 (플레이어 × AOI섹터)로 상한 고정.
+//   1: dirty 마킹 → 틱 끝 FlushSectorUpdates로 섹터 묶음 송신 [실험]
+//   0: 기존 — 이벤트마다 즉시 BroadcastAroundSector (baseline)
+//   주의: 틱 내 start→stop 전이 "연출"은 최종상태만 남아 손실(위치 정합은 유지).
+#define USE_SECTOR_AGGREGATION 1

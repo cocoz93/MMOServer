@@ -67,6 +67,7 @@ private:
     void HandleCreateOtherPlayer(const char* packet);
     void HandleDeletePlayer(const char* packet);
     void HandleChat(const char* packet);
+    void HandleSectorUpdates(const char* packet);
     void HandleZoneChangeOk(const char* packet);
     void HandleZoneChangeFail(const char* packet);
 
