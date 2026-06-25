@@ -377,6 +377,9 @@ void CGameServer::GameLoopThread()
             PushSectorChange(change.player, change.oldSectorX, change.oldSectorY);
         }
 
+        // [계측] 멤버십(섹터이동 CREATE/DELETE) 송신 시간 — 구간 1쌍으로만 측정.
+        //   per-call 금지: 멤버십은 ~1.04M/s라 건당 now()를 넣으면 측정 오버헤드가 대상을 오염시킴.
+        auto membT0 = Clock::now();
         for (const auto& change : _pendingSectorChanges)
         {
             // 출발 섹터 == 현재 섹터이면 원위치 복귀 → 브로드캐스트 불필요
@@ -391,6 +394,8 @@ void CGameServer::GameLoopThread()
                                     change.oldSectorX, change.oldSectorY);
             }
         }
+        _tickMembershipUs += std::chrono::duration_cast<std::chrono::microseconds>(
+            Clock::now() - membT0).count();
         _pendingSectorChanges.clear();
         _sectorChangedSet.clear();
 
@@ -470,10 +475,12 @@ void CGameServer::GameLoopThread()
         InterlockedExchangeAdd64(&_monitor._gameLoop._broadcastEnqueueUs, _tickBroadcastEnqueueUs);
         InterlockedExchangeAdd64(&_monitor._gameLoop._flushSendUs,
             std::chrono::duration_cast<std::chrono::microseconds>(flushT1 - flushT0).count());
-        InterlockedExchangeAdd64(&_monitor._gameLoop._membershipSends, _tickMembershipSends);  // 멤버십 변경 복사량
+        InterlockedExchangeAdd64(&_monitor._gameLoop._membershipSends, _tickMembershipSends);  // 멤버십 변경 복사량(횟수)
+        InterlockedExchangeAdd64(&_monitor._gameLoop._membershipCostUs, _tickMembershipUs);    // 멤버십 변경 송신 시간
         _tickBroadcastGatherUs = 0;
         _tickBroadcastEnqueueUs = 0;
         _tickMembershipSends = 0;
+        _tickMembershipUs = 0;
 
         // 5) 빈 동적 채널 정리
         ++_cleanupFrameCount;

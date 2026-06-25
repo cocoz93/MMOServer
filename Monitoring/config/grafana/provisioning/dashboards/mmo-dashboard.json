@@ -468,7 +468,7 @@
     },
     {
       "type": "timeseries",
-      "title": "[2단계] 브로드캐스트 비용 종류별 (ms/tick) — gather·copy(enqueue)·send(flush)",
+      "title": "[2단계] 브로드캐스트 비용 종류별 (ms/tick) — gather·copy(enqueue)·send(flush)·membership",
       "gridPos": { "h": 7, "w": 12, "x": 0, "y": 57 },
       "fieldConfig": {
         "defaults": {
@@ -478,9 +478,10 @@
         "overrides": []
       },
       "targets": [
-        { "expr": "rate(mmo_broadcast_cost_seconds_total{type=\"gather\"}[1m]) / rate(mmo_tick_duration_seconds_count[1m]) * 1000", "legendFormat": "gather(모으기)", "refId": "A" },
-        { "expr": "rate(mmo_broadcast_cost_seconds_total{type=\"enqueue\"}[1m]) / rate(mmo_tick_duration_seconds_count[1m]) * 1000", "legendFormat": "copy(enqueue)", "refId": "B" },
-        { "expr": "rate(mmo_broadcast_cost_seconds_total{type=\"flush_send\"}[1m]) / rate(mmo_tick_duration_seconds_count[1m]) * 1000", "legendFormat": "send(flush, 전체송신)", "refId": "C" }
+        { "expr": "rate(mmo_broadcast_cost_seconds_total{type=\"gather\"}[1m]) / ignoring(type) rate(mmo_tick_duration_seconds_count[1m]) * 1000", "legendFormat": "gather(모으기)", "refId": "A" },
+        { "expr": "rate(mmo_broadcast_cost_seconds_total{type=\"enqueue\"}[1m]) / ignoring(type) rate(mmo_tick_duration_seconds_count[1m]) * 1000", "legendFormat": "copy(enqueue)", "refId": "B" },
+        { "expr": "rate(mmo_broadcast_cost_seconds_total{type=\"flush_send\"}[1m]) / ignoring(type) rate(mmo_tick_duration_seconds_count[1m]) * 1000", "legendFormat": "send(flush, 전체송신)", "refId": "C" },
+        { "expr": "rate(mmo_membership_cost_seconds_total[1m]) / rate(mmo_tick_duration_seconds_count[1m]) * 1000", "legendFormat": "membership(멤버십복사)", "refId": "D" }
       ]
     },
     {

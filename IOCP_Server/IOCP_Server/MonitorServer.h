@@ -215,6 +215,16 @@ private:
         ss << std::defaultfloat;
         ss << "\n";
 
+        // 멤버십(섹터이동 CREATE/DELETE) 송신 시간 — broadcast_cost와 별도 메트릭(sum 합산 오염 방지).
+        //   game_logic 페이즈에 섞여 있던 멤버십 복사를 분리 → "tick의 몇 ms가 멤버십이냐" 판정용.
+        ss << "# HELP mmo_membership_cost_seconds_total Cumulative membership-change send time (ProcessSectorChange path; split from game_logic phase)\n";
+        ss << "# TYPE mmo_membership_cost_seconds_total counter\n";
+        ss << std::fixed << std::setprecision(6);
+        ss << "mmo_membership_cost_seconds_total "
+           << (static_cast<double>(_monitor._gameLoop._membershipCostUs) / 1000000.0) << "\n";
+        ss << std::defaultfloat;
+        ss << "\n";
+
         // [USE_SEND_THREAD] send 스레드의 실제 WSASend 시간 — broadcast_cost와 "별도 메트릭"으로 노출.
         //   broadcast_cost 합산 쿼리(broadcast_total/share)에 섞이면 다른 스레드 비용이 게임루프 틱
         //   분해를 오염시키므로 분리한다. 토글 OFF면 0 (A/B에서 baseline=0으로 비교 가능).

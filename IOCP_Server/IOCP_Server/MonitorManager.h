@@ -93,6 +93,11 @@ public:
         //   비교해 비계측 복사의 비중을 가늠 → 정밀 측정(choke-point) 필요 여부 판단용.
         volatile LONG64 _membershipSends = 0;
 
+        // 멤버십 변경 송신(복사) 시간 — ProcessSectorChange 구간 전용(섹터이동분).
+        //   game_logic 페이즈(_phaseGameLogicUs)에 섞여 있던 멤버십 복사를 분리 측정 → 묶음 최적화 ROI 판단용.
+        //   접속/퇴장(BroadcastEnter/LeaveZone)은 네트워크 페이즈라 1차 제외.
+        volatile LONG64 _membershipCostUs = 0;
+
         // 비용종류별 계측 (counter, 마이크로초 누적) — 1단계: BroadcastAroundSector hot path 전용
         //
         // 기존 _phase*Us는 "루프 단계별"이라 하나의 브로드캐스트 비용이 network/broadcast_sync에
