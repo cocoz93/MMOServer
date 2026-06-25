@@ -84,11 +84,30 @@ void CSession::Close()
 }
 
 // CIOCPServer Implementation
+
+// affinity로 제한된 프로세스의 가용 논리코어 수를 센다 (마스크의 set 비트 수).
+// affinity 미적용이면 시스템 전체 논리코어 수로 폴백.
+// main에서 SetProcessAffinityMask 이후 Start()에서 호출되므로 정확한 값을 반환한다.
+static int ResolveServerCoreCount()
+{
+    DWORD_PTR procMask = 0, sysMask = 0;
+    if (GetProcessAffinityMask(GetCurrentProcess(), &procMask, &sysMask) && procMask != 0)
+    {
+        int count = 0;
+        for (DWORD_PTR m = procMask; m != 0; m &= (m - 1))
+            ++count;
+        if (count > 0)
+            return count;
+    }
+    return static_cast<int>(std::thread::hardware_concurrency());
+}
+
 CIOCPServer::CIOCPServer(int port, int maxClients, ServerMode mode,
-                         CMonitorManager& monitor)
+                         CMonitorManager& monitor, int workerThreads)
     : _port(port)
     , _maxClients(maxClients)
     , _serverMode(mode)
+    , _configuredWorkers(workerThreads)
     , _monitor(monitor)
     , _running(FALSE)
     , _sessionIdCounter(1)  // 0은 사용하지 않음
@@ -167,8 +186,14 @@ bool CIOCPServer::Start()
         return false;
     }
 
-    // IOCP 핸들 생성
-    _iocpHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0, 0);
+    // 워커 수·IOCP concurrency 산정 — affinity로 제한된 가용 코어 수가 단일 기준.
+    // (INI WorkerThreads>0이면 워커 수만 그 값으로 오버라이드, concurrency는 코어 수 유지)
+    const int coreCount = ResolveServerCoreCount();
+    const int workerCount = (_configuredWorkers > 0) ? _configuredWorkers : coreCount;
+
+    // IOCP 핸들 생성 — NumberOfConcurrentThreads = 가용 코어 수 (동시 실행 워커 상한)
+    _iocpHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0,
+                                         static_cast<DWORD>(coreCount));
     if (_iocpHandle == NULL)
     {
         WSACleanup();
@@ -197,8 +222,8 @@ bool CIOCPServer::Start()
     }
     _timingWheel->Start(OnSessionTimeout, this);
 
-    // 워커 스레드 생성 (CPU 코어 * 2)
-    int threadCount = std::thread::hardware_concurrency() * 2;
+    // 워커 스레드 생성 — affinity 가용 코어 수 기준 (INI WorkerThreads로 오버라이드 가능)
+    int threadCount = workerCount;
     for (int i = 0; i < threadCount; ++i)
     {
         _workerThreads.emplace_back(&CIOCPServer::WorkerThread, this);
@@ -219,7 +244,8 @@ bool CIOCPServer::Start()
     case ServerMode::NetWorkLib_EchoTest: modeName = "NetWorkLib_EchoTest"; break;
     case ServerMode::GameServer:          modeName = "GameServer";          break;
     }
-    SLOG_INFO("[Network] Server started with {} worker threads (Mode: {})", threadCount, modeName);
+    SLOG_INFO("[Network] Server started — worker threads={}, IOCP concurrency={} (affinity cores={}, Mode: {})",
+              threadCount, coreCount, coreCount, modeName);
     return true;
 }
 

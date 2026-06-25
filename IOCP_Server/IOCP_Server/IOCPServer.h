@@ -242,7 +242,7 @@ class CIOCPServer
 {
 public:
     explicit CIOCPServer(int port, int maxClients, ServerMode mode,
-                        CMonitorManager& monitor);
+                        CMonitorManager& monitor, int workerThreads = 0);
     virtual ~CIOCPServer();
 
     bool Start();
@@ -311,6 +311,7 @@ private:
     int _port;
     int _maxClients;
     ServerMode _serverMode;
+    int _configuredWorkers;   // INI 지정 워커 수 (0=affinity 코어 수로 자동 산정)
     CMonitorManager& _monitor;
     volatile LONG _running;
     volatile LONGLONG _sessionIdCounter;  // 고유 ID용 (하위 48비트)

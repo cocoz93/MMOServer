@@ -43,7 +43,7 @@ public:
 
     // 게임 서버 모드 초기화 (맵 설정 배열)
     bool Init(ServerMode mode, int port, int maxClients,
-              const MapConfig* maps, int32_t mapCount);
+              const MapConfig* maps, int32_t mapCount, int workerThreads = 0);
 
     // 서버 시작/종료
     bool Start();
