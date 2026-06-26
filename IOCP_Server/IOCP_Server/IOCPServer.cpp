@@ -35,6 +35,7 @@ void CSession::Initialize(SOCKET socket, int64_t sessionId)
     _disconnecting = FALSE;
     _sending = FALSE;
     _sendDirty = false;
+    _queuedForSend = FALSE;
     _recvQ.Clear();
 #if USE_LOCKFREE_SENDQ
     // 방어코드 : 정상 흐름에서는 ReleaseSession에서 SendQ 비움
@@ -1150,7 +1151,10 @@ void CIOCPServer::FlushPendingSends()
         {
             const int64_t sessionId = session->_sessionId; // volatile → 일반 복사 후 사용
             session->_sendDirty = false;                   // 게임 스레드 단독 접근 → 안전
-            _flushQueue.push_back(sessionId);              // raw ptr 아닌 id (비동기 release/재할당 대비)
+            // 틱을 넘는 중복 방지: 이미 큐에 있으면(미처리) 다시 넣지 않는다.
+            // 발산 시 같은 세션이 매 틱 쌓여 큐가 무한 증가하는 것을 막음(처리량 천장은 별개).
+            if (InterlockedExchange(&session->_queuedForSend, TRUE) == FALSE)
+                _flushQueue.push_back(sessionId);          // raw ptr 아닌 id (비동기 release/재할당 대비)
         }
     }
     _dirtySessions.clear();
@@ -1203,7 +1207,12 @@ void CIOCPServer::SendThread()
         {
             CSession* session = FindSession(sessionId);  // id 일치·미종료 검증
             if (session)
+            {
+                // 잔류 표식 해제는 PostSend(_sendQ Dequeue) "전"에 — 처리 도중/직후 도착한
+                // 데이터가 다시 큐에 들어가 누락되지 않게(_sending double-check와 동일 원리).
+                InterlockedExchange(&session->_queuedForSend, FALSE);
                 PostSend(session);
+            }
         }
         const auto sendT1 = std::chrono::steady_clock::now();
         InterlockedExchangeAdd64(&_monitor._sendThreadFlushUs,

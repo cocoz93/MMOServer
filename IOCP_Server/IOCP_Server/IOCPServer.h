@@ -85,8 +85,13 @@ public:
     volatile LONG _disconnecting;   // 종료 진행 플래그. InterlockedExchange로 1회만 설정
     volatile SOCKET _socket;
     volatile int64_t _sessionId;    // Initialize에서 설정, IOCount>0 동안 유효
-    volatile LONG _sending;         // 송신 중 플래그 (InterlockedExchange 사용)
-    bool _sendDirty = false;        // [coalescing] 틱 내 송신 대기 표식 (게임 스레드 전용, Initialize에서 리셋)
+    volatile LONG _sending;         // 송신 중 플래그 (InterlockedExchange 사용) — 완료 워커가 고빈도 갱신
+
+    // 게임 스레드가 만지는 송신 표식 묶음 — 위쪽 _sending(완료 워커 고빈도 갱신)과
+    // 캐시라인 분리하여 false sharing 방지. (_queuedForSend는 송신 스레드도 clear)
+    alignas(64) bool _sendDirty = false;   // [coalescing] 틱 내 송신 대기 표식 (게임 스레드 전용, Initialize에서 리셋)
+    volatile LONG _queuedForSend = FALSE;  // [send-thread] _flushQueue 잔류 표식 — 틱을 넘는 중복 push 방지.
+                                           // 게임 스레드(push 시 set)·송신 스레드(처리 전 clear) 공유 → Interlocked 필수.
 
     CRingBufferST _recvQ; // 한 스레드에서만 접근
 
