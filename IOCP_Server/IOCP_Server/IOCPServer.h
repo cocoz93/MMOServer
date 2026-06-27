@@ -14,6 +14,7 @@
 #include <queue>
 #include <functional>
 #include <array>
+#include <atomic>
 
 #include "RingBuffer.h"
 #include "SerialBuffer.h"
@@ -90,7 +91,7 @@ public:
     // 게임 스레드가 만지는 송신 표식 묶음 — 위쪽 _sending(완료 워커 고빈도 갱신)과
     // 캐시라인 분리하여 false sharing 방지. (_queuedForSend는 송신 스레드도 clear)
     alignas(64) bool _sendDirty = false;   // [coalescing] 틱 내 송신 대기 표식 (게임 스레드 전용, Initialize에서 리셋)
-    volatile LONG _queuedForSend = FALSE;  // [send-thread] _flushQueue 잔류 표식 — 틱을 넘는 중복 push 방지.
+    volatile LONG _queuedForSend = FALSE;  // [send-worker] 워커 queue 잔류 표식 — 틱을 넘는 중복 push 방지.
                                            // 게임 스레드(push 시 set)·송신 스레드(처리 전 clear) 공유 → Interlocked 필수.
 
     CRingBufferST _recvQ; // 한 스레드에서만 접근
@@ -247,7 +248,7 @@ class CIOCPServer
 {
 public:
     explicit CIOCPServer(int port, int maxClients, ServerMode mode,
-                        CMonitorManager& monitor, int workerThreads = 0);
+                        CMonitorManager& monitor, int workerThreads = 0, int sendWorkers = 0);
     virtual ~CIOCPServer();
 
     bool Start();
@@ -291,7 +292,7 @@ private:
     void AcceptThread();
     void WorkerThread();
 #if USE_SEND_THREAD
-    void SendThread();   // 전용 송신 스레드 — dirty 배치를 받아 WSASend 수행
+    void SendWorkerThread(int workerIdx);   // 전용 송신 워커 — 자기 워커의 dirty 배치를 받아 WSASend 수행
 #endif
 
     bool CreateListenSocket();
@@ -317,6 +318,7 @@ private:
     int _maxClients;
     ServerMode _serverMode;
     int _configuredWorkers;   // INI 지정 워커 수 (0=affinity 코어 수로 자동 산정)
+    int _configuredSendWorkers;   // INI 지정 송신 워커 수 (0/1=단일)
     CMonitorManager& _monitor;
     volatile LONG _running;
     volatile LONGLONG _sessionIdCounter;  // 고유 ID용 (하위 48비트)
@@ -334,12 +336,18 @@ private:
     std::vector<CSession*> _dirtySessions;
 
 #if USE_SEND_THREAD
-    // 송신 스레드 핸드오프 — 게임루프가 dirty 배치(sessionId)를 넘기고 send 스레드가 WSASend.
-    std::thread             _sendThread;
-    std::mutex              _flushMutex;
-    std::condition_variable _flushCv;
-    std::vector<int64_t>    _flushQueue;             // 게임스레드 push(lock) / send스레드 swap-out
-    bool                    _sendThreadStop = false; // _flushMutex로 보호
+    // 송신 워커 풀 — 게임루프가 dirty 배치(sessionId)를 sessionId%K 워커에 넘기고 각 워커가 WSASend.
+    //   한 세션은 항상 같은 워커(FIFO 보장). 완료(WSASend 결과)는 기존 IOCP 워커가 처리, 제출만 송신 워커 담당.
+    struct alignas(64) SendWorker                      // alignas: 워커 간 false sharing 차단(측정 변수 제거용)
+    {
+        std::mutex              mutex;
+        std::condition_variable cv;
+        std::vector<int64_t>    queue;               // 게임스레드 push(lock) / 워커스레드 swap-out
+        std::thread             thread;
+    };
+    std::vector<std::unique_ptr<SendWorker>> _sendWorkers;   // mutex/cv 이동불가 → 힙 고정 + 포인터만 보관
+    std::atomic<bool>                        _sendStop{ false };
+    int                                      _sendWorkerCount = 1;  // 분배 모듈러(=워커 수)
 #endif
 
     // 레이어 간 통신 큐 (QUEUE_BASED 모드용)

@@ -44,6 +44,7 @@ struct ServerConfig
     bool        monitorEnabled = false;
     unsigned long long affinityMask = 0;   // 프로세스를 묶을 CPU 코어 마스크 (0=미적용)
     int         workerThreads = 0;         // IOCP 워커 스레드 수 (0=서버 affinity 코어 수로 자동 산정)
+    int         sendWorkers   = 0;         // 전용 송신 워커 수 (0/1=단일, 2+=sessionId%K 워커 풀; A/B 실험용)
     std::vector<MapConfig> maps;
 
     // 실행 파일 경로 기준으로 IOCP_ServerConfig.ini 로드
@@ -86,6 +87,9 @@ struct ServerConfig
 
         // WorkerThreads: IOCP 워커 스레드 수 (0=서버 affinity 코어 수로 자동)
         workerThreads = GetPrivateProfileIntW(L"Server", L"WorkerThreads", 0, path);
+
+        // SendWorkers: 전용 송신 워커 수 (0/1=단일 스레드, 2+=sessionId%K 워커 풀)
+        sendWorkers = GetPrivateProfileIntW(L"Server", L"SendWorkers", 0, path);
 
         int mapCount = GetPrivateProfileIntW(L"Server", L"MapCount", 3, path);
 
@@ -181,6 +185,7 @@ private:
         SLOG_INFO("  MonitorOn   : {}", monitorEnabled ? "true" : "false");
         SLOG_INFO("  Affinity    : 0x{:X}", affinityMask);
         SLOG_INFO("  WorkerThr   : {} (0=auto)", workerThreads);
+        SLOG_INFO("  SendWkr     : {} (0/1=single)", sendWorkers);
         SLOG_INFO("  Maps        : {}", maps.size());
     }
 };

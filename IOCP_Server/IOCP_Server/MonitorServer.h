@@ -154,12 +154,20 @@ private:
         ss << "# TYPE mmo_event_queue_size gauge\n";
         ss << "mmo_event_queue_size " << _monitor._gameLoop._eventQueueSize << "\n\n";
 
-        // [USE_SEND_THREAD] 송신 핸드오프 백로그 — send 스레드 핸들이 등록된 경우(토글 ON)에만 노출.
-        if (_monitor._sendThreadHandle != nullptr)
+        // [USE_SEND_THREAD] 송신 핸드오프 백로그 — 워커별(토글 ON & 등록된 워커만). 어느 워커이 밀리는지 sendworker 라벨로.
+        if (_monitor._sendWorkerCount > 0)
         {
-            ss << "# HELP mmo_send_flush_backlog Sessions pulled per send-thread drain (sustained > 1-tick dirty count = send thread falling behind)\n";
+            ss << "# HELP mmo_send_flush_backlog Sessions pulled per send-worker drain (sustained > 1-tick dirty count = that worker falling behind)\n";
             ss << "# TYPE mmo_send_flush_backlog gauge\n";
-            ss << "mmo_send_flush_backlog " << _monitor._flushQueueBacklog << "\n\n";
+            const LONG sendCount = _monitor._sendWorkerCount;
+            for (int i = 0; i < sendCount && i < CMonitorManager::MAX_SEND_WORKERS; ++i)
+            {
+                if (_monitor._sendCounters[i].threadHandle == nullptr)
+                    continue;
+                ss << "mmo_send_flush_backlog{sendworker=\"" << i << "\"} "
+                   << _monitor._sendCounters[i].backlog << "\n";
+            }
+            ss << "\n";
         }
 
         // ── 히스토그램 (비누적 → 누적 변환) ──
@@ -225,14 +233,20 @@ private:
         ss << std::defaultfloat;
         ss << "\n";
 
-        // [USE_SEND_THREAD] send 스레드의 실제 WSASend 시간 — broadcast_cost와 "별도 메트릭"으로 노출.
+        // [USE_SEND_THREAD] send 워커의 실제 WSASend 시간 — broadcast_cost와 "별도 메트릭"으로 노출.
         //   broadcast_cost 합산 쿼리(broadcast_total/share)에 섞이면 다른 스레드 비용이 게임루프 틱
         //   분해를 오염시키므로 분리한다. 토글 OFF면 0 (A/B에서 baseline=0으로 비교 가능).
-        ss << "# HELP mmo_send_thread_flush_seconds_total Cumulative WSASend time on the dedicated send thread (flush_send offloaded here when USE_SEND_THREAD=1)\n";
-        ss << "# TYPE mmo_send_thread_flush_seconds_total counter\n";
+        ss << "# HELP mmo_send_worker_flush_seconds_total Cumulative WSASend time per send-worker (flush_send offloaded here when USE_SEND_THREAD=1)\n";
+        ss << "# TYPE mmo_send_worker_flush_seconds_total counter\n";
         ss << std::fixed << std::setprecision(6);
-        ss << "mmo_send_thread_flush_seconds_total "
-           << (static_cast<double>(_monitor._sendThreadFlushUs) / 1000000.0) << "\n";
+        {
+            const LONG sendCount = _monitor._sendWorkerCount;
+            for (int i = 0; i < sendCount && i < CMonitorManager::MAX_SEND_WORKERS; ++i)
+            {
+                ss << "mmo_send_worker_flush_seconds_total{sendworker=\"" << i << "\"} "
+                   << (static_cast<double>(_monitor._sendCounters[i].flushUs) / 1000000.0) << "\n";
+            }
+        }
         ss << std::defaultfloat;
         ss << "\n";
     }
@@ -344,7 +358,7 @@ private:
     //
     // HTTP 스레드(외부 관측자)가 각 스레드 핸들에 GetThreadTimes를 호출.
     // 두 스크레이프 사이의 ΔCPU시간 / Δ벽시계시간 = 그 구간 평균 점유율.
-    // 게임루프가 드레인 루프에 갇혀도 외부에서 읽으니 동결되지 않음(진단정리 6 보강).
+    // 게임루프가 드워커 루프에 갇혀도 외부에서 읽으니 동결되지 않음(진단정리 6 보강).
     // GetThreadTimes/벽시계 모두 100ns 단위 → 무차원 비율.
     // ══════════════════════════════════════════════════════════════
     struct CpuSample
@@ -408,10 +422,16 @@ private:
                             _monitor._workerCounters[i].threadHandle, _cpuWorker[i], wallNow);
         }
 
-        // [USE_SEND_THREAD] 전용 송신 스레드 (비용 이전 판정 핵심 — 게임루프 flush가 여기로 샜는지).
-        //   토글 OFF면 핸들이 nullptr이라 SampleThreadCpu가 라인을 생략한다.
-        SampleThreadCpu(ss, "sendthread",
-                        _monitor._sendThreadHandle, _cpuSendThread, wallNow);
+        // [USE_SEND_THREAD] 전용 송신 워커 (비용 이전 판정 — 게임루프 flush가 여기로 샜는지, 워커별 분산 확인).
+        //   토글 OFF면 _sendWorkerCount=0이라 루프가 돌지 않음(라인 생략). 워커 노출과 동일 패턴.
+        const LONG sendCount = _monitor._sendWorkerCount;
+        for (int i = 0; i < sendCount && i < CMonitorManager::MAX_SEND_WORKERS; ++i)
+        {
+            char label[24];
+            std::snprintf(label, sizeof(label), "sendworker-%d", i);
+            SampleThreadCpu(ss, label,
+                            _monitor._sendCounters[i].threadHandle, _cpuSendWorker[i], wallNow);
+        }
 
         ss << std::defaultfloat << "\n";
     }
@@ -426,5 +446,5 @@ private:
     // CPU 점유율 직전 샘플 상태 (HTTP 스레드 단독 접근 → 락 불필요)
     CpuSample _cpuGameLoop;
     CpuSample _cpuWorker[CMonitorManager::MAX_WORKER_THREADS];
-    CpuSample _cpuSendThread;   // [USE_SEND_THREAD] 전용 송신 스레드 CPU 직전 샘플
+    CpuSample _cpuSendWorker[CMonitorManager::MAX_SEND_WORKERS];   // [USE_SEND_THREAD] 송신 워커별 CPU 직전 샘플
 };

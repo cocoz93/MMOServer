@@ -58,7 +58,7 @@ int main()
 
     if (!server.Init(config.mode, config.port, config.maxClients,
                      config.maps.data(), static_cast<int32_t>(config.maps.size()),
-                     config.workerThreads))
+                     config.workerThreads, config.sendWorkers))
     {
         SLOG_ERROR("[Error] Server Init failed");
         return 1;

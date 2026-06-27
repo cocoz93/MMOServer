@@ -2,6 +2,7 @@
 #include "../../Shared/Common/ErrorLog.h"
 #include <iostream>
 #include <chrono>
+#include <algorithm>
 
 #pragma comment(lib, "winmm.lib")
 
@@ -104,11 +105,12 @@ static int ResolveServerCoreCount()
 }
 
 CIOCPServer::CIOCPServer(int port, int maxClients, ServerMode mode,
-                         CMonitorManager& monitor, int workerThreads)
+                         CMonitorManager& monitor, int workerThreads, int sendWorkers)
     : _port(port)
     , _maxClients(maxClients)
     , _serverMode(mode)
     , _configuredWorkers(workerThreads)
+    , _configuredSendWorkers(sendWorkers)
     , _monitor(monitor)
     , _running(FALSE)
     , _sessionIdCounter(1)  // 0은 사용하지 않음
@@ -231,8 +233,18 @@ bool CIOCPServer::Start()
     }
 
 #if USE_SEND_THREAD
-    // 전용 송신 스레드 생성 (게임루프 flush 오프로딩)
-    _sendThread = std::thread(&CIOCPServer::SendThread, this);
+    // 전용 송신 워커 풀 생성 — K개 워커(sessionId%K 분배). 기본 1 = 기존 단일 스레드와 동등(회귀 기준선).
+    //   워커 객체(mutex/cv 참조)를 먼저 전부 생성한 뒤 스레드 시작 → 스레드가 자기 워커 참조 시 존재 보장.
+    const int sendCount = std::clamp((_configuredSendWorkers > 0) ? _configuredSendWorkers : 1,
+                                     1, CMonitorManager::MAX_SEND_WORKERS);
+    _sendWorkerCount = sendCount;
+    _monitor._sendWorkerCount = sendCount;            // 노출 루프 상한
+    _sendWorkers.reserve(sendCount);
+    for (int i = 0; i < sendCount; ++i)
+        _sendWorkers.push_back(std::make_unique<SendWorker>());
+    for (int i = 0; i < sendCount; ++i)
+        _sendWorkers[i]->thread = std::thread(&CIOCPServer::SendWorkerThread, this, i);
+    SLOG_INFO("[Network] Send workers = {} (sessionId % K 분배)", sendCount);
 #endif
 
     // Accept 스레드 생성
@@ -344,16 +356,20 @@ void CIOCPServer::ShutdownServer()
     }
 
 #if USE_SEND_THREAD
-    // send 스레드 정지·드레인 — 아래 IOCount 0 대기 루프 *이전*에 멈춰야
-    //      PostSend가 pin한 IOCount 잔존으로 인한 데드락을 막는다.
+    // send 워커 정지·드워커 — 아래 IOCount 0 대기 루프 *이전*에 모든 워커을 멈춰야
+    //      PostSend가 pin한 IOCount 잔존으로 인한 데드락을 막는다(워커이 살아있으면 IOCount가 안 떨어짐).
     //      게임루프는 CGameServer::Stop에서 이미 join된 상태라 새 handoff는 들어오지 않는다.
+    _sendStop.store(true);
+    for (auto& worker : _sendWorkers)
     {
-        std::lock_guard<std::mutex> lk(_flushMutex);
-        _sendThreadStop = true;
+        { std::lock_guard<std::mutex> lk(worker->mutex); }  // 막 wait 진입하는 워커과의 race 방지
+        worker->cv.notify_one();
     }
-    _flushCv.notify_one();
-    if (_sendThread.joinable())
-        _sendThread.join();
+    for (auto& worker : _sendWorkers)
+    {
+        if (worker->thread.joinable())
+            worker->thread.join();
+    }
 #endif
 
     // 타이밍 휠 정지 (더 이상 타임아웃 disconnect 발생하지 않음)
@@ -1144,21 +1160,38 @@ bool CIOCPServer::RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg, [[maybe
 void CIOCPServer::FlushPendingSends()
 {
 #if USE_SEND_THREAD
-    // dirty 배치(sessionId)를 send 스레드에 핸드오프. 게임루프는 WSASend(PostSend)를 하지 않는다.
+    // dirty 배치(sessionId)를 sessionId%K 워커에 핸드오프. 게임루프는 WSASend(PostSend)를 하지 않는다.
+    //   한 세션은 항상 같은 워커 → FIFO 보장. push마다 락 대신 워커별로 묶어 1회 락(최대 K회).
+    //   분류 버퍼는 게임 스레드 단독 접근이라 무락(thread_local 재사용으로 매틱 할당 회피).
+    thread_local std::vector<std::vector<int64_t>> perWorker;
+    if (static_cast<int>(perWorker.size()) != _sendWorkerCount)
+        perWorker.assign(_sendWorkerCount, {});
+    else
+        for (auto& v : perWorker)
+            v.clear();
+
+    for (CSession* session : _dirtySessions)
     {
-        std::lock_guard<std::mutex> lk(_flushMutex);
-        for (CSession* session : _dirtySessions)
-        {
-            const int64_t sessionId = session->_sessionId; // volatile → 일반 복사 후 사용
-            session->_sendDirty = false;                   // 게임 스레드 단독 접근 → 안전
-            // 틱을 넘는 중복 방지: 이미 큐에 있으면(미처리) 다시 넣지 않는다.
-            // 발산 시 같은 세션이 매 틱 쌓여 큐가 무한 증가하는 것을 막음(처리량 천장은 별개).
-            if (InterlockedExchange(&session->_queuedForSend, TRUE) == FALSE)
-                _flushQueue.push_back(sessionId);          // raw ptr 아닌 id (비동기 release/재할당 대비)
-        }
+        const int64_t sessionId = session->_sessionId; // volatile → 일반 복사 후 사용
+        session->_sendDirty = false;                   // 게임 스레드 단독 접근 → 안전
+        // 틱을 넘는 중복 방지(_queuedForSend): 이미 큐에 있으면(미처리) 다시 넣지 않는다.
+        //   발산 시 같은 세션이 매 틱 쌓여 큐가 무한 증가하는 것을 막음(처리량 천장은 별개).
+        if (InterlockedExchange(&session->_queuedForSend, TRUE) == FALSE)
+            perWorker[sessionId % _sendWorkerCount].push_back(sessionId);  // raw ptr 아닌 id
     }
     _dirtySessions.clear();
-    _flushCv.notify_one();
+
+    for (int i = 0; i < _sendWorkerCount; ++i)
+    {
+        if (perWorker[i].empty())
+            continue;
+        SendWorker& worker = *_sendWorkers[i];
+        {
+            std::lock_guard<std::mutex> lk(worker.mutex);
+            worker.queue.insert(worker.queue.end(), perWorker[i].begin(), perWorker[i].end());
+        }
+        worker.cv.notify_one();
+    }
 #elif USE_SEND_COALESCING
     for (CSession* session : _dirtySessions)
     {
@@ -1173,16 +1206,18 @@ void CIOCPServer::FlushPendingSends()
 // 전용 송신 스레드 — 게임루프가 넘긴 dirty 배치를 받아 세션당 1회 WSASend(PostSend)를 수행.
 // sessionId로 받아 FindSession으로 재검증(_sessionId 일치·미종료 = ABA-safe)한 뒤 PostSend를 호출하며,
 // PostSend 내부의 AcquireSession/_sending 가드가 lifetime·세션당 단일 송신을 보장한다.
-void CIOCPServer::SendThread()
+void CIOCPServer::SendWorkerThread(int workerIdx)
 {
-    // [계측] CPU 점유율 측정용 — 자기 실핸들을 복제해 모니터에 등록 (게임루프/워커와 동일 패턴).
+    SendWorker& worker = *_sendWorkers[workerIdx];
+
+    // [계측] CPU 점유율 측정용 — 자기 실핸들을 복제해 모니터 슬롯에 등록 (게임루프/워커와 동일 패턴).
     //   GetCurrentThread()는 의사핸들(호출 스레드 기준)이라 HTTP 스레드에서 못 씀 → 실핸들로 복제.
     {
         HANDLE dup = nullptr;
         if (DuplicateHandle(GetCurrentProcess(), GetCurrentThread(),
                             GetCurrentProcess(), &dup, 0, FALSE, DUPLICATE_SAME_ACCESS))
         {
-            _monitor._sendThreadHandle = dup;
+            _monitor._sendCounters[workerIdx].threadHandle = dup;
         }
     }
 
@@ -1190,18 +1225,17 @@ void CIOCPServer::SendThread()
     while (true)
     {
         {
-            std::unique_lock<std::mutex> lk(_flushMutex);
-            _flushCv.wait(lk, [this] { return !_flushQueue.empty() || _sendThreadStop; });
-            if (_flushQueue.empty() && _sendThreadStop)
-                break;                       // 정지 요청 + 잔여 배치 드레인 완료 → 종료
-            local.swap(_flushQueue);         // 누적분을 통째로 인출 (백로그 시 여러 틱 병합 가능)
+            std::unique_lock<std::mutex> lk(worker.mutex);
+            worker.cv.wait(lk, [this, &worker] { return !worker.queue.empty() || _sendStop.load(); });
+            if (worker.queue.empty() && _sendStop.load())
+                break;                       // 정지 요청 + 잔여 배치 드워커 완료 → 종료
+            local.swap(worker.queue);          // 누적분을 통째로 인출 (백로그 시 여러 틱 병합 가능)
         }
 
-        // [계측] 핸드오프 백로그 — 이번 drain에서 인출한 세션 수 (1틱 dirty 수 초과 = send 스레드가 못 따라감)
-        _monitor._flushQueueBacklog = static_cast<LONG64>(local.size());
+        // [계측] 핸드오프 백로그 — 이번 drain에서 인출한 세션 수 (1틱 dirty 수 초과 = 이 워커이 못 따라감)
+        _monitor._sendCounters[workerIdx].backlog = static_cast<LONG64>(local.size());
 
-        // [계측] send 스레드의 실제 WSASend 시간 — USE_SEND_THREAD=1이면 게임루프 flush_send가 여기로 이전됨.
-        //   게임루프는 더 이상 WSASend를 안 하므로 이 카운터의 단독 writer는 send 스레드(원자 누적).
+        // [계측] 이 워커의 실제 WSASend 시간 — 슬롯당 단독 writer(워커 자신)라 원자 누적.
         const auto sendT0 = std::chrono::steady_clock::now();
         for (int64_t sessionId : local)
         {
@@ -1215,7 +1249,7 @@ void CIOCPServer::SendThread()
             }
         }
         const auto sendT1 = std::chrono::steady_clock::now();
-        InterlockedExchangeAdd64(&_monitor._sendThreadFlushUs,
+        InterlockedExchangeAdd64(&_monitor._sendCounters[workerIdx].flushUs,
             std::chrono::duration_cast<std::chrono::microseconds>(sendT1 - sendT0).count());
 
         local.clear();

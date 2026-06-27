@@ -504,7 +504,7 @@
 
     {
       "type": "row",
-      "title": "[실험] 송신 스레드 분리 (USE_SEND_THREAD) — 비용 이전 판정 (토글 OFF면 sendthread 계열 비어있음)",
+      "title": "[실험] 송신 스레드 분리 (USE_SEND_THREAD) — 비용 이전 판정 (토글 OFF면 sendworker 계열 비어있음)",
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 64 },
       "collapsed": false
     },
@@ -519,13 +519,13 @@
       "targets": [
         { "expr": "avg_over_time(mmo_thread_cpu_ratio{thread=\"gameloop\"}[1m])", "legendFormat": "gameloop", "refId": "A" },
         { "expr": "sum(avg_over_time(mmo_thread_cpu_ratio{thread=~\"worker-.*\"}[1m]))", "legendFormat": "worker 합", "refId": "B" },
-        { "expr": "avg_over_time(mmo_thread_cpu_ratio{thread=\"sendthread\"}[1m])", "legendFormat": "sendthread", "refId": "C" },
+        { "expr": "avg_over_time(mmo_thread_cpu_ratio{thread=~\"sendworker-.*\"}[1m])", "legendFormat": "{{thread}}", "refId": "C" },
         { "expr": "sum(avg_over_time(mmo_thread_cpu_ratio[1m]))", "legendFormat": "★ 전체합 (A/B 비교)", "refId": "D" }
       ]
     },
     {
       "type": "timeseries",
-      "title": "송신 비용 위치 (ms/tick) — flush_send(게임루프) vs sendthread_send",
+      "title": "송신 비용 위치 (ms/tick) — flush_send(게임루프) vs sendworker_send",
       "gridPos": { "h": 7, "w": 8, "x": 8, "y": 65 },
       "fieldConfig": {
         "defaults": {
@@ -536,7 +536,7 @@
       },
       "targets": [
         { "expr": "rate(mmo_broadcast_cost_seconds_total{type=\"flush_send\"}[1m]) / ignoring(type) rate(mmo_tick_duration_seconds_count[1m]) * 1000", "legendFormat": "flush_send(게임루프)", "refId": "A" },
-        { "expr": "rate(mmo_send_thread_flush_seconds_total[1m]) / rate(mmo_tick_duration_seconds_count[1m]) * 1000", "legendFormat": "sendthread_send", "refId": "B" }
+        { "expr": "rate(mmo_send_worker_flush_seconds_total[1m]) / rate(mmo_tick_duration_seconds_count[1m]) * 1000", "legendFormat": "sendworker_send", "refId": "B" }
       ]
     },
     {
