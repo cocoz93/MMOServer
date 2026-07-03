@@ -1,0 +1,84 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<link rel="stylesheet" href="common.css">
+<style>
+  .card{ padding:26px 54px; }
+  .eyebrow{ margin-bottom:10px; }
+  .h-title{ font-size:34px; }
+  .h-rule{ margin:12px 0 9px; }
+  .h-sub{ font-size:19.5px; }
+
+  .cols{ display:flex; gap:28px; align-items:stretch; width:100%; }
+  .col{ flex:1; border-radius:22px; padding:16px 20px; display:flex; flex-direction:column; position:relative; }
+  .col.before{ background:var(--surface); border:1px solid var(--line); }
+  .col.after{ background:var(--red-bg); border:1px solid var(--red-line); box-shadow:0 14px 30px -20px rgba(220,38,38,.4); }
+  .tag{ align-self:flex-start; font-size:17px; font-weight:800; letter-spacing:-.2px;
+        padding:6px 15px; border-radius:999px; margin-bottom:14px; color:#fff; }
+  .col.before .tag{ background:linear-gradient(135deg,#94a3b8,#64748b); }
+  .col.after .tag{ background:linear-gradient(135deg,#f87171,#dc2626); }
+
+  .pipe{ display:flex; align-items:center; gap:10px; }
+  .box{ flex:1; border-radius:16px; padding:14px 14px; text-align:center; }
+  .box .t{ font-size:16.5px; font-weight:800; }
+  .box .d{ font-size:13.5px; font-weight:600; margin-top:4px; line-height:1.35; }
+
+  .srv{ background:#fff; border:1.5px solid var(--line); }
+  .srv .t{ color:var(--ink); }
+  .srv .d{ color:var(--sub); }
+  .col.after .srv{ border-color:#bcd6fb; background:var(--blue-bg); }
+  .col.after .srv .t{ color:var(--blue-deep); }
+
+  .cli{ background:#fff; border:1.5px solid var(--line); }
+  .cli .t{ color:var(--ink); }
+  .cli .d{ color:var(--sub); }
+  .col.after .cli{ background:linear-gradient(135deg,#fecaca,#f87171); border:none; }
+  .col.after .cli .t, .col.after .cli .d{ color:#fff; }
+
+  .mid{ flex:0 0 74px; display:flex; flex-direction:column; align-items:center; }
+  .mid svg{ width:60px; height:22px; }
+  .mid .pps{ font-size:13px; font-weight:800; color:var(--sub); margin-top:3px; text-align:center; white-space:nowrap; }
+  .col.after .mid .pps{ color:var(--red-deep); }
+
+  .badge2{ position:absolute; top:-11px; right:14px; background:linear-gradient(135deg,#fbbf24,#d97706);
+           color:#fff; font-size:13px; font-weight:800; padding:5px 12px; border-radius:999px;
+           box-shadow:0 6px 14px -6px rgba(217,119,6,.55); }
+
+  .note{ margin-top:14px; font-size:15px; font-weight:600; color:var(--sub); line-height:1.45; }
+  .note b{ color:var(--ink); font-weight:800; }
+  .col.after .note b{ color:var(--red-deep); }
+</style></head>
+<body><div class="card">
+  <div class="eyebrow"><span class="no">⑤</span> 관측 · swapQ 적용 후 RTT 증가 (가설)</div>
+  <div class="h-title">고쳐졌기 때문에 <span class="k">병목이 클라로 이동</span></div>
+  <div class="h-rule"></div>
+  <div class="h-sub">서버가 정상화되며 늘어난 트래픽이 클라의 단일 <b>select()</b> 수신 병목을 드러냈을 가능성</div>
+
+  <div class="body">
+    <div class="cols">
+      <div class="col before">
+        <div class="tag">swapQ 이전 · 동결 상태</div>
+        <div class="pipe">
+          <div class="box srv"><div class="t">서버</div><div class="d">무제한 드레인에 갇혀<br>틱·SYNC 안 돎</div></div>
+          <div class="mid"><svg viewBox="0 0 60 22"><defs><marker id="p1" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#94a3b8"/></marker></defs>
+            <line x1="2" y1="11" x2="48" y2="11" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" marker-end="url(#p1)"/></svg>
+            <div class="pps">패킷 ↓적음</div></div>
+          <div class="box cli"><div class="t">클라</div><div class="d">select() 수신<br>부하 적음 → RTT 낮음</div></div>
+        </div>
+        <div class="note">단, 시스템 전체는 <b>망가진 상태</b>다 — SYNC 브로드캐스트 없음, 권위 시뮬 아님</div>
+      </div>
+      <div class="col after">
+        <div class="badge2">정상 동작</div>
+        <div class="tag">swapQ 이후 · 정상화</div>
+        <div class="pipe">
+          <div class="box srv"><div class="t">서버</div><div class="d">매 프레임 틱 →<br>SYNC(500ms)+이동 브로드캐스트 부활</div></div>
+          <div class="mid"><svg viewBox="0 0 60 22"><defs><marker id="p2" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#dc2626"/></marker></defs>
+            <line x1="2" y1="11" x2="48" y2="11" stroke="#dc2626" stroke-width="5" stroke-linecap="round" marker-end="url(#p2)"/></svg>
+            <div class="pps">패킷 ↑증가</div></div>
+          <div class="box cli"><div class="t">클라 ⚠</div><div class="d">단일 NetworkLoop select()<br>O(N) 배치 → 병목</div></div>
+        </div>
+        <div class="note"><b>단일 PC</b>라 서버 게임루프·워커와 클라 select 스레드가 같은 코어를 다툼 → RTT 추가 증폭</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">RTT는 클라 send→자기 echo recv로 측정(QPC) → 클라 수신 스레드 지연이 그대로 반영 · 확정은 서버 <b>mmo_tick_duration_seconds</b> / 클라 <b>ClientsPerThread</b> 축소 실험으로 분리 측정</div>
+</div></body></html>

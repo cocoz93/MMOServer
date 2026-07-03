@@ -1,0 +1,89 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<link rel="stylesheet" href="common.css">
+<style>
+  .card{ padding:34px 54px; }
+  .h-title{ font-size:43px; }
+  .h-title .k{ background:linear-gradient(180deg,transparent 60%,#fcdede 60% 92%,transparent 92%); padding:0 4px; border-radius:3px; }
+
+  .row{ display:flex; gap:26px; align-items:center; width:100%; }
+  .chart{ flex:0 0 484px; }
+  .chart svg{ width:484px; height:auto; display:block; }
+
+  .right{ flex:1; display:flex; flex-direction:column; gap:17px; }
+  .diagbox{ display:flex; gap:15px; align-items:center; background:linear-gradient(135deg,#fff6f6,#fdeaea);
+    border:1px solid var(--red-line); border-radius:18px; padding:16px 22px; box-shadow:0 12px 28px -18px rgba(220,38,38,.45); }
+  .diagbox .txt .t{ font-size:24px; font-weight:900; color:var(--red-deep); letter-spacing:-.6px; }
+  .diagbox .txt .s{ font-size:15.5px; color:#9a4a4a; font-weight:600; margin-top:3px; }
+  .pts{ display:flex; flex-direction:column; gap:16px; padding:2px 2px; }
+  .pt{ display:flex; gap:13px; align-items:flex-start; font-size:18px; line-height:1.45; color:#334155; font-weight:600; }
+  .pt .badge{ background:linear-gradient(135deg,#f87171,#dc2626); margin-top:1px; box-shadow:0 4px 10px -4px rgba(220,38,38,.55); }
+  .pt b{ color:var(--red-deep); font-weight:800; }
+</style></head>
+<body><div class="card">
+  <div class="eyebrow"><span class="no">A</span>&nbsp;진단 · 틱 비용 분해</div>
+  <div class="h-title">송신(flush_send)이 틱의 <span class="k">74%</span></div>
+  <div class="h-rule"></div>
+  <div class="h-sub">틱 <b>19.64 ms</b> 중 송신이 <b>14.56 ms</b> — copy 18.4% · 모으기 0.03%는 미미</div>
+
+  <div class="body" style="align-items:center;">
+    <div class="row">
+      <div class="chart">
+        <svg viewBox="0 0 484 256" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="gRed" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fb6a6a"/><stop offset="1" stop-color="#dc2626"/></linearGradient>
+            <linearGradient id="gBlue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#60a5fa"/><stop offset="1" stop-color="#2563eb"/></linearGradient>
+            <linearGradient id="gGray" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e2e8f0"/><stop offset="1" stop-color="#c2ccda"/></linearGradient>
+            <filter id="dsoft" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="7" stdDeviation="7" flood-color="#0f172a" flood-opacity="0.20"/></filter>
+          </defs>
+
+          <!-- 도넛 (12시 시작, 시계방향) : 송신 74.1% / copy 18.4% / 그외+모으기 7.48% -->
+          <g transform="rotate(-90 210 124)" filter="url(#dsoft)">
+            <circle cx="210" cy="124" r="78" fill="none" stroke="url(#gRed)"  stroke-width="27" stroke-dasharray="356.2 133.8" stroke-dashoffset="0"/>
+            <circle cx="210" cy="124" r="78" fill="none" stroke="url(#gBlue)" stroke-width="27" stroke-dasharray="83.3 406.7" stroke-dashoffset="-363.1"/>
+            <circle cx="210" cy="124" r="78" fill="none" stroke="url(#gGray)" stroke-width="27" stroke-dasharray="29.8 460.2" stroke-dashoffset="-453.3"/>
+          </g>
+
+          <!-- 중앙 값 -->
+          <text x="210" y="118" text-anchor="middle" font-family="Pretendard" font-size="45" font-weight="900" fill="#dc2626" letter-spacing="-2">74%</text>
+          <text x="210" y="142" text-anchor="middle" font-family="Pretendard" font-size="14" font-weight="800" fill="#dc2626">송신 flush_send</text>
+
+          <!-- 송신 leader (우하) -->
+          <polyline points="277,187 322,203 348,203" fill="none" stroke="#dc2626" stroke-width="2"/>
+          <circle cx="277" cy="187" r="3.6" fill="#dc2626"/>
+          <text x="353" y="197" font-family="Pretendard" font-size="18" font-weight="800" fill="#dc2626">송신 74.1%</text>
+          <text x="353" y="219" font-family="Pretendard" font-size="14.5" font-weight="700" fill="#94a3b8">14.56 ms</text>
+
+          <!-- copy leader (좌상) -->
+          <polyline points="131,78 92,63 66,63" fill="none" stroke="#2563eb" stroke-width="2"/>
+          <circle cx="131" cy="78" r="3.6" fill="#2563eb"/>
+          <text x="61" y="57" text-anchor="end" font-family="Pretendard" font-size="18" font-weight="800" fill="#2563eb">copy 18.4%</text>
+          <text x="61" y="79" text-anchor="end" font-family="Pretendard" font-size="14.5" font-weight="700" fill="#94a3b8">3.61 ms</text>
+
+          <!-- 하단 미세 항목 -->
+          <text x="210" y="246" text-anchor="middle" font-family="Pretendard" font-size="15" font-weight="700" fill="#94a3b8">그 외 7.45% · 모으기 gather 0.03%</text>
+        </svg>
+      </div>
+
+      <div class="right">
+        <div class="diagbox">
+          <svg class="svg-ic" width="44" height="44" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="9.3" stroke="#dc2626" stroke-width="1.9"/>
+            <circle cx="12" cy="12" r="5.1" stroke="#dc2626" stroke-width="1.9"/>
+            <circle cx="12" cy="12" r="1.7" fill="#dc2626"/>
+          </svg>
+          <div class="txt">
+            <div class="t">병목 = 송신 처리</div>
+            <div class="s">SendQ에 모은 데이터를 WSASend로 내보내는 단계</div>
+          </div>
+        </div>
+        <div class="pts">
+          <div class="pt"><span class="badge">1</span><span>틱마다 dirty 세션 수만큼(약 <b>975회</b>) WSASend를 <b>단일 게임 스레드</b>가 순차 호출</span></div>
+          <div class="pt"><span class="badge">2</span><span>비용 대부분은 <b>호출당 고정 오버헤드</b> — 유저↔커널 전환 · page lock · IRP 셋업</span></div>
+          <div class="pt"><span class="badge">3</span><span>그래서 패킷 크기·개수와 <b>무관</b>, dirty 세션 수에 비례</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">1,000 동접 · 1채널 · 3회 평균(산포 ≤ 2%) &nbsp;|&nbsp; 비용 종류별(모으기·copy·송신)로 분해 — 병목은 명백히 <b>송신</b></div>
+</div></body></html>

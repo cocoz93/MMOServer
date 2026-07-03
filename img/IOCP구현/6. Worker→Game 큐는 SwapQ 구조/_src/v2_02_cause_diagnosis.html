@@ -1,0 +1,96 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<link rel="stylesheet" href="common.css">
+<style>
+  .card{ padding:36px 56px; }
+  .eyebrow{ margin-bottom:11px; }
+  .h-title{ font-size:38px; }
+  .h-rule{ margin:12px 0 10px; }
+  .h-sub{ font-size:19px; }
+
+  .cols{ display:flex; gap:26px; align-items:stretch; width:100%; }
+  .col{ flex:1; border-radius:22px; padding:18px 22px; display:flex; flex-direction:column; align-items:center; position:relative;
+        box-shadow:0 16px 34px -24px rgba(15,23,42,.32); }
+  .col.ok{ background:var(--blue-bg); border:1px solid #bcd6fb; }
+  .col.bad{ background:var(--red-bg); border:1px solid var(--red-line); }
+  .tag{ align-self:flex-start; font-size:17px; font-weight:800; letter-spacing:-.2px;
+        padding:6px 15px; border-radius:999px; margin-bottom:12px; color:#fff; }
+  .col.ok .tag{ background:linear-gradient(135deg,#60a5fa,#2563eb); box-shadow:0 6px 14px -6px rgba(37,99,235,.5); }
+  .col.bad .tag{ background:linear-gradient(135deg,#f87171,#dc2626); box-shadow:0 6px 14px -6px rgba(220,38,38,.5); }
+
+  .chart{ height:112px; width:100%; position:relative; background:#fff; border-radius:16px; border:1px solid var(--line);
+          box-shadow:inset 0 2px 6px rgba(15,23,42,.04); }
+  .chart svg{ width:100%; height:100%; display:block; }
+  .axis{ position:absolute; right:12px; bottom:6px; font-size:11px; font-weight:700; color:var(--faint); letter-spacing:.2px; }
+
+  .desc{ margin-top:12px; font-size:15px; font-weight:600; color:var(--ink); line-height:1.4; text-align:center; }
+  .desc b{ font-weight:800; }
+  .col.ok .desc b{ color:var(--blue-deep); }
+  .col.bad .desc b{ color:var(--red-deep); }
+
+  .cap{ margin-top:10px; padding:8px 16px; border-radius:12px;
+        font-size:15px; font-weight:800; background:#fff; box-shadow:0 8px 18px -12px rgba(15,23,42,.3); }
+  .col.ok .cap{ color:var(--blue-deep); border:1.4px solid #bcd6fb; }
+  .col.bad .cap{ color:var(--red-deep); border:1.4px solid var(--red-line); }
+
+  .rule3{ margin-top:12px; display:flex; gap:14px; width:100%; }
+  .r3{ flex:1; background:#fff; border:1px solid var(--line); border-radius:16px;
+       padding:10px 12px; text-align:center; box-shadow:0 10px 22px -18px rgba(15,23,42,.3); display:flex; flex-direction:column; align-items:center; }
+  .r3 .ico{ width:28px; height:28px; border-radius:9px; background:var(--red-bg); display:flex; align-items:center; justify-content:center; margin-bottom:5px; }
+  .r3 .ico svg{ width:15px; height:15px; }
+  .r3 .t{ font-size:15px; font-weight:800; color:var(--ink); }
+  .r3 .d{ font-size:13.5px; font-weight:600; color:var(--sub); margin-top:4px; }
+  .r3 .d b{ color:var(--red-deep); }
+</style></head>
+<body><div class="card">
+  <div class="eyebrow"><span class="no">②</span> 원인 파악 · 측정으로 가른다</div>
+  <div class="h-title">버스트인가, <span class="k">지속 과부하</span>인가</div>
+  <div class="h-rule"></div>
+  <div class="h-sub">어느 쪽이 지배적인지 단정하지 않는다</div>
+
+  <div class="body" style="flex-direction:column; justify-content:flex-start; margin-top:6px;">
+    <div class="cols">
+      <div class="col ok">
+        <div class="tag">순간 버스트</div>
+        <div class="chart">
+          <svg viewBox="0 0 300 126" preserveAspectRatio="none">
+            <defs><linearGradient id="fillOk" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#3b82f6" stop-opacity=".28"/><stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/></linearGradient></defs>
+            <line x1="10" y1="31" x2="290" y2="31" stroke="#eef1f6" stroke-width="2" stroke-dasharray="4 5"/>
+            <line x1="10" y1="63" x2="290" y2="63" stroke="#eef1f6" stroke-width="2" stroke-dasharray="4 5"/>
+            <line x1="10" y1="95" x2="290" y2="95" stroke="#eef1f6" stroke-width="2" stroke-dasharray="4 5"/>
+            <path d="M10,100 C40,100 55,100 62,101 C80,101 88,25 100,20 C112,25 122,45 140,55 C160,66 168,90 180,92 C200,96 240,100 290,99 L290,116 L10,116 Z" fill="url(#fillOk)"/>
+            <path d="M10,100 C40,100 55,100 62,101 C80,101 88,25 100,20 C112,25 122,45 140,55 C160,66 168,90 180,92 C200,96 240,100 290,99" fill="none" stroke="#2563eb" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="100" cy="20" r="8" fill="#fff" stroke="#2563eb" stroke-width="4"/>
+          </svg>
+          <div class="axis">시간 →</div>
+        </div>
+        <div class="desc">일시적으로 쌓였다 <b>곧 비워짐</b> · 한 프레임만 나빠짐</div>
+        <div class="cap">본질적 문제 아님</div>
+      </div>
+      <div class="col bad">
+        <div class="tag">지속 과부하</div>
+        <div class="chart">
+          <svg viewBox="0 0 300 126" preserveAspectRatio="none">
+            <defs><linearGradient id="fillBad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ef4444" stop-opacity=".28"/><stop offset="100%" stop-color="#ef4444" stop-opacity="0"/></linearGradient></defs>
+            <line x1="10" y1="31" x2="290" y2="31" stroke="#fde3e3" stroke-width="2" stroke-dasharray="4 5"/>
+            <line x1="10" y1="63" x2="290" y2="63" stroke="#fde3e3" stroke-width="2" stroke-dasharray="4 5"/>
+            <line x1="10" y1="95" x2="290" y2="95" stroke="#fde3e3" stroke-width="2" stroke-dasharray="4 5"/>
+            <path d="M10,110 C45,104 75,98 110,84 C145,70 175,50 210,36 C235,26 255,18 290,11 L290,116 L10,116 Z" fill="url(#fillBad)"/>
+            <path d="M10,110 C45,104 75,98 110,84 C145,70 175,50 210,36 C235,26 255,18 290,11" fill="none" stroke="#dc2626" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="290" cy="11" r="8" fill="#fff" stroke="#dc2626" stroke-width="4"/>
+          </svg>
+          <div class="axis">시간 →</div>
+        </div>
+        <div class="desc">유입이 <b>소비 용량을 계속 초과</b> · 프레임 안에 못 끝남</div>
+        <div class="cap">근본 원인</div>
+      </div>
+    </div>
+
+    <div class="rule3">
+      <div class="r3"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="9" width="4" height="10"/><rect x="10" y="4" width="4" height="15"/><rect x="16" y="12" width="4" height="7"/></svg></div><div class="t">네트워크 소비 지배</div><div class="d"><b>락 경합</b> 문제</div></div>
+      <div class="r3"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5l3.5 2"/></svg></div><div class="t">게임 로직 지배</div><div class="d"><b>단일 스레드</b> 한계</div></div>
+      <div class="r3"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="2.3"/><circle cx="18" cy="6" r="2.3"/><circle cx="18" cy="18" r="2.3"/><path d="M8 11l8-4M8 13l8 4"/></svg></div><div class="t">대상 수 큼</div><div class="d"><b>fan-out</b> 폭발</div></div>
+    </div>
+  </div>
+
+  <div class="foot">근원 원인 — <b>단일 게임 스레드의 처리 용량</b>이 유입을 못 따라간다 (소비 방식 문제 아님)</div>
+</div></body></html>

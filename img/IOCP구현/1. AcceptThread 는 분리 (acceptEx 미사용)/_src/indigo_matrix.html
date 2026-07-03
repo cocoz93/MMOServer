@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --navy:#0c2f52; --navy2:#17436d; --ink:#12263a; --sub:#4a5c70; --muted:#808ea0; --faint:#9aa6b4;
+    --line:#dbe2ea; --line2:#eef2f6; --paper:#ffffff;
+    --accent:#4b45c6;       /* 인디고 — 강조 1색 (통일 톤) */
+    --accent-bg:#f1f0ff; --accent-line:#d7d4ff;
+    --win:#0c2f52; --band:#f4f7fa;
+  }
+  html,body{width:1600px;height:900px;overflow:hidden;background:#fff;
+    font-family:'Pretendard',"Malgun Gothic",sans-serif;color:var(--ink);
+    font-feature-settings:"tnum" 1;-webkit-font-smoothing:antialiased;text-rendering:geometricPrecision}
+  .slide{position:absolute;inset:0;padding:42px 72px 38px;display:flex;flex-direction:column}
+
+  /* 상단 트래커 */
+  .top{display:flex;align-items:center;justify-content:space-between;
+    font-size:15px;font-weight:700;letter-spacing:.4px;color:var(--faint);text-transform:uppercase}
+  .top .exhibit{color:var(--navy);font-weight:800}
+  .top .exhibit b{background:var(--navy);color:#fff;padding:3px 9px;border-radius:4px;margin-right:9px;letter-spacing:.6px}
+  .top .track{display:flex;gap:6px;align-items:center}
+  .top .track i{width:26px;height:4px;border-radius:2px;background:var(--line);display:inline-block}
+  .top .track i.on{background:var(--navy)}
+
+  /* 액션 타이틀 */
+  .action{margin-top:16px;font-size:37px;line-height:1.2;font-weight:800;letter-spacing:-1.2px;color:var(--ink);max-width:1360px}
+  .action b{color:var(--navy)}
+  .action .g{color:var(--accent)}
+  .kicker{margin-top:11px;font-size:17.5px;font-weight:500;color:var(--sub);line-height:1.48;max-width:1240px}
+  .kicker b{color:var(--ink);font-weight:700}
+  .hr{margin:16px 0 2px;height:1px;background:var(--line)}
+
+  /* 본문 2열 */
+  .body{flex:1;display:grid;grid-template-columns:1fr 452px;gap:40px;min-height:0;padding-top:18px}
+
+  .exlabel{font-size:14px;font-weight:800;letter-spacing:.8px;color:var(--navy);text-transform:uppercase;margin-bottom:12px;
+    display:flex;align-items:center;gap:10px}
+  .exlabel::after{content:"";flex:1;height:1px;background:var(--line)}
+
+  /* 매트릭스 */
+  .matrix{width:100%;border-collapse:separate;border-spacing:0}
+  .matrix th,.matrix td{text-align:left;padding:0}
+  .matrix thead th{font-size:16px;font-weight:800;color:var(--navy);padding-bottom:13px;vertical-align:bottom;border-bottom:2px solid var(--navy)}
+  .matrix thead th.opt{text-align:center;width:150px}
+  .matrix thead th.opt .tag{display:block;font-size:12px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:.5px;margin-top:3px}
+  .matrix thead th.opt.pick{color:var(--accent)}
+  .matrix tbody td{padding:10px 0;border-bottom:1px solid var(--line2);vertical-align:middle}
+  .matrix tbody tr:last-child td{border-bottom:none}
+  .crit{font-size:17px;font-weight:700;color:var(--ink)}
+  .crit small{display:block;font-size:13px;font-weight:500;color:var(--muted);margin-top:2px;letter-spacing:-.1px}
+  .cell{text-align:center}
+  .cell.pickcol{background:linear-gradient(180deg,#f5f4ff,#efeeff)}
+  /* Harvey ball */
+  .hb{width:26px;height:26px;border-radius:50%;border:1.6px solid var(--navy);position:relative;display:inline-block;background:#fff;vertical-align:middle}
+  .hb::before{content:"";position:absolute;inset:-0.5px;border-radius:50%;background:conic-gradient(var(--navy) var(--p),transparent 0)}
+  .hb.g{border-color:var(--accent)}
+  .hb.g::before{background:conic-gradient(var(--accent) var(--p),transparent 0)}
+  .p0{--p:0%}.p25{--p:25%}.p50{--p:50%}.p75{--p:75%}.p100{--p:100%}
+
+  .legend{margin-top:13px;display:flex;align-items:center;gap:18px;font-size:13.5px;font-weight:600;color:var(--muted)}
+  .legend .lg{display:flex;align-items:center;gap:7px}
+  .legend .hb{width:16px;height:16px}
+
+  /* 권고 콜아웃 */
+  .rec{background:var(--band);border-radius:14px;border:1px solid var(--line);
+    border-left:5px solid var(--accent);padding:26px 30px;display:flex;flex-direction:column;height:100%;
+    box-shadow:0 22px 44px -30px rgba(12,47,82,.30)}
+  .rec .rl{font-size:14px;font-weight:800;letter-spacing:.8px;color:var(--accent);text-transform:uppercase}
+  .rec .head{margin-top:11px;font-size:23px;font-weight:800;color:var(--navy);line-height:1.3;letter-spacing:-.6px}
+  .rec .head u{text-decoration:none;color:var(--accent)}
+  .rec ul{margin-top:18px;list-style:none;display:flex;flex-direction:column;gap:13px}
+  .rec li{position:relative;padding-left:26px;font-size:15.5px;font-weight:500;color:var(--sub);line-height:1.48}
+  .rec li b{color:var(--ink);font-weight:700}
+  .rec li::before{content:"";position:absolute;left:2px;top:7px;width:9px;height:9px;border-radius:2px;
+    background:var(--accent);transform:rotate(45deg)}
+  .rec .switch{margin-top:auto;padding-top:16px;border-top:1px dashed var(--line);
+    font-size:14.5px;font-weight:600;color:var(--muted);line-height:1.48}
+  .rec .switch b{color:var(--navy);font-weight:800}
+
+  /* 푸터 */
+  .foot{margin-top:20px;display:flex;justify-content:space-between;align-items:center;
+    font-size:14px;color:var(--faint);font-weight:600;border-top:1px solid var(--line);padding-top:14px}
+  .foot b{color:var(--sub);font-weight:700}
+</style>
+</head>
+<body>
+  <div class="slide">
+    <div class="top">
+      <span class="exhibit"><b>EXHIBIT 1</b>IOCP · 연결 수립(Accept) 아키텍처 선택</span>
+      <span class="track"><i class="on"></i><i></i><i></i><i></i></span>
+    </div>
+
+    <div class="action">
+      accept은 병목이 아니므로, <b>단순한 전용 스레드</b>가<br>
+      <b>AcceptEx</b>보다 <span class="g">합리적인 선택</span>이다
+    </div>
+    <div class="kicker">
+      단일 accept 호출 <b>~수 μs</b>, 정상 운영 시 <b>초당 수십~수백 건</b> — 접속 후 장시간 유지되는 MMO 특성상
+      accept 처리량은 이미 충분하다. 따라서 성능 이점보다 <b>구현·운영 단순성</b>이 우선한다.
+    </div>
+    <div class="hr"></div>
+
+    <div class="body">
+      <div class="left">
+        <div class="exlabel">의사결정 매트릭스 · 6개 평가 기준</div>
+        <table class="matrix">
+          <thead>
+            <tr>
+              <th>평가 기준</th>
+              <th class="opt pick">전용 Accept 스레드<span class="tag">채택</span></th>
+              <th class="opt">AcceptEx<span class="tag">대안</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="crit">구현·유지보수 단순성<small>온디맨드 할당, 사전 준비 불필요</small></span></td>
+              <td class="cell pickcol"><span class="hb g p100"></span></td>
+              <td class="cell"><span class="hb p25"></span></td>
+            </tr>
+            <tr>
+              <td><span class="crit">디버깅·장애 대응 용이성<small>선형 흐름, 재현·추적 쉬움</small></span></td>
+              <td class="cell pickcol"><span class="hb g p100"></span></td>
+              <td class="cell"><span class="hb p25"></span></td>
+            </tr>
+            <tr>
+              <td><span class="crit">리소스 정리 안전성<small>스레드 종료로 마무리 (pending 취소 불필요)</small></span></td>
+              <td class="cell pickcol"><span class="hb g p100"></span></td>
+              <td class="cell"><span class="hb p50"></span></td>
+            </tr>
+            <tr>
+              <td><span class="crit">Burst 동시 수용 (N pending)<small>순간 대량 접속 병렬 수용</small></span></td>
+              <td class="cell pickcol"><span class="hb g p50"></span></td>
+              <td class="cell"><span class="hb p100"></span></td>
+            </tr>
+            <tr>
+              <td><span class="crit">멀티코어 accept 분산<small>워커 풀이 accept까지 분담</small></span></td>
+              <td class="cell pickcol"><span class="hb g p25"></span></td>
+              <td class="cell"><span class="hb p100"></span></td>
+            </tr>
+            <tr>
+              <td><span class="crit">첫 데이터 동시 수신<small>Accept와 함께 첫 Recv 완료</small></span></td>
+              <td class="cell pickcol"><span class="hb g p25"></span></td>
+              <td class="cell"><span class="hb p100"></span></td>
+            </tr>
+          </tbody>
+        </table>
+        <div class="legend">
+          <span class="lg"><span class="hb p25"></span>낮음</span>
+          <span class="lg"><span class="hb p50"></span>보통</span>
+          <span class="lg"><span class="hb p100"></span>우수</span>
+          <span class="lg" style="color:#9aa6b4">— 채택안은 상위 3개 기준에서 우세, AcceptEx는 하위 3개에서 우세</span>
+        </div>
+      </div>
+
+      <div class="right">
+        <div class="rec">
+          <div class="rl">결론 · 권고</div>
+          <div class="head">현 구조(전용 Accept 스레드) <u>유지</u> — AcceptEx의 이점이 부수 비용을 넘지 못함</div>
+          <ul>
+            <li>AcceptEx의 강점인 <b>병렬 accept·멀티코어 분산</b>은 accept가 병목이 아닌 이상 <b>실익이 없다</b></li>
+            <li>대신 <b>소켓 풀·OVERLAPPED 사전 준비</b>, pending 취소, 디버깅 난이도라는 <b>부수 비용</b>이 붙는다</li>
+            <li>아키텍처 일관성(모든 I/O를 IOCP로 통합)은 매력적이나, 지금은 <b>단순성의 가치가 더 크다</b></li>
+          </ul>
+          <div class="switch"><b>전환 조건 —</b> accept가 실측 병목으로 확인되거나 순간 대량 접속(로그인 폭주)이 상시화되면 AcceptEx로 전환 가능</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">
+      <span>출처: <b>IOCP_Server</b> 연결 수립 경로 분석 · 자체 계측</span>
+      <span>MMO 네트워크 라이브러리 설계&amp;구현</span>
+    </div>
+  </div>
+</body>
+</html>

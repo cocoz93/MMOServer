@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --gray-fill:#e2e6ec; --slate:#566072; --track:#eef1f5;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:780px;height:560px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased}
+  .card{position:absolute;top:24px;left:24px;width:732px;height:512px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 14px 44px rgba(30,40,70,.07);
+    padding:34px 46px 0}
+
+  .title{font-size:34px;font-weight:800;color:var(--ink);letter-spacing:-.8px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:60px;height:5px;border-radius:3px;background:var(--red);margin-top:14px}
+  .sub{margin-top:13px;font-size:18px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .stage{margin-top:24px;display:grid;grid-template-columns:250px 1fr;column-gap:26px;align-items:center}
+
+  .donutwrap{position:relative;width:236px;height:236px;justify-self:center}
+  .donut{position:absolute;inset:0;border-radius:50%;
+    background:conic-gradient(from 13deg,#e8455a,var(--deep) 244.8deg,var(--gray-fill) 244.8deg 360deg);
+    -webkit-mask:radial-gradient(circle at center,transparent 58%,#000 59%);
+            mask:radial-gradient(circle at center,transparent 58%,#000 59%);
+    filter:drop-shadow(0 8px 20px rgba(215,38,61,.18))}
+  .dlbl{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
+  .dlbl .n{font-size:60px;font-weight:800;color:var(--ink);letter-spacing:-3px}
+  .dlbl .u{font-size:22px;font-weight:700;color:var(--slate);margin-top:2px}
+  .dlbl .c{font-size:13.5px;font-weight:600;color:var(--muted);margin-top:12px;letter-spacing:-.2px}
+
+  .legend{display:flex;flex-direction:column;gap:26px;padding-right:4px}
+  .row .rt{display:flex;align-items:center;gap:10px}
+  .dot{width:13px;height:13px;border-radius:50%;flex:0 0 auto}
+  .dot.r{background:var(--red)} .dot.g{background:#c4cbd6}
+  .name{font-size:20px;font-weight:800;color:var(--ink);letter-spacing:-.4px}
+  .name .mut{color:var(--muted);font-weight:700}
+  .val{margin-top:7px;font-size:17px;font-weight:800;letter-spacing:-.3px;white-space:nowrap}
+  .val.r{color:var(--red)} .val.g{color:#6b7484}
+  .bar{margin-top:9px;height:11px;border-radius:6px;background:var(--track);overflow:hidden}
+  .fill{height:100%;border-radius:6px}
+  .fill.r{background:linear-gradient(90deg,#e23f53,var(--red))}
+  .fill.g{background:#cfd6e0}
+
+  .foot{position:absolute;left:46px;right:46px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
+    font-size:15px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">느려진 진짜 원인은 <span class="r">'캐시'</span></div>
+    <div class="uline"></div>
+    <div class="sub">Enqueue 1건 <b>+62 ns</b>, 무엇이 늘었나 (849 → 911 ns)</div>
+
+    <div class="stage">
+      <div class="donutwrap">
+        <div class="donut"></div>
+        <div class="dlbl">
+          <span class="n">+62</span>
+          <span class="u">ns</span>
+          <span class="c">Enqueue 1회당 추가비용</span>
+        </div>
+      </div>
+
+      <div class="legend">
+        <div class="row">
+          <div class="rt"><span class="dot r"></span><span class="name">코어 간 캐시 재동기 <span class="mut">(추정)</span></span></div>
+          <div class="val r">약 42 ns · 전체의 68% ← 진짜 주범</div>
+          <div class="bar"><div class="fill r" style="width:68%"></div></div>
+        </div>
+        <div class="row">
+          <div class="rt"><span class="dot g"></span><span class="name">CAS 원자연산</span></div>
+          <div class="val g">약 20 ns · 전체의 32%</div>
+          <div class="bar"><div class="fill g" style="width:32%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">동접 200 · A/B 실측 | RingBuffer 849 ns → LockFree 911 ns / Enqueue</div>
+  </div>
+</body>
+</html>

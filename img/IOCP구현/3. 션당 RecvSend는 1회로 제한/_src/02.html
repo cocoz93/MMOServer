@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="common.css">
+<style>
+  html,body{width:1520px;height:824px;overflow:hidden}
+
+  .flow{margin-top:14px;flex:1;display:grid;grid-template-columns:312px 150px 360px 150px 300px;justify-content:center;align-items:center;min-height:0;position:relative;z-index:1}
+
+  /* 좌: 커널 완료 큐 (세로) */
+  .kq{align-self:center;background:linear-gradient(180deg,#fff,#f6fbff);border:1px solid var(--blue-line);
+    border-radius:24px;padding:26px 24px 24px;box-shadow:var(--sh-md);display:flex;flex-direction:column;align-items:center;gap:16px;position:relative;overflow:hidden}
+  .kq::before{content:"";position:absolute;top:0;left:24px;right:24px;height:5px;border-radius:0 0 4px 4px;background:linear-gradient(90deg,#22508a,#8fbde6)}
+  .kq-head{display:flex;align-items:center;gap:12px}
+  .kq-ico{width:48px;height:48px;border-radius:14px;background:#fff;border:1px solid var(--blue-line);color:var(--blue-deep);display:flex;align-items:center;justify-content:center;box-shadow:0 5px 12px -5px rgba(38,96,165,.42)}
+  .kq-ico svg{width:26px;height:26px}
+  .kq-name{font-size:21px;font-weight:800;color:var(--ink)}
+  .kq-items{display:flex;flex-direction:column;align-items:center;gap:7px}
+  .qi{width:54px;height:54px;border-radius:50%;background:radial-gradient(circle at 34% 28%,#fff,#deeaf8);border:1.8px solid var(--blue-line);color:var(--blue-deep);font-size:24px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 16px -8px rgba(38,96,165,.42)}
+  .qdown{color:var(--blue-lite);height:16px;display:flex;align-items:center}
+  .qdown svg{width:21px;height:21px}
+  .kq-fifo{display:inline-flex;align-items:center;gap:7px;background:var(--blue-bg);border:1px solid var(--blue-line);color:var(--blue-deep);font-size:16px;font-weight:800;padding:9px 17px;border-radius:999px}
+  .kq-fifo svg{width:16px;height:16px}
+
+  .connect{align-self:stretch;width:100%;height:100%}
+
+  /* 중앙: 스레드1 / ? / 스레드2 */
+  .threads{display:flex;flex-direction:column;align-items:center;gap:16px}
+  .thread{width:360px;border-radius:20px;padding:20px 26px;background:linear-gradient(180deg,#fff,#f6f8fc);border:1px solid #dae0ea;box-shadow:var(--sh-md);display:flex;align-items:center;gap:17px}
+  .th-ico{flex:0 0 auto;width:58px;height:58px;border-radius:16px;background:linear-gradient(135deg,#eef2f8,#dae2ee);border:1.5px solid #d2dae7;color:#48546a;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.85),0 8px 16px -8px rgba(20,30,60,.35)}
+  .th-ico svg{width:31px;height:31px}
+  .th-tx .tn{font-size:23px;font-weight:800;color:var(--ink)}
+  .th-tx .ts{font-size:15.5px;font-weight:600;color:var(--muted);margin-top:3px}
+  .th-tx .ts b{color:var(--blue-deep);font-weight:800}
+  .qmark{display:flex;align-items:center;gap:15px}
+  .qc{width:78px;height:78px;border-radius:50%;background:radial-gradient(circle at 34% 28%,#fff6e2,#ffdfa4);border:2.4px solid var(--amber-line);color:var(--amber-deep);font-size:45px;font-weight:900;display:flex;align-items:center;justify-content:center;box-shadow:0 15px 32px -14px rgba(180,83,9,.55)}
+  .ql{font-size:18.5px;font-weight:800;color:var(--amber-deep);white-space:nowrap}
+
+  /* 우: 결과 */
+  .result{align-self:center;display:flex;flex-direction:column;align-items:center;gap:13px;text-align:center;
+    background:linear-gradient(180deg,#fff6f6,var(--red-bg));border:1px solid var(--red-line);border-radius:24px;padding:30px 26px;box-shadow:var(--sh-md)}
+  .result .rb{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f0687a,#dc2626);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 24px -9px rgba(220,38,38,.6)}
+  .result .rb svg{width:34px;height:34px}
+  .result .rt{font-size:22.5px;font-weight:800;color:var(--red-deep);line-height:1.2}
+  .result .rs{font-size:15.5px;font-weight:700;color:#b5545e}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="eyebrow"><span class="dot"></span><span class="no">②</span>&nbsp;완료 통지 · 순서</div>
+    <div class="title">여러 스레드면 <span class="r">누가 먼저 처리할지 모른다</span></div>
+    <div class="rule"></div>
+    <div class="sub">완료 통지는 <b>순서대로 와도(FIFO)</b>, 스레드가 여럿이면 어느 쪽이 먼저 끝날지 몰라 <b>처리 순서가 뒤바뀐다</b></div>
+
+    <div class="flow">
+      <!-- 좌: 큐 -->
+      <div class="kq">
+        <div class="kq-head">
+          <div class="kq-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 5-9 5-9-5 9-5z"/><path d="M3 12l9 5 9-5"/><path d="M3 16.5l9 5 9-5"/></svg></div>
+          <div class="kq-name">커널 완료 큐</div>
+        </div>
+        <div class="kq-items">
+          <div class="qi">1</div>
+          <div class="qdown"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg></div>
+          <div class="qi">2</div>
+        </div>
+        <div class="kq-fifo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>FIFO 통지</div>
+      </div>
+
+      <!-- split: 큐 -> 두 스레드 -->
+      <svg class="connect" viewBox="0 0 150 306" preserveAspectRatio="none" fill="none">
+        <defs><marker id="sd" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#3f7fc0"/></marker></defs>
+        <path d="M2,153 C74,153 74,49 148,49" stroke="#6ba8dd" stroke-width="3.2" vector-effect="non-scaling-stroke" marker-end="url(#sd)"/>
+        <path d="M2,153 C74,153 74,257 148,257" stroke="#6ba8dd" stroke-width="3.2" vector-effect="non-scaling-stroke" marker-end="url(#sd)"/>
+      </svg>
+
+      <!-- 중앙: 스레드 -->
+      <div class="threads">
+        <div class="thread">
+          <div class="th-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="2.5"/><path d="M9 9h6v6H9z"/><path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2"/></svg></div>
+          <div class="th-tx"><div class="tn">스레드 1</div><div class="ts">완료 <b>처리 중</b></div></div>
+        </div>
+        <div class="qmark"><div class="qc">?</div><div class="ql">누가 먼저 끝낼까</div></div>
+        <div class="thread">
+          <div class="th-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="2.5"/><path d="M9 9h6v6H9z"/><path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2"/></svg></div>
+          <div class="th-tx"><div class="tn">스레드 2</div><div class="ts">완료 <b>처리 중</b></div></div>
+        </div>
+      </div>
+
+      <!-- merge: 두 스레드 -> 결과 -->
+      <svg class="connect" viewBox="0 0 150 306" preserveAspectRatio="none" fill="none">
+        <defs><marker id="mg" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#dc2626"/></marker></defs>
+        <path d="M2,49 C74,49 74,153 148,153" stroke="#e79aa0" stroke-width="3.2" vector-effect="non-scaling-stroke" marker-end="url(#mg)"/>
+        <path d="M2,257 C74,257 74,153 148,153" stroke="#e79aa0" stroke-width="3.2" vector-effect="non-scaling-stroke" marker-end="url(#mg)"/>
+      </svg>
+
+      <!-- 우: 결과 -->
+      <div class="result">
+        <div class="rb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg></div>
+        <div class="rt">처리 순서 보장 X</div>
+      </div>
+    </div>
+
+    <div class="takeaway">
+      <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.4c.6.6.9 1.2 1 2.1h6c.1-.9.4-1.5 1-2.1A6 6 0 0 0 12 3z"/></svg></div>
+      <div class="tx">그래서 완료를 <b>한 스레드로만 처리</b>하면 순서가 지켜진다 — 세션당 <b>1 pending + 단일 처리</b>.</div>
+    </div>
+
+    <div class="foot">FIFO 완료 통지는 <b>TCP · 동일 소켓 · 동일 I/O 타입</b> 한정 — 자세한 내용은 Notion 원문 참고</div>
+  </div>
+</body>
+</html>

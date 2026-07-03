@@ -1,0 +1,60 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<link rel="stylesheet" href="common.css">
+<style>
+  .kpis{ display:grid; grid-template-columns:repeat(3,1fr); gap:22px; width:100%; }
+  .kpi{ background:var(--surface); border:1px solid var(--line); border-radius:22px;
+        padding:24px 24px 22px; display:flex; flex-direction:column; align-items:center; text-align:center;
+        box-shadow:0 14px 30px -20px rgba(15,23,42,.28); }
+  .kpi .ico{ width:58px; height:58px; border-radius:16px; display:flex; align-items:center; justify-content:center; margin-bottom:13px; }
+  .kpi .ico svg{ width:31px; height:31px; }
+  .kpi .num{ font-size:54px; font-weight:800; letter-spacing:-3px; line-height:1; }
+  .kpi .num .u{ font-size:27px; font-weight:700; letter-spacing:-1px; }
+  .kpi .num .ar{ color:var(--faint); font-weight:700; }
+  .kpi .t{ font-size:22px; font-weight:800; color:var(--ink); margin-top:12px; }
+  .kpi .d{ font-size:18px; color:var(--sub); font-weight:500; margin-top:5px; }
+  .kpi .d b{ color:var(--ink); font-weight:700; }
+  .red{color:var(--red-deep);} .green{color:var(--green-deep);} .blue{color:var(--blue-deep);}
+
+  .why{ margin-top:18px; display:flex; align-items:center; gap:15px; width:100%;
+        background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:17px 24px; }
+  .why .em{ font-size:30px; line-height:1; }
+  .why .tx{ font-size:21px; font-weight:600; color:var(--sub); line-height:1.4; }
+  .why .tx b{ color:var(--red-deep); font-weight:800; }
+  .why .tx .ink{ color:var(--ink); font-weight:700; }
+</style></head>
+<body><div class="card">
+  <div class="eyebrow"><span class="no">①</span> 요약 · SEND COALESCING</div>
+  <div class="h-title">송신을 <span class="k">틱 끝 한 번</span>으로 묶음</div>
+  <div class="h-rule"></div>
+  <div class="h-sub">메시지마다 즉시 <b>WSASend</b> 하던 것을 틱 끝에 세션당 <b>1회</b>로 배칭 · 한 줄 토글</div>
+
+  <div class="body" style="flex-direction:column; justify-content:center;">
+    <div class="kpis">
+      <div class="kpi">
+        <div class="ico" style="background:var(--red-bg)"><svg viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M13 2 4.5 13.5H11l-1 8.5L19.5 10H13z"/></svg></div>
+        <div class="num red tnum">−94<span class="u">%</span></div>
+        <div class="t">송신 syscall</div>
+        <div class="d tnum"><b>82,133</b> <span style="color:var(--faint)">→</span> <b>4,877</b> /s</div>
+      </div>
+      <div class="kpi">
+        <div class="ico" style="background:var(--green-bg)"><svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M12 2h0M9 2h6"/></svg></div>
+        <div class="num green tnum">65<span class="ar">→</span>9<span class="u">ms</span></div>
+        <div class="t">tick p99 <span class="green">−86%</span></div>
+        <div class="d">한 틱 처리시간 천장</div>
+      </div>
+      <div class="kpi">
+        <div class="ico" style="background:var(--blue-bg)"><svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M12 3 21 8l-9 5-9-5z"/><path d="m3 13 9 5 9-5M3 16.5l9 5 9-5"/></svg></div>
+        <div class="num blue tnum">×17</div>
+        <div class="t">한 번에 묶인 메시지</div>
+        <div class="d tnum">평균 WSABUF <b>1 → 17</b></div>
+      </div>
+    </div>
+
+    <div class="why">
+      <span class="em">💡</span>
+      <span class="tx"><span class="ink">핵심 요인</span> — 변경 전 <b>76%</b>의 병목을 차지하던 <span class="ink">Send</span>를 <span class="ink">틱당 1회</span>로 압축한 결과.</span>
+    </div>
+  </div>
+
+  <div class="foot">동접 200 · RingBuffer · throughput ≈83k msg/s 동일 · 토글 <b>USE_SEND_COALESCING</b> &nbsp;|&nbsp; 처리량 유지한 채 천장 확보 → <b>동접 1000 안정</b></div>
+</div></body></html>

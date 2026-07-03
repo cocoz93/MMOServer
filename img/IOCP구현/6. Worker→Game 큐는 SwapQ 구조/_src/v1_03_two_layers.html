@@ -1,0 +1,61 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<link rel="stylesheet" href="common.css">
+<style>
+  .card{ padding:34px 56px; }
+  .eyebrow{ margin-bottom:10px; }
+  .h-title{ font-size:38px; }
+  .h-rule{ margin:12px 0 9px; }
+  .h-sub{ font-size:20px; }
+
+  .layer{ border-radius:20px; padding:18px 26px; display:flex; align-items:center; gap:20px; width:100%; }
+  .layer.top{ background:var(--amber-bg); border:1.5px dashed var(--amber); }
+  .layer.bot{ background:var(--green-bg); border:1.5px solid var(--green-line); margin-top:16px; }
+  .layer .badge{ flex:0 0 auto; font-size:16px; font-weight:800; color:#fff; padding:7px 16px; border-radius:999px; white-space:nowrap; }
+  .layer.top .badge{ background:linear-gradient(135deg,#fbbf24,#d97706); }
+  .layer.bot .badge{ background:linear-gradient(135deg,#34d399,#059669); }
+  .layer .txt{ flex:1; }
+  .layer .t{ font-size:21px; font-weight:800; color:var(--ink); }
+  .layer .d{ font-size:16.5px; font-weight:600; color:var(--sub); margin-top:4px; line-height:1.4; }
+  .layer .d b{ color:var(--red-deep); }
+
+  .down{ text-align:center; font-size:15px; color:var(--faint); font-weight:800; margin:6px 0; }
+
+  .means{ margin-top:16px; display:flex; gap:14px; width:100%; }
+  .m{ flex:1; background:#fff; border:1px solid var(--line); border-radius:16px; padding:14px 16px;
+      box-shadow:0 10px 22px -16px rgba(15,23,42,.28); text-align:center; }
+  .m .t{ font-size:17px; font-weight:800; color:var(--green-deep); }
+  .m .d{ font-size:14px; font-weight:600; color:var(--sub); margin-top:5px; line-height:1.35; }
+  .m.core{ border:1.6px solid var(--green-line); background:var(--green-bg); }
+  .m.core .t::before{ content:"★ "; }
+</style></head>
+<body><div class="card">
+  <div class="eyebrow"><span class="no">③</span> 핵심 문제 · 두 층위 구분</div>
+  <div class="h-title"><span class="k">소비 방식</span>과 <span class="kg">처리 용량</span>은 다른 층위</div>
+  <div class="h-rule"></div>
+  <div class="h-sub">소비 루프를 고치는 것 = 응급처치, 처리 용량을 늘리는 것 = 근본 해결</div>
+
+  <div class="body" style="flex-direction:column; justify-content:center;">
+    <div class="layer top">
+      <div class="badge">응급</div>
+      <div class="txt"><div class="t">소비 방식 문제</div>
+        <div class="d">상한 없는 소비 루프는 과부하에서 게임 로직을 굶긴다. <b>터지는 방식만 바꿀 뿐</b> — 유입이 용량을 넘으면 큐는 여전히 무한히 자란다(지연·메모리 누적으로 형태만 이동)</div>
+      </div>
+    </div>
+    <div class="down">▼ 근본 원인은 해결되지 않음</div>
+    <div class="layer bot">
+      <div class="badge">근본</div>
+      <div class="txt"><div class="t">처리 용량 문제</div>
+        <div class="d">들어오는 양 자체는 소비 루프를 고쳐도 줄지 않는다. <b>용량을 늘리거나 유입을 줄여야</b> 한다</div>
+      </div>
+    </div>
+
+    <div class="means">
+      <div class="m core"><div class="t">게임 스레드 샤딩</div><div class="d">존 단위 분리·병렬화<br>구조상 가장 본질적인 다음 수</div></div>
+      <div class="m"><div class="t">입력 병합</div><div class="d">한 틱 내 동일 세션 이동은<br>최신만 반영 · 유입량 직접 축소</div></div>
+      <div class="m"><div class="t">브로드캐스트 절감</div><div class="d">시야 컬링 · 동기화 주기화로<br>fan-out 비용 축소</div></div>
+      <div class="m"><div class="t">백프레셔</div><div class="d">과부하 시 무한 수용 금지<br>큐 상한 · 신규 접속 스로틀</div></div>
+    </div>
+  </div>
+
+  <div class="foot">소비 루프 개선은 반드시 하되 <b>응급처치</b>로 본다 · 어느 단계가 병목인지 먼저 측정한 뒤 손대는 순서를 지킨다</div>
+</div></body></html>

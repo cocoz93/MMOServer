@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#eef1f5; --bg2:#e6eaf1; --card:#ffffff; --ink:#1f2330; --sub:#3a4254; --muted:#7c8597; --faint:#9aa3b2;
+    --line:#eef0f3; --red:#d7263d; --deep:#b3122a; --red-bg:#fdeef0; --red-line:#f4c4cc;
+    --blue:#3a78b8; --blue-ink:#2b6aa8; --blue-deep:#1f5088; --blue-bg:#e7f0fa; --blue-line:#cfe0f2; --slate:#566072;
+    --grn:#1f8a5b; --grn-ink:#166848; --grn-bg:#e6f6ee; --grn-line:#bfe6d2;
+    --sh-card:0 0 0 1px rgba(30,40,70,.02),0 2px 4px -1px rgba(30,40,70,.05),0 10px 20px -6px rgba(30,40,70,.07),0 26px 44px -16px rgba(30,40,70,.12),0 52px 92px -40px rgba(24,32,58,.28),inset 0 1px 0 rgba(255,255,255,.95);
+    --grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+    --mono:"SF Mono",ui-monospace,"Cascadia Mono","Consolas",monospace;
+  }
+  html,body{width:1600px;height:900px;overflow:hidden;
+    background:radial-gradient(1100px 560px at 88% -12%, #ffffff, rgba(255,255,255,0) 58%),
+      linear-gradient(140deg,var(--bg),var(--bg2));
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;color:var(--ink);
+    word-break:keep-all;overflow-wrap:break-word;
+    font-feature-settings:"tnum" 1,"kern" 1,"calt" 1;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  .card{position:absolute;inset:28px;border-radius:32px;border:1px solid rgba(30,40,70,.06);
+    background:
+      radial-gradient(circle at 1px 1px, rgba(43,106,168,.045) 1px, transparent 1.4px) 0 0/30px 30px,
+      radial-gradient(880px 620px at 104% 112%, rgba(31,138,91,.07), transparent 60%),
+      radial-gradient(760px 520px at -6% -8%, rgba(43,106,168,.05), transparent 58%),
+      linear-gradient(180deg,#ffffff,#fbfcfe);
+    box-shadow:var(--sh-card);
+    padding:44px 60px 44px;display:flex;flex-direction:column;overflow:hidden}
+  .card::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+    background-image:var(--grain);background-size:180px 180px;opacity:.03;mix-blend-mode:soft-light}
+  .card::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;
+    background:linear-gradient(90deg,var(--blue-deep),var(--blue) 26%,#54a97e 55%,rgba(31,138,91,0) 92%)}
+
+  .top{display:flex;align-items:center;justify-content:space-between}
+  .eyebrow{display:inline-flex;align-items:center;gap:11px;
+    font-size:16px;font-weight:800;letter-spacing:2.6px;color:var(--muted);text-transform:uppercase}
+  .eyebrow .d{width:9px;height:9px;border-radius:50%;background:var(--grn);box-shadow:0 0 0 4px var(--grn-bg)}
+  .ddtag{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:800;letter-spacing:.4px;
+    color:var(--slate);background:#eef1f5;border:1px solid #e2e6ec;border-radius:999px;padding:7px 15px}
+  .ddtag b{color:var(--grn-ink)}
+
+  .title{margin-top:16px;font-size:56px;font-weight:800;color:var(--ink);letter-spacing:-2px;line-height:1.02}
+  .title .r{color:var(--deep);font-family:var(--mono);font-size:52px}
+  .title .g{color:var(--grn-ink)}
+
+  .stage{flex:1;display:flex;align-items:stretch;justify-content:center;gap:0;padding-top:24px}
+
+  .panel{flex:1;border-radius:28px;background:#fff;position:relative;overflow:hidden;
+    display:flex;flex-direction:column;padding:30px 34px 30px}
+  .panel::before{content:"";position:absolute;top:0;left:0;right:0;height:7px}
+  .panel.fin{border:1.5px solid #e3e8ef;box-shadow:0 26px 54px -30px rgba(30,40,70,.34),0 8px 20px -12px rgba(30,40,70,.1)}
+  .panel.fin::before{background:linear-gradient(90deg,#96a0b0,#c6cdd8)}
+  .panel.rst{border:2px solid var(--grn-line);transform:scale(1.04);z-index:2;
+    box-shadow:0 40px 80px -34px rgba(31,138,91,.5),0 12px 30px -14px rgba(31,138,91,.28),inset 0 1px 0 rgba(255,255,255,.9)}
+  .panel.rst::before{background:linear-gradient(90deg,var(--grn),#4fc78a)}
+  .panel.rst::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;z-index:0;
+    background:radial-gradient(460px 300px at 50% 118%, rgba(31,138,91,.11), transparent 70%)}
+
+  .p-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;position:relative;z-index:1}
+  .p-t{font-size:31px;font-weight:800;letter-spacing:-.6px}
+  .panel.fin .p-t{color:var(--slate)} .panel.rst .p-t{color:var(--grn-ink)}
+  .p-s{font-family:var(--mono);font-size:16px;font-weight:800;padding:6px 13px;border-radius:9px}
+  .panel.fin .p-s{color:var(--faint);background:#f1f3f7}
+  .panel.rst .p-s{color:var(--grn);background:var(--grn-bg)}
+
+  .lanes{display:flex;justify-content:space-between;margin:18px 6px 6px;position:relative;z-index:1;
+    font-size:15px;font-weight:800;letter-spacing:.6px;color:var(--muted);text-transform:uppercase}
+  .lanes .sv{color:var(--blue-ink)}
+
+  .seq{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px;padding:12px 4px}
+  .seq::before,.seq::after{content:"";position:absolute;top:8px;bottom:8px;width:2.5px;
+    background:repeating-linear-gradient(180deg,#cbd3de,#cbd3de 7px,transparent 7px,transparent 15px)}
+  .seq::before{left:16px} .seq::after{right:16px}
+
+  /* FIN — 4 bold arrows */
+  .arr{position:relative;z-index:1;height:44px;display:flex;align-items:center}
+  .arr svg{width:100%;height:44px;overflow:visible}
+  .arr .lb{position:absolute;left:50%;top:2px;transform:translateX(-50%);font-family:var(--mono);
+    font-size:16px;font-weight:800;background:#fff;padding:0 12px;color:var(--slate)}
+
+  /* RST — one giant arrow banner (clip-path, drop-shadow) */
+  .bolt{display:flex;align-items:center;justify-content:center}
+  .boltbar{width:90%;height:88px;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(100deg,#2aa06e,#0e7146);
+    clip-path:polygon(0 0, calc(100% - 58px) 0, 100% 50%, calc(100% - 58px) 100%, 0 100%);
+    filter:drop-shadow(0 18px 22px rgba(15,110,72,.42))}
+  .boltbar .t{font-family:var(--mono);font-size:38px;font-weight:800;color:#fff;letter-spacing:3px;
+    padding-right:44px;text-shadow:0 2px 6px rgba(8,60,40,.45)}
+
+  /* hero cost / win block */
+  .hero{display:flex;align-items:center;gap:22px;border-radius:22px;padding:24px 28px;position:relative;z-index:1}
+  .hero .ic{flex:0 0 auto;width:80px;height:80px;border-radius:22px;display:flex;align-items:center;justify-content:center}
+  .hero .tx{display:flex;flex-direction:column;line-height:1}
+  .hero .lab{font-size:18px;font-weight:800;letter-spacing:.2px;margin-bottom:9px}
+  .hero .big{font-weight:800;letter-spacing:-1.5px;display:flex;align-items:baseline;gap:5px}
+  .hero .big .n{font-size:66px} .hero .big .u{font-size:32px;font-weight:800}
+
+  .hero.cost{background:linear-gradient(180deg,#fef2f4,#fde3e7);border:1.5px solid var(--red-line)}
+  .hero.cost .ic{background:linear-gradient(150deg,#ef5568,#b3122a);box-shadow:0 14px 26px -8px rgba(179,18,42,.55),inset 0 1px 0 rgba(255,255,255,.3)}
+  .hero.cost .lab{color:var(--deep)} .hero.cost .big{color:var(--deep)}
+  .hero.win{background:linear-gradient(180deg,#eefaf3,#dff5e9);border:1.6px solid var(--grn-line)}
+  .hero.win .ic{background:linear-gradient(150deg,#33ac74,#1f8a5b);box-shadow:0 16px 30px -8px rgba(31,138,91,.6),inset 0 1px 0 rgba(255,255,255,.35)}
+  .hero.win .lab{color:var(--grn-ink)} .hero.win .big{color:var(--grn-ink)}
+
+  .vs{width:104px;display:flex;align-items:center;justify-content:center;position:relative;z-index:5}
+  .vs .med{width:76px;height:76px;border-radius:50%;background:linear-gradient(160deg,#ffffff,#eef1f6);
+    border:1.5px solid #e2e7ee;display:flex;align-items:center;justify-content:center;
+    box-shadow:0 20px 36px -14px rgba(30,40,70,.38),inset 0 2px 4px rgba(255,255,255,.9);
+    font-size:25px;font-weight:900;letter-spacing:.5px;color:var(--faint)}
+
+  .foot{margin-top:22px;display:flex;align-items:center;justify-content:center;gap:16px}
+  .foot .fchip{display:inline-flex;align-items:center;gap:11px;font-size:18px;font-weight:800;color:var(--sub);
+    background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 22px;letter-spacing:-.3px;
+    box-shadow:0 10px 24px -16px rgba(30,40,70,.3)}
+  .foot .fchip .k{width:8px;height:8px;border-radius:50%;background:var(--grn)}
+  .foot .fchip b{color:var(--deep)}
+  .foot .fchip.code{font-family:var(--mono);font-size:16px;color:var(--slate);background:#eef1f5;border-color:#e0e5ec}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="top">
+      <div class="eyebrow"><span class="d"></span>Session · Fast Close</div>
+      <div class="ddtag"><b>심화</b> · Deep Dive</div>
+    </div>
+    <div class="title">4-way 대신 <span class="r">RST</span> 한 방 — <span class="g">즉시 종료</span></div>
+
+    <div class="stage">
+      <div class="panel fin">
+        <div class="p-head"><span class="p-t">정상 종료</span><span class="p-s">FIN · 4-way</span></div>
+        <div class="lanes"><span class="sv">Server</span><span>Client</span></div>
+        <div class="seq">
+          <div class="arr">
+            <svg viewBox="0 0 480 44" preserveAspectRatio="none"><path d="M16 28 H436" stroke="#7c8797" stroke-width="6" fill="none"/><path d="M436 14 L466 28 L436 42 Z" fill="#7c8797"/></svg>
+            <span class="lb">FIN</span>
+          </div>
+          <div class="arr">
+            <svg viewBox="0 0 480 44" preserveAspectRatio="none"><path d="M44 28 H464" stroke="#aab3c0" stroke-width="6" fill="none"/><path d="M44 14 L14 28 L44 42 Z" fill="#aab3c0"/></svg>
+            <span class="lb" style="color:var(--muted)">ACK</span>
+          </div>
+          <div class="arr">
+            <svg viewBox="0 0 480 44" preserveAspectRatio="none"><path d="M44 28 H464" stroke="#7c8797" stroke-width="6" fill="none"/><path d="M44 14 L14 28 L44 42 Z" fill="#7c8797"/></svg>
+            <span class="lb">FIN</span>
+          </div>
+          <div class="arr">
+            <svg viewBox="0 0 480 44" preserveAspectRatio="none"><path d="M16 28 H436" stroke="#aab3c0" stroke-width="6" fill="none"/><path d="M436 14 L466 28 L436 42 Z" fill="#aab3c0"/></svg>
+            <span class="lb" style="color:var(--muted)">ACK</span>
+          </div>
+        </div>
+        <div class="hero cost">
+          <div class="ic"><svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3.2 2"/></svg></div>
+          <div class="tx"><span class="lab">TIME_WAIT 점유</span><span class="big"><span class="n">2</span><span class="u">분</span></span></div>
+        </div>
+      </div>
+
+      <div class="vs"><div class="med">VS</div></div>
+
+      <div class="panel rst">
+        <div class="p-head"><span class="p-t">RST 종료</span><span class="p-s">SO_LINGER {1,0}</span></div>
+        <div class="lanes"><span class="sv">Server</span><span>Client</span></div>
+        <div class="seq">
+          <div class="bolt"><div class="boltbar"><span class="t">RST</span></div></div>
+        </div>
+        <div class="hero win">
+          <div class="ic"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+          <div class="tx"><span class="lab">TIME_WAIT 없음 · 포트 즉시 해방</span><span class="big"><span class="n">즉시</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">
+      <span class="fchip"><span class="k"></span>서버측 종료는 대개 <b>비정상</b>(핵·타임아웃·킥)</span>
+      <span class="fchip code">l_onoff = 1 · l_linger = 0</span>
+    </div>
+  </div>
+</body>
+</html>

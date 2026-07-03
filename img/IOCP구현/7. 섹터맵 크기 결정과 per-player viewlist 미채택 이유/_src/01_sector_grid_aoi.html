@@ -1,0 +1,92 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<link rel="stylesheet" href="common.css">
+<style>
+  .card{ padding:38px 56px; }
+  .eyebrow{ margin-bottom:11px; }
+  .h-title{ font-size:40px; }
+  .h-rule{ margin:14px 0 11px; }
+  .h-sub{ font-size:19px; }
+  .h-sub .mono{ font-weight:800; color:var(--ink); font-variant-numeric:tabular-nums; }
+
+  .body{ gap:42px; align-items:center; }
+
+  /* 좌: 6x6 섹터 그리드 */
+  .gridwrap{ flex:0 0 auto; display:flex; flex-direction:column; align-items:center; }
+  .gridcap{ font-size:15px; font-weight:700; color:var(--sub); margin-bottom:9px; }
+  .gridcap b{ color:var(--red-deep); }
+  .grid{ display:grid; grid-template-columns:repeat(6,42px); grid-template-rows:repeat(6,42px);
+         gap:5px; padding:12px; background:var(--surface); border-radius:20px; border:1px solid var(--line); }
+  .cell{ border-radius:9px; background:#fff; border:1.5px solid var(--line); }
+  .cell.aoi{ background:var(--red-bg); border-color:var(--red-line); }
+  .cell.me{ background:#fff; border:2.5px solid var(--red); position:relative; z-index:2; }
+  .cell.me::after{ content:""; position:absolute; inset:0; margin:auto; width:20px; height:20px; border-radius:50%;
+     background:radial-gradient(circle at 35% 30%, #fb7185, var(--red-deep));
+     box-shadow:0 0 0 4px #fff, 0 5px 12px rgba(220,38,38,.45); }
+  .legend{ display:flex; gap:15px; margin-top:10px; }
+  .lg{ display:flex; align-items:center; gap:7px; font-size:13.5px; font-weight:700; color:var(--sub); }
+  .sw{ width:15px; height:15px; border-radius:5px; }
+  .sw.a{ background:var(--red-bg); border:1.5px solid var(--red-line); }
+  .sw.b{ background:#fff; border:1.5px solid var(--line); }
+  .sw.c{ background:var(--red); border:2px solid #fff; box-shadow:0 0 0 1.5px var(--red); }
+
+  /* 우: 설명 */
+  .exp{ flex:1; display:flex; flex-direction:column; gap:13px; }
+  .row{ display:flex; gap:15px; align-items:flex-start; background:#fff; border:1px solid var(--line);
+        border-radius:16px; padding:15px 18px; box-shadow:0 10px 24px -18px rgba(15,23,42,.30); }
+  .row .ic{ flex:0 0 42px; height:42px; border-radius:12px; background:var(--red-bg);
+            display:flex; align-items:center; justify-content:center; }
+  .row .ic svg{ width:23px; height:23px; }
+  .row .tx .t{ font-size:18px; font-weight:800; color:var(--ink); }
+  .row .tx .t code{ font-family:inherit; color:var(--red-deep); font-weight:800; }
+  .row .tx .d{ font-size:14.5px; font-weight:600; color:var(--sub); margin-top:4px; line-height:1.42; }
+  .row.hi{ background:var(--red-bg); border:1.5px solid var(--red-line); }
+  .row.hi .ic{ background:#fff; }
+  .row.hi .tx .t{ color:var(--red-deep); }
+  .row.hi .tx .d{ color:#9b3131; }
+  .row.hi .tx .d b{ color:var(--red-deep); font-weight:800; }
+</style></head>
+<body><div class="card">
+  <div class="eyebrow"><span class="no">①</span> 공간 구조 · AOI</div>
+  <div class="h-title">섹터가 곧 <span class="k">관심 영역(AOI)</span></div>
+  <div class="h-rule"></div>
+  <div class="h-sub">균일 그리드 + 주변 <span class="mono">9</span>섹터 브로드캐스트 · 맵 <span class="mono">120×120</span> / 섹터 <span class="mono">20×20</span> → <span class="mono">6×6</span></div>
+
+  <div class="body">
+    <div class="gridwrap">
+      <div class="gridcap">본인 + 주변 <b>9섹터</b>만 송신 대상</div>
+      <div class="grid">
+        <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+        <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+        <div class="cell"></div><div class="cell"></div><div class="cell aoi"></div><div class="cell aoi"></div><div class="cell aoi"></div><div class="cell"></div>
+        <div class="cell"></div><div class="cell"></div><div class="cell aoi"></div><div class="cell me"></div><div class="cell aoi"></div><div class="cell"></div>
+        <div class="cell"></div><div class="cell"></div><div class="cell aoi"></div><div class="cell aoi"></div><div class="cell aoi"></div><div class="cell"></div>
+        <div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div><div class="cell"></div>
+      </div>
+      <div class="legend">
+        <div class="lg"><span class="sw c"></span>플레이어</div>
+        <div class="lg"><span class="sw a"></span>AOI 9섹터</div>
+        <div class="lg"><span class="sw b"></span>송신 제외</div>
+      </div>
+    </div>
+
+    <div class="exp">
+      <div class="row">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <div class="tx"><div class="t"><code>GetAroundPlayers()</code></div>
+          <div class="d">본인 포함 주변 9섹터 플레이어만 수집 = 브로드캐스트 대상</div></div>
+      </div>
+      <div class="row">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg></div>
+        <div class="tx"><div class="t"><code>GetSectorDiff()</code></div>
+          <div class="d">섹터 경계 이동 시 새로 든/난 섹터 → CREATE / DELETE 발송</div></div>
+      </div>
+      <div class="row hi">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
+        <div class="tx"><div class="t">전체 존 송신 → 9섹터 한정</div>
+          <div class="d">동접↑ 시 1회 이동 이벤트 수신자 <b>O(전체) → O(섹터 밀도)</b></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot"><b>CSectorManager::Init</b> · [MapDefault] 120×120 / 섹터 20 · 클라 뷰 80×21(카메라, 맵 크기와 무관)</div>
+</div></body></html>

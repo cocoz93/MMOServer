@@ -1,0 +1,90 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<link rel="stylesheet" href="common.css">
+<style>
+  .card { padding: 38px 56px; }
+  .eyebrow { margin-bottom:11px; }
+  .h-title { font-size: 40px; }
+  .h-rule { margin: 13px 0 10px; }
+  .h-sub { font-size: 20px; }
+
+  .chart { display:flex; align-items:flex-end; justify-content:space-around;
+           width:100%; padding:0 6px; }
+  .grp { flex:1; display:flex; flex-direction:column; align-items:center; }
+  .pct { font-size:31px; font-weight:800; letter-spacing:-1px; color:var(--green-deep); margin-bottom:9px; }
+
+  .barwrap { position:relative; width:130px; height:240px; }
+  /* OFF 고스트 막대 (= 100, 전체 높이) */
+  .ghost { position:absolute; left:0; right:0; bottom:0; height:222px;
+           background:linear-gradient(180deg,#eef2f7,#e2e8f0);
+           border:1.5px solid #dce2ec; border-radius:11px 11px 4px 4px; }
+  .ghost .off { position:absolute; top:-31px; left:0; right:0; text-align:center;
+                font-size:17px; font-weight:700; color:var(--faint); }
+  /* ON 실막대 */
+  .on { position:absolute; left:0; right:0; bottom:0;
+        background:linear-gradient(180deg,#34d399,#059669);
+        border-radius:11px 11px 4px 4px; box-shadow:0 10px 22px -8px rgba(5,150,105,.5); }
+  .on .val { position:absolute; left:0; right:0; top:-30px; text-align:center;
+             font-size:18px; font-weight:800; color:var(--green-deep); white-space:nowrap; }
+
+  .xlab { margin-top:14px; text-align:center; }
+  .xlab .n { font-size:21px; font-weight:800; letter-spacing:-.3px; }
+  .xlab .d { font-size:16px; color:var(--sub); font-weight:500; margin-top:3px; }
+</style></head>
+<body><div class="card">
+  <div class="eyebrow"><span class="no">③</span> 실측 결과 · OFF vs ON</div>
+  <div class="h-title">송신 페이즈 처리시간 <span class="k">급감</span></div>
+  <div class="h-rule"></div>
+  <div class="h-sub">회색 = <b>OFF</b> · <span style="color:var(--green-deep);font-weight:700">초록</span> = <b>ON</b> · 막대 위 숫자는 실측값 · <b>낮을수록 부하↓</b></div>
+
+  <div class="body" style="align-items:center;">
+    <div class="chart">
+      <!-- network_dispatch 0.31/20.19 = 1.5% -->
+      <div class="grp">
+        <div class="pct">−98%</div>
+        <div class="barwrap">
+          <div class="ghost"><div class="off">20.19 ms</div></div>
+          <div class="on" style="height:7px"><div class="val">0.31 ms</div></div>
+        </div>
+        <div class="xlab"><div class="n">network_dispatch</div><div class="d">틱당 송신 (최대 페이즈)</div></div>
+      </div>
+      <!-- game_logic 0.08/3.78 = 2.1% -->
+      <div class="grp">
+        <div class="pct">−98%</div>
+        <div class="barwrap">
+          <div class="ghost"><div class="off">3.78 ms</div></div>
+          <div class="on" style="height:7px"><div class="val">0.08 ms</div></div>
+        </div>
+        <div class="xlab"><div class="n">game_logic</div><div class="d">틱당 로직</div></div>
+      </div>
+      <!-- wsa_send 4877/82133 = 5.9% -->
+      <div class="grp">
+        <div class="pct">−94%</div>
+        <div class="barwrap">
+          <div class="ghost"><div class="off">82.1k /s</div></div>
+          <div class="on" style="height:13px"><div class="val">4.9k /s</div></div>
+        </div>
+        <div class="xlab"><div class="n">wsa_send_calls</div><div class="d">송신 syscall 수</div></div>
+      </div>
+      <!-- tick p99 9.2/65.3 = 14.1% -->
+      <div class="grp">
+        <div class="pct">−86%</div>
+        <div class="barwrap">
+          <div class="ghost"><div class="off">65.3 ms</div></div>
+          <div class="on" style="height:31px"><div class="val">9.2 ms</div></div>
+        </div>
+        <div class="xlab"><div class="n">tick p99</div><div class="d">틱 지연</div></div>
+      </div>
+      <!-- handle p99 52.8/68.2 = 77.4% -->
+      <div class="grp">
+        <div class="pct">−23%</div>
+        <div class="barwrap">
+          <div class="ghost"><div class="off">68.2 ms</div></div>
+          <div class="on" style="height:172px"><div class="val" style="color:#fff;top:10px">52.8 ms</div></div>
+        </div>
+        <div class="xlab"><div class="n">handle p99</div><div class="d">반응성</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">동접 200 · RingBuffer · throughput ≈83k msg/s · 메시지 19.7B 동일 · SendQ overflow 0 &nbsp;|&nbsp; 송신 4개 지표 붕괴, handle(반응성)는 −23%로 완만</div>
+</div></body></html>

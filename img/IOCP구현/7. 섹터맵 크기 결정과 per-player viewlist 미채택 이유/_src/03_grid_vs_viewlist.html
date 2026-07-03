@@ -1,0 +1,88 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<link rel="stylesheet" href="common.css">
+<style>
+  .card{ padding:34px 56px; }
+  .eyebrow{ margin-bottom:10px; }
+  .h-title{ font-size:38px; }
+  .h-rule{ margin:12px 0 11px; }
+  .h-sub{ font-size:19px; }
+
+  .cols{ flex:1; display:flex; gap:26px; width:100%; align-items:stretch; }
+  .col{ flex:1; border-radius:22px; padding:18px 20px 16px; display:flex; flex-direction:column; position:relative; overflow:hidden; }
+  .col.vl{  background:linear-gradient(180deg,#fbfcfe,#f2f4fa); border:1.5px solid var(--line);
+            box-shadow:0 26px 50px -34px rgba(15,23,42,.30), 0 1px 0 rgba(255,255,255,.7) inset; }
+  .col.sec{ background:linear-gradient(180deg,#f2fdf8,#e7fbf0); border:1.8px solid var(--green-line);
+            box-shadow:0 26px 52px -34px rgba(5,150,105,.32), 0 1px 0 rgba(255,255,255,.7) inset; }
+  .col.sec::after{ content:""; position:absolute; top:-90px; right:-70px; width:220px; height:220px; border-radius:50%;
+            background:radial-gradient(circle, rgba(16,185,129,.10), transparent 70%); pointer-events:none; }
+
+  .tag{ align-self:flex-start; font-size:16px; font-weight:800; padding:7px 16px; border-radius:999px; color:#fff; margin-bottom:13px; position:relative; z-index:1; }
+  .col.vl .tag{  background:linear-gradient(135deg,#9aa7b8,#64748b); box-shadow:0 9px 20px -9px rgba(100,116,139,.65), 0 1px 0 rgba(255,255,255,.3) inset; }
+  .col.sec .tag{ background:linear-gradient(135deg,#34d399,#059669); box-shadow:0 9px 20px -9px rgba(5,150,105,.6), 0 1px 0 rgba(255,255,255,.3) inset; }
+
+  .tlhead{ font-size:14.5px; font-weight:800; color:var(--sub); margin-bottom:7px; display:flex; justify-content:space-between; align-items:baseline; position:relative; z-index:1; }
+  .tlhead b{ font-size:15px; }
+  .col.vl .tlhead b{ color:var(--red-deep); }
+  .col.sec .tlhead b{ color:var(--green-deep); }
+
+  .timeline{ display:flex; align-items:flex-end; gap:2.5px; height:116px; padding:10px 12px 11px; border-radius:14px; position:relative; z-index:1; }
+  .col.vl .timeline{  background:linear-gradient(180deg,#fff,#fdf1f1); border:1px solid var(--red-line); box-shadow:inset 0 1px 4px rgba(15,23,42,.05); }
+  .col.sec .timeline{ background:linear-gradient(180deg,#fff,#eafaf2); border:1px solid var(--green-line); box-shadow:inset 0 1px 4px rgba(15,23,42,.05); }
+  .timeline::after{ content:""; position:absolute; left:12px; right:12px; bottom:10px; height:1.5px; background:rgba(15,23,42,.07); border-radius:2px; }
+  .bar{ flex:1; border-radius:4px 4px 2px 2px; min-height:4px; position:relative; z-index:1; }
+  .col.vl .bar{  background:linear-gradient(180deg,#fb8a8a,#ef4444); box-shadow:0 3px 8px -3px rgba(239,68,68,.5); }
+  .col.sec .bar{ background:linear-gradient(180deg,#cbf1de,#a7e6c9); }
+  .col.sec .bar.sp{ background:linear-gradient(180deg,#34d399,#059669); box-shadow:0 5px 12px -3px rgba(5,150,105,.6); border-radius:5px 5px 2px 2px; }
+  .axis{ font-size:12.5px; font-weight:700; color:var(--faint); text-align:right; margin-top:6px; position:relative; z-index:1; }
+
+  .attrs{ margin-top:15px; padding-top:14px; border-top:1px solid var(--line); display:flex; flex-direction:column; gap:9px; position:relative; z-index:1; }
+  .col.sec .attrs{ border-top-color:var(--green-line); }
+  .at{ display:flex; gap:12px; align-items:baseline; font-size:14.5px; line-height:1.3; }
+  .at .kk{ flex:0 0 60px; font-weight:800; color:var(--faint); font-size:13px; }
+  .at .vv{ font-weight:600; color:var(--ink); }
+  .col.vl .at .vv b{ color:var(--red-deep); font-weight:800; }
+  .col.sec .at .vv b{ color:var(--green-deep); font-weight:800; }
+</style></head>
+<body><div class="card">
+  <div class="eyebrow"><span class="no">③</span> 미채택 이유 · 갱신 비용</div>
+  <div class="h-title">갱신 비용 — <span class="k">매 틱</span> vs <span class="kg">경계서 1회</span></div>
+  <div class="h-rule"></div>
+  <div class="h-sub">viewlist는 위치마다 거리 재판정 · 섹터는 이동을 <b>이벤트로 이산화</b>(평소 0)</div>
+
+  <div class="body">
+    <div class="cols">
+      <!-- viewlist -->
+      <div class="col vl">
+        <div class="tag">per-player viewlist · 미채택</div>
+        <div class="tlhead"><span>틱당 갱신 비용</span><b>매 틱 O(주변 객체)</b></div>
+        <div class="timeline">
+          <div class="bar" style="height:56%"></div><div class="bar" style="height:60%"></div><div class="bar" style="height:57%"></div><div class="bar" style="height:62%"></div><div class="bar" style="height:58%"></div><div class="bar" style="height:55%"></div><div class="bar" style="height:61%"></div><div class="bar" style="height:57%"></div><div class="bar" style="height:60%"></div><div class="bar" style="height:56%"></div><div class="bar" style="height:63%"></div><div class="bar" style="height:58%"></div><div class="bar" style="height:55%"></div><div class="bar" style="height:61%"></div><div class="bar" style="height:57%"></div><div class="bar" style="height:59%"></div><div class="bar" style="height:62%"></div><div class="bar" style="height:56%"></div><div class="bar" style="height:60%"></div><div class="bar" style="height:58%"></div><div class="bar" style="height:57%"></div><div class="bar" style="height:61%"></div>
+        </div>
+        <div class="axis">틱(tick) →</div>
+        <div class="attrs">
+          <div class="at"><span class="kk">트리거</span><span class="vv"><b>매 틱</b> 위치 변화마다</span></div>
+          <div class="at"><span class="kk">비용</span><span class="vv">O(주변 객체) 거리 계산</span></div>
+          <div class="at"><span class="kk">삽입/조회</span><span class="vv">리스트 삽입·삭제 + 중복 판정</span></div>
+          <div class="at"><span class="kk">시야</span><span class="vv">원형(정밀)</span></div>
+        </div>
+      </div>
+      <!-- 섹터 -->
+      <div class="col sec">
+        <div class="tag">섹터 그리드 · 채택 ✓</div>
+        <div class="tlhead"><span>틱당 갱신 비용</span><b>평소 0 · 경계서 스파이크</b></div>
+        <div class="timeline">
+          <div class="bar" style="height:7%"></div><div class="bar" style="height:6%"></div><div class="bar" style="height:8%"></div><div class="bar" style="height:7%"></div><div class="bar sp" style="height:92%"></div><div class="bar" style="height:7%"></div><div class="bar" style="height:6%"></div><div class="bar" style="height:8%"></div><div class="bar" style="height:7%"></div><div class="bar" style="height:6%"></div><div class="bar" style="height:8%"></div><div class="bar" style="height:7%"></div><div class="bar" style="height:6%"></div><div class="bar sp" style="height:88%"></div><div class="bar" style="height:7%"></div><div class="bar" style="height:6%"></div><div class="bar" style="height:8%"></div><div class="bar" style="height:7%"></div><div class="bar" style="height:6%"></div><div class="bar sp" style="height:85%"></div><div class="bar" style="height:7%"></div><div class="bar" style="height:6%"></div>
+        </div>
+        <div class="axis">틱(tick) →</div>
+        <div class="attrs">
+          <div class="at"><span class="kk">트리거</span><span class="vv"><b>섹터 경계 통과</b> 시에만</span></div>
+          <div class="at"><span class="kk">비용</span><span class="vv">평소 0, 경계 시 9×9 diff 1회</span></div>
+          <div class="at"><span class="kk">삽입/조회</span><span class="vv">push_back / swap-pop O(1)</span></div>
+          <div class="at"><span class="kk">시야</span><span class="vv">사각형(격자)</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">콘솔 뷰 부하 데모는 <b>사각형 시야 무해</b> → 이동량과 무관하게 낮은 갱신 비용의 섹터가 유리 · 정밀 viewlist는 저격·은신 등 시야가 게임성일 때</div>
+</div></body></html>

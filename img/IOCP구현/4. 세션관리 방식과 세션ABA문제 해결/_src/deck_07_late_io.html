@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#eef1f5; --bg2:#e6eaf1; --card:#ffffff; --ink:#1f2330; --sub:#3a4254; --muted:#7c8597; --faint:#9aa3b2;
+    --line:#eef0f3; --red:#d7263d; --deep:#b3122a; --red-bg:#fdeef0; --red-line:#f4c4cc;
+    --blue:#3a78b8; --blue-ink:#2b6aa8; --blue-deep:#1f5088; --blue-bg:#e7f0fa; --blue-line:#cfe0f2; --slate:#566072;
+    --grn:#1f8a5b; --grn-ink:#166848; --grn-bg:#e6f6ee; --grn-line:#bfe6d2;
+    --sh-card:0 0 0 1px rgba(30,40,70,.02),0 2px 4px -1px rgba(30,40,70,.05),0 10px 20px -6px rgba(30,40,70,.07),0 26px 44px -16px rgba(30,40,70,.12),0 52px 92px -40px rgba(24,32,58,.28),inset 0 1px 0 rgba(255,255,255,.95);
+    --grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+    --mono:"SF Mono",ui-monospace,"Cascadia Mono","Consolas",monospace;
+  }
+  html,body{width:1600px;height:900px;overflow:hidden;
+    background:radial-gradient(1100px 560px at 12% -12%, #ffffff, rgba(255,255,255,0) 58%),
+      linear-gradient(140deg,var(--bg),var(--bg2));
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;color:var(--ink);
+    word-break:keep-all;overflow-wrap:break-word;
+    font-feature-settings:"tnum" 1,"kern" 1,"calt" 1;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  .card{position:absolute;inset:28px;border-radius:32px;border:1px solid rgba(30,40,70,.06);
+    background:
+      radial-gradient(circle at 1px 1px, rgba(43,106,168,.045) 1px, transparent 1.4px) 0 0/30px 30px,
+      radial-gradient(720px 500px at -6% -8%, rgba(215,38,61,.05), transparent 58%),
+      radial-gradient(760px 540px at 106% 112%, rgba(31,138,91,.06), transparent 60%),
+      linear-gradient(180deg,#ffffff,#fbfcfe);
+    box-shadow:var(--sh-card);
+    padding:40px 56px 38px;display:flex;flex-direction:column;overflow:hidden}
+  .card::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+    background-image:var(--grain);background-size:180px 180px;opacity:.03;mix-blend-mode:soft-light}
+  .card::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;
+    background:linear-gradient(90deg,var(--deep),var(--red) 20%,#f2647a 40%,#54a97e 72%,rgba(31,138,91,0) 96%)}
+
+  .top{display:flex;align-items:center;justify-content:space-between}
+  .eyebrow{display:inline-flex;align-items:center;gap:11px;
+    font-size:16px;font-weight:800;letter-spacing:2.6px;color:var(--muted);text-transform:uppercase}
+  .eyebrow .d{width:9px;height:9px;border-radius:50%;background:var(--red);box-shadow:0 0 0 4px var(--red-bg)}
+  .ddtag{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:800;letter-spacing:.4px;
+    color:var(--slate);background:#eef1f5;border:1px solid #e2e6ec;border-radius:999px;padding:7px 15px}
+  .ddtag b{color:var(--deep)}
+
+  .title{margin-top:14px;font-size:47px;font-weight:800;color:var(--ink);letter-spacing:-1.6px;line-height:1.04}
+  .title .r{color:var(--deep)} .title .g{color:var(--grn-ink)} .title .mono{font-family:var(--mono);font-size:42px}
+
+  .stage{flex:1;display:grid;grid-template-columns:1fr 620px;gap:36px;min-height:0;padding-top:18px}
+  .probcol{display:flex;flex-direction:column;min-height:0}
+  .fixcol{display:flex;flex-direction:column;min-height:0}
+  .colbody{display:contents}
+
+  .col-label{font-size:15px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;margin-bottom:14px;
+    display:flex;align-items:center;gap:10px}
+  .col-label::after{content:"";flex:1;height:1.5px}
+  .col-label.prob{color:var(--deep)} .col-label.prob::after{background:var(--red-line)}
+  .col-label.fix{color:var(--grn-ink)} .col-label.fix::after{background:var(--grn-line)}
+
+  .lanehd{display:grid;grid-template-columns:1fr 50px 1fr;margin-bottom:12px}
+  .lanehd .lh{font-size:16px;font-weight:800;letter-spacing:-.2px;display:flex;align-items:center;gap:8px}
+  .lanehd .lh.a{color:var(--blue-ink)} .lanehd .lh.b{color:var(--slate);grid-column:3;justify-content:flex-end}
+  .lanehd .lh .mn{font-family:var(--mono);font-size:13px;font-weight:700;opacity:.8}
+
+  .tl{position:relative;flex:1;display:flex;flex-direction:column;justify-content:space-between;gap:14px}
+  .tl::before{content:"";position:absolute;left:50%;transform:translateX(-1px);top:8px;bottom:8px;width:2.5px;
+    background:repeating-linear-gradient(180deg,#c9d2de,#c9d2de 6px,transparent 6px,transparent 12px)}
+  .trow{display:grid;grid-template-columns:1fr 50px 1fr;align-items:center}
+  .num{grid-column:2;justify-self:center;z-index:2;width:42px;height:42px;border-radius:50%;
+    background:#fff;border:3px solid #c9d2de;color:var(--muted);font-family:var(--mono);font-size:19px;font-weight:800;
+    display:flex;align-items:center;justify-content:center;box-shadow:0 5px 12px -3px rgba(30,40,70,.3)}
+  .ts{border-radius:17px;padding:19px 23px;position:relative;box-shadow:0 14px 30px -14px rgba(30,40,70,.32)}
+  .ts.a{grid-column:1} .ts.b{grid-column:3}
+  .ts .act{font-size:23px;font-weight:800;letter-spacing:-.3px;line-height:1.26}
+  .ts .act .m{font-family:var(--mono);font-size:20px}
+  .ts .sub2{margin-top:5px;font-size:16.5px;font-weight:700;letter-spacing:-.2px}
+  .ts.blue{background:linear-gradient(180deg,#f2f8fd,#e7f1fb);border:1.5px solid var(--blue-line)}
+  .ts.blue .act{color:var(--blue-deep)} .ts.blue .act .m{color:var(--blue-ink)} .ts.blue .ok{color:var(--grn)}
+  .ts.grey{background:#f2f4f8;border:1.5px solid #e0e5ec}
+  .ts.grey .act{color:var(--slate)} .ts.grey .act .m{color:#6b7484} .ts.grey .sub2{color:var(--muted)}
+  .ts.grey .gaptag{position:absolute;top:-11px;right:15px;font-size:12px;font-weight:800;letter-spacing:.3px;
+    color:#fff;background:var(--deep);padding:3px 11px;border-radius:999px;box-shadow:0 5px 12px -3px rgba(179,18,42,.5)}
+  .ts.red{background:linear-gradient(180deg,#fff0f2,#fddfe4);border:2.5px solid var(--red);
+    box-shadow:0 20px 36px -14px rgba(215,38,61,.42)}
+  .ts.red .act{color:var(--deep);font-size:26px} .ts.red .act .m{color:var(--deep);font-size:23px}
+  .ts.red .sub2{color:#c33}
+  .ts.red .zt{position:absolute;top:-12px;left:15px;font-size:12.5px;font-weight:800;letter-spacing:.5px;
+    color:#fff;background:var(--red);padding:3px 12px;border-radius:999px;box-shadow:0 6px 14px -3px rgba(215,38,61,.55)}
+  .num.zn{border-color:var(--red);color:var(--deep);background:var(--red-bg)}
+
+  .consequence{margin-top:18px;display:flex;align-items:center;gap:16px;border-radius:17px;padding:20px 24px;
+    background:var(--deep);color:#fff;box-shadow:0 22px 40px -16px rgba(179,18,42,.62)}
+  .consequence .ic{flex:0 0 auto;font-size:30px}
+  .consequence .ct{font-size:21.5px;font-weight:800;letter-spacing:-.3px;line-height:1.3}
+  .consequence .ct .m{font-family:var(--mono);font-size:17.5px;background:rgba(255,255,255,.16);padding:2px 10px;border-radius:6px}
+
+  /* RIGHT — GIANT post-check recall hero */
+  .casbox{border:2px solid var(--grn-line);border-radius:24px;background:linear-gradient(180deg,#f2fbf6,#e7f6ee);
+    padding:26px 30px 24px;position:relative;box-shadow:0 30px 60px -30px rgba(31,138,91,.44)}
+  .casbox::before{content:"";position:absolute;top:0;left:0;right:0;height:7px;border-radius:24px 24px 0 0;
+    background:linear-gradient(90deg,var(--grn),#54c48c)}
+  .casbox .cl2{font-size:15px;font-weight:800;letter-spacing:.5px;color:var(--grn-ink);text-transform:uppercase;margin-bottom:18px}
+
+  .catchviz{display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:24px}
+  .iochip{width:144px;height:102px;border-radius:18px;background:#fff;border:2.5px dashed #c9d2de;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;flex:0 0 auto}
+  .iochip .n{font-family:var(--mono);font-size:23px;font-weight:800;color:var(--slate)}
+  .iochip .s{font-size:14px;font-weight:800;color:var(--muted);margin-top:4px}
+  .recheck{display:flex;flex-direction:column;align-items:center;gap:4px}
+  .recheck .pl{font-size:14.5px;font-weight:800;color:var(--slate)}
+  .recall{position:relative;width:132px;height:132px;border-radius:50%;flex:0 0 auto;
+    background:linear-gradient(150deg,#33ac74,#158a58);display:flex;align-items:center;justify-content:center;
+    box-shadow:0 24px 40px -12px rgba(31,138,91,.62),inset 0 2px 0 rgba(255,255,255,.3)}
+  .recall .lab{position:absolute;bottom:-12px;font-family:var(--mono);font-size:14.5px;font-weight:800;color:#fff;
+    background:#0f7146;padding:4px 14px;border-radius:999px;white-space:nowrap}
+  .catchbig{text-align:center;font-size:37px;font-weight:800;color:var(--grn-ink);letter-spacing:-.8px}
+  .catchbig b{color:var(--deep)}
+  .catchcode{margin-top:18px;background:#0f2a20;border-radius:12px;padding:16px 18px;font-family:var(--mono);
+    font-size:16px;font-weight:700;color:#cfeede;text-align:center;box-shadow:inset 0 2px 6px rgba(0,0,0,.25)}
+  .catchcode .k{color:#ffb4b4} .catchcode .fn{color:#7fd6a8}
+
+  .roles{margin-top:auto;padding-top:20px;display:flex;flex-direction:column;gap:11px}
+  .roles .rh{font-size:14.5px;font-weight:800;letter-spacing:.4px;color:var(--slate);text-transform:uppercase;margin-bottom:2px;
+    display:flex;align-items:center;gap:9px}
+  .roles .rh .bd{font-size:12.5px;font-weight:800;color:#fff;background:var(--grn);padding:3px 11px;border-radius:999px;letter-spacing:.3px}
+  .role{display:flex;align-items:center;gap:14px;padding:14px 17px;border-radius:14px;
+    border:1.5px solid var(--line);background:#fff;box-shadow:0 10px 20px -14px rgba(30,40,70,.3)}
+  .role .rn{flex:0 0 auto;font-family:var(--mono);font-size:14px;font-weight:800;padding:6px 13px;border-radius:9px;white-space:nowrap}
+  .role.pre .rn{background:var(--blue-bg);color:var(--blue-ink);border:1px solid var(--blue-line)}
+  .role.post .rn{background:var(--grn-bg);color:var(--grn-ink);border:1px solid var(--grn-line)}
+  .role .rt{font-size:16.5px;font-weight:700;color:var(--sub);letter-spacing:-.3px;line-height:1.35}
+  .role .rt b{color:var(--ink);font-weight:800}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="top">
+      <div class="eyebrow"><span class="d"></span>Session · Late-posted IO</div>
+      <div class="ddtag"><b>심화</b> · Deep Dive</div>
+    </div>
+    <div class="title">pre-check 뒤 끼어든 <span class="r">disconnect</span> → <span class="g">post-check</span>로 회수</div>
+
+    <div class="stage">
+      <div class="probcol">
+        <div class="colbody">
+        <div class="col-label prob">문제 · 취소를 놓친 IO</div>
+        <div class="lanehd">
+          <div class="lh a">Thread A <span class="mn">PostRecv</span></div>
+          <div class="lh b">Thread B <span class="mn">Disconnect</span></div>
+        </div>
+        <div class="tl">
+          <div class="trow">
+            <div class="ts a blue">
+              <div class="act"><span class="m">_disconnecting</span> → <span class="ok">FALSE</span></div>
+              <div class="sub2">pre-check 통과 — 제출 진행</div>
+            </div>
+            <div class="num">1</div>
+          </div>
+          <div class="trow">
+            <div class="num">2</div>
+            <div class="ts b grey">
+              <span class="gaptag">이 사이 끼어듦</span>
+              <div class="act"><span class="m">= TRUE</span> · CancelIoEx()</div>
+              <div class="sub2">안 걸린 IO는 취소 대상 없음</div>
+            </div>
+          </div>
+          <div class="trow">
+            <div class="ts a red">
+              <span class="zt">취소 안 됨</span>
+              <div class="act"><span class="m">WSARecv()</span> posted</div>
+              <div class="sub2">CancelIoEx 이후라 대상에서 빠짐</div>
+            </div>
+            <div class="num zn">3</div>
+          </div>
+        </div>
+        <div class="consequence">
+          <span class="ic">💥</span>
+          <span class="ct">Recv <span class="m">영구 pending</span> → IOCount <span class="m">0 불가</span> → 세션 누수</span>
+        </div>
+        </div>
+      </div>
+
+      <div class="fixcol">
+        <div class="colbody">
+        <div class="col-label fix">해결 · 제출 직후 재확인</div>
+        <div class="casbox">
+          <div class="cl2">Post-submit Re-check</div>
+          <div class="catchviz">
+            <div class="iochip"><span class="n">WSARecv</span><span class="s">방금 제출</span></div>
+            <div class="recheck">
+              <svg width="54" height="26"><path d="M2 13 H36" stroke="#5cb98a" stroke-width="5" stroke-linecap="round" fill="none"/><path d="M35 4 L52 13 L35 22 Z" fill="#33ac74"/></svg>
+              <span class="pl">재확인</span>
+            </div>
+            <div class="recall">
+              <svg width="66" height="66" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h11a6 6 0 0 1 0 12H8"/><path d="M7 4 3 8l4 4"/></svg>
+              <span class="lab">CancelIoEx</span>
+            </div>
+          </div>
+          <div class="catchbig"><b>그 IO 하나만</b> 즉시 회수</div>
+          <div class="catchcode"><span class="k">if</span> (_disconnecting) <span class="fn">CancelIoEx</span>(&ex-&gt;overlapped)</div>
+        </div>
+
+        <div class="roles">
+          <div class="rh"><span class="bd">2겹 방어선</span>제출 전 · 제출 후</div>
+          <div class="role pre">
+            <span class="rn">pre-check</span>
+            <span class="rt">닫히는 세션에 <b>IO 게시 자체를 차단</b></span>
+          </div>
+          <div class="role post">
+            <span class="rn">post-check</span>
+            <span class="rt">끼어든 disconnect <b>race를 회수</b></span>
+          </div>
+        </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

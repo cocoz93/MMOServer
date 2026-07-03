@@ -1,0 +1,74 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<link rel="stylesheet" href="common.css">
+<style>
+  .card{ padding:26px 54px; }
+  .eyebrow{ margin-bottom:10px; }
+  .h-title{ font-size:38px; }
+  .h-rule{ margin:12px 0 9px; }
+  .h-sub{ font-size:20px; }
+
+  .cols{ display:flex; gap:30px; align-items:stretch; width:100%; }
+  .col{ flex:1; border-radius:22px; padding:18px 22px; display:flex; flex-direction:column; position:relative; }
+  .col.ok{ background:var(--blue-bg); border:1px solid #bcd6fb; box-shadow:0 14px 30px -20px rgba(37,99,235,.35); }
+  .col.bad{ background:var(--red-bg); border:1px solid var(--red-line); box-shadow:0 14px 30px -20px rgba(220,38,38,.4); }
+  .tag{ align-self:flex-start; font-size:18px; font-weight:800; letter-spacing:-.2px;
+        padding:6px 16px; border-radius:999px; margin-bottom:13px; color:#fff; }
+  .col.ok .tag{ background:linear-gradient(135deg,#60a5fa,#2563eb); }
+  .col.bad .tag{ background:linear-gradient(135deg,#f87171,#dc2626); }
+
+  .chart{ height:150px; position:relative; background:#fff; border-radius:14px; border:1px solid var(--line); }
+  .chart svg{ width:100%; height:100%; display:block; }
+
+  .desc{ margin-top:14px; font-size:17px; font-weight:600; color:var(--ink); line-height:1.5; }
+  .desc b{ font-weight:800; }
+  .col.ok .desc b{ color:var(--blue-deep); }
+  .col.bad .desc b{ color:var(--red-deep); }
+
+  .cap{ margin-top:auto; align-self:flex-start; padding:9px 18px; border-radius:12px;
+        font-size:18px; font-weight:800; display:inline-flex; align-items:center; gap:8px; background:#fff;
+        box-shadow:0 6px 16px -10px rgba(15,23,42,.3); }
+  .col.ok .cap{ color:var(--blue-deep); border:1.6px solid #bcd6fb; }
+  .col.bad .cap{ color:var(--red-deep); border:1.6px solid var(--red-line); }
+
+  .verdict{ margin-top:18px; display:flex; align-items:center; gap:15px; width:100%;
+        background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:15px 24px; }
+  .verdict .em{ font-size:26px; line-height:1; }
+  .verdict .tx{ font-size:19px; font-weight:600; color:var(--sub); line-height:1.4; }
+  .verdict .tx b{ color:var(--red-deep); font-weight:800; }
+</style></head>
+<body><div class="card">
+  <div class="eyebrow"><span class="no">②</span> 원인 파악 · 순간 버스트 vs 지속 과부하</div>
+  <div class="h-title">본질은 <span class="k">지속 과부하</span>인가, 순간 버스트인가</div>
+  <div class="h-rule"></div>
+  <div class="h-sub">어느 쪽이 지배적인지는 단정하지 않고 <b>측정</b>으로 가른다</div>
+
+  <div class="body">
+    <div class="cols">
+      <div class="col ok">
+        <div class="tag">순간 버스트</div>
+        <div class="chart"><svg viewBox="0 0 300 150" preserveAspectRatio="none">
+          <polyline points="10,120 60,120 100,25 140,60 180,105 220,115 290,118" fill="none" stroke="#2563eb" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="100" cy="25" r="6" fill="#2563eb"/>
+        </svg></div>
+        <div class="desc">일시적으로 큐가 쌓였다 <b>곧 비워진다</b>. 한 프레임만 나빠지고 회복 — 본질적 문제 아님</div>
+        <div class="cap">큐 길이 ↑ → ↓ 회복</div>
+      </div>
+      <div class="col bad">
+        <div class="tag">지속 과부하</div>
+        <div class="chart"><svg viewBox="0 0 300 150" preserveAspectRatio="none">
+          <polyline points="10,130 60,118 110,98 160,72 210,42 260,18 290,8" fill="none" stroke="#dc2626" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="290" cy="8" r="6" fill="#dc2626"/>
+        </svg></div>
+        <div class="desc">유입률이 <b>소비 용량을 계속 초과</b>. 소비 루프가 새로 들어온 이벤트까지 계속 먹어 프레임 안에 못 끝남</div>
+        <div class="cap">큐 길이 계속 ↑</div>
+      </div>
+    </div>
+
+    <div class="verdict">
+      <span class="em">🎯</span>
+      <span class="tx">근원 원인은 "큐를 비우는 방식"이 아니라 <b>단일 게임 스레드의 처리 용량이 유입을 못 따라간다</b>는 점 — 모든 존·채널이 스레드 하나로 직렬화된다.</span>
+    </div>
+  </div>
+
+  <div class="foot">지배 단계별 해석 — 네트워크 소비 단계 지배면 <b>락 경합 문제</b> · 게임 로직·브로드캐스트 단계 지배면 <b>단일 스레드 연산 한계</b> · 대상 수가 크면 <b>시야 fan-out 폭발</b></div>
+</div></body></html>

@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  *{box-sizing:border-box}
+  :root{
+    --bg1:#eef1f7; --bg2:#e5e9f1;
+    --card:#fff; --ink:#0f172a; --sub:#5b6478; --muted:#8b93a5;
+    --line:#e8ebf2;
+    --red:#ef4444; --red-deep:#dc2626; --red-bg:#fef2f2; --red-line:#f8d2d2;
+    --blue-deep:#2660a5; --blue-bg:#eaf2fb; --blue-line:#d7e6f8;
+    --gray-bg:#f4f5f8; --gray-line:#e2e5ec; --gray-deep:#6b7385;
+  }
+  html,body{margin:0;width:1200px;height:860px;overflow:hidden;
+    background:linear-gradient(135deg,var(--bg1),var(--bg2));
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;
+    -webkit-font-smoothing:antialiased;text-rendering:geometricPrecision}
+
+  .card{position:absolute;inset:22px;background:var(--card);
+    border-radius:30px;border:1px solid rgba(255,255,255,.7);
+    box-shadow:0 32px 72px -22px rgba(15,23,42,.24),0 10px 24px -12px rgba(15,23,42,.10);
+    padding:40px 54px 26px;overflow:hidden;display:flex;flex-direction:column}
+  .card::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;
+    background:linear-gradient(90deg,#2b6aa8,#5590c9 55%,#8fbde6)}
+
+  .eyebrow{display:inline-flex;align-self:flex-start;align-items:center;gap:8px;font-size:16px;font-weight:800;
+    letter-spacing:.2px;color:var(--blue-deep);background:var(--blue-bg);
+    border:1px solid var(--blue-line);padding:7px 16px;border-radius:999px}
+
+  .title{margin-top:16px;font-size:37px;font-weight:800;color:var(--ink);letter-spacing:-1px}
+  .title .r{color:var(--red-deep)}
+  .rule{width:72px;height:6px;border-radius:3px;margin:14px 0 11px;
+    background:linear-gradient(90deg,var(--red),#fb7185)}
+  .sub{font-size:18.5px;font-weight:500;color:var(--sub);line-height:1.5}
+
+  .compare{margin-top:24px;flex:1;display:flex;align-items:stretch;min-height:0}
+
+  .panel{flex:1;display:flex;flex-direction:column;align-items:center;min-width:0;padding:6px 30px 0}
+
+  .tag{font-size:16px;font-weight:800;padding:7px 17px;border-radius:999px;letter-spacing:.1px;color:#fff}
+  .tag.use{background:linear-gradient(135deg,#5590c9,#2660a5);box-shadow:0 8px 18px -10px rgba(38,96,165,.55)}
+  .tag.unuse{background:linear-gradient(135deg,#aab2c2,#7c8597);box-shadow:0 8px 18px -10px rgba(90,100,120,.4)}
+
+  .stage{margin-top:4px;width:100%;flex:1;display:flex;flex-direction:column;
+    align-items:center;justify-content:center}
+
+  .client-wrap{display:flex;flex-direction:column;align-items:center;gap:7px;flex:0 0 auto}
+  .client-ico{width:48px;height:48px;border-radius:50%;
+    background:linear-gradient(135deg,#eef2f7,#e1e8f1);border:1.5px solid #d7dee8;
+    display:flex;align-items:center;justify-content:center;color:#48505f;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 8px 16px -9px rgba(20,30,60,.35)}
+  .client-ico svg{width:23px;height:23px}
+  .client-label{font-size:13px;font-weight:800;color:var(--ink)}
+
+  .pre-cluster{width:100%;height:210px;flex:0 0 auto;
+    display:flex;flex-direction:column;align-items:center;justify-content:flex-end}
+
+  .vline{width:0;position:relative;flex:0 0 auto}
+  .vline.short{height:26px}
+  .vline.long{height:82px}
+  .vline.solid{border-left:3px solid var(--blue-deep);filter:drop-shadow(0 2px 3px rgba(38,96,165,.3))}
+  .vline.solid::after{content:'';position:absolute;left:-6px;bottom:-2px;
+    border-style:solid;border-width:9px 6px 0 6px;border-color:var(--blue-deep) transparent transparent transparent}
+  .vline .lbl{position:absolute;left:14px;top:50%;transform:translateY(-50%);
+    font-size:13px;font-weight:800;color:var(--blue-deep);white-space:nowrap}
+  .panel.unuse .vline.solid{border-left-color:var(--gray-deep);filter:drop-shadow(0 2px 3px rgba(90,100,120,.25))}
+  .panel.unuse .vline.solid::after{border-color:var(--gray-deep) transparent transparent transparent}
+  .panel.unuse .vline .lbl{color:var(--gray-deep)}
+
+  .accept-circle{width:100px;height:100px;border-radius:50%;flex:0 0 auto;position:relative;
+    background:radial-gradient(circle at 32% 26%,#6ba8dd,#2660a5);
+    box-shadow:inset 0 3px 8px rgba(255,255,255,.4),0 16px 30px -12px rgba(38,96,165,.6);
+    display:flex;align-items:center;justify-content:center;
+    color:#fff;font-size:17px;font-weight:800;letter-spacing:.2px;z-index:1}
+  .accept-circle::before{content:"";position:absolute;inset:-30px;z-index:-1;border-radius:50%;
+    background:radial-gradient(circle,rgba(43,106,168,.16),rgba(43,106,168,0) 70%)}
+
+  .cluster{margin-top:32px;display:grid;grid-template-columns:repeat(3,1fr);gap:9px;flex:0 0 auto;position:relative;z-index:1}
+  .cluster::before{content:"";position:absolute;inset:-24px;z-index:-1;border-radius:50%;
+    background:radial-gradient(circle,rgba(220,38,38,.10),rgba(220,38,38,0) 70%)}
+  .wdot{width:22px;height:22px;border-radius:50%;
+    background:radial-gradient(circle at 32% 26%,#f0687a,#c81c33);
+    box-shadow:inset 0 2px 3px rgba(255,255,255,.4),0 4px 9px -3px rgba(199,30,50,.55)}
+
+  .cap{margin-top:18px;flex:0 0 auto;background:#fff;border-radius:14px;padding:11px 20px;
+    font-size:15px;font-weight:700;text-align:center;line-height:1.4;
+    box-shadow:0 10px 22px -14px rgba(15,23,42,.35)}
+  .panel.use .cap{color:var(--blue-deep);border:1.5px solid var(--blue-line)}
+  .panel.unuse .cap{color:var(--gray-deep);border:1.5px solid var(--gray-line)}
+  .cap b{color:var(--ink)}
+
+  .divider{width:0;border-left:2px dashed var(--gray-line);margin:10px 34px 0;align-self:stretch}
+
+  .takeaway{margin-top:22px;display:flex;align-items:center;gap:15px;
+    background:linear-gradient(135deg,#fef6f6,#fdf0f0);border:1px solid var(--red-line);
+    border-radius:18px;padding:15px 24px}
+  .tk-ico{flex:0 0 auto;width:38px;height:38px;border-radius:12px;background:#fff;
+    display:flex;align-items:center;justify-content:center;color:var(--red-deep);
+    box-shadow:0 4px 10px -4px rgba(220,38,38,.35);border:1px solid var(--red-line)}
+  .tk-ico svg{width:19px;height:19px}
+  .tk-text{font-size:19px;font-weight:700;color:var(--ink)}
+  .tk-text b{color:var(--red-deep);font-weight:800}
+
+  .foot{margin-top:17px;padding-top:13px;border-top:1px solid var(--line);
+    font-size:15px;color:#8089a0;font-weight:500;line-height:1.5}
+  .foot b{color:#3a4254;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="eyebrow">① 구조 · IOCP ACCEPT 처리</div>
+    <div class="title">Accept는 <span class="r">Worker</span>와 분리된다</div>
+    <div class="rule"></div>
+    <div class="sub">AcceptThread가 accept()를 전담 — Worker Pool은 관여하지 않는다</div>
+
+    <div class="compare">
+      <div class="panel use">
+        <div class="tag use">AcceptThread 분리</div>
+        <div class="stage">
+          <div class="pre-cluster">
+            <div class="client-wrap">
+              <div class="client-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13" rx="2.2"/><path d="M8 21h8M12 17v4"/></svg></div>
+              <div class="client-label">Client</div>
+            </div>
+            <div class="vline short solid"><span class="lbl">연결</span></div>
+            <div class="accept-circle">Accept</div>
+          </div>
+          <div class="cluster">
+            <div class="wdot"></div><div class="wdot"></div><div class="wdot"></div>
+            <div class="wdot"></div><div class="wdot"></div><div class="wdot"></div>
+          </div>
+        </div>
+        <div class="cap">Worker Pool — Accept와 무관하게 <b>게임 로직만</b> 처리</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="panel unuse">
+        <div class="tag unuse">AcceptEx (가정)</div>
+        <div class="stage">
+          <div class="pre-cluster">
+            <div class="client-wrap">
+              <div class="client-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13" rx="2.2"/><path d="M8 21h8M12 17v4"/></svg></div>
+              <div class="client-label">Client</div>
+            </div>
+            <div class="vline long solid"><span class="lbl">연결</span></div>
+          </div>
+          <div class="cluster">
+            <div class="wdot"></div><div class="wdot"></div><div class="wdot"></div>
+            <div class="wdot"></div><div class="wdot"></div><div class="wdot"></div>
+          </div>
+        </div>
+        <div class="cap">Worker Pool — <b>특정 Worker</b>를 지목할 수 없음</div>
+      </div>
+    </div>
+
+    <div class="takeaway">
+      <div class="tk-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5l7 2.8v5.7c0 4.8-3 8.3-7 10-4-1.7-7-5.2-7-10V5.3l7-2.8z"/><path d="M8.7 12l2.4 2.4 4.3-4.6"/></svg></div>
+      <div class="tk-text">Accept가 몰려도 <b>Worker 스레드는 손대지 않는다</b></div>
+    </div>
+
+    <div class="foot">왼쪽 = 실제 구조 · 오른쪽 = <b>AcceptEx</b> 사용 시 가정 상황(미사용) — 자세한 트레이드오프는 Notion 원문 참고</div>
+  </div>
+</body>
+</html>

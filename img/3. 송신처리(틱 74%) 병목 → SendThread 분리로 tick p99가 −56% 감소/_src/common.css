@@ -1,0 +1,88 @@
+/* ===== 공통 인포그래픽 스타일 v3 — 병목지점 개선 카드 세트 (상용 PPT급) ===== */
+@font-face {
+  font-family: 'Pretendard';
+  src: url('fonts/PretendardVariable.woff2') format('woff2-variations');
+  font-weight: 45 920; font-display: block;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+
+:root{
+  /* 표면/글자 */
+  --bg1:#eceff5; --bg2:#dde3ee;
+  --card:#ffffff;
+  --ink:#0f172a; --sub:#54637c; --faint:#94a3b8; --foot:#98a2b3;
+  --line:#e9edf4; --line2:#eff2f7; --surface:#f6f8fc;
+
+  /* 강조색 */
+  --red:#ef4444;  --red-deep:#dc2626;  --red-bg:#fef2f2;  --red-line:#f5cccc;
+  --green:#10b981;--green-deep:#059669;--green-bg:#ecfdf5;--green-line:#b5e6cd;
+  --blue:#3b82f6; --blue-deep:#2563eb; --blue-bg:#eff6ff;
+  --amber:#f59e0b;--amber-deep:#d97706;--amber-bg:#fffbeb;--amber-line:#f1d79e;
+  --gray-bar:#cbd5e1;
+}
+
+html, body {
+  width:1200px; height:700px;
+  background:
+    radial-gradient(1100px 560px at 7% -10%, rgba(239,68,68,.07), transparent 56%),
+    radial-gradient(1000px 680px at 105% 110%, rgba(59,130,246,.08), transparent 55%),
+    linear-gradient(135deg,var(--bg1),var(--bg2));
+  font-family:'Pretendard','Malgun Gothic',sans-serif;
+  color:var(--ink); font-feature-settings:"tnum" 1;
+  -webkit-font-smoothing:antialiased; text-rendering:geometricPrecision;
+}
+
+.card {
+  position:absolute; inset:24px;
+  background:linear-gradient(180deg,#ffffff,#fcfdff);
+  border-radius:34px;
+  border:1px solid rgba(255,255,255,.85);
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.9) inset,
+    0 2px 5px -2px rgba(15,23,42,.07),
+    0 20px 44px -14px rgba(15,23,42,.17),
+    0 46px 92px -30px rgba(15,23,42,.20);
+  padding:46px 56px;
+  display:flex; flex-direction:column; overflow:hidden;
+}
+/* 카드 상단 얇은 강조 띠 */
+.card::before{ content:""; position:absolute; top:0; left:0; right:0; height:5px;
+  background:linear-gradient(90deg,var(--red),#fb7185 45%,#fb923c 76%,var(--amber)); }
+
+/* 헤더 */
+.eyebrow{ display:inline-flex; align-items:center; gap:8px; align-self:flex-start;
+  font-size:15.5px; font-weight:800; letter-spacing:.2px; color:var(--red-deep);
+  background:var(--red-bg); border:1px solid var(--red-line);
+  padding:6px 15px; border-radius:999px; margin-bottom:14px;
+  box-shadow:0 3px 8px -4px rgba(220,38,38,.28); }
+.eyebrow .no{ font-weight:900; }
+
+.h-title{ font-size:46px; font-weight:800; letter-spacing:-1.8px; line-height:1.1; color:var(--ink); }
+.h-title .k{ color:var(--red-deep); }
+.h-title .kb{ color:var(--blue-deep); }
+.h-title .kg{ color:var(--green-deep); }
+.h-rule{ width:76px; height:6px; border-radius:3px; margin:15px 0 12px;
+  background:linear-gradient(90deg,var(--red),#fb7185); }
+.h-sub{ font-size:20px; color:var(--sub); font-weight:500; line-height:1.45; letter-spacing:-.2px; }
+.h-sub b{ color:var(--ink); font-weight:700; }
+.h-sub .k{ color:var(--red-deep); font-weight:700; }
+
+/* 본문/푸터 */
+.body{ flex:1; display:flex; min-height:0; }
+.foot{ margin-top:auto; padding-top:15px; border-top:1px solid var(--line);
+  font-size:16.5px; color:var(--foot); font-weight:500; line-height:1.45; letter-spacing:-.2px; }
+.foot b{ color:var(--sub); font-weight:700; }
+
+/* 칩 */
+.chip{ display:inline-flex; align-items:center; gap:7px; padding:6px 14px;
+  border-radius:999px; font-size:18px; font-weight:800; }
+.chip.red{ background:var(--red-bg); color:var(--red-deep); }
+.chip.green{ background:var(--green-bg); color:var(--green-deep); }
+.chip.blue{ background:var(--blue-bg); color:var(--blue-deep); }
+
+/* 원형 번호 배지 */
+.badge{ display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto;
+  width:27px; height:27px; border-radius:50%; font-size:15px; font-weight:900; color:#fff; }
+
+.svg-ic{ flex:0 0 auto; display:block; }
+.tnum{ font-variant-numeric:tabular-nums; }

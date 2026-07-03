@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#eef1f5; --bg2:#e6eaf1; --card:#ffffff; --ink:#1f2330; --sub:#3a4254; --muted:#7c8597; --faint:#9aa3b2;
+    --line:#eef0f3; --red:#d7263d; --deep:#b3122a; --red-bg:#fdeef0; --red-line:#f4c4cc;
+    --blue:#3a78b8; --blue-ink:#2b6aa8; --blue-deep:#1f5088; --blue-bg:#e7f0fa; --blue-line:#cfe0f2; --slate:#566072;
+    --grn:#1f8a5b; --grn-bg:#e6f6ee; --grn-line:#bfe6d2;
+    --sh-card:0 0 0 1px rgba(30,40,70,.02),0 2px 4px -1px rgba(30,40,70,.05),0 10px 20px -6px rgba(30,40,70,.07),0 26px 44px -16px rgba(30,40,70,.12),0 52px 92px -40px rgba(24,32,58,.28),inset 0 1px 0 rgba(255,255,255,.95);
+    --grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+    --mono:"SF Mono",ui-monospace,"Cascadia Mono","Consolas",monospace;
+  }
+  html,body{width:1600px;height:900px;overflow:hidden;
+    background:radial-gradient(1100px 560px at 88% -12%, #ffffff, rgba(255,255,255,0) 58%),
+      linear-gradient(140deg,var(--bg),var(--bg2));
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;color:var(--ink);
+    word-break:keep-all;overflow-wrap:break-word;
+    font-feature-settings:"tnum" 1,"kern" 1,"calt" 1;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  .card{position:absolute;inset:28px;border-radius:32px;border:1px solid rgba(30,40,70,.06);
+    background:
+      radial-gradient(circle at 1px 1px, rgba(43,106,168,.045) 1px, transparent 1.4px) 0 0/30px 30px,
+      radial-gradient(780px 520px at -6% 108%, rgba(43,106,168,.05), transparent 60%),
+      linear-gradient(180deg,#ffffff,#fbfcfe);
+    box-shadow:var(--sh-card);
+    padding:44px 60px 46px;display:flex;flex-direction:column;overflow:hidden}
+  .card::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+    background-image:var(--grain);background-size:180px 180px;opacity:.03;mix-blend-mode:soft-light}
+  .card::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;
+    background:linear-gradient(90deg,var(--blue-deep),var(--blue) 30%,#7cb0de 55%,rgba(124,176,222,0) 88%)}
+
+  .top{display:flex;align-items:center;justify-content:space-between}
+  .eyebrow{display:inline-flex;align-items:center;gap:10px;
+    font-size:15px;font-weight:800;letter-spacing:2.5px;color:var(--muted);text-transform:uppercase}
+  .eyebrow .d{width:8px;height:8px;border-radius:50%;background:var(--blue-ink);box-shadow:0 0 0 4px var(--blue-bg)}
+  .pageno{font-size:15px;font-weight:800;color:var(--faint);letter-spacing:1px}
+  .pageno b{color:var(--ink)}
+  .title{margin-top:16px;font-size:46px;font-weight:800;color:var(--ink);letter-spacing:-1.4px;line-height:1.05}
+  .title .b{color:var(--blue-ink)}
+
+  .stage{flex:1;display:flex;flex-direction:column;justify-content:center;gap:34px}
+
+  /* 초대형 3-step pipeline */
+  .pipe{display:flex;align-items:stretch;justify-content:center}
+  .step{width:452px;border:1.5px solid var(--blue-line);border-radius:24px;background:#fff;position:relative;overflow:hidden;
+    padding:40px 36px 44px;box-shadow:0 22px 48px -28px rgba(30,40,70,.34),0 6px 16px -10px rgba(30,40,70,.10);
+    display:flex;flex-direction:column}
+  .step::before{content:"";position:absolute;top:0;left:0;right:0;height:7px;background:linear-gradient(90deg,var(--blue-ink),#7cb0de)}
+  .step.key{border-color:#a9cbe9;box-shadow:0 26px 52px -26px rgba(43,106,168,.5),0 6px 16px -10px rgba(43,106,168,.2)}
+  .step.key::before{background:linear-gradient(90deg,var(--blue-deep),var(--blue))}
+  .s-head{display:flex;align-items:center;gap:15px;margin-bottom:30px}
+  .s-no{flex:0 0 auto;width:60px;height:60px;border-radius:16px;background:linear-gradient(145deg,#5b96cf,#2b6aa8);
+    color:#fff;font-size:30px;font-weight:800;font-family:var(--mono);display:flex;align-items:center;justify-content:center;
+    box-shadow:0 8px 16px -5px rgba(31,80,136,.6),inset 0 1px 0 rgba(255,255,255,.35)}
+  .step.key .s-no{background:linear-gradient(145deg,#3f81c4,#1f5088)}
+  .s-nm{font-family:var(--mono);font-size:33px;font-weight:800;color:var(--blue-deep);letter-spacing:-.8px}
+  .s-nm.ko{font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;letter-spacing:-.6px}
+  .s-desc{font-size:26px;font-weight:700;color:var(--ink);line-height:1.5;letter-spacing:-.4px}
+  .s-desc .r{color:var(--deep);font-weight:800} .s-desc .b{color:var(--blue-ink);font-weight:800}
+  .s-code{margin-top:28px;display:flex;align-items:center;gap:10px;background:#f6f8fb;border:1px solid var(--line);
+    border-radius:12px;padding:16px 17px;font-family:var(--mono);font-size:16.5px;font-weight:700;color:var(--slate);letter-spacing:-.3px}
+  .s-code .dot{width:10px;height:10px;border-radius:50%;background:var(--blue-ink);flex:0 0 auto}
+
+  .pchev{width:52px;display:flex;align-items:center;justify-content:center;color:#b7c6d8;font-size:42px;font-weight:900}
+
+  /* 결론 한 줄 */
+  .win{display:flex;align-items:center;gap:18px;align-self:center;
+    background:linear-gradient(180deg,#eefaf3,#e2f5ea);border:1.5px solid var(--grn-line);border-radius:18px;padding:22px 38px}
+  .win .ck{flex:0 0 auto;width:42px;height:42px;border-radius:50%;background:linear-gradient(145deg,#33ac74,#1f8a5b);
+    display:flex;align-items:center;justify-content:center;box-shadow:0 8px 16px -6px rgba(31,138,91,.5)}
+  .win .wt{font-size:24px;font-weight:800;color:#166848;letter-spacing:-.4px}
+  .win .wt b{color:#0f5638} .win .wt .m{font-family:var(--mono);font-size:19px}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="top">
+      <div class="eyebrow"><span class="d"></span>Session · ABA Defense</div>
+      <div class="pageno"><b>04</b> / 04</div>
+    </div>
+    <div class="title"><span class="b">3단계 검증</span>으로 ABA를 원천 차단</div>
+
+    <div class="stage">
+      <div class="pipe">
+        <div class="step">
+          <div class="s-head"><span class="s-no">1</span><span class="s-nm">FindSession</span></div>
+          <div class="s-desc"><span class="b">Index</span>로 조회 +<br><span class="b">sessionId 일치</span> 확인</div>
+          <div class="s-code"><span class="dot"></span>arr[index].sessionId == id ?</div>
+        </div>
+
+        <div class="pchev">›</div>
+
+        <div class="step key">
+          <div class="s-head"><span class="s-no">2</span><span class="s-nm">AcquireSession</span></div>
+          <div class="s-desc"><span class="b">CAS</span>로 IOCount +1<br><span class="r">0이면 실패</span> → <b>pin 획득</b></div>
+          <div class="s-code"><span class="dot"></span>CAS(&IOCount) · cur==0 → fail</div>
+        </div>
+
+        <div class="pchev">›</div>
+
+        <div class="step">
+          <div class="s-head"><span class="s-no">3</span><span class="s-nm ko">재확인</span></div>
+          <div class="s-desc">sessionId <span class="b">재확인</span><br>불일치면 <span class="r">롤백</span></div>
+          <div class="s-code"><span class="dot"></span>recheck → mismatch = rollback</div>
+        </div>
+      </div>
+
+      <div class="win">
+        <div class="ck"><svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+        <div class="wt">세 관문 통과 → <b>pin 확보</b>, <span class="m">IOCount ≥ 1</span> 동안 세션·소켓 해제 불가</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

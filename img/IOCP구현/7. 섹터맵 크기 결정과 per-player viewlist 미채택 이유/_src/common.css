@@ -1,0 +1,89 @@
+/* ===== 공통 인포그래픽 스타일 v3 — 상용 PPT급 마감 (섹터/viewlist 세트) ===== */
+@font-face {
+  font-family: 'Pretendard';
+  src: url('fonts/PretendardVariable.woff2') format('woff2-variations');
+  font-weight: 45 920; font-display: block;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  /* 표면/글자 */
+  --bg1:#eef1f7; --bg2:#e3e7f0;
+  --card:#ffffff;
+  --ink:#0f172a; --sub:#54607a; --faint:#93a0b4; --foot:#8892a3;
+  --line:#e9edf4; --line2:#f0f3f9; --surface:#f6f8fc;
+
+  /* 강조색 (정제) */
+  --red:#ef4444;  --red-deep:#dc2626;  --red-bg:#fef2f2;  --red-line:#f6cfcf;
+  --green:#10b981;--green-deep:#059669;--green-bg:#ecfdf5;--green-line:#bbe9d4;
+  --blue:#3b82f6; --blue-deep:#2563eb; --blue-bg:#eff6ff; --blue-line:#c4dbfb;
+  --amber:#f59e0b;--amber-deep:#d97706;--amber-bg:#fffbeb;--amber-line:#f3dca0;
+  --gray-bar:#cbd5e1;
+
+  /* 그림자 토큰 */
+  --sh-card: 0 1px 0 rgba(255,255,255,.9) inset,
+             0 44px 84px -36px rgba(15,23,42,.32),
+             0 16px 34px -18px rgba(15,23,42,.13);
+  --sh-sm: 0 10px 24px -16px rgba(15,23,42,.30);
+  --sh-md: 0 18px 38px -22px rgba(15,23,42,.30);
+}
+
+html, body {
+  width:1200px; height:700px;
+  background:
+    radial-gradient(1100px 520px at 10% -14%, #ffffff 0%, rgba(255,255,255,0) 58%),
+    radial-gradient(820px 460px at 110% -8%, #e9f0fb 0%, rgba(233,240,251,0) 56%),
+    linear-gradient(135deg,var(--bg1),var(--bg2));
+  font-family:'Pretendard','Malgun Gothic',sans-serif;
+  color:var(--ink); font-feature-settings:"tnum" 1;
+  -webkit-font-smoothing:antialiased; text-rendering:geometricPrecision;
+}
+
+.card {
+  position:absolute; inset:26px;
+  background:
+    radial-gradient(460px 320px at 100% -12%, rgba(239,68,68,.045), rgba(239,68,68,0) 70%),
+    linear-gradient(180deg,#ffffff, #fcfdfe);
+  border-radius:28px;
+  border:1px solid rgba(15,23,42,.05);
+  box-shadow:var(--sh-card);
+  padding:48px 58px;
+  display:flex; flex-direction:column; overflow:hidden;
+}
+/* 카드 상단 얇은 강조 띠 */
+.card::before{ content:""; position:absolute; top:0; left:0; right:0; height:5px;
+  background:linear-gradient(90deg,var(--red),#fb7a45 52%,var(--amber)); opacity:.95; }
+
+/* 헤더 */
+.eyebrow{ display:inline-flex; align-items:center; gap:8px; align-self:flex-start;
+  font-size:15.5px; font-weight:800; letter-spacing:.2px; color:var(--red-deep);
+  background:linear-gradient(180deg,#fff5f5,var(--red-bg)); border:1px solid var(--red-line);
+  padding:7px 15px; border-radius:999px; margin-bottom:14px;
+  box-shadow:0 6px 14px -8px rgba(220,38,38,.40), 0 1px 0 rgba(255,255,255,.7) inset; }
+.eyebrow .no{ font-weight:900; }
+
+.h-title{ font-size:46px; font-weight:800; letter-spacing:-1.7px; line-height:1.12; color:var(--ink); }
+.h-title .k{ color:var(--red-deep); }
+.h-title .kb{ color:var(--blue-deep); }
+.h-title .kg{ color:var(--green-deep); }
+.h-rule{ width:74px; height:6px; border-radius:3px; margin:16px 0 12px;
+  background:linear-gradient(90deg,var(--red),#fb7185);
+  box-shadow:0 5px 12px -4px rgba(239,68,68,.55); }
+.h-sub{ font-size:21px; color:var(--sub); font-weight:500; line-height:1.45; }
+.h-sub b{ color:var(--ink); font-weight:700; }
+.h-sub .k{ color:var(--red-deep); font-weight:700; }
+
+/* 본문/푸터 */
+.body{ flex:1; display:flex; min-height:0; }
+.foot{ margin-top:auto; padding-top:15px; border-top:1px solid var(--line);
+  font-size:16.5px; color:var(--foot); font-weight:500; line-height:1.45; }
+.foot b{ color:var(--sub); font-weight:700; }
+
+/* 칩 */
+.chip{ display:inline-flex; align-items:center; gap:7px; padding:7px 15px;
+  border-radius:999px; font-size:19px; font-weight:700; box-shadow:var(--sh-sm); }
+.chip.red{ background:var(--red-bg); color:var(--red-deep); }
+.chip.green{ background:var(--green-bg); color:var(--green-deep); }
+.chip.blue{ background:var(--blue-bg); color:var(--blue-deep); }
+
+.tnum{ font-variant-numeric:tabular-nums; }

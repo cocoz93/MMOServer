@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg1:#eef1f7; --bg2:#e4e8f1;
+    --card:#fff; --ink:#0f172a; --sub:#5b6478; --muted:#8b93a5; --faint:#a7aec0;
+    --line:#e8ebf2;
+    --red:#ef4444; --red-deep:#dc2626; --red-bg:#fef2f2; --red-line:#f7cccc;
+    --blue:#3b82f6; --blue-deep:#2660a5; --blue-mid:#3f7fc0; --blue-lite:#6ba8dd;
+    --blue-bg:#eaf2fb; --blue-line:#d3e3f6;
+    --gray-bg:#f4f5f8; --gray-line:#e2e5ec; --gray-deep:#6b7385;
+  }
+  html,body{width:1520px;height:800px;overflow:hidden;
+    background:
+      radial-gradient(circle at 1.2px 1.2px, rgba(38,96,165,.055) 1.2px, transparent 0) 0 0/26px 26px,
+      linear-gradient(135deg,var(--bg1),var(--bg2));
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;
+    color:var(--ink);font-feature-settings:"tnum" 1;
+    -webkit-font-smoothing:antialiased;text-rendering:geometricPrecision}
+
+  .card{position:absolute;inset:26px;background:var(--card);
+    border-radius:32px;border:1px solid rgba(255,255,255,.75);
+    box-shadow:0 40px 90px -30px rgba(15,23,42,.30),0 12px 30px -14px rgba(15,23,42,.12);
+    padding:44px 58px 30px;overflow:hidden;display:flex;flex-direction:column}
+  .card::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;
+    background:linear-gradient(90deg,#22508a,#3f7fc0 48%,#8fbde6)}
+  /* 카드 우상단 은은한 배경 글로우 */
+  .card::after{content:"";position:absolute;top:-160px;right:-140px;width:520px;height:520px;
+    border-radius:50%;background:radial-gradient(circle,rgba(63,127,192,.10),rgba(63,127,192,0) 68%);pointer-events:none}
+
+  /* ---- 헤더 ---- */
+  .eyebrow{display:inline-flex;align-self:flex-start;align-items:center;gap:8px;font-size:16px;font-weight:800;
+    letter-spacing:.2px;color:var(--blue-deep);background:var(--blue-bg);
+    border:1px solid var(--blue-line);padding:7px 16px;border-radius:999px}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--blue-mid);
+    box-shadow:0 0 0 4px rgba(63,127,192,.18)}
+  .title{margin-top:16px;font-size:40px;font-weight:800;color:var(--ink);letter-spacing:-1.2px}
+  .title .r{color:var(--red-deep)}
+  .rule{width:76px;height:6px;border-radius:3px;margin:15px 0 11px;
+    background:linear-gradient(90deg,var(--red),#fb7185)}
+  .sub{font-size:19px;font-weight:500;color:var(--sub);line-height:1.5}
+  .sub b{color:var(--ink);font-weight:700}
+
+  /* ---- 흐름 ---- */
+  .flow{margin-top:20px;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:0;position:relative;z-index:1}
+
+  .node-row{width:100%;display:grid;
+    grid-template-columns:150px 118px 1fr 168px 1fr;align-items:stretch}
+
+  /* 클라이언트 */
+  .client{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:13px}
+  .client-ico{width:86px;height:86px;border-radius:24px;position:relative;
+    background:linear-gradient(135deg,#f2f5fa,#e0e7f1);border:1.5px solid #d5dce8;
+    display:flex;align-items:center;justify-content:center;color:#4a5262;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.85),0 14px 26px -12px rgba(20,30,60,.38)}
+  .client-ico::before{content:"";position:absolute;inset:-16px;z-index:-1;border-radius:50%;
+    background:radial-gradient(circle,rgba(72,80,95,.10),rgba(72,80,95,0) 70%)}
+  .client-ico svg{width:40px;height:40px}
+  .client .lbl{font-size:20px;font-weight:800;color:var(--ink)}
+  .client .sub2{font-size:13.5px;font-weight:600;color:var(--muted);margin-top:-4px}
+
+  /* 커넥터 (가로 화살표) */
+  .hline{position:relative;align-self:center;height:0;width:100%}
+  .hline::before{content:'';position:absolute;left:2px;right:15px;top:0;height:5px;border-radius:3px;
+    transform:translateY(-50%);
+    background:linear-gradient(90deg,var(--blue-lite),var(--blue-deep));
+    box-shadow:0 3px 6px -2px rgba(38,96,165,.35)}
+  .hline::after{content:'';position:absolute;right:0;top:0;transform:translateY(-50%);
+    border-style:solid;border-width:9px 0 9px 15px;border-color:transparent transparent transparent var(--blue-deep);
+    filter:drop-shadow(1px 2px 2px rgba(38,96,165,.3))}
+  .hline .lbl2{position:absolute;left:50%;top:-14px;transform:translateX(-50%);
+    font-size:16px;font-weight:800;color:var(--blue-deep);white-space:nowrap;text-align:center}
+  .hline .lbl3{position:absolute;left:50%;top:14px;transform:translateX(-50%);
+    font-size:12.5px;font-weight:600;color:var(--faint);white-space:nowrap;text-align:center}
+
+  /* 카드 공통 */
+  .pcard{width:100%;border-radius:24px;position:relative;padding:24px 26px 24px;
+    box-shadow:0 30px 60px -24px rgba(15,23,42,.34),0 10px 22px -12px rgba(15,23,42,.14)}
+  .pcard::before{content:"";position:absolute;top:0;left:24px;right:24px;height:5px;border-radius:0 0 4px 4px}
+  .accept-card{background:linear-gradient(180deg,#ffffff,#f6fafe);border:1px solid var(--blue-line)}
+  .accept-card::before{background:linear-gradient(90deg,#22508a,#8fbde6)}
+  .worker-card{background:linear-gradient(180deg,#ffffff,#fdf7f7);border:1px solid var(--red-line)}
+  .worker-card::before{background:linear-gradient(90deg,#dc2626,#f0687a)}
+
+  .p-head{display:flex;align-items:center;gap:12px}
+  .p-ico{flex:0 0 auto;width:46px;height:46px;border-radius:13px;background:#fff;position:relative;
+    display:flex;align-items:center;justify-content:center}
+  .accept-card .p-ico{color:var(--blue-deep);border:1px solid var(--blue-line);box-shadow:0 5px 12px -5px rgba(38,96,165,.45)}
+  .worker-card .p-ico{color:var(--red-deep);border:1px solid var(--red-line);box-shadow:0 5px 12px -5px rgba(220,38,38,.4)}
+  .p-ico svg{width:25px;height:25px}
+  .p-title{font-size:24px;font-weight:800;line-height:1.1}
+  .accept-card .p-title{color:var(--blue-deep)}
+  .worker-card .p-title{color:var(--red-deep)}
+  .p-tag{font-size:13px;font-weight:700;color:var(--muted);margin-top:2px}
+
+  /* accept 단계 리스트 */
+  .steps{margin-top:18px;display:flex;flex-direction:column;gap:9px}
+  .step{display:flex;align-items:center;gap:13px;background:linear-gradient(180deg,#f2f8fe,var(--blue-bg));
+    border:1px solid var(--blue-line);border-radius:14px;padding:11px 15px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.85)}
+  .step .n{flex:0 0 auto;width:26px;height:26px;border-radius:8px;
+    background:linear-gradient(135deg,#4f8bc7,#22508a);color:#fff;font-size:14px;font-weight:800;
+    display:flex;align-items:center;justify-content:center;box-shadow:0 4px 9px -4px rgba(34,80,138,.6)}
+  .step .code{font-size:18px;font-weight:800;color:var(--blue-deep);letter-spacing:-.2px}
+  .step .desc{font-size:14px;font-weight:600;color:var(--sub);margin-left:auto;text-align:right}
+
+  /* worker */
+  .w-body{margin-top:18px;display:flex;flex-direction:column;align-items:center;gap:16px}
+  .cluster{display:grid;grid-template-columns:repeat(3,1fr);gap:13px;position:relative;z-index:1}
+  .cluster::before{content:"";position:absolute;inset:-20px;z-index:-1;border-radius:50%;
+    background:radial-gradient(circle,rgba(220,38,38,.13),rgba(220,38,38,0) 70%)}
+  .wdot{width:38px;height:38px;border-radius:50%;position:relative;
+    background:radial-gradient(circle at 32% 26%,#f28090,#c81c33);
+    box-shadow:inset 0 2px 3px rgba(255,255,255,.45),0 6px 12px -4px rgba(199,30,50,.55)}
+  .wdot::after{content:'';position:absolute;top:7px;left:9px;width:9px;height:9px;border-radius:50%;
+    background:rgba(255,255,255,.55);filter:blur(1px)}
+  .w-chips{display:flex;gap:9px;flex-wrap:wrap;justify-content:center}
+  .w-chip{display:inline-flex;align-items:center;gap:7px;background:var(--red-bg);
+    border:1px solid var(--red-line);border-radius:999px;padding:8px 15px;
+    font-size:14.5px;font-weight:800;color:var(--red-deep)}
+  .w-chip .code{font-family:'Pretendard',monospace;letter-spacing:-.2px}
+  .w-chip .arrow{color:var(--faint);font-weight:700}
+  .w-chip .plain{color:var(--sub);font-weight:700}
+
+  /* IOCP 완료큐 배지 (두 번째 커넥터 위) */
+  .conn2{position:relative;align-self:center;width:100%;height:0}
+  .conn2::before{content:'';position:absolute;left:2px;right:15px;top:0;height:5px;border-radius:3px;transform:translateY(-50%);
+    background:linear-gradient(90deg,var(--blue-lite),var(--red));
+    box-shadow:0 3px 6px -2px rgba(38,96,165,.30)}
+  .conn2::after{content:'';position:absolute;right:0;top:0;transform:translateY(-50%);
+    border-style:solid;border-width:9px 0 9px 15px;border-color:transparent transparent transparent var(--red-deep);
+    filter:drop-shadow(1px 2px 2px rgba(220,38,38,.28))}
+  .iocp-badge{position:absolute;left:50%;top:-30px;transform:translateX(-50%);
+    display:inline-flex;flex-direction:column;align-items:center;gap:2px;white-space:nowrap}
+  .iocp-badge .t1{font-size:16px;font-weight:800;color:var(--blue-deep)}
+  .iocp-badge .t2{position:absolute;top:44px;font-size:12.5px;font-weight:600;color:var(--faint)}
+
+  /* 하단 AcceptEx 고스트 브랜치 */
+  .branch{width:100%;margin-top:8px;position:relative}
+  .branch-pill{position:absolute;left:50%;top:-2px;transform:translateX(-50%);
+    display:inline-flex;align-items:center;gap:10px;background:linear-gradient(180deg,#fff,#fafbfc);
+    border:1px solid var(--gray-line);border-radius:999px;padding:12px 24px;
+    font-size:16.5px;font-weight:700;color:var(--gray-deep);z-index:2;
+    box-shadow:0 16px 30px -16px rgba(20,30,60,.32),0 4px 10px -6px rgba(20,30,60,.14),inset 0 1px 0 rgba(255,255,255,.85)}
+  .branch-pill .k{color:#4b5364;font-weight:800}
+  .branch-pill i{font-style:normal;color:var(--muted);font-weight:600}
+  .branch-pill .gico{color:var(--faint)}
+
+  /* 푸터 */
+  .foot{margin-top:auto;padding-top:15px;border-top:1px solid var(--line);
+    font-size:15.5px;color:#8089a0;font-weight:500;line-height:1.5}
+  .foot b{color:#3a4254;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="eyebrow"><span class="dot"></span>① 구조 · IOCP ACCEPT 처리</div>
+    <div class="title">Accept는 <span class="r">Worker</span>와 분리된다</div>
+    <div class="rule"></div>
+    <div class="sub">전용 <b>AcceptThread</b>가 연결 수립과 IOCP 등록까지 전담 — <b>Worker Pool</b>은 완료 통지(GQCS)만 받아 처리한다</div>
+
+    <div class="flow">
+      <div class="node-row">
+        <!-- Client -->
+        <div class="client">
+          <div class="client-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13" rx="2.2"/><path d="M8 21h8M12 17v4"/></svg></div>
+          <div class="lbl">Client</div>
+          <div class="sub2">연결 요청</div>
+        </div>
+
+        <!-- 연결 커넥터 -->
+        <div class="hline">
+          <span class="lbl2">연결</span>
+          <span class="lbl3">TCP 3-way</span>
+        </div>
+
+        <!-- AcceptThread -->
+        <div class="accept-card pcard">
+          <div class="p-head">
+            <div class="p-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5 5-5"/></svg></div>
+            <div>
+              <div class="p-title">AcceptThread</div>
+              <div class="p-tag">연결 수립 전담 · Worker 미관여</div>
+            </div>
+          </div>
+          <div class="steps">
+            <div class="step"><span class="n">1</span><span class="code">accept()</span><span class="desc">연결 꺼내기 (블로킹)</span></div>
+            <div class="step"><span class="n">2</span><span class="code">IOCP 등록</span><span class="desc">CreateIoCompletionPort</span></div>
+            <div class="step"><span class="n">3</span><span class="code">WSARecv 게시</span><span class="desc">첫 수신 걸어두기</span></div>
+          </div>
+        </div>
+
+        <!-- IOCP 완료큐 커넥터 -->
+        <div class="conn2">
+          <div class="iocp-badge">
+            <span class="t1">IOCP 완료 큐</span>
+            <span class="t2">완료를 커널이 통지</span>
+          </div>
+        </div>
+
+        <!-- Worker Pool -->
+        <div class="worker-card pcard">
+          <div class="p-head">
+            <div class="p-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h6v6H9z"/><path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2"/></svg></div>
+            <div>
+              <div class="p-title">Worker Pool</div>
+              <div class="p-tag">완료 처리 · I/O · 게임 로직</div>
+            </div>
+          </div>
+          <div class="w-body">
+            <div class="cluster">
+              <div class="wdot"></div><div class="wdot"></div><div class="wdot"></div>
+              <div class="wdot"></div><div class="wdot"></div><div class="wdot"></div>
+            </div>
+            <div class="w-chips">
+              <span class="w-chip"><span class="code">GQCS</span><span class="arrow">→</span><span class="plain">I/O · 게임 로직</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AcceptEx 고스트 브랜치 -->
+      <div class="branch">
+        <svg viewBox="0 0 1380 92" width="100%" height="92" preserveAspectRatio="none" style="display:block">
+          <defs>
+            <marker id="ag" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 Z" fill="#a3abba"/>
+            </marker>
+          </defs>
+          <path d="M470,52 C 470,88 940,88 1150,20" fill="none" stroke="#b6bdca" stroke-width="2.6" stroke-dasharray="7 8" marker-end="url(#ag)" style="filter:drop-shadow(0 2px 3px rgba(90,100,120,.20))"/>
+        </svg>
+        <span class="branch-pill">
+          <svg class="gico" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+          <span><span class="k">AcceptEx</span> 사용 시 — Worker가 accept까지 처리 <i>(전환 가능)</i></span>
+        </span>
+      </div>
+    </div>
+
+    <div class="foot">실선 = 실제 구조(전용 스레드) · 점선 = <b>AcceptEx</b> 사용 시 가정 경로(미사용) — 자세한 트레이드오프는 Notion 원문 참고</div>
+  </div>
+</body>
+</html>

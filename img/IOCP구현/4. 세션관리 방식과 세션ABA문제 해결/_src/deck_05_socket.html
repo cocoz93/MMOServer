@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#eef1f5; --bg2:#e6eaf1; --card:#ffffff; --ink:#1f2330; --sub:#3a4254; --muted:#7c8597; --faint:#9aa3b2;
+    --line:#eef0f3; --red:#d7263d; --deep:#b3122a; --red-bg:#fdeef0; --red-line:#f4c4cc;
+    --blue:#3a78b8; --blue-ink:#2b6aa8; --blue-deep:#1f5088; --blue-bg:#e7f0fa; --blue-line:#cfe0f2; --slate:#566072;
+    --grn:#1f8a5b; --grn-ink:#166848; --grn-bg:#e6f6ee; --grn-line:#bfe6d2;
+    --sh-card:0 0 0 1px rgba(30,40,70,.02),0 2px 4px -1px rgba(30,40,70,.05),0 10px 20px -6px rgba(30,40,70,.07),0 26px 44px -16px rgba(30,40,70,.12),0 52px 92px -40px rgba(24,32,58,.28),inset 0 1px 0 rgba(255,255,255,.95);
+    --grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+    --mono:"SF Mono",ui-monospace,"Cascadia Mono","Consolas",monospace;
+  }
+  html,body{width:1600px;height:900px;overflow:hidden;
+    background:radial-gradient(1100px 560px at 88% -12%, #ffffff, rgba(255,255,255,0) 58%),
+      linear-gradient(140deg,var(--bg),var(--bg2));
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;color:var(--ink);
+    word-break:keep-all;overflow-wrap:break-word;
+    font-feature-settings:"tnum" 1,"kern" 1,"calt" 1;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  .card{position:absolute;inset:28px;border-radius:32px;border:1px solid rgba(30,40,70,.06);
+    background:
+      radial-gradient(circle at 1px 1px, rgba(43,106,168,.045) 1px, transparent 1.4px) 0 0/30px 30px,
+      radial-gradient(820px 560px at 50% 128%, rgba(43,106,168,.06), transparent 62%),
+      radial-gradient(700px 480px at 106% -8%, rgba(31,138,91,.045), transparent 58%),
+      linear-gradient(180deg,#ffffff,#fbfcfe);
+    box-shadow:var(--sh-card);
+    padding:44px 60px 44px;display:flex;flex-direction:column;overflow:hidden}
+  .card::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+    background-image:var(--grain);background-size:180px 180px;opacity:.03;mix-blend-mode:soft-light}
+  .card::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;
+    background:linear-gradient(90deg,var(--blue-deep),var(--blue) 30%,#7cb0de 55%,rgba(124,176,222,0) 88%)}
+
+  .top{display:flex;align-items:center;justify-content:space-between}
+  .eyebrow{display:inline-flex;align-items:center;gap:11px;
+    font-size:16px;font-weight:800;letter-spacing:2.6px;color:var(--muted);text-transform:uppercase}
+  .eyebrow .d{width:9px;height:9px;border-radius:50%;background:var(--blue-ink);box-shadow:0 0 0 4px var(--blue-bg)}
+  .ddtag{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:800;letter-spacing:.4px;
+    color:var(--slate);background:#eef1f5;border:1px solid #e2e6ec;border-radius:999px;padding:7px 15px}
+  .ddtag b{color:var(--blue-deep)}
+
+  .title{margin-top:16px;font-size:54px;font-weight:800;color:var(--ink);letter-spacing:-1.8px;line-height:1.03}
+  .title .b{color:var(--blue-ink)} .title .mono{font-family:var(--mono);font-size:49px;color:var(--blue-deep)}
+  .title .r{color:var(--deep)}
+
+  .stage{flex:1;display:flex;flex-direction:column;justify-content:center;gap:24px;padding-top:14px}
+  .flow{display:flex;align-items:center;justify-content:center;gap:0}
+
+  .side{width:326px;border-radius:22px;background:#fff;position:relative;overflow:hidden;
+    display:flex;flex-direction:column;padding:26px 28px 28px;
+    box-shadow:0 24px 50px -30px rgba(30,40,70,.34),0 6px 16px -10px rgba(30,40,70,.1)}
+  .side::before{content:"";position:absolute;top:0;left:0;right:0;height:6px}
+  .side .tag{font-size:15px;font-weight:800;letter-spacing:.3px;padding:6px 15px;border-radius:999px;align-self:flex-start;margin-bottom:18px}
+  .side .big{font-size:30px;font-weight:800;letter-spacing:-.6px;line-height:1.14}
+  .side .big em{font-style:normal;font-family:var(--mono)}
+  .side .chip{margin-top:20px;display:flex;align-items:center;gap:9px;border-radius:12px;padding:13px 15px;
+    font-family:var(--mono);font-size:16px;font-weight:800;letter-spacing:-.2px}
+  .side .chip .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+  .side .chip .ko{font-family:'Pretendard',"Malgun Gothic",sans-serif}
+
+  .side.io{border:1.5px solid var(--blue-line)}
+  .side.io::before{background:linear-gradient(90deg,var(--blue-ink),#7cb0de)}
+  .side.io .tag{background:var(--blue-bg);color:var(--blue-ink)}
+  .side.io .big em{color:var(--blue-deep)}
+  .side.io .chip{background:#f2f7fc;border:1px solid var(--blue-line);color:var(--blue-ink)} .side.io .chip .dot{background:var(--blue-ink)}
+  .side.rel{border:1.6px solid var(--grn-line)}
+  .side.rel::before{background:linear-gradient(90deg,var(--grn),#54c48c)}
+  .side.rel .tag{background:var(--grn-bg);color:var(--grn-ink)}
+  .side.rel .big{color:var(--grn-ink)} .side.rel .big em{font-family:var(--mono)}
+  .side.rel .chip{background:var(--grn-bg);border:1px solid var(--grn-line);color:var(--grn-ink)} .side.rel .chip .dot{background:var(--grn)}
+
+  .conn{width:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+  .conn .cl{font-size:14.5px;font-weight:800;color:var(--muted);letter-spacing:-.2px;text-align:center;line-height:1.25}
+  .conn .cl .m{font-family:var(--mono);font-size:12.5px;color:var(--faint);display:block;margin-top:2px}
+
+  /* GIANT lock hero */
+  .lockhero{position:relative;width:430px;display:flex;flex-direction:column;align-items:center;padding:0 8px}
+  .lockhero .glow{position:absolute;top:26px;left:50%;transform:translateX(-50%);width:300px;height:300px;border-radius:50%;
+    background:radial-gradient(circle, rgba(43,106,168,.16), transparent 66%);z-index:0}
+  .lockhero .lk{position:relative;z-index:1;filter:drop-shadow(0 30px 34px rgba(31,80,136,.34))}
+  .lockhero .cond{position:relative;z-index:1;margin-top:12px;font-family:var(--mono);font-size:31px;font-weight:800;color:#fff;
+    background:linear-gradient(145deg,#3f81c4,#1f5088);padding:13px 34px;border-radius:999px;letter-spacing:.5px;
+    box-shadow:0 18px 32px -8px rgba(31,80,136,.58)}
+  .lockhero .verdict{position:relative;z-index:1;margin-top:16px;font-size:38px;font-weight:800;letter-spacing:-1px;color:var(--blue-deep);
+    display:flex;align-items:center;gap:12px}
+  .lockhero .verdict .strike{font-family:var(--mono);font-size:30px;color:var(--muted);text-decoration:line-through;text-decoration-color:var(--red);text-decoration-thickness:3px}
+  .lockhero .sub{position:relative;z-index:1;margin-top:8px;font-size:19px;font-weight:700;color:var(--slate);letter-spacing:-.3px}
+
+  .win{display:flex;align-items:center;gap:18px;align-self:center;
+    background:linear-gradient(180deg,#eefaf3,#dff5e9);border:1.6px solid var(--grn-line);border-radius:18px;padding:20px 34px;
+    box-shadow:0 22px 46px -30px rgba(31,138,91,.4)}
+  .win .ck{flex:0 0 auto;width:46px;height:46px;border-radius:50%;background:linear-gradient(145deg,#33ac74,#1f8a5b);
+    display:flex;align-items:center;justify-content:center;box-shadow:0 12px 22px -8px rgba(31,138,91,.55)}
+  .win .wt{font-size:24px;font-weight:800;color:var(--grn-ink);letter-spacing:-.4px}
+  .win .wt b{color:#0f5638;text-decoration:underline;text-decoration-color:#9ad9ba;text-underline-offset:4px}
+  .win .wt .r{color:var(--deep)}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="top">
+      <div class="eyebrow"><span class="d"></span>Session · Socket ABA</div>
+      <div class="ddtag"><b>심화</b> · Deep Dive</div>
+    </div>
+    <div class="title"><span class="mono">IOCount ≥ 1</span>이면 소켓 핸들은 <span class="r">닫히지 않는다</span></div>
+
+    <div class="stage">
+      <div class="flow">
+        <div class="side io">
+          <span class="tag">IO 사용 코드</span>
+          <div class="big"><em>PostRecv</em><br><em>PostSend</em></div>
+          <div class="chip"><span class="dot"></span>IOCount + 1</div>
+        </div>
+
+        <div class="conn">
+          <svg width="70" height="30"><path d="M2 15 H48" stroke="#9db4cf" stroke-width="6" stroke-linecap="round" fill="none"/><path d="M46 4 L68 15 L46 26 Z" fill="#9db4cf"/></svg>
+          <div class="cl">pin<span class="m">acquire</span></div>
+        </div>
+
+        <div class="lockhero">
+          <div class="glow"></div>
+          <svg class="lk" width="178" height="206" viewBox="0 0 120 140" fill="none">
+            <defs>
+              <linearGradient id="bd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5b96cf"/><stop offset="1" stop-color="#26608f"/></linearGradient>
+              <linearGradient id="sh" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fbde6"/><stop offset="1" stop-color="#3a78b8"/></linearGradient>
+            </defs>
+            <path d="M35 64 V45 a25 25 0 0 1 50 0 V64" fill="none" stroke="url(#sh)" stroke-width="13" stroke-linecap="round"/>
+            <rect x="21" y="62" width="78" height="66" rx="17" fill="url(#bd)" stroke="#1f5088" stroke-width="1.5"/>
+            <rect x="21" y="62" width="78" height="20" rx="17" fill="rgba(255,255,255,.16)"/>
+            <circle cx="60" cy="90" r="9.5" fill="#fff"/>
+            <rect x="55" y="93" width="10" height="22" rx="5" fill="#fff"/>
+          </svg>
+          <div class="cond">IOCount ≥ 1</div>
+          <div class="verdict"><span class="strike">closesocket</span> 잠금</div>
+          <div class="sub">사용 중엔 핸들을 못 닫는다</div>
+        </div>
+
+        <div class="conn">
+          <svg width="70" height="30"><path d="M2 15 H48" stroke="#7cc4a0" stroke-width="6" stroke-linecap="round" fill="none"/><path d="M46 4 L68 15 L46 26 Z" fill="#33ac74"/></svg>
+          <div class="cl">IOCount = 0<span class="m">pending 완료</span></div>
+        </div>
+
+        <div class="side rel">
+          <span class="tag">해제 시점</span>
+          <div class="big"><em>ReleaseSession</em><br>→ closesocket</div>
+          <div class="chip"><span class="dot"></span>Push(index)<span class="ko"> · 핸들 반납</span></div>
+        </div>
+      </div>
+
+      <div class="win">
+        <div class="ck"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+        <div class="wt">핸들은 <b>닫힌 뒤에야</b> 재사용된다 → 사용 중 핸들이 새 연결과 <span class="r">겹칠 수 없다</span></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

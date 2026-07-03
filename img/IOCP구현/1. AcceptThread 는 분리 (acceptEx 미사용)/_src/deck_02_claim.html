@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#eef1f5; --bg2:#e6eaf1; --card:#ffffff; --ink:#1f2330; --sub:#3a4254; --muted:#7c8597; --faint:#9aa3b2;
+    --line:#eef0f3; --line2:#f2f4f7; --track:#e8ecf2;
+    --red:#d7263d; --deep:#b3122a; --red-bg:#fdeef0; --red-line:#f4c4cc;
+    --blue:#3a78b8; --blue-ink:#2b6aa8; --blue-deep:#1f5088; --blue-bg:#e7f0fa; --blue-line:#cfe0f2; --slate:#566072;
+    --sh-card:0 0 0 1px rgba(30,40,70,.02),0 2px 4px -1px rgba(30,40,70,.05),0 10px 20px -6px rgba(30,40,70,.07),0 26px 44px -16px rgba(30,40,70,.12),0 52px 92px -40px rgba(24,32,58,.28),inset 0 1px 0 rgba(255,255,255,.95);
+    --grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  html,body{width:1600px;height:900px;overflow:hidden;
+    background:radial-gradient(1200px 620px at 14% -12%, #ffffff, rgba(255,255,255,0) 60%),
+      linear-gradient(140deg,var(--bg),var(--bg2));
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;color:var(--ink);
+    word-break:keep-all;overflow-wrap:break-word;
+    font-feature-settings:"tnum" 1,"kern" 1,"calt" 1;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  .card{position:absolute;inset:28px;border-radius:32px;border:1px solid rgba(30,40,70,.06);
+    background:
+      radial-gradient(circle at 1px 1px, rgba(43,106,168,.045) 1px, transparent 1.4px) 0 0/30px 30px,
+      radial-gradient(700px 480px at 102% -6%, rgba(215,38,61,.03), transparent 58%),
+      radial-gradient(780px 520px at -6% 108%, rgba(43,106,168,.045), transparent 60%),
+      linear-gradient(180deg,#ffffff,#fbfcfe);
+    box-shadow:var(--sh-card);
+    padding:72px 76px;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
+
+  .eyebrow{display:inline-flex;align-items:center;gap:10px;align-self:flex-start;
+    font-size:16px;font-weight:800;letter-spacing:3px;color:var(--muted);text-transform:uppercase}
+  .eyebrow .d{width:9px;height:9px;border-radius:50%;background:var(--red);box-shadow:0 0 0 4px var(--red-bg)}
+
+  .title{margin-top:26px;font-size:82px;line-height:1.05;font-weight:800;letter-spacing:-3px;color:var(--ink)}
+  .title .r{color:var(--red)}
+  .uline{width:96px;height:7px;border-radius:4px;margin:26px 0 22px;
+    background:linear-gradient(90deg,var(--red),#f2647a);box-shadow:0 6px 14px -5px rgba(215,38,61,.5)}
+  .sub{font-size:27px;font-weight:500;color:var(--muted);line-height:1.5;letter-spacing:-.4px;max-width:1020px}
+  .sub b{color:var(--sub);font-weight:700}
+
+  .stats{margin-top:72px;display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+  .stat{position:relative;background:linear-gradient(180deg,#ffffff,#fafcff);border:1px solid var(--line);
+    border-radius:20px;padding:30px 32px 28px;overflow:hidden;
+    box-shadow:0 18px 40px -28px rgba(30,40,70,.28)}
+  .stat::before{content:"";position:absolute;top:0;left:0;width:100%;height:5px;
+    background:linear-gradient(90deg,var(--blue),#6aa3d6)}
+  .stat .k{font-size:15px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--faint)}
+  .stat .n{margin-top:14px;font-size:58px;font-weight:800;letter-spacing:-2.5px;line-height:1;
+    background:linear-gradient(175deg,#3f81c4,var(--blue-deep));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .stat .n u{text-decoration:none;font-size:28px;font-weight:700;color:var(--slate);-webkit-text-fill-color:var(--slate);margin-left:3px}
+  .stat .c{margin-top:12px;font-size:18px;font-weight:600;color:var(--muted);letter-spacing:-.3px}
+
+  .foot{position:absolute;left:76px;right:76px;bottom:46px;padding-top:18px;border-top:1px solid var(--line);
+    font-size:17px;color:var(--faint);font-weight:500;letter-spacing:-.2px}
+  .foot b{color:var(--slate);font-weight:700}
+  .foot .r{color:var(--deep);font-weight:800}
+  .card::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+    background-image:var(--grain);background-size:180px 180px;opacity:.03;mix-blend-mode:soft-light}
+  .card::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;
+    background:linear-gradient(90deg,var(--deep),var(--red) 22%,#f2647a 42%,rgba(242,100,122,0) 82%)}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div style="position:absolute;top:34px;right:52px;z-index:6;font-size:15px;font-weight:800;color:#9aa3b2;letter-spacing:1px"><b style="color:#1f2330">02</b> / 04</div>
+    <div class="eyebrow"><span class="d"></span>IOCP · Accept Path</div>
+    <div class="title">Accept은 <span class="r">병목</span>이 아니다</div>
+    <div class="uline"></div>
+    <div class="sub">그래서 <b>AcceptEx</b> 대신, 연결만 전담하는 <b>단순한 스레드 하나.</b><br>
+      복잡한 최적화보다 지금 구조에 <b>맞는 단순함</b>을 택했다.</div>
+
+    <div class="stats">
+      <div class="stat"><div class="k">Per call</div><div class="n">~수<u>μs</u></div><div class="c">accept 1회 처리 시간</div></div>
+      <div class="stat"><div class="k">Throughput</div><div class="n">수백<u>/초</u></div><div class="c">정상 운영 접속 빈도</div></div>
+      <div class="stat"><div class="k">Threads</div><div class="n">1<u>개</u></div><div class="c">연결 수립 전담 스레드</div></div>
+    </div>
+
+    <div class="foot">동접 후 장시간 유지되는 MMO 특성상 accept 처리량은 이미 충분 · <b>필요해지면 그때 <span class="r">AcceptEx</span>로 전환</b> (전환 가능)</div>
+  </div>
+</body>
+</html>

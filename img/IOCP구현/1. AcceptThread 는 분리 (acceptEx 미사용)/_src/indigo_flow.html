@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#f6f9fc; --ink:#1a1f36; --slate:#3c4257; --muted:#697386; --faint:#8792a2;
+    --line:#e3e8ee; --line2:#eef2f6; --card:#ffffff;
+    --indigo:#635bff; --indigo-d:#4b45c6; --indigo-bg:#f1f0ff; --indigo-line:#d7d4ff;
+    --navy:#0c2f52; --navy-bg:#eef2f9; --navy-line:#cdd8ea;
+    --mono:"SF Mono",ui-monospace,"Cascadia Mono","Consolas",monospace;
+    --sh:0 2px 5px rgba(60,66,87,.06),0 15px 35px -16px rgba(60,66,87,.28);
+    --sh-sm:0 1px 3px rgba(60,66,87,.10);
+  }
+  html,body{width:1600px;height:900px;overflow:hidden;background:
+    radial-gradient(680px 360px at 92% -6%, rgba(99,91,255,.07), rgba(99,91,255,0) 60%),
+    var(--bg);
+    font-family:'Pretendard',-apple-system,"Malgun Gothic",sans-serif;color:var(--ink);
+    -webkit-font-smoothing:antialiased;text-rendering:geometricPrecision}
+  .wrap{position:absolute;inset:0;padding:54px 68px 44px;display:flex;flex-direction:column}
+
+  /* 헤더 */
+  .badge{display:inline-flex;align-self:flex-start;align-items:center;gap:9px;
+    background:var(--indigo-bg);border:1px solid var(--indigo-line);border-radius:8px;
+    padding:6px 13px;font-size:13px;font-weight:700;letter-spacing:.4px;color:var(--indigo-d);
+    font-family:var(--mono);text-transform:uppercase}
+  .badge .g{width:8px;height:8px;border-radius:50%;
+    background:linear-gradient(135deg,var(--indigo),var(--indigo-d))}
+  h1{margin-top:16px;font-size:38px;font-weight:800;letter-spacing:-1px;color:var(--ink)}
+  h1 .m{font-family:var(--mono);font-size:32px;font-weight:700;color:var(--indigo-d);letter-spacing:-1px}
+  .lede{margin-top:11px;font-size:19px;font-weight:500;color:var(--muted);line-height:1.5;max-width:1180px}
+  .lede b{color:var(--slate);font-weight:700}
+
+  /* 파이프라인 */
+  .pipe{margin-top:38px;flex:1;display:flex;align-items:center;justify-content:space-between;gap:0;min-height:0}
+  .arrow{flex:0 0 auto;width:64px;display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--faint)}
+  .arrow svg{width:64px;height:20px;display:block}
+  .arrow .al{font-size:11.5px;font-weight:700;color:var(--faint);font-family:var(--mono);white-space:nowrap;letter-spacing:-.2px}
+
+  .node{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--sh);position:relative}
+  .node .nh{display:flex;align-items:center;gap:11px;padding:17px 20px 15px;border-bottom:1px solid var(--line2)}
+  .node .nico{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .node .nt{font-size:19px;font-weight:800;color:var(--ink);letter-spacing:-.4px;line-height:1.1}
+  .node .ntg{font-size:12px;font-weight:600;color:var(--faint);margin-top:2px;font-family:var(--mono)}
+
+  /* Client */
+  .n-client{width:150px}
+  .n-client .nb{padding:18px;display:flex;flex-direction:column;align-items:center;gap:9px}
+  .n-client .cico{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#eef1f6,#e2e7ef);
+    border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:#5b6472}
+  .n-client .clbl{font-size:16px;font-weight:800;color:var(--ink)}
+  .n-client .csub{font-size:12.5px;font-weight:600;color:var(--faint);font-family:var(--mono)}
+
+  /* AcceptThread */
+  .n-accept{width:392px}
+  .n-accept .nico{background:var(--indigo-bg);color:var(--indigo-d);border:1px solid var(--indigo-line)}
+  .n-accept .nb{padding:16px 18px 18px;display:flex;flex-direction:column;gap:9px}
+  .stepc{display:flex;align-items:center;gap:12px;background:#fbfbfe;border:1px solid var(--line);
+    border-radius:10px;padding:11px 13px}
+  .stepc .sn{flex:0 0 auto;width:22px;height:22px;border-radius:6px;background:var(--indigo);color:#fff;
+    font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;font-family:var(--mono)}
+  .stepc .code{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--indigo-d);letter-spacing:-.3px}
+  .stepc .cx{font-size:12.5px;font-weight:600;color:var(--faint);margin-left:auto}
+
+  /* IOCP queue */
+  .n-queue{width:184px}
+  .n-queue .nb{padding:16px 16px 18px;display:flex;flex-direction:column;align-items:center;gap:12px}
+  .n-queue .qh{font-size:16px;font-weight:800;color:var(--ink);text-align:center;letter-spacing:-.3px}
+  .n-queue .qh span{display:block;font-size:11.5px;font-weight:600;color:var(--faint);font-family:var(--mono);margin-top:3px}
+  .qstack{display:flex;flex-direction:column;gap:5px;width:100%}
+  .qstack i{height:13px;border-radius:4px;background:linear-gradient(90deg,var(--indigo-bg),#fff);
+    border:1px solid var(--indigo-line)}
+  .qstack i:nth-child(1){background:linear-gradient(90deg,#e7e5ff,#f4f3ff)}
+  .qkernel{font-size:11.5px;font-weight:700;color:var(--indigo-d);font-family:var(--mono);
+    background:var(--indigo-bg);border:1px solid var(--indigo-line);border-radius:6px;padding:3px 9px}
+
+  /* Worker Pool */
+  .n-worker{width:356px}
+  .n-worker .nico{background:var(--navy-bg);color:var(--navy);border:1px solid var(--navy-line)}
+  .n-worker .nb{padding:16px 18px 18px}
+  .wgrid{display:flex;gap:8px;margin-bottom:14px}
+  .wnode{flex:1;height:44px;border-radius:9px;background:linear-gradient(180deg,#f3f6fb,#e9eff7);
+    border:1px solid var(--navy-line);display:flex;align-items:center;justify-content:center;color:var(--navy);
+    font-family:var(--mono);font-size:12px;font-weight:700}
+  .wcall{display:flex;align-items:center;gap:10px;background:#fbfbfe;border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+  .wcall .dot{width:8px;height:8px;border-radius:50%;background:var(--navy)}
+  .wcall .code{font-family:var(--mono);font-size:13.5px;font-weight:700;color:var(--slate);letter-spacing:-.4px}
+  .wcall .cx{font-size:12.5px;font-weight:600;color:var(--faint);margin-left:auto;white-space:nowrap}
+
+  /* 고스트 브랜치 (AcceptEx 대안) */
+  .ghost{margin-top:26px;display:flex;align-items:center;gap:16px;
+    background:repeating-linear-gradient(135deg,#fff,#fff 9px,#fafbfc 9px,#fafbfc 18px);
+    border:1.5px dashed var(--line);border-radius:14px;padding:15px 22px}
+  .ghost .gtag{font-family:var(--mono);font-size:13px;font-weight:800;color:var(--muted);
+    background:#eef2f6;border:1px solid var(--line);border-radius:7px;padding:6px 12px;white-space:nowrap}
+  .ghost .gtxt{font-size:16px;font-weight:600;color:var(--muted);line-height:1.45}
+  .ghost .gtxt b{color:var(--slate);font-weight:800;font-family:var(--mono)}
+  .ghost .gwhy{margin-left:auto;font-size:14px;font-weight:600;color:var(--faint);text-align:right;line-height:1.4;white-space:nowrap}
+
+  /* 푸터 범례 */
+  .foot{margin-top:auto;padding-top:16px;border-top:1px solid var(--line);
+    display:flex;align-items:center;gap:26px;font-size:14px;font-weight:600;color:var(--faint)}
+  .foot .lg{display:flex;align-items:center;gap:8px}
+  .foot .sw-solid{width:26px;height:0;border-top:3px solid var(--indigo)}
+  .foot .sw-dash{width:26px;height:0;border-top:2px dashed var(--muted)}
+  .foot .mono{font-family:var(--mono);color:var(--muted)}
+  .foot .right{margin-left:auto;color:var(--faint)}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <span class="badge"><span class="g"></span>NETWORK · ACCEPT PATH</span>
+    <h1>연결 수립은 <span class="m">AcceptThread</span> 하나가 전담한다</h1>
+    <div class="lede">전용 스레드가 <b>연결 수립 → IOCP 등록 → 첫 수신 게시</b>까지 처리하고, <b>Worker Pool</b>은 완료 통지만 받아 처리한다.
+      <b>AcceptEx</b>는 쓰지 않는다 — accept는 병목이 아니기 때문.</div>
+
+    <div class="pipe">
+      <!-- Client -->
+      <div class="node n-client">
+        <div class="nb">
+          <div class="cico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
+          <div class="clbl">Client</div>
+          <div class="csub">connect()</div>
+        </div>
+      </div>
+
+      <div class="arrow">
+        <svg viewBox="0 0 64 20"><defs><marker id="a1" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#635bff"/></marker></defs><line x1="2" y1="10" x2="52" y2="10" stroke="#635bff" stroke-width="2.4" marker-end="url(#a1)"/></svg>
+        <span class="al">TCP 3-way</span>
+      </div>
+
+      <!-- AcceptThread -->
+      <div class="node n-accept">
+        <div class="nh">
+          <div class="nico"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5 5-5"/></svg></div>
+          <div><div class="nt">AcceptThread</div><div class="ntg">dedicated · single thread</div></div>
+        </div>
+        <div class="nb">
+          <div class="stepc"><span class="sn">1</span><span class="code">accept()</span><span class="cx">연결 꺼내기 (blocking)</span></div>
+          <div class="stepc"><span class="sn">2</span><span class="code">CreateIoCompletionPort()</span><span class="cx">IOCP 등록</span></div>
+          <div class="stepc"><span class="sn">3</span><span class="code">WSARecv()</span><span class="cx">첫 수신 게시</span></div>
+        </div>
+      </div>
+
+      <div class="arrow">
+        <svg viewBox="0 0 64 20"><defs><marker id="a2" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#635bff"/></marker></defs><line x1="2" y1="10" x2="52" y2="10" stroke="#635bff" stroke-width="2.4" marker-end="url(#a2)"/></svg>
+        <span class="al">post I/O</span>
+      </div>
+
+      <!-- IOCP completion queue -->
+      <div class="node n-queue">
+        <div class="nb">
+          <div class="qh">IOCP 완료 큐<span>kernel-managed</span></div>
+          <div class="qstack"><i></i><i></i><i></i><i></i></div>
+          <div class="qkernel">completion packet</div>
+        </div>
+      </div>
+
+      <div class="arrow">
+        <svg viewBox="0 0 64 20"><defs><marker id="a3" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#0c2f52"/></marker></defs><line x1="2" y1="10" x2="52" y2="10" stroke="#0c2f52" stroke-width="2.4" marker-end="url(#a3)"/></svg>
+        <span class="al">dequeue</span>
+      </div>
+
+      <!-- Worker Pool -->
+      <div class="node n-worker">
+        <div class="nh">
+          <div class="nico"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h6v6H9z"/></svg></div>
+          <div><div class="nt">Worker Pool</div><div class="ntg">N threads · shared</div></div>
+        </div>
+        <div class="nb">
+          <div class="wgrid"><div class="wnode">W0</div><div class="wnode">W1</div><div class="wnode">W2</div><div class="wnode">W3</div></div>
+          <div class="wcall"><span class="dot"></span><span class="code">GetQueuedCompletionStatus()</span><span class="cx">I/O · 게임 로직</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AcceptEx 대안 (미사용) -->
+    <div class="ghost">
+      <span class="gtag">AcceptEx</span>
+      <span class="gtxt"><b>미사용</b> — 사용 시 Worker 스레드가 accept까지 IOCP로 통합 처리 (소켓 풀 · OVERLAPPED 사전 준비 필요)</span>
+      <span class="gwhy">accept는 병목이 아님 →<br>단순성 우선, 필요 시 전환</span>
+    </div>
+
+    <div class="foot">
+      <span class="lg"><span class="sw-solid"></span>현 구조 (전용 스레드)</span>
+      <span class="lg"><span class="sw-dash"></span>대안 · 미사용</span>
+      <span class="lg"><span class="mono">mono</span> = Win32 API</span>
+      <span class="right">MMO 네트워크 라이브러리 · IOCP</span>
+    </div>
+  </div>
+</body>
+</html>

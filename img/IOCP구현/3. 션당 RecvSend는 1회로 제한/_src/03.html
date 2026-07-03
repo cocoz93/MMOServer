@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="common.css">
+<style>
+  html,body{width:1520px;height:960px;overflow:hidden}
+
+  .panels{margin-top:18px;flex:1;display:grid;grid-template-columns:1fr 1fr;gap:32px;min-height:0}
+  .panel{border-radius:26px;padding:26px 30px 24px;position:relative;overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--sh-md)}
+  .panel.good{background:linear-gradient(180deg,#ffffff,#f3fdf8);border:1px solid var(--green-line)}
+  .panel.bad{background:linear-gradient(180deg,#ffffff,#fdf4f4);border:1px solid var(--red-line)}
+  .panel::before{content:"";position:absolute;top:0;left:30px;right:30px;height:5px;border-radius:0 0 4px 4px}
+  .panel.good::before{background:linear-gradient(90deg,#059669,#5fd0a5)}
+  .panel.bad::before{background:linear-gradient(90deg,#dc2626,#f0687a)}
+
+  .p-head{display:flex;align-items:center;gap:15px}
+  .p-ico{flex:0 0 auto;width:56px;height:56px;border-radius:16px;background:#fff;display:flex;align-items:center;justify-content:center}
+  .good .p-ico{color:var(--green-deep);border:1px solid var(--green-line);box-shadow:0 6px 14px -6px rgba(5,150,105,.45)}
+  .bad .p-ico{color:var(--red-deep);border:1px solid var(--red-line);box-shadow:0 6px 14px -6px rgba(220,38,38,.45)}
+  .p-ico svg{width:31px;height:31px}
+  .p-title{font-size:26px;font-weight:800;line-height:1.12}
+  .good .p-title{color:var(--green-deep)}
+  .bad .p-title{color:var(--red-deep)}
+  .p-tag{font-size:15px;font-weight:700;color:var(--muted);margin-top:3px}
+
+  .p-steps{margin-top:18px;display:flex;flex-direction:column;gap:11px}
+  .pstep{display:flex;align-items:center;gap:15px;background:#fff;border:1px solid var(--line);
+    border-radius:16px;padding:16px 19px;box-shadow:var(--sh-sm)}
+  .pstep .pn{flex:0 0 auto;width:34px;height:34px;border-radius:10px;color:#fff;font-size:17px;font-weight:800;
+    display:flex;align-items:center;justify-content:center}
+  .good .pstep .pn{background:linear-gradient(135deg,#34c88f,#059669);box-shadow:0 4px 9px -4px rgba(5,150,105,.6)}
+  .bad .pstep .pn{background:linear-gradient(135deg,#f0687a,#dc2626);box-shadow:0 4px 9px -4px rgba(220,38,38,.55)}
+  .pstep .pd{font-size:17.5px;font-weight:700;color:var(--ink);line-height:1.25}
+  .pstep .pd b{font-weight:800}
+  .good .pstep .pd b{color:var(--green-deep)}
+  .bad .pstep .pd b{color:var(--red-deep)}
+  .pstep .lk{margin-left:auto;flex:0 0 auto;display:flex;align-items:center;color:var(--faint)}
+  .pstep .lk svg{width:23px;height:23px}
+  .good .pstep.hot{background:linear-gradient(180deg,#effcf5,#e3f8ee);border-color:var(--green-line)}
+  .good .pstep.hot .lk{color:var(--green-deep)}
+  .bad .pstep.hot{background:linear-gradient(180deg,#fdeeee,#fbe4e4);border-color:var(--red-line)}
+  .bad .pstep.hot .lk{color:var(--red-deep)}
+
+  /* 누적 자물쇠 (backpressure) */
+  .locks{margin-top:11px;display:flex;align-items:center;gap:12px;padding:2px}
+  .lk-box{flex:0 0 auto;width:48px;height:48px;border-radius:13px;background:linear-gradient(135deg,#fdeaea,#f6cccc);
+    border:1.5px solid var(--red-line);color:var(--red-deep);display:flex;align-items:center;justify-content:center;
+    box-shadow:0 6px 13px -6px rgba(220,38,38,.4)}
+  .lk-box svg{width:25px;height:25px}
+  .lk-more{font-size:25px;font-weight:900;color:#e08e8e;letter-spacing:2px}
+  .lk-cap{font-size:15px;font-weight:700;color:var(--red-deep);margin-left:3px;line-height:1.25}
+
+  /* non-paged pool 게이지 */
+  .gauge-wrap{margin-top:13px;background:#fff;border:1px solid var(--red-line);border-radius:16px;padding:14px 18px;box-shadow:var(--sh-sm)}
+  .gauge-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .gauge-top .gl{font-size:16px;font-weight:800;color:var(--ink)}
+  .gauge-top .gr{font-size:15px;font-weight:800;color:var(--red-deep)}
+  .gauge{position:relative;height:24px;border-radius:12px;background:#f2dede;overflow:hidden}
+  .gauge-fill{position:absolute;left:0;top:0;bottom:0;width:84%;border-radius:12px;
+    background:linear-gradient(90deg,#f8a0ab,#f0687a 55%,#dc2626);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.4)}
+  .gauge-stripe{position:absolute;top:0;bottom:0;right:0;width:16%;
+    background:repeating-linear-gradient(45deg,rgba(220,38,38,.16) 0 6px,transparent 6px 12px)}
+
+  .p-foot{margin-top:auto;padding-top:16px}
+  .p-foot .badge{width:100%;justify-content:center;font-size:17px;padding:13px}
+  .p-foot .badge svg{width:18px;height:18px}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="eyebrow"><span class="dot"></span><span class="no">③</span>&nbsp;메모리 · PAGE LOCK</div>
+    <div class="title"><span class="b">Page Lock</span>은 <span class="r">과부하 상한선</span>일 뿐, 1-pending의 진짜 이유는 아니다</div>
+    <div class="rule"></div>
+    <div class="sub">커널은 Send 중 원본 버퍼를 잠근다(pin). <b>정상이면 순간</b>, 수신자가 밀리면 <b>계속 잠긴 채 쌓인다</b></div>
+
+    <div class="panels">
+      <!-- 정상 -->
+      <div class="panel good">
+        <div class="p-head">
+          <div class="p-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/><path d="M9.7 15.6l1.4 1.4 3-3"/></svg></div>
+          <div>
+            <div class="p-title">정상 — pin은 순간적</div>
+            <div class="p-tag">SO_SNDBUF에 여유 있음</div>
+          </div>
+        </div>
+        <div class="p-steps">
+          <div class="pstep"><span class="pn">1</span><span class="pd"><b>WSASend</b> → 원본 버퍼 잠금(pin)</span><span class="lk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span></div>
+          <div class="pstep hot"><span class="pn">2</span><span class="pd">SO_SNDBUF로 <b>즉시 복사</b></span></div>
+          <div class="pstep"><span class="pn">3</span><span class="pd">잠금 해제 · 완료</span><span class="lk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 7-2"/></svg></span></div>
+        </div>
+        <div class="p-foot">
+          <span class="badge ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>pinning은 순간적 → 실질 부담 없음</span>
+        </div>
+      </div>
+
+      <!-- backpressure -->
+      <div class="panel bad">
+        <div class="p-head">
+          <div class="p-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 4.3L2.5 18a1.6 1.6 0 0 0 1.4 2.4h16.2A1.6 1.6 0 0 0 21.5 18L13.7 4.3a1.6 1.6 0 0 0-2.8 0z"/><path d="M12 9.5v4.5M12 17.4v.1"/></svg></div>
+          <div>
+            <div class="p-title">Backpressure — 계속 잠김</div>
+            <div class="p-tag">수신자가 느려 SO_SNDBUF가 가득</div>
+          </div>
+        </div>
+        <div class="p-steps">
+          <div class="pstep"><span class="pn">1</span><span class="pd">수신자 느림 → <b>SO_SNDBUF 가득</b></span></div>
+          <div class="pstep hot"><span class="pn">2</span><span class="pd">복사를 못 해 <b>버퍼가 잠긴 채 대기</b></span><span class="lk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span></div>
+        </div>
+        <div class="locks">
+          <div class="lk-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
+          <div class="lk-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
+          <div class="lk-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
+          <span class="lk-more">···</span>
+          <span class="lk-cap">outstanding × 세션 수만큼 누적</span>
+        </div>
+        <div class="gauge-wrap">
+          <div class="gauge-top"><span class="gl">non-paged pool</span><span class="gr">압박 → 최악 WSAENOBUFS</span></div>
+          <div class="gauge"><div class="gauge-fill"></div><div class="gauge-stripe"></div></div>
+        </div>
+        <div class="p-foot">
+          <span class="badge bad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 16v.5M10.3 4.3L2.5 18a1.6 1.6 0 0 0 1.4 2.4h16.2A1.6 1.6 0 0 0 21.5 18L13.7 4.3a1.6 1.6 0 0 0-2.8 0z"/></svg>무한정 늘리면 커널 메모리 고갈</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="takeaway">
+      <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.4c.6.6.9 1.2 1 2.1h6c.1-.9.4-1.5 1-2.1A6 6 0 0 0 12 3z"/></svg></div>
+      <div class="tx">Page Lock은 <b>상한선</b>일 뿐 — 진짜 이유는 완료가 1개씩 와서 <b>순서·경합·처리가 단순</b>해지는 것(Page Lock 최소화는 부수 효과).</div>
+    </div>
+
+    <div class="foot">non-paged pool 한도는 시스템 RAM에 비례 · 자세한 내용은 Notion 원문 참고</div>
+  </div>
+</body>
+</html>

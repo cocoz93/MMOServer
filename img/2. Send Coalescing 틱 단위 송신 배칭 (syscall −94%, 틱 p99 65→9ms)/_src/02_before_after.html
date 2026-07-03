@@ -1,0 +1,79 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<link rel="stylesheet" href="common.css">
+<style>
+  .card{ padding:26px 54px; }
+  .eyebrow{ margin-bottom:10px; }
+  .h-title{ font-size:38px; }
+  .h-rule{ margin:12px 0 9px; }
+  .h-sub{ font-size:20px; }
+
+  .cols{ display:flex; gap:30px; align-items:stretch; width:100%; }
+  .col{ flex:1; border-radius:22px; padding:16px 22px; display:flex; flex-direction:column; position:relative; }
+  .col.before{ background:var(--red-bg);  border:1px solid var(--red-line);
+               box-shadow:0 14px 30px -20px rgba(220,38,38,.4); }
+  .col.after{ background:var(--green-bg); border:1px solid var(--green-line);
+              box-shadow:0 14px 30px -20px rgba(5,150,105,.4); }
+  .tag{ align-self:flex-start; font-size:18px; font-weight:800; letter-spacing:-.2px;
+        padding:6px 16px; border-radius:999px; margin-bottom:13px; color:#fff; }
+  .col.before .tag{ background:linear-gradient(135deg,#f87171,#dc2626); }
+  .col.after  .tag{ background:linear-gradient(135deg,#34d399,#059669); }
+
+  .flow{ display:flex; flex-direction:column; gap:6px; }
+  .node{ display:flex; align-items:center; gap:13px; }
+  .msg{ flex:0 0 126px; font-size:18px; font-weight:700; color:var(--ink); background:#fff;
+        border:1px solid var(--line); border-radius:11px; padding:7px 14px; text-align:center;
+        box-shadow:0 3px 8px -4px rgba(15,23,42,.18); }
+  .to{ font-size:21px; color:var(--faint); font-weight:800; }
+  .send{ flex:1; font-size:19px; font-weight:800; color:#fff; border-radius:11px; padding:7px 16px; text-align:center; }
+  .send.sys{ background:linear-gradient(135deg,#f87171,#e02424); box-shadow:0 6px 14px -6px rgba(220,38,38,.55); }
+  .send.one{ background:linear-gradient(135deg,#34d399,#059669); box-shadow:0 6px 14px -6px rgba(5,150,105,.55); }
+  .keep{ font-size:16px; font-weight:700; color:var(--amber-deep); }
+
+  .buf{ background:linear-gradient(135deg,#fef3c7,#fde9b0); border:1.5px dashed var(--amber);
+        border-radius:13px; padding:8px 16px; text-align:center; font-size:19px; font-weight:800;
+        color:var(--amber-deep); margin:5px 0 2px; }
+  .buf small{ display:block; font-size:15px; font-weight:600; color:#b07c1e; margin-top:1px; }
+  .down{ text-align:center; font-size:17px; color:var(--amber-deep); font-weight:800; margin:4px 0; letter-spacing:-.2px; }
+
+  .cap{ margin-top:auto; align-self:flex-start; padding:9px 18px; border-radius:12px;
+        font-size:19px; font-weight:800; display:inline-flex; align-items:center; gap:8px; background:#fff;
+        box-shadow:0 6px 16px -10px rgba(15,23,42,.3); }
+  .col.before .cap{ color:var(--red-deep); border:1.6px solid var(--red-line); }
+  .col.after .cap{ color:var(--green-deep); border:1.6px solid var(--green-line); }
+  .cap b{ font-size:24px; }
+</style></head>
+<body><div class="card">
+  <div class="eyebrow"><span class="no">②</span> 변경 내용 · BEFORE → AFTER</div>
+  <div class="h-title">메시지마다 WSASend를, <span class="k">틱끝에 한번으로 압축</span></div>
+  <div class="h-rule"></div>
+  <div class="h-sub">세션당 1틱 약 <b>17건</b> → 세션 버퍼에 쌓아 틱끝 <b>flush 1회</b></div>
+
+  <div class="body">
+    <div class="cols">
+      <div class="col before">
+        <div class="tag">▼ 변경 전 · 즉시 송신</div>
+        <div class="flow">
+          <div class="node"><div class="msg">메시지 1</div><div class="to">→</div><div class="send sys">WSASend</div></div>
+          <div class="node"><div class="msg">메시지 2</div><div class="to">→</div><div class="send sys">WSASend</div></div>
+          <div class="node"><div class="msg">… 17건</div><div class="to">→</div><div class="send sys">WSASend</div></div>
+        </div>
+        <div class="cap">syscall <b>×17</b> / 세션 · 틱</div>
+      </div>
+
+      <div class="col after">
+        <div class="tag">▼ 변경 후 · 틱 끝 묶음</div>
+        <div class="flow">
+          <div class="node"><div class="msg">메시지 1</div><div class="to">↘</div><div class="keep">버퍼에 쌓기만</div></div>
+          <div class="node"><div class="msg">메시지 2</div><div class="to">↘</div><div class="keep">버퍼에 쌓기만</div></div>
+          <div class="node"><div class="msg">… 17건</div><div class="to">↘</div><div class="keep">버퍼에 쌓기만</div></div>
+        </div>
+        <div class="buf">세션 송신 버퍼<small>틱 동안 모으기만</small></div>
+        <div class="down">↓ 틱 끝 flush</div>
+        <div class="node" style="justify-content:center"><div class="send one" style="flex:0 0 230px">WSASend ×1 (묶음)</div></div>
+        <div class="cap">syscall <b>×1</b> / 세션 · 틱</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">토글 <b>USE_SEND_COALESCING</b> (BuildConfig.h) &nbsp;|&nbsp; 리스크 = 최대 1틱(40ms) 송신 지연이나, 트래픽 88%가 틱 끝 브로드캐스트라 실질 추가 지연 ≈0 (handle p99 오히려 68→53ms)</div>
+</div></body></html>

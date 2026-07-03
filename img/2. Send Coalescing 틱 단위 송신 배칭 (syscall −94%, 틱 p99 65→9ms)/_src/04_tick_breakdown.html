@@ -1,0 +1,82 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<link rel="stylesheet" href="common.css">
+<style>
+  .card{ padding:38px 56px; }
+  .eyebrow{ margin-bottom:11px; }
+  .h-title{ font-size:40px; }
+  .h-rule{ margin:13px 0 10px; }
+  .h-sub{ font-size:20px; }
+
+  .row{ display:flex; gap:46px; align-items:center; width:100%; }
+
+  /* 좌: 도넛 + 범례 */
+  .left{ flex:0 0 336px; display:flex; flex-direction:column; align-items:center; }
+  .donut{ position:relative; width:246px; height:246px; }
+  .donut .ring{ position:absolute; inset:0; border-radius:50%;
+    background:conic-gradient(var(--green) 0 83%, var(--blue) 83% 98%, var(--gray-bar) 98% 100%);
+    -webkit-mask:radial-gradient(circle at center, transparent 58%, #000 59%);
+            mask:radial-gradient(circle at center, transparent 58%, #000 59%);
+    filter:drop-shadow(0 10px 22px rgba(5,150,105,.18)); }
+  .donut .ctr{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1; }
+  .donut .ctr .n{ font-size:50px; font-weight:800; letter-spacing:-2px; color:var(--green-deep); }
+  .donut .ctr .n .u{ font-size:25px; }
+  .donut .ctr .d{ font-size:16px; color:var(--sub); font-weight:600; margin-top:6px; }
+  .leg{ margin-top:24px; width:100%; display:flex; flex-direction:column; gap:12px; }
+  .leg .li{ display:flex; align-items:center; font-size:20px; font-weight:700; }
+  .leg .li .sw{ width:15px; height:15px; border-radius:5px; margin-right:12px; flex:0 0 auto; }
+  .leg .li .nm{ color:var(--ink); }
+  .leg .li .pc{ margin-left:auto; color:var(--sub); font-weight:800; }
+
+  /* 우: 지표 바 2개 + 결론 박스 */
+  .right{ flex:1; display:flex; flex-direction:column; gap:18px; }
+  .metric{ background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:17px 22px; }
+  .metric .mt{ font-size:22px; font-weight:800; color:var(--ink); }
+  .metric .mt small{ font-size:17px; font-weight:600; color:var(--sub); }
+  .bar2{ position:relative; height:20px; border-radius:7px; overflow:hidden; margin:13px 0 9px; }
+  .bar2 .off{ position:absolute; inset:0; background:linear-gradient(90deg,#f87171,#e02424); border-radius:7px; }
+  .bar2 .on{ position:absolute; left:0; top:0; bottom:0; width:9px; background:linear-gradient(90deg,#34d399,#10b981); border-radius:7px 0 0 7px; }
+  .metric .lab{ display:flex; justify-content:space-between; font-size:18px; font-weight:800; }
+  .metric .lab .o{ color:var(--red-deep); } .metric .lab .g{ color:var(--green-deep); }
+
+  .box{ background:var(--green-bg); border:1px solid var(--green-line); border-radius:16px; padding:17px 22px;
+        font-size:20px; font-weight:700; color:#1f5f4a; line-height:1.45; }
+  .box b{ color:var(--green-deep); font-weight:800; } .box .r{ color:var(--red-deep); font-weight:800; }
+</style></head>
+<body><div class="card">
+  <div class="eyebrow"><span class="no">④</span> 원인 분해 · WHY IT WORKED</div>
+  <div class="h-title">틱 단축 <span class="kg">−23.8ms</span>, 8할이 송신</div>
+  <div class="h-rule"></div>
+  <div class="h-sub">tick p50 <b>29.8 → 3.1ms</b>. 줄어든 시간의 대부분이 network_dispatch(송신 페이즈)</div>
+
+  <div class="body" style="align-items:flex-start;">
+    <div class="row">
+      <div class="left">
+        <div class="donut">
+          <div class="ring"></div>
+          <div class="ctr"><div class="n tnum">−23.8<span class="u">ms</span></div><div class="d">틱 단축분 기여도</div></div>
+        </div>
+        <div class="leg">
+          <div class="li"><span class="sw" style="background:var(--green)"></span><span class="nm">network_dispatch</span><span class="pc">83%</span></div>
+          <div class="li"><span class="sw" style="background:var(--blue)"></span><span class="nm">game_logic</span><span class="pc">15%</span></div>
+          <div class="li"><span class="sw" style="background:var(--gray-bar)"></span><span class="nm">기타</span><span class="pc">2%</span></div>
+        </div>
+      </div>
+
+      <div class="right">
+        <div class="metric">
+          <div class="mt">network_dispatch <small>· 송신 페이즈 (틱 최대 비중)</small></div>
+          <div class="bar2"><div class="off"></div><div class="on"></div></div>
+          <div class="lab"><span class="g">ON 0.31 ms · −98%</span><span class="o">OFF 20.19 ms</span></div>
+        </div>
+        <div class="metric">
+          <div class="mt">game_logic <small>· 틱당 로직</small></div>
+          <div class="bar2"><div class="off"></div><div class="on"></div></div>
+          <div class="lab"><span class="g">ON 0.08 ms · −98%</span><span class="o">OFF 3.78 ms</span></div>
+        </div>
+        <div class="box">변경 전 network_dispatch가 틱의 <span class="r">76%</span>를 차지 =<br><b>send가 병목</b>이라는 정량 근거. (회귀였던 LockFree와 정반대)</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">동접 200 · RingBuffer · throughput ≈83k msg/s 동일 &nbsp;|&nbsp; 틱 단축 23.8ms 중 network_dispatch 83% · game_logic 15%</div>
+</div></body></html>

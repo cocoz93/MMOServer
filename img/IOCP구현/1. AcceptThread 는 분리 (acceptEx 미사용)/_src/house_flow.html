@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#eef1f5; --bg2:#e6eaf1; --card:#ffffff; --ink:#1f2330; --sub:#3a4254; --muted:#7c8597; --faint:#9aa3b2;
+    --line:#eef0f3; --line2:#f2f4f7; --track:#e8ecf2;
+    --red:#d7263d; --deep:#b3122a; --red-bg:#fdeef0; --red-line:#f4c4cc;
+    --blue:#3a78b8; --blue-ink:#2b6aa8; --blue-bg:#e7f0fa; --blue-line:#cfe0f2; --slate:#566072;
+    --mono:"SF Mono",ui-monospace,"Cascadia Mono","Consolas",monospace;
+  }
+  html,body{width:1600px;height:900px;overflow:hidden;
+    background:radial-gradient(1100px 560px at 88% -12%, #ffffff, rgba(255,255,255,0) 58%),
+      linear-gradient(140deg,var(--bg),var(--bg2));
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;color:var(--ink);
+    font-feature-settings:"tnum" 1;-webkit-font-smoothing:antialiased;text-rendering:geometricPrecision}
+  .card{position:absolute;inset:28px;background:var(--card);border:1px solid var(--line);border-radius:32px;
+    box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 34px 70px -34px rgba(30,40,70,.24),0 14px 32px -18px rgba(30,40,70,.10);
+    padding:48px 60px 40px;display:flex;flex-direction:column;overflow:hidden}
+
+  .eyebrow{display:inline-flex;align-items:center;gap:10px;align-self:flex-start;
+    font-size:15px;font-weight:800;letter-spacing:2.5px;color:var(--muted);text-transform:uppercase}
+  .eyebrow .d{width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 0 4px var(--red-bg)}
+  .title{margin-top:15px;font-size:42px;font-weight:800;color:var(--ink);letter-spacing:-1.2px;line-height:1.08}
+  .title .b{color:var(--blue-ink)}
+  .uline{width:88px;height:6px;border-radius:3px;margin:14px 0 12px;
+    background:linear-gradient(90deg,var(--red),#f2647a);box-shadow:0 5px 12px -5px rgba(215,38,61,.5)}
+  .sub{font-size:20px;font-weight:500;color:var(--muted);line-height:1.5;letter-spacing:-.3px;max-width:1300px}
+  .sub b{color:var(--sub);font-weight:700}
+  .sub .r{color:var(--deep);font-weight:700}
+
+  /* 파이프라인 */
+  .pipe{margin-top:36px;display:flex;align-items:center;justify-content:space-between}
+  .client{width:96px;display:flex;flex-direction:column;align-items:center;gap:10px}
+  .client .ico{width:58px;height:58px;border-radius:16px;background:linear-gradient(135deg,#f2f4f8,#e6ebf2);
+    border:1.5px solid #e0e5ee;display:flex;align-items:center;justify-content:center;color:var(--slate);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 10px 20px -12px rgba(30,40,70,.35)}
+  .client .cl{font-size:17px;font-weight:800;color:var(--slate)}
+  .client .cs{font-size:12.5px;font-weight:700;color:var(--faint);font-family:var(--mono);margin-top:-4px}
+
+  .arr{display:flex;flex-direction:column;align-items:center;width:74px;flex:0 0 auto}
+  .arr .al{font-size:14px;font-weight:800;margin-bottom:5px;letter-spacing:-.2px;white-space:nowrap}
+  .arr.b .al{color:var(--blue-ink)} .arr.g .al{color:var(--faint)}
+
+  .node{border-radius:20px;border:1.5px solid #e7ebf1;background:#fff;position:relative;overflow:hidden;
+    box-shadow:0 18px 40px -26px rgba(30,40,70,.30),0 6px 16px -10px rgba(30,40,70,.10)}
+  .node::before{content:"";position:absolute;top:0;left:0;right:0;height:5px}
+  .node.b::before{background:linear-gradient(90deg,var(--blue-ink),#7cb0de)}
+  .node.s::before{background:linear-gradient(90deg,#49546a,#8c96a8)}
+  .n-head{display:flex;align-items:center;gap:12px;padding:16px 20px 0}
+  .tag{font-size:13px;font-weight:800;padding:4px 12px;border-radius:999px;letter-spacing:-.2px;white-space:nowrap}
+  .node.b .tag{background:var(--blue-bg);color:var(--blue-ink)}
+  .node.s .tag{background:#eef0f4;color:#49546a}
+  .n-title{font-size:23px;font-weight:800;color:var(--ink);letter-spacing:-.5px}
+
+  .n-accept{width:452px}
+  .steps{padding:15px 20px 18px;display:flex;flex-direction:column;gap:8px}
+  .step{display:flex;align-items:center;gap:12px;background:linear-gradient(180deg,#f5f9fd,#eef5fb);
+    border:1px solid var(--blue-line);border-radius:12px;padding:10px 14px}
+  .step .sn{flex:0 0 auto;width:23px;height:23px;border-radius:7px;background:linear-gradient(135deg,#4a86c4,#2b6aa8);
+    color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;font-family:var(--mono)}
+  .step .code{font-family:var(--mono);font-size:15px;font-weight:800;color:var(--blue-ink);letter-spacing:-.3px}
+  .step .cx{font-size:13.5px;font-weight:600;color:var(--muted);margin-left:auto}
+
+  .qcard{width:212px;align-self:stretch;border-radius:20px;border:1.6px dashed #c2d0e2;background:#f6f9fc;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:13px;padding:20px 16px}
+  .qcard .qt{font-size:17px;font-weight:800;color:#2b4a72;letter-spacing:-.3px;text-align:center}
+  .qcard .qt span{display:block;font-size:12.5px;font-weight:700;color:#8089a0;font-family:var(--mono);margin-top:3px}
+  .slots{display:flex;flex-direction:column;gap:5px;width:100%;padding:0 12px}
+  .slots i{height:12px;border-radius:4px;background:#e3e9f1;border:1px solid #d3dded}
+  .slots i:nth-child(1){background:linear-gradient(90deg,#4a86c4,#356ba8);border-color:#356ba8}
+  .slots i:nth-child(2){background:linear-gradient(90deg,#88b4dd,#6fa0cf);border-color:#6fa0cf}
+  .qcard .qc{font-size:13px;font-weight:700;color:#8089a0;letter-spacing:-.2px}
+
+  .n-worker{width:354px}
+  .w-body{padding:15px 20px 18px;display:flex;flex-direction:column;gap:13px}
+  .wdots{display:flex;gap:8px}
+  .wdots i{flex:1;height:36px;border-radius:9px;background:linear-gradient(180deg,#f1f3f7,#e7ebf2);
+    border:1px solid #dde2ea;display:flex;align-items:center;justify-content:center;
+    font-family:var(--mono);font-size:11.5px;font-weight:800;color:#5b6577}
+  .wcall{display:flex;align-items:center;gap:10px;background:#f6f7fa;border:1px solid var(--line);border-radius:12px;padding:11px 13px}
+  .wcall .dot{width:9px;height:9px;border-radius:50%;background:#49546a;flex:0 0 auto}
+  .wcall .code{font-family:var(--mono);font-size:12.5px;font-weight:800;color:var(--slate);letter-spacing:-.5px}
+  .wcall .cx{font-size:12px;font-weight:600;color:var(--faint);margin-left:auto;white-space:nowrap}
+
+  /* AcceptEx 고스트 */
+  .ghost{margin-top:24px;display:flex;align-items:center;gap:16px;
+    background:repeating-linear-gradient(135deg,#fff,#fff 10px,#fbfcfd 10px,#fbfcfd 20px);
+    border:1.5px dashed var(--red-line);border-radius:16px;padding:15px 24px}
+  .ghost .gtag{font-family:var(--mono);font-size:13.5px;font-weight:800;color:var(--deep);
+    background:var(--red-bg);border:1px solid var(--red-line);border-radius:8px;padding:6px 13px;white-space:nowrap}
+  .ghost .gtxt{font-size:16.5px;font-weight:600;color:var(--muted);line-height:1.4}
+  .ghost .gtxt b{color:var(--sub);font-weight:800}
+  .ghost .gwhy{margin-left:auto;font-size:14.5px;font-weight:700;color:var(--deep);text-align:right;line-height:1.4;white-space:nowrap}
+
+  /* 인과 체인 */
+  .chain{margin-top:22px;display:flex;align-items:center;justify-content:center;gap:14px}
+  .chip{padding:14px 24px;border-radius:14px;font-size:19px;font-weight:600;background:#f3f5f9;color:#46506a;letter-spacing:-.3px;white-space:nowrap}
+  .chip b{font-weight:800;color:var(--ink)}
+  .chip.concl{background:var(--blue-bg);color:var(--blue-ink);border:1.5px solid var(--blue-line)}
+  .chip.concl b{color:var(--blue-ink)}
+  .chev{color:#c2c9d6;font-size:22px;font-weight:900}
+
+  .foot{margin-top:auto;padding-top:16px;border-top:1px solid var(--line);
+    font-size:15.5px;color:var(--faint);font-weight:500;letter-spacing:-.2px;display:flex;align-items:center;gap:22px}
+  .foot .lg{display:flex;align-items:center;gap:8px}
+  .foot .sw-b{width:24px;height:0;border-top:4px solid var(--blue-ink);border-radius:2px}
+  .foot .sw-d{width:24px;height:0;border-top:2px dashed var(--red)}
+  .foot .mono{font-family:var(--mono);color:var(--slate);font-weight:700}
+  .foot .right{margin-left:auto;color:var(--faint)}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="eyebrow"><span class="d"></span>Network · Accept Path</div>
+    <div class="title">연결 수립은 <span class="b">AcceptThread</span> 하나가 전담한다</div>
+    <div class="uline"></div>
+    <div class="sub">전용 스레드가 <b>연결 수립 → IOCP 등록 → 첫 수신 게시</b>까지 처리하고, <b>Worker Pool</b>은 완료 통지만 받아 처리한다 —
+      <span class="r">AcceptEx</span>는 쓰지 않는다.</div>
+
+    <div class="pipe">
+      <div class="client">
+        <div class="ico"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
+        <div class="cl">Client</div>
+        <div class="cs">connect()</div>
+      </div>
+
+      <div class="arr b">
+        <div class="al">연결</div>
+        <svg width="66" height="22"><path d="M2 11 H46" stroke="#2b6aa8" stroke-width="4.5" stroke-linecap="round" fill="none"/><path d="M44 4 L60 11 L44 18 Z" fill="#2b6aa8"/></svg>
+      </div>
+
+      <div class="node b n-accept">
+        <div class="n-head"><span class="tag">전용 · 1 스레드</span><span class="n-title">AcceptThread</span></div>
+        <div class="steps">
+          <div class="step"><span class="sn">1</span><span class="code">accept()</span><span class="cx">연결 꺼내기 (블로킹)</span></div>
+          <div class="step"><span class="sn">2</span><span class="code">CreateIoCompletionPort()</span><span class="cx">IOCP 등록</span></div>
+          <div class="step"><span class="sn">3</span><span class="code">WSARecv()</span><span class="cx">첫 수신 게시</span></div>
+        </div>
+      </div>
+
+      <div class="arr b">
+        <div class="al">완료 통지</div>
+        <svg width="66" height="22"><path d="M2 11 H46" stroke="#2b6aa8" stroke-width="4.5" stroke-linecap="round" fill="none"/><path d="M44 4 L60 11 L44 18 Z" fill="#2b6aa8"/></svg>
+      </div>
+
+      <div class="qcard">
+        <div class="qt">IOCP 완료 큐<span>kernel-managed</span></div>
+        <div class="slots"><i></i><i></i><i></i><i></i></div>
+        <div class="qc">커널이 완료를 통지</div>
+      </div>
+
+      <div class="arr g">
+        <div class="al">꺼내기 · GQCS</div>
+        <svg width="66" height="22"><path d="M2 11 H46" stroke="#9aa3b2" stroke-width="4.5" stroke-linecap="round" fill="none"/><path d="M44 4 L60 11 L44 18 Z" fill="#9aa3b2"/></svg>
+      </div>
+
+      <div class="node s n-worker">
+        <div class="n-head"><span class="tag">완료 처리 · N</span><span class="n-title">Worker Pool</span></div>
+        <div class="w-body">
+          <div class="wdots"><i>W0</i><i>W1</i><i>W2</i><i>W3</i></div>
+          <div class="wcall"><span class="dot"></span><span class="code">GetQueuedCompletionStatus()</span><span class="cx">I/O · 게임 로직</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="ghost">
+      <span class="gtag">AcceptEx</span>
+      <span class="gtxt"><b>미사용</b> — 사용 시 Worker 스레드가 accept까지 IOCP로 통합 처리 (소켓 풀 · OVERLAPPED 사전 준비 필요)</span>
+      <span class="gwhy">accept는 병목이 아님 →<br>단순성 우선 · 필요 시 전환</span>
+    </div>
+
+    <div class="chain">
+      <div class="chip"><b>accept ~수 μs</b> · 초당 수백 건</div>
+      <div class="chev">→</div>
+      <div class="chip"><b>병목 아님</b> · 병렬화 실익 낮음</div>
+      <div class="chev">→</div>
+      <div class="chip concl">전용 스레드로 <b>충분</b> · 구조 단순 유지</div>
+    </div>
+
+    <div class="foot">
+      <span class="lg"><span class="sw-b"></span>현 구조 (전용 스레드)</span>
+      <span class="lg"><span class="sw-d"></span>AcceptEx · 미사용</span>
+      <span class="lg"><span class="mono">mono</span> = Win32 API</span>
+      <span class="right">MMO 네트워크 라이브러리 · IOCP</span>
+    </div>
+  </div>
+</body>
+</html>

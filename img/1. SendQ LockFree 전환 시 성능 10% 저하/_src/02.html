@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --axis:#2f5fd0; --track:#eef1f5;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:940px;height:680px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased}
+  .card{position:absolute;top:24px;left:24px;width:892px;height:632px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 14px 44px rgba(30,40,70,.07);
+    padding:34px 50px 0}
+
+  .title{font-size:38px;font-weight:800;color:var(--ink);letter-spacing:-.8px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:74px;height:6px;border-radius:3px;background:var(--red);margin-top:13px}
+  .sub{margin-top:13px;font-size:20px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+
+  .chart{margin-top:26px}
+  .plot{display:grid;grid-template-columns:repeat(4,1fr);column-gap:40px;height:308px;align-items:end;padding:0 8px}
+  .col{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end}
+  .pct{font-size:34px;font-weight:800;color:var(--red);line-height:1;margin-bottom:11px;letter-spacing:-1px}
+  .col.max .pct{color:var(--deep)}
+  .bar{width:100%;max-width:158px;border-radius:13px 13px 0 0;
+    display:flex;align-items:flex-end;justify-content:center;padding-bottom:15px;
+    background:linear-gradient(180deg,#ef4459,#d7263d);box-shadow:0 -2px 22px rgba(215,38,61,.18)}
+  .col.max .bar{background:linear-gradient(180deg,#b81430,#8f0a1e);box-shadow:0 -2px 26px rgba(160,15,35,.30)}
+  .bar .in{color:#fff;font-size:17px;font-weight:800;letter-spacing:-.3px;white-space:nowrap;opacity:.97}
+
+  .axis{position:relative;height:3px;background:var(--axis);border-radius:2px}
+  .axis .tag{position:absolute;left:2px;top:9px;font-size:15px;font-weight:800;color:var(--axis);letter-spacing:-.3px}
+
+  .labels{display:grid;grid-template-columns:repeat(4,1fr);column-gap:40px;margin-top:30px;padding:0 8px}
+  .lb{text-align:center}
+  .lb .nm{font-size:22px;font-weight:800;color:var(--ink);letter-spacing:-.5px}
+  .lb .ds{margin-top:5px;font-size:16px;font-weight:600;color:var(--muted);letter-spacing:-.3px}
+
+  .foot{position:absolute;left:50px;right:50px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
+    font-size:15.5px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title"><span class="r">LockFree</span> 전환 후 — 4개 지표 전부 악화</div>
+    <div class="uline"></div>
+    <div class="sub">RingBuffer를 100으로 둔 상대 지수 · 값이 클수록 느림</div>
+
+    <div class="chart">
+      <div class="plot">
+        <div class="col">
+          <div class="pct">+9%</div>
+          <div class="bar" style="height:72%"><span class="in">2.59 → 2.82 ms</span></div>
+        </div>
+        <div class="col max">
+          <div class="pct">+15%</div>
+          <div class="bar" style="height:100%"><span class="in">3.73 → 4.31 ms</span></div>
+        </div>
+        <div class="col">
+          <div class="pct">+7%</div>
+          <div class="bar" style="height:62%"><span class="in">71 → 76 ms</span></div>
+        </div>
+        <div class="col">
+          <div class="pct">+4%</div>
+          <div class="bar" style="height:48%"><span class="in">72 → 75 ms</span></div>
+        </div>
+      </div>
+
+      <div class="axis"><span class="tag">기준 100</span></div>
+
+      <div class="labels">
+        <div class="lb"><div class="nm">broadcast_sync</div><div class="ds">좌표 송신</div></div>
+        <div class="lb"><div class="nm">game_logic</div><div class="ds">좌표 계산 · 최대 악화</div></div>
+        <div class="lb"><div class="nm">tick p99</div><div class="ds">틱 지연</div></div>
+        <div class="lb"><div class="nm">handle p99</div><div class="ds">처리 지연</div></div>
+      </div>
+    </div>
+
+    <div class="foot">동접 200 · Release/x64 · 플래그만 변경(시나리오·throughput 고정) | 막대 안 숫자 = RingBuffer → LockFree 실측값</div>
+  </div>
+</body>
+</html>

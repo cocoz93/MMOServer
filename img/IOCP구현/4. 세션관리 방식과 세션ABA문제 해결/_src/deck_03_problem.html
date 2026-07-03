@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#eef1f5; --bg2:#e6eaf1; --card:#ffffff; --ink:#1f2330; --sub:#3a4254; --muted:#7c8597; --faint:#9aa3b2;
+    --line:#eef0f3; --red:#d7263d; --deep:#b3122a; --red-bg:#fdeef0; --red-line:#f4c4cc;
+    --blue:#3a78b8; --blue-ink:#2b6aa8; --blue-deep:#1f5088; --blue-bg:#e7f0fa; --blue-line:#cfe0f2; --slate:#566072;
+    --sh-card:0 0 0 1px rgba(30,40,70,.02),0 2px 4px -1px rgba(30,40,70,.05),0 10px 20px -6px rgba(30,40,70,.07),0 26px 44px -16px rgba(30,40,70,.12),0 52px 92px -40px rgba(24,32,58,.28),inset 0 1px 0 rgba(255,255,255,.95);
+    --grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+    --mono:"SF Mono",ui-monospace,"Cascadia Mono","Consolas",monospace;
+  }
+  html,body{width:1600px;height:900px;overflow:hidden;
+    background:radial-gradient(1100px 560px at 12% -12%, #ffffff, rgba(255,255,255,0) 58%),
+      linear-gradient(140deg,var(--bg),var(--bg2));
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;color:var(--ink);
+    word-break:keep-all;overflow-wrap:break-word;
+    font-feature-settings:"tnum" 1,"kern" 1,"calt" 1;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  .card{position:absolute;inset:28px;border-radius:32px;border:1px solid rgba(30,40,70,.06);
+    background:
+      radial-gradient(circle at 1px 1px, rgba(43,106,168,.045) 1px, transparent 1.4px) 0 0/30px 30px,
+      radial-gradient(760px 520px at 102% -6%, rgba(215,38,61,.045), transparent 58%),
+      linear-gradient(180deg,#ffffff,#fbfcfe);
+    box-shadow:var(--sh-card);
+    padding:44px 60px 46px;display:flex;flex-direction:column;overflow:hidden}
+  .card::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+    background-image:var(--grain);background-size:180px 180px;opacity:.03;mix-blend-mode:soft-light}
+  .card::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;
+    background:linear-gradient(90deg,var(--deep),var(--red) 22%,#f2647a 42%,rgba(242,100,122,0) 82%)}
+
+  .top{display:flex;align-items:center;justify-content:space-between}
+  .eyebrow{display:inline-flex;align-items:center;gap:10px;
+    font-size:15px;font-weight:800;letter-spacing:2.5px;color:var(--muted);text-transform:uppercase}
+  .eyebrow .d{width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 0 4px var(--red-bg)}
+  .pageno{font-size:15px;font-weight:800;color:var(--faint);letter-spacing:1px}
+  .pageno b{color:var(--ink)}
+  .title{margin-top:16px;font-size:46px;font-weight:800;color:var(--ink);letter-spacing:-1.4px;line-height:1.05}
+  .title .r{color:var(--deep)}
+  .title .mono{font-family:var(--mono);color:var(--deep);font-size:44px}
+
+  .stage{flex:1;display:flex;align-items:center;justify-content:center;gap:4px}
+
+  .phase{width:452px;border:1.5px solid #e7ebf1;border-radius:26px;background:#fff;position:relative;overflow:hidden;
+    display:flex;flex-direction:column;padding:26px 28px 26px;
+    box-shadow:0 24px 50px -28px rgba(30,40,70,.36),0 6px 16px -10px rgba(30,40,70,.10)}
+  .phase::before{content:"";position:absolute;top:0;left:0;right:0;height:7px}
+  .p1::before{background:linear-gradient(90deg,var(--blue-ink),#7cb0de)}
+  .p2::before{background:linear-gradient(90deg,#8c96a8,#c2cad6)}
+  .p3::before{background:linear-gradient(90deg,var(--deep),#f2647a)}
+  .p3{border-color:var(--red-line)}
+
+  .ph-head{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+  .ph-no{flex:0 0 auto;width:50px;height:50px;border-radius:15px;color:#fff;font-size:25px;font-weight:800;
+    font-family:var(--mono);display:flex;align-items:center;justify-content:center;
+    box-shadow:0 8px 16px -5px rgba(30,40,70,.4),inset 0 1px 0 rgba(255,255,255,.35)}
+  .p1 .ph-no{background:linear-gradient(145deg,#5b96cf,#2b6aa8)}
+  .p2 .ph-no{background:linear-gradient(145deg,#9aa3b2,#6b7484)}
+  .p3 .ph-no{background:linear-gradient(145deg,#ef5568,#b3122a)}
+  .ph-t{font-size:28px;font-weight:800;letter-spacing:-.6px;color:var(--ink)}
+
+  .token{display:flex;align-items:center;gap:11px;border-radius:14px;padding:14px 18px;margin-bottom:16px;
+    font-size:18px;font-weight:800;letter-spacing:-.3px}
+  .token .mono{font-family:var(--mono)}
+  .token .lb{font-size:14px;font-weight:800;letter-spacing:.3px;padding:4px 12px;border-radius:999px}
+  .token.keep{background:#eef1f5;color:#5b6577;border:1px solid #e2e6ec}
+  .token.keep .lb{background:#dfe4ea;color:#5b6577}
+  .token.grey{background:#f3f5f8;color:#a3abb8;border:1px dashed #d3dae2}
+  .token.grey .lb{background:#e6eaef;color:#98a1af}
+  .token.same{background:var(--red-bg);color:var(--deep);border:1.5px solid var(--red-line)}
+  .token.same .lb{background:var(--deep);color:#fff}
+
+  .sess{border-radius:18px;height:236px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;position:relative}
+  .sess.a{background:linear-gradient(180deg,#eef5fc,#e2eefa);border:1.5px solid var(--blue-line)}
+  .sess.empty{background:repeating-linear-gradient(135deg,#fafbfc,#fafbfc 12px,#f2f4f7 12px,#f2f4f7 24px);border:2.5px dashed #c7cfdb}
+  .sess.c{background:linear-gradient(180deg,#fff2f4,#fde3e7);border:1.6px solid var(--red-line)}
+  .sess .snm{font-size:46px;font-weight:800;letter-spacing:-.8px}
+  .sess.a .snm{color:var(--blue-deep)} .sess.c .snm{color:var(--deep)}
+  .sess .sid{font-family:var(--mono);font-size:18px;font-weight:800;padding:6px 18px;border-radius:999px}
+  .sess.a .sid{background:#fff;color:var(--blue-ink);border:1px solid var(--blue-line)}
+  .sess.c .sid{background:#fff;color:var(--deep);border:1px solid var(--red-line)}
+  .sess.empty .em{font-size:36px;font-weight:800;color:#a3abb8;letter-spacing:-.5px}
+  .sess.empty .es{font-size:17px;font-weight:800;color:#b3bbc7;font-family:var(--mono)}
+
+  .ph-foot{margin-top:18px;font-size:19px;font-weight:800;line-height:1.32;letter-spacing:-.3px;text-align:center}
+  .p1 .ph-foot{color:var(--slate)} .p2 .ph-foot{color:var(--muted)}
+  .p3 .ph-foot{color:#fff;background:var(--deep);border-radius:13px;padding:12px 14px;
+    box-shadow:0 12px 26px -8px rgba(179,18,42,.55)}
+
+  .arrowc{width:52px;display:flex;align-items:center;justify-content:center}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="top">
+      <div class="eyebrow"><span class="d"></span>Session · The ABA Problem</div>
+      <div class="pageno"><b>03</b> / 04</div>
+    </div>
+    <div class="title">재사용이 부르는 <span class="mono">ABA</span> — 옛 참조가 <span class="r">남의 세션</span>을 조작</div>
+
+    <div class="stage">
+      <div class="phase p1">
+        <div class="ph-head"><span class="ph-no">1</span><span class="ph-t">정상 운영</span></div>
+        <div class="token keep"><span class="lb">관찰 토큰</span><span class="mono">Index 07</span> · 핸들 <span class="mono">0x…A</span></div>
+        <div class="sess a"><span class="snm">Session A</span><span class="sid">sessionId = …A17</span></div>
+        <div class="ph-foot">옛 스레드가 참조 획득</div>
+      </div>
+
+      <div class="arrowc">
+        <svg width="44" height="24"><path d="M2 12 H30" stroke="#9aa3b2" stroke-width="5" stroke-linecap="round" fill="none"/><path d="M28 3 L44 12 L28 21 Z" fill="#9aa3b2"/></svg>
+      </div>
+
+      <div class="phase p2">
+        <div class="ph-head"><span class="ph-no">2</span><span class="ph-t">A 종료 · 해제</span></div>
+        <div class="token grey"><span class="lb">토큰 반납</span><span class="mono">Index 07 → Stack push</span></div>
+        <div class="sess empty"><span class="em">빈 슬롯</span><span class="es">slot[07] = null</span></div>
+        <div class="ph-foot">슬롯은 비어도 참조는 남음</div>
+      </div>
+
+      <div class="arrowc">
+        <svg width="44" height="24"><path d="M2 12 H30" stroke="#b3122a" stroke-width="5" stroke-linecap="round" fill="none"/><path d="M28 3 L44 12 L28 21 Z" fill="#b3122a"/></svg>
+      </div>
+
+      <div class="phase p3">
+        <div class="ph-head"><span class="ph-no">3</span><span class="ph-t">재할당</span></div>
+        <div class="token same"><span class="lb">동일!</span><span class="mono">Index 07</span> · 핸들 <span class="mono">0x…A</span></div>
+        <div class="sess c"><span class="snm">Session C</span><span class="sid">sessionId = …C42</span></div>
+        <div class="ph-foot">💥 C를 A로 착각 → 조작</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

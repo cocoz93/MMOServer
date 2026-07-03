@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --blue:#3a78b8; --blue-ink:#2b6aa8;
+    --gray-fill:#e2e6ec; --slate:#566072; --pill-gray:#e9edf3;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:760px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:712px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 14px 44px rgba(30,40,70,.07);
+    padding:30px 56px 0}
+  .title{font-size:36px;font-weight:800;color:var(--ink);letter-spacing:-.6px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .sub{margin-top:10px;font-size:19px;font-weight:500;color:var(--muted)}
+  .sub b{color:#3a4254;font-weight:700}
+
+  /* main flow: stack <-> session */
+  .flow{margin-top:28px;display:flex;align-items:center;justify-content:center}
+
+  .node{width:268px;border:1.5px solid #e7ebf1;border-radius:20px;background:#fff;
+    box-shadow:0 6px 18px rgba(30,40,70,.06);padding:20px 20px 22px;
+    display:flex;flex-direction:column;align-items:center}
+  .node .tag{font-size:15px;font-weight:800;padding:5px 15px;border-radius:999px;letter-spacing:-.2px}
+  .node.stack .tag{background:var(--pill-gray);color:var(--slate)}
+  .node.sess .tag{background:#e7f0fa;color:var(--blue-ink)}
+
+  .chips{margin-top:16px;display:flex;flex-direction:column;gap:8px;width:100%}
+  .chip{height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+    font-size:16px;font-weight:800;letter-spacing:-.2px;position:relative}
+  .chip.top{background:linear-gradient(180deg,#e23f53,#cf1d34);color:#fff;box-shadow:0 4px 10px rgba(215,38,61,.3)}
+  .chip.top .topflag{position:absolute;right:10px;font-size:11.5px;font-weight:800;
+    background:rgba(255,255,255,.22);padding:2px 8px;border-radius:999px}
+  .chip.rest{background:#eef1f5;color:#9199aa;border:1.5px solid #e2e6ec}
+  .stacknote{margin-top:12px;font-size:13px;font-weight:600;color:var(--muted);text-align:center;line-height:1.4}
+
+  .grid16{margin-top:18px;display:grid;grid-template-columns:repeat(4,46px);grid-gap:8px}
+  .cell{width:46px;height:46px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+    font-size:13px;font-weight:800}
+  .cell.empty{border:2px dashed #c7cfdb;background:#f7f9fb;color:#b9c1cf}
+  .cell.fill{background:linear-gradient(180deg,#4a86c4,#356ba8);color:#fff;box-shadow:0 3px 8px rgba(58,120,184,.28)}
+  .cell.new{border:2.5px solid var(--red);background:#fdeef0;color:var(--red)}
+  .sessnote{margin-top:14px;font-size:13px;font-weight:600;color:var(--muted);text-align:center;line-height:1.4}
+
+  .flowcol{display:flex;flex-direction:column;align-items:center;gap:34px;padding:0 34px;width:220px}
+  .arow{display:flex;flex-direction:column;align-items:center}
+  .arow .al{font-size:15.5px;font-weight:800;letter-spacing:-.2px;margin-bottom:7px;text-align:center;line-height:1.3}
+  .arow.acc .al{color:var(--red)}
+  .arow.disc .al{color:var(--blue-ink)}
+  .arow .as{font-size:12.5px;font-weight:600;color:var(--muted);margin-top:6px;text-align:center}
+
+  .bitwrap{margin-top:26px}
+  .bitlabel{font-size:16px;font-weight:800;color:var(--ink)}
+  .bitlabel .g{font-size:14px;font-weight:600;color:var(--muted);margin-left:6px}
+  .bitbar{margin-top:10px;display:flex;height:56px;border-radius:14px;overflow:hidden;
+    box-shadow:0 6px 16px rgba(30,40,70,.08)}
+  .seg{display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff}
+  .seg.idx{flex:16;background:linear-gradient(180deg,#4a86c4,#356ba8)}
+  .seg.uid{flex:48;background:linear-gradient(180deg,#e23f53,#cf1d34)}
+  .seg .t{font-size:16px;font-weight:800;letter-spacing:-.2px}
+  .seg .b{font-size:13px;font-weight:600;opacity:.88;margin-top:2px}
+
+  .bitcaps{margin-top:9px;display:flex}
+  .bitcaps .c{font-size:13.5px;font-weight:600;line-height:1.4}
+  .bitcaps .c.idx{flex:16;color:var(--blue-ink)}
+  .bitcaps .c.uid{flex:48;color:var(--red)}
+
+  .foot{position:absolute;left:56px;right:56px;bottom:15px;padding-top:11px;border-top:1px solid #eef0f3;
+    font-size:15px;color:#9aa3b2;font-weight:500}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">Session 객체 관리 방식 — <span class="r">Index Stack</span>으로 재사용</div>
+    <div class="sub">세션 배열은 서버 기동 시 <b>사전 확보</b> · 빈 Index만 <b>Stack(Free List)</b>에서 pop / push</div>
+
+    <div class="flow">
+      <!-- LEFT: Free Index Stack -->
+      <div class="node stack">
+        <div class="tag">Free Index Stack (LIFO)</div>
+        <div class="chips">
+          <div class="chip top">58<span class="topflag">TOP</span></div>
+          <div class="chip rest">71</div>
+          <div class="chip rest">12</div>
+          <div class="chip rest">89</div>
+        </div>
+        <div class="stacknote">쓰지 않는 Index를 쌓아두는 스택</div>
+      </div>
+
+      <!-- CENTER: pop / push arrows -->
+      <div class="flowcol">
+        <div class="arow acc">
+          <div class="al">Accept<br>Index pop</div>
+          <svg width="120" height="26" viewBox="0 0 120 26">
+            <path d="M6 13 H92" stroke="#d7263d" stroke-width="5" stroke-linecap="round" fill="none"/>
+            <path d="M90 3 L112 13 L90 23 Z" fill="#d7263d"/>
+          </svg>
+        </div>
+        <div class="arow disc">
+          <svg width="120" height="26" viewBox="0 0 120 26">
+            <path d="M28 13 H114" stroke="#2b6aa8" stroke-width="5" stroke-linecap="round" fill="none"/>
+            <path d="M30 3 L8 13 L30 23 Z" fill="#2b6aa8"/>
+          </svg>
+          <div class="al" style="margin-top:7px;margin-bottom:0">Disconnect<br>Index push</div>
+        </div>
+      </div>
+
+      <!-- RIGHT: 세션 배열 -->
+      <div class="node sess">
+        <div class="tag">세션 배열</div>
+        <div class="grid16" id="gridR"></div>
+        <div class="sessnote">pop한 Index[58]로 슬롯에 새로 할당<br>disconnect 시 다시 push</div>
+      </div>
+    </div>
+
+    <div class="bitwrap">
+      <div class="bitlabel">SessionId 구조<span class="g">8 Byte (64bit) 정수 한 개</span></div>
+      <div class="bitbar">
+        <div class="seg idx"><span class="t">Index</span><span class="b">2 Byte · 16bit</span></div>
+        <div class="seg uid"><span class="t">Unique Id</span><span class="b">6 Byte · 48bit</span></div>
+      </div>
+      <div class="bitcaps">
+        <div class="c idx">배열 접근용 인덱스 — 최대 65,535 동시 세션</div>
+        <div class="c uid">무한 증가하는 고유 식별자 — 약 280조, 컨텐츠 쪽 유효성 검증에 사용</div>
+      </div>
+    </div>
+
+    <div class="foot">Index는 별도 <b>Stack(Free List)</b>으로 관리 — Accept 시 pop, Disconnect 시 push · Session은 Vector로 관리되며 동접자 수만큼의 크기를 가진다</div>
+  </div>
+
+<script>
+function build(id, fills){
+  const g=document.getElementById(id);
+  for(let i=0;i<16;i++){
+    const d=document.createElement('div');
+    const f=fills[i];
+    d.className='cell '+(f?f:'empty');
+    g.appendChild(d);
+  }
+}
+build('gridR', {2:'fill',3:'fill',6:'new',9:'fill',10:'fill',13:'fill'});
+</script>
+</body>
+</html>

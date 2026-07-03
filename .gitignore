@@ -98,7 +98,7 @@ $RECYCLE.BIN/
 *.sdf
 *.aps
 *.png
-/img/
+img/**/*.woff2
 
 
 CONTRIBUTING.md

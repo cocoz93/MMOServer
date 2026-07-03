@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg0:#07080b; --bg1:#0e1017; --ink:#f5f7fa; --dim:#9aa3b2; --muted:#828c9c; --faint:#5f6773;
+    --indigo:#8079ff; --hair:rgba(255,255,255,.09);
+  }
+  html,body{width:1600px;height:900px;overflow:hidden;color:var(--ink);
+    font-family:'Pretendard',-apple-system,"Malgun Gothic",sans-serif;
+    -webkit-font-smoothing:antialiased;text-rendering:geometricPrecision;
+    background:
+      radial-gradient(1200px 640px at 50% -8%, rgba(124,118,255,.20), rgba(124,118,255,0) 60%),
+      radial-gradient(920px 620px at 88% 116%, rgba(110,168,255,.12), rgba(110,168,255,0) 60%),
+      linear-gradient(180deg,var(--bg1),var(--bg0));
+  }
+  .stage{position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;padding:0 96px;text-align:center}
+
+  .kick{font-size:19px;font-weight:600;letter-spacing:7px;text-transform:uppercase;color:var(--faint)}
+  .kick b{color:var(--indigo);font-weight:700}
+
+  .hero{margin-top:34px;font-size:120px;line-height:1.04;font-weight:800;letter-spacing:-4px;color:var(--ink)}
+  .hero .grad{background:linear-gradient(100deg,#6ea8ff,#7c76ff 52%,#b08bff);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .hero .thin{font-weight:300;color:var(--dim);letter-spacing:-3px}
+
+  .sub{margin-top:40px;font-size:29px;font-weight:400;color:var(--dim);line-height:1.55;letter-spacing:-.4px;max-width:1060px}
+  .sub b{color:var(--ink);font-weight:600}
+
+  .stats{margin-top:64px;display:flex;align-items:stretch;gap:0}
+  .stat{padding:0 56px;display:flex;flex-direction:column;align-items:center;gap:11px;position:relative}
+  .stat + .stat::before{content:"";position:absolute;left:0;top:14%;height:72%;width:1px;background:var(--hair)}
+  .stat .num{font-size:58px;font-weight:800;letter-spacing:-2px;line-height:1;
+    background:linear-gradient(180deg,#ffffff,#c4ccd8);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .stat .num u{text-decoration:none;font-size:32px;font-weight:600;color:var(--faint);-webkit-text-fill-color:var(--faint);margin-left:2px}
+  .stat .cap{font-size:18px;font-weight:500;color:var(--muted);letter-spacing:.3px}
+
+  .closer{position:absolute;left:0;right:0;bottom:64px;text-align:center;
+    font-size:21px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .closer b{color:var(--dim);font-weight:600}
+  .closer .dot{color:var(--indigo);margin:0 12px;font-weight:800}
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="kick">IOCP <b>·</b> Accept Path</div>
+    <div class="hero">Accept은<br><span class="grad">병목이 아니다.</span></div>
+    <div class="sub">그래서 <b>AcceptEx</b> 대신,<br>연결만 전담하는 <b>단순한 스레드 하나.</b></div>
+    <div class="stats">
+      <div class="stat"><div class="num">~수<u>μs</u></div><div class="cap">accept 1회 처리</div></div>
+      <div class="stat"><div class="num">수백<u>/초</u></div><div class="cap">정상 운영 접속 빈도</div></div>
+      <div class="stat"><div class="num">1<u>스레드</u></div><div class="cap">연결 수립 전담</div></div>
+    </div>
+    <div class="closer">복잡한 최적화보다 <b>맞는 단순함</b><span class="dot">·</span>필요해지면 그때 AcceptEx로 전환</div>
+  </div>
+</body>
+</html>

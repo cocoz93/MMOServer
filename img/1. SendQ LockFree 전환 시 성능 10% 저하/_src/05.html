@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --slate:#566072; --graybar:#ccd4de;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1140px;height:560px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased}
+  .card{position:absolute;top:24px;left:24px;width:1092px;height:512px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 14px 44px rgba(30,40,70,.07);
+    padding:30px 56px 0}
+
+  .title{font-size:33px;font-weight:800;color:var(--ink);letter-spacing:-.7px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:70px;height:6px;border-radius:3px;background:var(--red);margin-top:12px}
+  .sub{margin-top:12px;font-size:18px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .chart{position:relative;margin-top:20px;padding-top:36px}
+  .barrow{display:flex;align-items:center;gap:20px;height:52px}
+  .blabel{width:118px;text-align:right;font-size:22px;font-weight:800;color:var(--ink);letter-spacing:-.4px}
+  .blabel.r{color:var(--red)}
+  .track{position:relative;width:720px;height:44px;flex:0 0 auto}
+  .gray{position:absolute;left:0;top:0;height:100%;width:624px;background:var(--graybar);border-radius:9px 0 0 9px}
+  .redseg{position:absolute;top:0;height:100%;border-radius:0 9px 9px 0;
+    background:linear-gradient(180deg,#e6394f,var(--red));box-shadow:0 3px 14px rgba(215,38,61,.32)}
+  .ns{width:96px;font-size:23px;font-weight:800;color:var(--ink);letter-spacing:-.5px}
+  .ns.r{color:var(--red)}
+
+  .midtext{margin:8px 0 8px 138px;width:720px;text-align:center;font-size:16px;font-weight:600;color:#8089a0;letter-spacing:-.2px}
+
+  /* dashed guide lines + brackets, absolute in chart */
+  .vline{position:absolute;width:0;border-left:2px dashed #b7bfcc}
+  .toplabel{position:absolute;top:4px;font-size:17px;font-weight:800;color:var(--red);letter-spacing:-.3px;white-space:nowrap}
+  .bracket{position:absolute;display:flex;flex-direction:column;align-items:center}
+  .bracket .bk{width:100%;height:9px;border:2px solid var(--red);border-top:none;border-radius:0 0 5px 5px}
+  .bracket .txt{margin-top:5px;font-size:18px;font-weight:800;color:var(--red);letter-spacing:-.3px;white-space:nowrap}
+
+  .legend{display:flex;justify-content:center;gap:34px;margin-top:20px}
+  .lg{display:flex;align-items:center;gap:9px;font-size:16px;font-weight:700;color:#5b6474;letter-spacing:-.2px}
+  .lg .sw{width:16px;height:16px;border-radius:5px}
+  .lg .sw.g{background:var(--graybar)} .lg .sw.r{background:var(--red)}
+
+  .callout{margin-top:18px;background:#fdeef0;border:1.5px solid #f6cdd4;border-radius:16px;
+    padding:16px 24px;font-size:17.5px;font-weight:600;color:#8a4550;line-height:1.5;letter-spacing:-.3px}
+  .callout b{color:var(--red);font-weight:800}
+  .callout .ink{color:var(--ink);font-weight:700}
+
+  .foot{position:absolute;left:56px;right:56px;bottom:15px;padding-top:11px;border-top:1px solid #eef0f3;
+    font-size:15px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title"><span class="r">62 ns</span>나 늘었는데 왜 +9%로만 보였나 — 큐는 전체의 <span class="r">7%</span></div>
+    <div class="uline"></div>
+    <div class="sub">타겟당 총비용 <b>849 ns</b> 중 큐 enqueue는 ~7%. 그 작은 조각이 +62 ns 늘어 <b>911 ns(+9%)</b></div>
+
+    <div class="chart">
+      <!-- guide lines: A=624(빨강시작), B=671(849끝), C=720(911끝); track offset x=138 -->
+      <div class="vline" style="left:762px;top:30px;height:150px"></div>
+      <div class="vline" style="left:809px;top:30px;height:150px"></div>
+      <div class="toplabel" style="left:648px">큐 enqueue (~7%)</div>
+
+      <div class="barrow">
+        <div class="blabel">RingBuffer</div>
+        <div class="track">
+          <div class="gray"></div>
+          <div class="redseg" style="left:624px;width:47px"></div>
+        </div>
+        <div class="ns">849 ns</div>
+      </div>
+
+      <div class="midtext">WSASend syscall · 복사 등 — 양쪽 동일 (≈93%)</div>
+
+      <div class="barrow">
+        <div class="blabel r">LockFree</div>
+        <div class="track">
+          <div class="gray"></div>
+          <div class="redseg" style="left:624px;width:96px"></div>
+        </div>
+        <div class="ns r">911 ns</div>
+      </div>
+
+      <div class="bracket" style="left:809px;top:184px;width:49px">
+        <div class="bk"></div>
+        <div class="txt">+62 ns</div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <div class="lg"><span class="sw g"></span>WSASend·복사 등 (양쪽 동일)</div>
+      <div class="lg"><span class="sw r"></span>큐 enqueue 비용</div>
+    </div>
+
+    <div class="callout">
+      큐에 넣는 비용 자체는 <b>59 → 121 ns로 거의 2배</b>가 됐다. 하지만 큐는 전체 비용에서 아주 작은 부분이라, 그 2배도 전체로는 <b>+9%로만</b> 드러난다. → <span class="ink">숫자는 작아 보여도, 큐 자체의 손해는 크다.</span>
+    </div>
+
+    <div class="foot">동접 200 · A/B 실측 · broadcast_sync ÷ 타겟수 = Enqueue 1건당 비용 (RingBuffer 849 → LockFree 911 ns)</div>
+  </div>
+</body>
+</html>

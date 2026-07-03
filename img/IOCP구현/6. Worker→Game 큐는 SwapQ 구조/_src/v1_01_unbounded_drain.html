@@ -1,0 +1,83 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<link rel="stylesheet" href="common.css">
+<style>
+  .card{ padding:38px 56px; }
+  .eyebrow{ margin-bottom:11px; }
+  .h-title{ font-size:40px; }
+  .h-rule{ margin:13px 0 10px; }
+  .h-sub{ font-size:20px; }
+
+  .stage{ display:flex; align-items:center; gap:0; width:100%; padding-top:6px; }
+
+  .node{ flex:0 0 auto; display:flex; flex-direction:column; align-items:center; }
+  .node .box{ border-radius:20px; padding:18px 26px; text-align:center; box-shadow:0 14px 30px -20px rgba(15,23,42,.3); }
+  .node .lab{ font-size:20px; font-weight:800; }
+  .node .sub{ font-size:15px; font-weight:600; margin-top:4px; }
+
+  .workers .box{ background:var(--blue-bg); border:1.5px solid #bcd6fb; }
+  .workers .lab{ color:var(--blue-deep); }
+  .workers .sub{ color:#5a7ca8; }
+
+  .queue .box{ background:linear-gradient(135deg,#fef3c7,#fde9b0); border:1.5px dashed var(--amber); min-width:150px; }
+  .queue .lab{ color:var(--amber-deep); }
+  .queue .sub{ color:#b07c1e; }
+  .queue .grow{ margin-top:8px; font-size:14px; font-weight:800; color:var(--red-deep); }
+
+  .game .box{ background:var(--red-bg); border:1.5px solid var(--red-line); position:relative; }
+  .game .lab{ color:var(--red-deep); }
+  .game .sub{ color:#a34747; }
+
+  .arrow{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:0 10px; }
+  .arrow svg{ width:100%; height:26px; }
+  .arrow .cap{ font-size:14px; font-weight:700; color:var(--faint); margin-top:4px; white-space:nowrap; }
+
+  .loop{ position:absolute; top:-40px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; align-items:center; }
+  .loop .tag{ background:linear-gradient(135deg,#f87171,#dc2626); color:#fff; font-size:14px; font-weight:800;
+              padding:5px 14px; border-radius:999px; box-shadow:0 6px 14px -6px rgba(220,38,38,.55); white-space:nowrap; }
+
+  .chips{ margin-top:26px; display:flex; gap:14px; width:100%; }
+  .chip2{ flex:1; background:var(--surface); border:1px solid var(--line); border-radius:16px;
+          padding:14px 18px; text-align:center; }
+  .chip2 .t{ font-size:17px; font-weight:800; color:var(--red-deep); }
+  .chip2 .d{ font-size:14.5px; font-weight:600; color:var(--sub); margin-top:4px; line-height:1.35; }
+</style></head>
+<body><div class="card">
+  <div class="eyebrow"><span class="no">①</span> 문제 · WORKER → GAME 큐 무한 드레인</div>
+  <div class="h-title">게임 스레드는 <span class="k">빌 때까지</span> 멈추지 않는다</div>
+  <div class="h-rule"></div>
+  <div class="h-sub">"큐가 빌 때까지 전부 꺼내고 처리" 루프에 <b>처리량 상한이 없다</b> — 유입이 소비를 넘으면 로직이 굶는다</div>
+
+  <div class="body" style="flex-direction:column; justify-content:center;">
+    <div class="stage">
+      <div class="node workers">
+        <div class="box"><div class="lab">Worker</div><div class="sub">네트워크 이벤트 생성</div></div>
+      </div>
+      <div class="arrow">
+        <svg viewBox="0 0 200 26"><defs><marker id="a1" markerWidth="9" markerHeight="9" refX="6.5" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#94a3b8"/></marker></defs>
+          <line x1="4" y1="13" x2="188" y2="13" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" marker-end="url(#a1)"/></svg>
+        <div class="cap">push</div>
+      </div>
+      <div class="node queue">
+        <div class="box"><div class="lab">Event Queue</div><div class="sub">ThreadSafeQueue</div><div class="grow">유입 &gt; 소비 → 계속 증가 ↑</div></div>
+      </div>
+      <div class="arrow">
+        <svg viewBox="0 0 200 26"><defs><marker id="a2" markerWidth="9" markerHeight="9" refX="6.5" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#dc2626"/></marker></defs>
+          <line x1="4" y1="13" x2="188" y2="13" stroke="#dc2626" stroke-width="4" stroke-linecap="round" marker-end="url(#a2)"/></svg>
+        <div class="cap" style="color:var(--red-deep);font-weight:800">while(!empty) 전부 소비</div>
+      </div>
+      <div class="node game">
+        <div class="loop"><div class="tag">상한 없음 · 라이브 드레인</div></div>
+        <div class="box"><div class="lab">Game Thread</div><div class="sub">이동갱신 · 시야동기화 · 브로드캐스트</div></div>
+      </div>
+    </div>
+
+    <div class="chips">
+      <div class="chip2"><div class="t">게임 로직 지연</div><div class="d">로직 단계가 한 프레임에서<br>실행 안 되거나 밀림</div></div>
+      <div class="chip2"><div class="t">시간 정합 붕괴</div><div class="d">프레임 간격 비정상 확대 →<br>이동 적분이 한번에 튐</div></div>
+      <div class="chip2"><div class="t">틱 적체</div><div class="d">처리 지연 + 이벤트 큐<br>적체가 계속 증가</div></div>
+      <div class="chip2"><div class="t">러버밴딩</div><div class="d">접속·해제만 처리되고<br>월드 갱신은 멈춘 듯 보임</div></div>
+    </div>
+  </div>
+
+  <div class="foot">유입률이 소비율을 지속적으로 넘어설 때의 관측 증상 4가지 · 근본 원인은 "소비 방식"이 아니라 <b>단일 게임 스레드의 처리 용량</b></div>
+</div></body></html>

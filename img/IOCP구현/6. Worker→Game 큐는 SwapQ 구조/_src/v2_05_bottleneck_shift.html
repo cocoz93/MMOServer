@@ -1,0 +1,99 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<link rel="stylesheet" href="common.css">
+<style>
+  .card{ padding:32px 58px; }
+  .eyebrow{ margin-bottom:9px; }
+  .h-title{ font-size:35px; }
+  .h-rule{ margin:11px 0 10px; }
+  .h-sub{ font-size:18px; }
+
+  .cols{ display:flex; gap:24px; align-items:stretch; width:100%; }
+  .col{ flex:1; border-radius:22px; padding:18px 20px; display:flex; flex-direction:column; position:relative;
+        box-shadow:0 16px 34px -24px rgba(15,23,42,.32); }
+  .col.before{ background:var(--surface); border:1px solid var(--line); }
+  .col.after{ background:linear-gradient(160deg,#fff 28%,var(--red-bg)); border:1px solid var(--red-line); }
+  .tag{ align-self:flex-start; font-size:15.5px; font-weight:800; padding:6px 14px; border-radius:999px; margin-bottom:13px; color:#fff; }
+  .col.before .tag{ background:linear-gradient(135deg,#94a3b8,#64748b); }
+  .col.after .tag{ background:linear-gradient(135deg,#f87171,#dc2626); box-shadow:0 8px 16px -8px rgba(220,38,38,.5); }
+
+  .pipe{ display:flex; align-items:center; gap:8px; }
+  .box{ flex:1; border-radius:16px; padding:14px 12px; text-align:center; box-shadow:0 8px 18px -14px rgba(15,23,42,.25); }
+  .box .ico{ width:32px; height:32px; border-radius:10px; display:flex; align-items:center; justify-content:center; margin:0 auto 7px; }
+  .box .ico svg{ width:17px; height:17px; }
+  .box .t{ font-size:16px; font-weight:800; }
+  .box .d{ font-size:12.5px; font-weight:600; margin-top:5px; line-height:1.35; }
+
+  .srv{ background:#fff; border:1.5px solid var(--line); }
+  .srv .ico{ background:var(--surface); }
+  .srv .t{ color:var(--ink); } .srv .d{ color:var(--sub); }
+  .col.after .srv{ border-color:#bcd6fb; background:var(--blue-bg); }
+  .col.after .srv .ico{ background:#dbeafe; }
+  .col.after .srv .t{ color:var(--blue-deep); }
+
+  .cli{ background:#fff; border:1.5px solid var(--line); }
+  .cli .ico{ background:var(--surface); }
+  .cli .t{ color:var(--ink); } .cli .d{ color:var(--sub); }
+  .col.after .cli{ background:linear-gradient(135deg,#fecaca,#f87171); border:none; }
+  .col.after .cli .ico{ background:rgba(255,255,255,.35); }
+  .col.after .cli .t, .col.after .cli .d{ color:#fff; }
+
+  .mid{ flex:0 0 56px; display:flex; flex-direction:column; align-items:center; }
+  .mid svg{ width:44px; height:18px; }
+  .mid .pps{ font-size:11.5px; font-weight:800; color:var(--sub); margin-top:3px; white-space:nowrap; }
+  .col.after .mid .pps{ color:var(--red-deep); }
+
+  .badge2{ position:absolute; top:-11px; right:14px; background:linear-gradient(135deg,#fbbf24,#d97706);
+           color:#fff; font-size:12px; font-weight:800; padding:5px 11px; border-radius:999px; box-shadow:0 6px 14px -6px rgba(217,119,6,.5); }
+
+  .note{ margin-top:12px; font-size:13.5px; font-weight:600; color:var(--sub); text-align:center; line-height:1.4; }
+  .note b{ color:var(--ink); font-weight:800; }
+  .col.after .note b{ color:var(--red-deep); }
+
+  .verdict{ margin-top:20px; display:flex; align-items:center; gap:14px; width:100%;
+        background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:15px 22px; }
+  .verdict .ico{ flex:0 0 auto; width:38px; height:38px; border-radius:12px; background:var(--red-bg); display:flex; align-items:center; justify-content:center; }
+  .verdict .ico svg{ width:20px; height:20px; }
+  .verdict .tx{ font-size:15.5px; font-weight:600; color:var(--sub); line-height:1.4; }
+  .verdict .tx b{ color:var(--red-deep); font-weight:800; }
+</style></head>
+<body><div class="card">
+  <div class="eyebrow"><span class="no">⑤</span> 관측 · RTT 증가 (가설)</div>
+  <div class="h-title"><span class="k">병목</span>은 클라로</div>
+  <div class="h-rule"></div>
+  <div class="h-sub">늘어난 정상 트래픽이 클라 <b>select()</b> 병목을 드러냄</div>
+
+  <div class="body" style="flex-direction:column; justify-content:center;">
+    <div class="cols">
+      <div class="col before">
+        <div class="tag">이전 · 동결</div>
+        <div class="pipe">
+          <div class="box srv"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 10h18"/></svg></div><div class="t">서버</div><div class="d">틱·SYNC 정지</div></div>
+          <div class="mid"><svg viewBox="0 0 60 22"><defs><marker id="p1" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#94a3b8"/></marker></defs>
+            <line x1="2" y1="11" x2="48" y2="11" stroke="#94a3b8" stroke-width="4" stroke-linecap="round" marker-end="url(#p1)"/></svg>
+            <div class="pps">패킷↓</div></div>
+          <div class="box cli"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2.5"/><path d="M9 18h6"/></svg></div><div class="t">클라</div><div class="d">select 부하 적음</div></div>
+        </div>
+        <div class="note">시스템은 <b>망가진 상태</b> — SYNC 없음</div>
+      </div>
+      <div class="col after">
+        <div class="badge2">정상 동작</div>
+        <div class="tag">이후 · 정상화</div>
+        <div class="pipe">
+          <div class="box srv"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M3 10h18"/></svg></div><div class="t">서버</div><div class="d">매틱 SYNC+이동</div></div>
+          <div class="mid"><svg viewBox="0 0 60 22"><defs><marker id="p2" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#dc2626"/></marker></defs>
+            <line x1="2" y1="11" x2="48" y2="11" stroke="#dc2626" stroke-width="5" stroke-linecap="round" marker-end="url(#p2)"/></svg>
+            <div class="pps">패킷↑</div></div>
+          <div class="box cli"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2.5"/><path d="M9 18h6"/></svg></div><div class="t">클라 ⚠</div><div class="d">단일 select O(N)</div></div>
+        </div>
+        <div class="note">단일 PC → <b>코어 경합</b> 가중</div>
+      </div>
+    </div>
+
+    <div class="verdict">
+      <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg></span>
+      <span class="tx">swapQ가 RTT를 망친 게 아니라, <b>서버가 정상화되며 늘어난 정상 트래픽</b>이 클라의 기존 병목을 드러낸 것에 가깝다.</span>
+    </div>
+  </div>
+
+  <div class="foot">RTT = 클라 send→echo recv(QPC) · 확정은 <b>tick_duration</b> / <b>ClientsPerThread</b> 분리 측정</div>
+</div></body></html>

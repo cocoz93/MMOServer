@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --blue:#3a78b8; --blue-ink:#2b6aa8;
+    --gray-fill:#e2e6ec; --slate:#566072; --pill-gray:#e9edf3;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:600px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:552px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 14px 44px rgba(30,40,70,.07);
+    padding:30px 56px 0}
+  .title{font-size:38px;font-weight:800;color:var(--ink);letter-spacing:-.6px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .sub{margin-top:10px;font-size:20px;font-weight:500;color:var(--muted)}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .stage{margin-top:20px;display:grid;grid-template-columns:1fr 150px 1fr;align-items:start;position:relative}
+  .col{display:flex;flex-direction:column;align-items:center;position:relative}
+
+  .pill{font-size:18px;font-weight:800;padding:6px 18px;border-radius:999px;letter-spacing:-.3px}
+  .pill.before{background:var(--pill-gray);color:var(--slate)}
+  .pill.after{background:var(--red);color:#fff}
+
+  .arrowcap{margin-top:16px;font-size:16px;font-weight:700}
+  .arrowcap.b{color:var(--blue-ink)}
+  .arrowcap.r{color:var(--red)}
+
+  .donut{margin-top:12px;position:relative;width:206px;height:206px}
+  .donut svg{display:block;width:100%;height:100%}
+  .donut .lbl{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
+  .donut .lbl .n{font-size:30px;font-weight:800;letter-spacing:-1px}
+  .donut .lbl .u{font-size:14px;font-weight:700;margin-top:5px;color:#5a7894}
+  .donut .lbl.b .n{color:var(--blue-ink)}
+  .donut .lbl.r .n{color:var(--red)}
+
+  .bignum{margin-top:12px;font-weight:800;letter-spacing:-1px;display:flex;align-items:baseline;gap:6px}
+  .bignum .n{font-size:37px}
+  .bignum .u{font-size:19px;font-weight:700}
+  .bignum.b{color:var(--blue-ink)}
+  .bignum.b .u{color:#46627f}
+  .bignum.r .n{color:var(--red)}
+  .bignum.r .u{color:#46627f}
+
+  .botcap{margin-top:8px;font-size:16px;font-weight:700;color:#8089a0}
+  .botcap.warn{color:var(--red)}
+  .botcap.ok{color:var(--blue-ink)}
+
+  .arrowcol{display:flex;flex-direction:column;align-items:center;padding-top:150px}
+  .arrowcol .t{font-size:18px;font-weight:800;color:var(--red);text-align:center;line-height:1.16;margin-bottom:8px}
+
+  .foot{position:absolute;left:56px;right:56px;bottom:15px;padding-top:11px;border-top:1px solid #eef0f3;
+    font-size:15.5px;color:#9aa3b2;font-weight:500}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">슬롯 수 <span class="r">+1</span> 보정 — 안 하면 5초 일찍 끊긴다</div>
+    <div class="sub">timeout=<b>60초</b> · tick=<b>5초</b> · Drain 직후 Tick이 cursor를 전진시키는 구조</div>
+
+    <div class="stage">
+      <!-- LEFT: no +1 -->
+      <div class="col">
+        <div class="pill before">보정 전 · 12슬롯</div>
+        <div class="arrowcap b">삽입 슬롯(C) 건너뜀 ↓</div>
+        <div class="donut"><svg viewBox="0 0 240 240"><g id="ringL"></g></svg><div class="lbl b"><span class="n">11</span><span class="u">tick 후 도달</span></div></div>
+        <div class="bignum b"><span class="n">55</span><span class="u">초</span></div>
+        <div class="botcap warn">⚠ 정상 세션도 조기 만료 가능</div>
+      </div>
+
+      <!-- CENTER ARROW -->
+      <div class="arrowcol">
+        <div class="t">slotCount<br>+1</div>
+        <svg width="92" height="34" viewBox="0 0 92 34">
+          <defs><marker id="ah" markerWidth="9" markerHeight="9" refX="6.5" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 Z" fill="#d7263d"/></marker></defs>
+          <line x1="4" y1="17" x2="74" y2="17" stroke="#d7263d" stroke-width="6" stroke-linecap="round" marker-end="url(#ah)"/>
+        </svg>
+      </div>
+
+      <!-- RIGHT: +1 -->
+      <div class="col">
+        <div class="pill after">보정 후 · 13슬롯</div>
+        <div class="arrowcap r">삽입 슬롯(C)에 정확히 복귀 ↓</div>
+        <div class="donut"><svg viewBox="0 0 240 240"><g id="ringR"></g></svg><div class="lbl r"><span class="n">12</span><span class="u">tick 후 도달</span></div></div>
+        <div class="bignum r"><span class="n">60</span><span class="u">초</span></div>
+        <div class="botcap ok">✓ timeout과 정확히 일치</div>
+      </div>
+    </div>
+
+    <div class="foot">Drain이 노드를 cursor 슬롯(C)에 삽입 → 직후 Tick이 C+1로 전진 → C 복귀까지 <b>slotCount−1</b> tick 필요 · slotCount=ceil(timeout/tick)<b>+1</b>이어야 정확</div>
+  </div>
+
+<script>
+function wedge(cx,cy,rO,rI,a0,a1){
+  const P=(r,a)=>`${(cx+r*Math.cos(a)).toFixed(2)} ${(cy+r*Math.sin(a)).toFixed(2)}`;
+  const large=(a1-a0)>Math.PI?1:0;
+  return `M ${P(rO,a0)} A ${rO} ${rO} 0 ${large} 1 ${P(rO,a1)} L ${P(rI,a1)} A ${rI} ${rI} 0 ${large} 0 ${P(rI,a0)} Z`;
+}
+function buildRing(id, cells, theme){
+  const cx=120,cy=120,rO=114,rI=77, N=cells.length;
+  const gap = N>10 ? 3.2 : 5.5, step=360/N, ns="http://www.w3.org/2000/svg";
+  const g=document.getElementById(id);
+  for(let i=0;i<N;i++){
+    const a0=(-90+i*step+gap/2)*Math.PI/180, a1=(-90+(i+1)*step-gap/2)*Math.PI/180;
+    const p=document.createElementNS(ns,'path');
+    p.setAttribute('d',wedge(cx,cy,rO,rI,a0,a1));
+    const c=cells[i];
+    if(c==='dash'){p.setAttribute('fill','none');p.setAttribute('stroke',theme);
+      p.setAttribute('stroke-width','2.6');p.setAttribute('stroke-dasharray','5 4');p.setAttribute('stroke-linejoin','round');}
+    else p.setAttribute('fill',c);
+    g.appendChild(p);
+  }
+}
+const B='#3a78b8', R='#d7263d', G='#e2e6ec';
+// left: 12 slots, slot 0 = insert point C (dashed outline), rest filled blue
+const left=[]; for(let i=0;i<12;i++){ left.push(i===0?'dash':B); }
+buildRing('ringL', left, B);
+// right: 13 slots, slot 0 = insert point C (dashed outline), rest filled red
+const right=[]; for(let i=0;i<13;i++){ right.push(i===0?'dash':R); }
+buildRing('ringR', right, R);
+</script>
+</body>
+</html>

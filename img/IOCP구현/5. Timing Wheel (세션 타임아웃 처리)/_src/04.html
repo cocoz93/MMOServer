@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#fff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --blue:#3a78b8; --blue-ink:#2b6aa8; --slate:#566072;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1160px;height:560px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased}
+  .card{position:absolute;top:24px;left:24px;width:1112px;height:512px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 14px 44px rgba(30,40,70,.07);
+    padding:32px 52px 0}
+
+  .title{font-size:36px;font-weight:800;color:var(--ink);letter-spacing:-.6px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:84px;height:6px;border-radius:3px;background:var(--red);margin-top:12px}
+  .sub{margin-top:12px;font-size:20px;font-weight:500;color:var(--muted)}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .pipe{margin-top:32px;display:flex;align-items:center;justify-content:space-between}
+  .node{width:264px;height:150px;border-radius:18px;border:1.5px solid #e7ebf1;background:#fff;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+    box-shadow:0 5px 16px rgba(30,40,70,.05);position:relative;overflow:hidden}
+  .node::before{content:"";position:absolute;top:0;left:0;right:0;height:5px}
+  .node.r::before{background:var(--red)}
+  .node.b::before{background:var(--blue)}
+  .node.g{border:1.6px dashed #c7cedb;background:#f7f8fb;box-shadow:none}
+  .node.g::before{display:none}
+  .node .tag{font-size:14px;font-weight:800;padding:3px 13px;border-radius:999px;letter-spacing:-.2px}
+  .node.r .tag{background:#fde7ea;color:var(--red)}
+  .node.b .tag{background:#e7f0fa;color:var(--blue-ink)}
+  .node.g .tag{background:#eef0f4;color:#7c8597}
+  .node .t{font-size:21px;font-weight:800;color:var(--ink);letter-spacing:-.4px}
+  .node .id{font-size:15px;color:#8a93a5;font-weight:700;letter-spacing:-.2px}
+  .node .s{font-size:14.5px;color:#8a93a5;font-weight:600;letter-spacing:-.2px}
+  .node .xmark{margin-top:2px;font-size:14px;font-weight:800;color:var(--red);letter-spacing:-.2px}
+
+  .arr{display:flex;flex-direction:column;align-items:center;width:76px}
+  .arr .al{font-size:13.5px;font-weight:800;margin-bottom:4px;letter-spacing:-.2px;color:#9aa3b2;white-space:nowrap}
+
+  .chain{margin-top:44px;display:flex;align-items:center;justify-content:center;gap:14px}
+  .chip{padding:16px 26px;border-radius:14px;font-size:19px;font-weight:600;background:#f3f5f9;color:#46506a;letter-spacing:-.3px;white-space:nowrap}
+  .chip b{font-weight:800;color:var(--ink)}
+  .chip.concl{background:#fdeef0;color:#b3122a;border:1.5px solid #f4c4cc}
+  .chip.concl b{color:var(--red)}
+  .chev{color:#c2c9d6;font-size:24px;font-weight:900}
+
+  .foot{position:absolute;left:52px;right:52px;bottom:17px;padding-top:12px;border-top:1px solid #eef0f3;
+    font-size:15px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">ABA 방지 — 재사용된 인덱스, <span class="r">sessionId</span>가 지킨다</div>
+    <div class="uline"></div>
+    <div class="sub">Case 1 · 같은 인덱스(<b>5</b>)에 새 세션이 들어온 경우</div>
+
+    <div class="pipe">
+      <div class="node r">
+        <div class="tag">① 타임아웃</div>
+        <div class="t">Session A</div>
+        <div class="id">index=5 · id=100</div>
+        <div class="s">노드 제거 → slotIndex=−1</div>
+      </div>
+
+      <div class="arr">
+        <div class="al">이후</div>
+        <svg width="60" height="22"><path d="M2 11 H40" stroke="#c2c9d6" stroke-width="4.5" stroke-linecap="round" fill="none"/><path d="M38 4 L52 11 L38 18 Z" fill="#c2c9d6"/></svg>
+      </div>
+
+      <div class="node b">
+        <div class="tag">② Register</div>
+        <div class="t">Session B</div>
+        <div class="id">index=5 · id=101</div>
+        <div class="s">새 세션 삽입 · sessionId 갱신</div>
+      </div>
+
+      <div class="arr">
+        <div class="al">stale 요청 도착</div>
+        <svg width="60" height="22"><path d="M2 11 H40" stroke="#c2c9d6" stroke-width="4.5" stroke-linecap="round" fill="none"/><path d="M38 4 L52 11 L38 18 Z" fill="#c2c9d6"/></svg>
+      </div>
+
+      <div class="node g">
+        <div class="tag">③ Drain</div>
+        <div class="t">Refresh(5, 100)</div>
+        <div class="id">이전 세션 A의 잔여 요청</div>
+        <div class="xmark">✕ node.sessionId≠100 → 무시</div>
+      </div>
+    </div>
+
+    <div class="chain">
+      <div class="chip">인덱스 <b>재사용</b></div>
+      <div class="chev">→</div>
+      <div class="chip">현재 노드의 <b>sessionId 비교</b></div>
+      <div class="chev">→</div>
+      <div class="chip concl">불일치 시 <b>무시</b> · 오염 없음</div>
+    </div>
+
+    <div class="foot">세션 인덱스는 풀에서 재사용된다 · 모든 요청에 sessionId(단조 증가)를 동봉해 휠 조작 시 현재 노드와 비교 · 어떤 drain 순서에도 새 세션 수명은 오염되지 않는다</div>
+  </div>
+</body>
+</html>

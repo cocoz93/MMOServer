@@ -1,0 +1,77 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<link rel="stylesheet" href="common.css">
+<style>
+  .card{ padding:26px 54px; }
+  .eyebrow{ margin-bottom:10px; }
+  .h-title{ font-size:36px; }
+  .h-rule{ margin:12px 0 9px; }
+  .h-sub{ font-size:20px; }
+
+  .cols{ display:flex; gap:30px; align-items:stretch; width:100%; }
+  .col{ flex:1; border-radius:22px; padding:16px 22px; display:flex; flex-direction:column; position:relative; }
+  .col.before{ background:var(--red-bg);  border:1px solid var(--red-line);
+               box-shadow:0 14px 30px -20px rgba(220,38,38,.4); }
+  .col.after{ background:var(--green-bg); border:1px solid var(--green-line);
+              box-shadow:0 14px 30px -20px rgba(5,150,105,.4); }
+  .tag{ align-self:flex-start; font-size:18px; font-weight:800; letter-spacing:-.2px;
+        padding:6px 16px; border-radius:999px; margin-bottom:13px; color:#fff; }
+  .col.before .tag{ background:linear-gradient(135deg,#f87171,#dc2626); }
+  .col.after  .tag{ background:linear-gradient(135deg,#34d399,#059669); }
+
+  .flow{ display:flex; flex-direction:column; gap:8px; }
+  .node{ display:flex; align-items:center; gap:11px; }
+  .msg{ flex:0 0 140px; font-size:16.5px; font-weight:700; color:var(--ink); background:#fff;
+        border:1px solid var(--line); border-radius:11px; padding:7px 12px; text-align:center;
+        box-shadow:0 3px 8px -4px rgba(15,23,42,.18); }
+  .to{ font-size:19px; color:var(--faint); font-weight:800; }
+  .op{ flex:1; font-size:16.5px; font-weight:800; color:#fff; border-radius:11px; padding:7px 14px; text-align:center; }
+  .op.lock{ background:linear-gradient(135deg,#f87171,#e02424); box-shadow:0 6px 14px -6px rgba(220,38,38,.55); }
+  .op.free{ background:linear-gradient(135deg,#34d399,#059669); box-shadow:0 6px 14px -6px rgba(5,150,105,.55); }
+  .keep{ font-size:15.5px; font-weight:700; color:var(--amber-deep); }
+
+  .warn{ background:linear-gradient(135deg,#fef3c7,#fde9b0); border:1.5px dashed var(--amber);
+        border-radius:13px; padding:9px 16px; text-align:center; font-size:16.5px; font-weight:800;
+        color:var(--amber-deep); margin:6px 0 2px; }
+  .warn small{ display:block; font-size:14px; font-weight:600; color:#b07c1e; margin-top:1px; }
+
+  .cap{ margin-top:auto; align-self:flex-start; padding:9px 18px; border-radius:12px;
+        font-size:18px; font-weight:800; display:inline-flex; align-items:center; gap:8px; background:#fff;
+        box-shadow:0 6px 16px -10px rgba(15,23,42,.3); }
+  .col.before .cap{ color:var(--red-deep); border:1.6px solid var(--red-line); }
+  .col.after .cap{ color:var(--green-deep); border:1.6px solid var(--green-line); }
+  .cap b{ font-size:22px; }
+</style></head>
+<body><div class="card">
+  <div class="eyebrow"><span class="no">④</span> 구현 · BEFORE → AFTER</div>
+  <div class="h-title">건당 락 라이브 드레인을, <span class="k">프레임 진입 스냅샷 스왑</span>으로</div>
+  <div class="h-rule"></div>
+  <div class="h-sub">해당 프레임이 처리하는 양을 <b>스왑 순간의 큐 크기</b>로 상한 고정</div>
+
+  <div class="body">
+    <div class="cols">
+      <div class="col before">
+        <div class="tag">▼ 변경 전 · 라이브 드레인</div>
+        <div class="flow">
+          <div class="node"><div class="msg">while(!empty)</div><div class="to">→</div><div class="op lock">락 + pop 1건</div></div>
+          <div class="node"><div class="msg">처리 중 도착</div><div class="to">→</div><div class="op lock">큐에 계속 추가</div></div>
+          <div class="node"><div class="msg">…무한 반복</div><div class="to">→</div><div class="op lock">락 N회 / 프레임</div></div>
+        </div>
+        <div class="warn">처리량 상한 없음<small>유입이 소비를 넘으면 루프가 안 끝남 → 게임 로직 굶음</small></div>
+        <div class="cap">lock <b>N회</b> / 프레임</div>
+      </div>
+
+      <div class="col after">
+        <div class="tag">▼ 변경 후 · 스냅샷 스왑 배치</div>
+        <div class="flow">
+          <div class="node"><div class="msg">프레임 진입</div><div class="to">↘</div><div class="op free">SwapOut() 락 1회</div></div>
+          <div class="node"><div class="msg">_localEvents</div><div class="to">↘</div><div class="keep">std::swap 1회</div></div>
+          <div class="node"><div class="msg">드레인</div><div class="to">↘</div><div class="keep">락 없이 전부 처리</div></div>
+        </div>
+        <div class="warn" style="background:linear-gradient(135deg,#d1fae5,#a7f3d0);border-color:var(--green)">처리량 = 스왑 순간 큐 크기<small>while 루프가 반드시 종료 → 게임 로직 매 프레임 도달 보장</small></div>
+        <div class="cap">lock <b>1회</b> / 프레임</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">변경 파일 — <b>IOCPServer.h</b>(SwapOut) · <b>GameServer.h</b>(_localEvents) · <b>GameServer.cpp</b>(ProcessNetworkEvents) &nbsp;|&nbsp; 핸들러/PushNetworkEvent/Stop 로직 무손상 · Release/Debug x64 빌드 통과 · 도착분은 최대 1프레임(≈40ms) 이월</div>
+</div></body></html>

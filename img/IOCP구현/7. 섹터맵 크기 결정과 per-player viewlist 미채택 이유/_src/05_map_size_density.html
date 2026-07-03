@@ -1,0 +1,88 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<link rel="stylesheet" href="common.css">
+<style>
+  .card{ padding:34px 56px; }
+  .eyebrow{ margin-bottom:10px; }
+  .h-title{ font-size:38px; }
+  .h-rule{ margin:12px 0 11px; }
+  .h-sub{ font-size:19px; }
+
+  .cols{ flex:1; display:flex; gap:26px; width:100%; align-items:stretch; }
+  .col{ flex:1; border-radius:22px; padding:18px 20px 16px; display:flex; flex-direction:column; align-items:center; position:relative; }
+  .col.small{ background:var(--red-bg);  border:1.8px solid var(--red-line); }
+  .col.big{   background:var(--blue-bg); border:1.5px solid #bcd6fb; }
+
+  .tag{ font-size:16px; font-weight:800; padding:6px 16px; border-radius:999px; color:#fff; }
+  .col.small .tag{ background:linear-gradient(135deg,#f87171,#dc2626); }
+  .col.big .tag{   background:linear-gradient(135deg,#60a5fa,#2563eb); }
+  .same{ position:absolute; top:16px; right:16px; font-size:12.5px; font-weight:800; color:var(--sub);
+         background:#fff; border:1px solid var(--line); padding:4px 11px; border-radius:999px; }
+
+  .map{ margin:14px 0 12px; }
+  .map svg{ display:block; }
+
+  .metric{ align-self:stretch; text-align:center; }
+  .mbadge{ display:inline-block; font-size:15px; font-weight:800; padding:6px 15px; border-radius:999px; margin-bottom:9px; }
+  .col.small .mbadge{ background:#fff; color:var(--red-deep); border:1.4px solid var(--red-line); }
+  .col.big .mbadge{   background:#fff; color:var(--blue-deep); border:1.4px solid #bcd6fb; }
+  .mdesc{ font-size:14.5px; font-weight:700; color:var(--sub); line-height:1.4; }
+  .col.small .mdesc b{ color:var(--red-deep); }
+  .col.big .mdesc b{ color:var(--blue-deep); }
+</style></head>
+<body><div class="card">
+  <div class="eyebrow"><span class="no">⑤</span> 부하 변수 · 맵 크기 INI</div>
+  <div class="h-title">맵 크기로 <span class="k">섹터 밀도</span>를 조절</div>
+  <div class="h-rule"></div>
+  <div class="h-sub">같은 동접에서 맵만 바꿔 <b>섹터당 인원</b>을 부하 실험 변수로 — 코드 상수 아님</div>
+
+  <div class="body">
+    <div class="cols">
+      <!-- 작은 맵 -->
+      <div class="col small">
+        <div class="same">동접 동일</div>
+        <div class="tag">작은 맵 · 120×120</div>
+        <div class="map"><svg viewBox="0 0 240 240" width="228" height="228">
+          <rect x="1" y="1" width="238" height="238" rx="12" fill="#fff" stroke="#e2e8f0" stroke-width="2"/>
+          <g stroke="#eef1f6" stroke-width="1.5">
+            <line x1="40" y1="2" x2="40" y2="238"/><line x1="80" y1="2" x2="80" y2="238"/><line x1="120" y1="2" x2="120" y2="238"/><line x1="160" y1="2" x2="160" y2="238"/><line x1="200" y1="2" x2="200" y2="238"/>
+            <line x1="2" y1="40" x2="238" y2="40"/><line x1="2" y1="80" x2="238" y2="80"/><line x1="2" y1="120" x2="238" y2="120"/><line x1="2" y1="160" x2="238" y2="160"/><line x1="2" y1="200" x2="238" y2="200"/>
+          </g>
+          <g fill="#ef4444" stroke="#fff" stroke-width="1.6">
+            <circle cx="48" cy="52" r="5"/><circle cx="66" cy="58" r="5"/><circle cx="55" cy="70" r="5"/><circle cx="72" cy="66" r="5"/><circle cx="60" cy="46" r="5"/>
+            <circle cx="96" cy="112" r="5"/><circle cx="110" cy="124" r="5"/><circle cx="104" cy="106" r="5"/><circle cx="120" cy="120" r="5"/><circle cx="92" cy="130" r="5"/>
+            <circle cx="146" cy="86" r="5"/><circle cx="160" cy="98" r="5"/><circle cx="150" cy="76" r="5"/><circle cx="138" cy="96" r="5"/>
+            <circle cx="76" cy="166" r="5"/><circle cx="90" cy="178" r="5"/><circle cx="80" cy="156" r="5"/><circle cx="96" cy="168" r="5"/>
+            <circle cx="184" cy="150" r="5"/><circle cx="202" cy="200" r="5"/><circle cx="30" cy="206" r="5"/>
+          </g>
+        </svg></div>
+        <div class="metric">
+          <div class="mbadge">섹터당 밀도 ↑ 높음</div>
+          <div class="mdesc">섹터당 인원↑ → 이동 이벤트 수신자↑<br><b>송신 부하 집중 테스트</b></div>
+        </div>
+      </div>
+      <!-- 큰 맵 -->
+      <div class="col big">
+        <div class="tag">큰 맵 · 600×600</div>
+        <div class="map"><svg viewBox="0 0 240 240" width="228" height="228">
+          <rect x="1" y="1" width="238" height="238" rx="12" fill="#fff" stroke="#e2e8f0" stroke-width="2"/>
+          <g stroke="#f1f5fa" stroke-width="1.2">
+            <line x1="20" y1="2" x2="20" y2="238"/><line x1="40" y1="2" x2="40" y2="238"/><line x1="60" y1="2" x2="60" y2="238"/><line x1="80" y1="2" x2="80" y2="238"/><line x1="100" y1="2" x2="100" y2="238"/><line x1="120" y1="2" x2="120" y2="238"/><line x1="140" y1="2" x2="140" y2="238"/><line x1="160" y1="2" x2="160" y2="238"/><line x1="180" y1="2" x2="180" y2="238"/><line x1="200" y1="2" x2="200" y2="238"/><line x1="220" y1="2" x2="220" y2="238"/>
+            <line x1="2" y1="20" x2="238" y2="20"/><line x1="2" y1="40" x2="238" y2="40"/><line x1="2" y1="60" x2="238" y2="60"/><line x1="2" y1="80" x2="238" y2="80"/><line x1="2" y1="100" x2="238" y2="100"/><line x1="2" y1="120" x2="238" y2="120"/><line x1="2" y1="140" x2="238" y2="140"/><line x1="2" y1="160" x2="238" y2="160"/><line x1="2" y1="180" x2="238" y2="180"/><line x1="2" y1="200" x2="238" y2="200"/><line x1="2" y1="220" x2="238" y2="220"/>
+          </g>
+          <g fill="#3b82f6" stroke="#fff" stroke-width="1.6">
+            <circle cx="22" cy="26" r="5"/><circle cx="60" cy="20" r="5"/><circle cx="112" cy="30" r="5"/><circle cx="150" cy="24" r="5"/><circle cx="200" cy="30" r="5"/><circle cx="224" cy="64" r="5"/>
+            <circle cx="34" cy="72" r="5"/><circle cx="86" cy="66" r="5"/><circle cx="130" cy="82" r="5"/><circle cx="176" cy="72" r="5"/><circle cx="212" cy="104" r="5"/><circle cx="24" cy="112" r="5"/>
+            <circle cx="70" cy="122" r="5"/><circle cx="120" cy="116" r="5"/><circle cx="166" cy="132" r="5"/><circle cx="206" cy="142" r="5"/><circle cx="40" cy="162" r="5"/><circle cx="96" cy="166" r="5"/>
+            <circle cx="140" cy="176" r="5"/><circle cx="186" cy="182" r="5"/><circle cx="62" cy="212" r="5"/><circle cx="150" cy="216" r="5"/>
+          </g>
+        </svg></div>
+        <div class="metric">
+          <div class="mbadge">섹터당 밀도 ↓ 낮음</div>
+          <div class="mdesc">밀도 분산 → 국소 집중 없음<br><b>이동 처리 위주 테스트</b></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot"><b>Init(mapWidth, mapHeight, sectorSize)</b> 런타임 주입 · [MapDefault] 120×120 / [Map1] 600×600 확장 슬롯 예약(주석)</div>
+</div></body></html>
