@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#fff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --blue:#3a78b8; --blue-ink:#2b6aa8;
+    --amber:#e0a020; --amber-ink:#9a6a09; --violet:#8b7fd6; --violet-ink:#6a59c4; --slate:#566072;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:600px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:552px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 14px 44px rgba(30,40,70,.07);
+    padding:32px 56px 0}
+
+  .title{font-size:37px;font-weight:800;color:var(--ink);letter-spacing:-.7px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:82px;height:6px;border-radius:3px;background:var(--red);margin-top:12px}
+  .sub{margin-top:12px;font-size:19.5px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .pipe{margin-top:28px;display:flex;align-items:stretch;justify-content:space-between}
+  .zone{width:300px;border-radius:18px;border:1.5px solid #e7ebf1;background:#fff;
+    box-shadow:0 5px 16px rgba(30,40,70,.05);position:relative;overflow:hidden;padding:18px 20px 16px}
+  .zone::before{content:"";position:absolute;top:0;left:0;right:0;height:5px}
+  .zone.b::before{background:var(--blue)} .zone.a::before{background:var(--amber)} .zone.v::before{background:var(--violet)}
+  .zone .tag{display:inline-block;font-size:13.5px;font-weight:800;padding:3px 12px;border-radius:999px;letter-spacing:-.2px}
+  .zone.b .tag{background:#e7f0fa;color:var(--blue-ink)}
+  .zone.a .tag{background:#fbeecb;color:var(--amber-ink)}
+  .zone.v .tag{background:#ece9fb;color:var(--violet-ink)}
+  .zone .zt{margin-top:11px;font-size:21px;font-weight:800;color:var(--ink);letter-spacing:-.4px}
+  .zone .cap{margin-top:11px;font-size:14px;font-weight:600;color:#8a93a5;letter-spacing:-.2px}
+
+  .chips{margin-top:13px;display:flex;flex-wrap:wrap;gap:7px}
+  .chip{font-size:15px;font-weight:700;padding:6px 13px;border-radius:9px;background:#f3f5f9;color:#46506a;letter-spacing:-.2px}
+  .chip.tok{background:#fff;border:1.4px solid #ecd9a6;color:#8a6410}
+
+  .cwrap{margin-top:12px;display:flex;align-items:center;gap:13px}
+  .flow{font-size:16px;font-weight:800;color:var(--violet-ink);letter-spacing:-.3px;line-height:1.3}
+  .wheel{width:74px;height:74px;flex:none}
+  .outchip{margin-top:12px;font-size:13.5px;font-weight:800;color:var(--deep);background:#fdeef0;
+    border:1.4px solid #f4c4cc;border-radius:9px;padding:7px 11px;letter-spacing:-.2px}
+
+  .arr{align-self:center;display:flex;flex-direction:column;align-items:center;width:66px;flex:none}
+  .arr .al{font-size:14px;font-weight:800;color:#8a93a5;letter-spacing:-.2px;margin-bottom:6px}
+
+  .band{margin-top:22px;display:flex;align-items:center;gap:14px;background:#fbfcfe;border:1.5px solid #e7ebf1;
+    border-left:6px solid var(--red);border-radius:14px;padding:16px 22px}
+  .band .lk{font-size:26px;flex:none}
+  .band .bt{font-size:19px;font-weight:600;color:#46506a;letter-spacing:-.3px;line-height:1.35}
+  .band .bt b{font-weight:800;color:var(--red)}
+  .band .bt .k{font-weight:800;color:var(--ink)}
+
+  .foot{position:absolute;left:56px;right:56px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
+    font-size:15px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">휠을 만지는 스레드는 <span class="r">단 하나</span> — 그래서 Lock이 없다</div>
+    <div class="uline"></div>
+    <div class="sub">외부 스레드는 Lock-Free 큐에 요청만 넣고, 타이머 스레드가 휠을 <b>단독 소유</b>한다</div>
+
+    <div class="pipe">
+      <!-- Zone A: external threads -->
+      <div class="zone b">
+        <span class="tag">외부 스레드</span>
+        <div class="zt">Worker · Accept</div>
+        <div class="chips">
+          <span class="chip">Worker 1</span>
+          <span class="chip">Worker 2</span>
+          <span class="chip">Accept Thread</span>
+        </div>
+        <div class="cap">휠에 직접 접근하지 않음 · 요청만 생성</div>
+      </div>
+
+      <div class="arr"><div class="al">Enqueue</div>
+        <svg width="62" height="22"><path d="M2 11 H44" stroke="#c2c9d6" stroke-width="4.5" stroke-linecap="round" fill="none"/><path d="M42 4 L56 11 L42 18 Z" fill="#c2c9d6"/></svg>
+      </div>
+
+      <!-- Zone B: lock-free queue -->
+      <div class="zone a">
+        <span class="tag">Lock-Free Queue</span>
+        <div class="zt">요청 큐 · MPSC</div>
+        <div class="chips">
+          <span class="chip tok">Register</span>
+          <span class="chip tok">Refresh</span>
+          <span class="chip tok">Unregister</span>
+        </div>
+        <div class="cap">Multi-Producer / Single-Consumer</div>
+      </div>
+
+      <div class="arr"><div class="al">Drain</div>
+        <svg width="62" height="22"><path d="M2 11 H44" stroke="#c2c9d6" stroke-width="4.5" stroke-linecap="round" fill="none"/><path d="M42 4 L56 11 L42 18 Z" fill="#c2c9d6"/></svg>
+      </div>
+
+      <!-- Zone C: timer thread -->
+      <div class="zone v">
+        <span class="tag">타이머 스레드 · 단독 소유</span>
+        <div class="cwrap">
+          <div class="flow">① Drain<br>② Tick</div>
+          <svg class="wheel" viewBox="0 0 240 240"><g id="mini"></g>
+            <circle cx="120" cy="120" r="20" fill="#fff" stroke="#cdd4e0" stroke-width="4"/>
+          </svg>
+          <div class="flow" style="color:#46506a;font-size:14.5px;font-weight:700">Timing<br>Wheel</div>
+        </div>
+        <div class="outchip">② Tick → 만료 세션 → RequestDisconnectSession()</div>
+      </div>
+    </div>
+
+    <div class="band">
+      <div class="lk">🔒</div>
+      <div class="bt">휠<span class="k">(슬롯·노드·커서)</span>에 접근하는 스레드는 타이머 <b>단 하나</b> — 그래서 <b>단일 Writer</b>다. mutex·spinlock 없이 thread-safe.</div>
+    </div>
+
+    <div class="foot">외부 스레드는 Lock-Free MPSC 큐로만 통신 · 타이머 스레드가 큐를 <b>Drain</b>한 뒤 휠을 조작하고 cursor를 전진시켜 만료 슬롯 처리 · 공유 자료구조에 <b>Writer가 1개</b>뿐이라 동기화 불필요</div>
+  </div>
+
+<script>
+function wedge(cx,cy,rO,rI,a0,a1){
+  const P=(r,a)=>`${(cx+r*Math.cos(a)).toFixed(2)} ${(cy+r*Math.sin(a)).toFixed(2)}`;
+  const large=(a1-a0)>Math.PI?1:0;
+  return `M ${P(rO,a0)} A ${rO} ${rO} 0 ${large} 1 ${P(rO,a1)} L ${P(rI,a1)} A ${rI} ${rI} 0 ${large} 0 ${P(rI,a0)} Z`;
+}
+(function(){
+  const cx=120,cy=120,rO=110,rI=64,N=13,gap=3.2,step=360/N,ns="http://www.w3.org/2000/svg";
+  const g=document.getElementById('mini');
+  for(let i=0;i<N;i++){
+    const a0=(-90+i*step+gap/2)*Math.PI/180,a1=(-90+(i+1)*step-gap/2)*Math.PI/180;
+    const p=document.createElementNS(ns,'path');
+    p.setAttribute('d',wedge(cx,cy,rO,rI,a0,a1));
+    p.setAttribute('fill', i===0 ? '#d7263d' : '#e2e6ec');
+    g.appendChild(p);
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#fff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --blue:#3a78b8; --blue-ink:#2b6aa8; --gray:#9aa3b2;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:628px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:580px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 14px 44px rgba(30,40,70,.07);
+    padding:32px 56px 0}
+
+  .title{font-size:37px;font-weight:800;color:var(--ink);letter-spacing:-.7px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:82px;height:6px;border-radius:3px;background:var(--red);margin-top:12px}
+  .sub{margin-top:12px;font-size:19.5px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .stage{margin-top:8px;display:flex;align-items:center;gap:28px}
+  .ring{width:452px;flex:none}
+  .ring svg{display:block;width:452px;height:366px}
+
+  .side{flex:1;padding-top:4px}
+  .tl{position:relative;padding-left:6px}
+  .step{display:flex;align-items:flex-start;gap:16px;position:relative;padding-bottom:20px}
+  .step:last-child{padding-bottom:0}
+  .rail{position:absolute;left:11px;top:8px;bottom:26px;width:3px;background:#e4e8ef;border-radius:2px}
+  .dot{width:24px;height:24px;border-radius:50%;flex:none;margin-top:2px;z-index:1;
+    display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#fff}
+  .dot.g{background:#aeb6c4} .dot.b{background:var(--blue)} .dot.r{background:var(--red)}
+  .stx{font-size:18px;color:#46506a;font-weight:600;letter-spacing:-.3px;line-height:1.3}
+  .stx b{font-weight:800;color:var(--ink);font-size:19px}
+  .stx .t{display:inline-block;min-width:52px;font-weight:800}
+  .stx span{color:#8a93a5;font-size:15.5px;font-weight:600}
+  .stx .cb{color:var(--deep);font-weight:800}
+
+  .eq{margin-top:18px;background:#fdeef0;border:1.5px solid #f4c4cc;border-radius:14px;
+    padding:15px 20px;font-size:20px;font-weight:700;color:#7a4048;letter-spacing:-.3px;text-align:center}
+  .eq b{font-weight:800;color:var(--ink)} .eq b.r{color:var(--red)}
+  .eqs{margin-top:9px;text-align:center;font-size:15px;font-weight:600;color:#9aa3b2;letter-spacing:-.2px}
+  .eqs b{color:#6b7484;font-weight:800}
+
+  .foot{position:absolute;left:56px;right:56px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
+    font-size:15px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">구체적 예시 — Refresh가 만료 시점을 <span class="r">리셋</span>한다</div>
+    <div class="uline"></div>
+    <div class="sub">timeout <b>60초</b> · tick <b>5초</b> · 슬롯 <b>13개</b> · Session A의 수명 추적</div>
+
+    <div class="stage">
+      <!-- LEFT: wheel -->
+      <div class="ring">
+        <svg viewBox="0 0 452 366" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="ahB" markerWidth="9" markerHeight="9" refX="6" refY="4.5" orient="auto">
+              <path d="M0,0 L9,4.5 L0,9 Z" fill="#3a78b8"/></marker>
+            <marker id="ahR" markerWidth="10" markerHeight="10" refX="6.5" refY="5" orient="auto">
+              <path d="M0,0 L10,5 L0,10 Z" fill="#d7263d"/></marker>
+          </defs>
+
+          <g id="ring"></g>
+
+          <!-- center hub -->
+          <circle cx="210" cy="180" r="40" fill="#fff" stroke="#e2e6ec" stroke-width="2"/>
+          <text x="210" y="174" text-anchor="middle" font-size="16" font-weight="800" fill="#566072">13 슬롯</text>
+          <text x="210" y="194" text-anchor="middle" font-size="13" font-weight="700" fill="#9aa3b2">tick 5초</text>
+
+          <!-- refresh movement arrow: slot0 -> slot6 -->
+          <path d="M 250 84 Q 428 188 232 276" fill="none" stroke="#3a78b8" stroke-width="3.2"
+                stroke-dasharray="7 5" marker-end="url(#ahB)"/>
+          <text x="405" y="150" text-anchor="middle" font-size="15.5" font-weight="800" fill="#2b6aa8">30초</text>
+          <text x="408" y="170" text-anchor="middle" font-size="14" font-weight="800" fill="#2b6aa8">Refresh</text>
+
+          <!-- ghost A at slot 0 (insert) -->
+          <text x="237" y="32" text-anchor="middle" font-size="13" font-weight="800" fill="#9aa3b2">0초 삽입 · Slot 0</text>
+          <circle cx="237" cy="69" r="20" fill="#f0f2f6" stroke="#b7c0cc" stroke-width="2" stroke-dasharray="4 3"/>
+          <text x="237" y="76" text-anchor="middle" font-size="20" font-weight="800" fill="#9aa3b2">A</text>
+
+          <!-- cursor hand -> slot 6 -->
+          <line x1="210" y1="212" x2="210" y2="268" stroke="#d7263d" stroke-width="4.5" stroke-linecap="round" marker-end="url(#ahR)"/>
+
+          <!-- solid A at slot 6 (expire) -->
+          <circle cx="210" cy="294" r="21" fill="#d7263d"/>
+          <text x="210" y="301" text-anchor="middle" font-size="21" font-weight="800" fill="#fff">A</text>
+          <text x="210" y="342" text-anchor="middle" font-size="14.5" font-weight="800" fill="#d7263d">90초 만료 · Slot 6</text>
+        </svg>
+      </div>
+
+      <!-- RIGHT: timeline -->
+      <div class="side">
+        <div class="tl">
+          <div class="rail"></div>
+          <div class="step">
+            <div class="dot g">0</div>
+            <div class="stx"><b><span class="t">0초</span></b> 접속 <span>· cursor=0</span><br><span>Session A를 <b style="color:#46506a">Slot 0</b>에 삽입 (한 바퀴 뒤 만료 예정)</span></div>
+          </div>
+          <div class="step">
+            <div class="dot b">↻</div>
+            <div class="stx"><b><span class="t">30초</span></b> 패킷 수신 → <b style="color:#2b6aa8">Refresh</b><br><span>Slot 0에서 빼고 <b style="color:#2b6aa8">Slot 6</b>으로 재삽입 → 만료 시점 리셋</span></div>
+          </div>
+          <div class="step">
+            <div class="dot r">✕</div>
+            <div class="stx"><b><span class="t">90초</span></b> cursor가 <b class="cb">Slot 6</b> 도달 → <b class="cb">만료</b><br><span>RequestDisconnectSession(A) 호출</span></div>
+          </div>
+        </div>
+
+        <div class="eq">마지막 활동 <b>30초</b> + 타임아웃 <b>60초</b> = <b class="r">90초 만료</b></div>
+        <div class="eqs">Refresh가 없었다면 &nbsp;0 + 60 = <b>60초</b>&nbsp; 에 만료됐을 것</div>
+      </div>
+    </div>
+
+    <div class="foot">노드가 삽입된 슬롯에 cursor가 <b>한 바퀴 돌아 다시 도달</b>하면 만료 · Refresh는 노드를 현재 cursor 슬롯으로 옮겨 <b>타이머를 리셋</b> · 한 바퀴 = 12 tick × 5초 = 60초</div>
+  </div>
+
+<script>
+function wedge(cx,cy,rO,rI,a0,a1){
+  const P=(r,a)=>`${(cx+r*Math.cos(a)).toFixed(2)} ${(cy+r*Math.sin(a)).toFixed(2)}`;
+  const large=(a1-a0)>Math.PI?1:0;
+  return `M ${P(rO,a0)} A ${rO} ${rO} 0 ${large} 1 ${P(rO,a1)} L ${P(rI,a1)} A ${rI} ${rI} 0 ${large} 0 ${P(rI,a0)} Z`;
+}
+(function(){
+  const cx=210,cy=180,rO=140,rI=88,N=13,gap=2.4,step=360/N,ns="http://www.w3.org/2000/svg";
+  const g=document.getElementById('ring');
+  for(let i=0;i<N;i++){
+    const a0=(-90+i*step+gap/2)*Math.PI/180, a1=(-90+(i+1)*step-gap/2)*Math.PI/180;
+    const p=document.createElementNS(ns,'path');
+    p.setAttribute('d',wedge(cx,cy,rO,rI,a0,a1));
+    if(i===6){p.setAttribute('fill','#fbdfe4');}       // active expiry slot (light red)
+    else if(i===0){p.setAttribute('fill','#eceff3');}  // original insert slot (faint)
+    else{p.setAttribute('fill','#e6e9ef');}
+    g.appendChild(p);
+    // slot index numbers (subtle)
+    const ac=(-90+(i+0.5)*step)*Math.PI/180, rl=rO+14;
+    const tn=document.createElementNS(ns,'text');
+    tn.setAttribute('x',(cx+rl*Math.cos(ac)).toFixed(2));
+    tn.setAttribute('y',(cy+rl*Math.sin(ac)+4).toFixed(2));
+    tn.setAttribute('text-anchor','middle');tn.setAttribute('font-size','11.5');
+    tn.setAttribute('font-weight','700');tn.setAttribute('fill', (i===0||i===6)?'#c2c9d6':'#c9d0da');
+    if(i!==0&&i!==6) tn.textContent=i;   // 0 and 6 labeled by callouts instead
+    g.appendChild(tn);
+  }
+})();
+</script>
+</body>
+</html>
