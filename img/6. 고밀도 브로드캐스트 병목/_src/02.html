@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --slate:#566072;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1020px;height:620px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:972px;height:572px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:34px 52px 0}
+
+  .title{font-size:36px;font-weight:800;color:var(--ink);letter-spacing:-.7px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:70px;height:6px;border-radius:3px;background:var(--red);margin-top:13px}
+  .sub{margin-top:13px;font-size:19px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .hero{position:relative;margin-top:14px;width:868px;height:262px}
+  .hero svg{position:absolute;inset:0;width:868px;height:262px}
+  .lbl{position:absolute;font-weight:800;color:var(--ink);letter-spacing:-.3px}
+  .lbl.src{left:-6px;top:60px;width:154px;text-align:center;font-size:19px;line-height:1.15}
+  .lbl.src b{color:var(--red);font-size:23px}
+  .lbl.srcsub{position:absolute;left:-6px;top:162px;width:154px;text-align:center;
+    font-size:14.5px;font-weight:600;color:var(--muted);letter-spacing:-.2px}
+  .x370{position:absolute;left:300px;top:80px;width:150px;text-align:center;
+    font-size:78px;font-weight:800;color:var(--red);letter-spacing:-4px;line-height:1;
+    text-shadow:0 4px 20px rgba(255,255,255,.92),0 0 16px rgba(255,255,255,.92),0 0 10px rgba(255,255,255,.92)}
+  .x370 span{display:block;font-size:16px;font-weight:700;color:var(--slate);letter-spacing:-.3px;margin-top:4px}
+  .crowd{position:absolute;left:520px;top:222px;width:330px;text-align:center;
+    font-size:17px;font-weight:700;color:var(--slate);letter-spacing:-.3px}
+  .crowd b{color:var(--ink)}
+
+  .mathrow{margin-top:16px;display:flex;align-items:center;justify-content:center;gap:14px}
+  .chip{padding:15px 24px;border-radius:14px;font-size:19px;font-weight:600;background:#f3f5f9;color:#46506a;letter-spacing:-.3px;white-space:nowrap}
+  .chip b{font-weight:800;color:var(--ink)}
+  .chip.concl{background:#fdeef0;color:#b3122a;border:1.5px solid #f4c4cc}
+  .chip.concl b{color:var(--red)}
+  .chev{color:#c2c9d6;font-size:22px;font-weight:900}
+
+  .foot{position:absolute;left:52px;right:52px;bottom:15px;padding-top:11px;border-top:1px solid #eef0f3;
+    font-size:14.5px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">왜 복사가 큰가 — 브로드캐스트 <span class="r">1회 = 370명</span> 복사</div>
+    <div class="uline"></div>
+    <div class="sub">맵 1개(120×120)에 <b>2000명</b> · 채널분할 없음 = "대규모 교전 한복판"</div>
+
+    <div class="hero">
+      <svg viewBox="0 0 868 262">
+        <rect x="512" y="20" width="300" height="222" rx="18" fill="#fdf2f4" stroke="#f4d2d8" stroke-width="1.5"/>
+        <g id="lines"></g>
+        <g id="dots"></g>
+        <circle cx="70" cy="131" r="20" fill="#d7263d"/>
+        <circle cx="70" cy="131" r="20" fill="none" stroke="#fff" stroke-width="3.5"/>
+        <circle cx="70" cy="131" r="8" fill="#fff"/>
+      </svg>
+      <div class="lbl src">브로드캐스트 <b>1회</b></div>
+      <div class="lbl srcsub">한 명이 움직이면</div>
+      <div class="x370">×370<span>명당 개별 복사</span></div>
+      <div class="crowd">시야 안 <b>≈370명</b> 전원에게 개별 복사</div>
+    </div>
+
+    <div class="mathrow">
+      <div class="chip">틱당 복사 <b>≈ 299,000회</b></div>
+      <div class="chev">→</div>
+      <div class="chip">타겟당 <b>≈ 75 ns</b></div>
+      <div class="chev">→</div>
+      <div class="chip concl"><b>≈ 22 ms</b> · 틱의 71% 차지</div>
+    </div>
+
+    <div class="foot">팬아웃 370은 튜닝값이 아니라 <b>테스트 밀도</b>(맵1개·2000명·채널분할 없음) · Send는 SendThread 분리라 위 복사 비용과 별개</div>
+  </div>
+
+<script>
+  var ns="http://www.w3.org/2000/svg";
+  var sx=70, sy=131;
+  var linesG=document.getElementById('lines'), dotsG=document.getElementById('dots');
+  var cols=[560,602,644,686,728,770], rows=[52,84,116,148,180,212];
+  for(var r=0;r<rows.length;r++){
+    for(var c=0;c<cols.length;c++){
+      var x=cols[c], y=rows[r];
+      var ln=document.createElementNS(ns,'line');
+      ln.setAttribute('x1',sx); ln.setAttribute('y1',sy);
+      ln.setAttribute('x2',x);  ln.setAttribute('y2',y);
+      ln.setAttribute('stroke','#d7263d'); ln.setAttribute('stroke-width','1.4');
+      ln.setAttribute('stroke-opacity', c===0?0.30:0.12);
+      linesG.appendChild(ln);
+      var d=document.createElementNS(ns,'circle');
+      d.setAttribute('cx',x); d.setAttribute('cy',y); d.setAttribute('r','7');
+      d.setAttribute('fill','#e0576b');
+      dotsG.appendChild(d);
+    }
+  }
+</script>
+</body>
+</html>

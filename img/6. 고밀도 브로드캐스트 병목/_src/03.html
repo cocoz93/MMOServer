@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --blue:#3a78b8; --blue-ink:#2b6aa8;
+    --slate:#566072; --pill-gray:#e9edf3;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:620px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:572px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:30px 56px 0}
+  .title{font-size:36px;font-weight:800;color:var(--ink);letter-spacing:-.6px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:74px;height:6px;border-radius:3px;background:var(--red);margin-top:12px}
+  .sub{margin-top:12px;font-size:19px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .stage{margin-top:22px;display:grid;grid-template-columns:1fr 150px 1fr;align-items:start}
+  .col{display:flex;flex-direction:column;align-items:center;position:relative}
+
+  .pill{font-size:18px;font-weight:800;padding:7px 20px;border-radius:999px;letter-spacing:-.3px}
+  .pill.before{background:var(--pill-gray);color:var(--slate)}
+  .pill.after{background:var(--red);color:#fff}
+
+  .viz{margin-top:20px;width:360px;height:214px;position:relative}
+  .viz svg{position:absolute;inset:0;width:360px;height:214px}
+
+  .bignum{margin-top:14px;font-weight:800;letter-spacing:-1px;text-align:center;line-height:1}
+  .bignum .n{font-size:38px}
+  .bignum.b{color:#8791a3}
+  .bignum.r .n{color:var(--red)}
+  .bignum .u{display:block;margin-top:7px;font-size:16px;font-weight:700;letter-spacing:-.3px}
+  .bignum.b .u{color:#98a1b1}
+  .bignum.r .u{color:var(--slate)}
+
+  .botcap{margin-top:13px;font-size:16.5px;font-weight:600;color:#8089a0;text-align:center;letter-spacing:-.3px}
+  .botcap b{font-weight:800}
+  .botcap.b b{color:#5b6474}
+  .botcap.r b{color:var(--red)}
+
+  /* center arrow */
+  .arrowcol{display:flex;flex-direction:column;align-items:center;padding-top:118px}
+  .arrowcol .t{font-size:19px;font-weight:800;color:var(--red);text-align:center;line-height:1.16;margin-bottom:9px}
+  .arrowcol .code{margin-top:9px;font-size:12.5px;font-weight:700;color:#a7aebc;letter-spacing:0}
+
+  .foot{position:absolute;left:56px;right:56px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
+    font-size:15.5px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">해결 — <span class="r">이동마다 즉시전송</span> → <span class="r">틱 끝 섹터 묶음</span></div>
+    <div class="uline"></div>
+    <div class="sub">틱 중엔 위치만 갱신(전송 0) → 틱 끝에 <b>섹터별 변경분을 한 패킷으로</b> 묶어 전달</div>
+
+    <div class="stage">
+      <!-- BEFORE -->
+      <div class="col">
+        <div class="pill before">변경 전 · 이동마다 즉시</div>
+        <div class="viz">
+          <svg viewBox="0 0 360 214"><g id="burst"></g>
+            <circle cx="180" cy="107" r="19" fill="#c3cad6"/>
+            <circle cx="180" cy="107" r="19" fill="none" stroke="#fff" stroke-width="3.5"/>
+          </svg>
+        </div>
+        <div class="bignum b"><span class="n">복사 370회</span><span class="u">브로드캐스트 1회당 · 수신자마다 개별</span></div>
+        <div class="botcap b">브로드캐스트 <b>19,602회 / s</b></div>
+      </div>
+
+      <!-- CENTER ARROW -->
+      <div class="arrowcol">
+        <div class="t">섹터<br>묶음</div>
+        <svg width="96" height="34" viewBox="0 0 96 34">
+          <defs><marker id="ah" markerWidth="9" markerHeight="9" refX="6.5" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 Z" fill="#d7263d"/></marker></defs>
+          <line x1="4" y1="17" x2="78" y2="17" stroke="#d7263d" stroke-width="6" stroke-linecap="round" marker-end="url(#ah)"/>
+        </svg>
+        <div class="code">USE_SECTOR_<br>AGGREGATION</div>
+      </div>
+
+      <!-- AFTER -->
+      <div class="col">
+        <div class="pill after">변경 후 · 틱 끝 섹터 묶음</div>
+        <div class="viz">
+          <svg viewBox="0 0 360 214"><g id="grid"></g></svg>
+        </div>
+        <div class="bignum r"><span class="n">1패킷 / 섹터</span><span class="u">시야 9섹터를 한 번에 묶음</span></div>
+        <div class="botcap r">브로드캐스트 <b>3,310회 / s</b> · <b>−83%</b></div>
+      </div>
+    </div>
+
+    <div class="foot">틱 끝 변경 섹터마다 <b>S2C_SECTOR_UPDATES</b> 1패킷 빌드 → 플레이어당 시야 9섹터 묶음만 전달 · 응답성 영향 없음(원래 틱 끝 송신)</div>
+  </div>
+
+<script>
+  var ns="http://www.w3.org/2000/svg";
+  // LEFT : starburst explosion of copies (chaos)
+  var burst=document.getElementById('burst'), cx=180, cy=107;
+  for(var i=0;i<26;i++){
+    var a=(i*(360/26))*Math.PI/180, R1=26, R2=(i%2? 96:86);
+    var x1=cx+R1*Math.cos(a), y1=cy+R1*Math.sin(a);
+    var x2=cx+R2*Math.cos(a), y2=cy+R2*Math.sin(a);
+    var ln=document.createElementNS(ns,'line');
+    ln.setAttribute('x1',x1.toFixed(1)); ln.setAttribute('y1',y1.toFixed(1));
+    ln.setAttribute('x2',x2.toFixed(1)); ln.setAttribute('y2',y2.toFixed(1));
+    ln.setAttribute('stroke','#dd4258'); ln.setAttribute('stroke-width','2.4');
+    ln.setAttribute('stroke-linecap','round'); ln.setAttribute('stroke-opacity','0.55');
+    burst.appendChild(ln);
+    var d=document.createElementNS(ns,'circle');
+    d.setAttribute('cx',x2.toFixed(1)); d.setAttribute('cy',y2.toFixed(1)); d.setAttribute('r','4.6');
+    d.setAttribute('fill','#e0576b'); d.setAttribute('fill-opacity','0.9');
+    burst.appendChild(d);
+  }
+  // RIGHT : neat 3x3 sector grid = one bundled packet (order)
+  var grid=document.getElementById('grid');
+  var gx=97, gy=18, cw=56, ch=56, gap=9;
+  for(var rr=0;rr<3;rr++) for(var cc=0;cc<3;cc++){
+    var x=gx+cc*(cw+gap), y=gy+rr*(ch+gap), center=(rr===1&&cc===1);
+    var rect=document.createElementNS(ns,'rect');
+    rect.setAttribute('x',x); rect.setAttribute('y',y);
+    rect.setAttribute('width',cw); rect.setAttribute('height',ch); rect.setAttribute('rx','11');
+    rect.setAttribute('fill', center? '#fde6ea':'#f4f7fb');
+    rect.setAttribute('stroke', center? '#e8879a':'#dbe3ee'); rect.setAttribute('stroke-width', center? '2':'1.4');
+    grid.appendChild(rect);
+    var dot=document.createElementNS(ns,'circle');
+    dot.setAttribute('cx',x+cw/2); dot.setAttribute('cy',y+ch/2); dot.setAttribute('r', center?'8':'5');
+    dot.setAttribute('fill', center? '#d7263d':'#c3ccda');
+    grid.appendChild(dot);
+  }
+  // brace + packet arrow: whole 3x3 = 1 packet
+  var gW=3*cw+2*gap, gH=3*ch+2*gap;
+  var brace=document.createElementNS(ns,'rect');
+  brace.setAttribute('x',gx-9); brace.setAttribute('y',gy-9);
+  brace.setAttribute('width',gW+18); brace.setAttribute('height',gH+18); brace.setAttribute('rx','16');
+  brace.setAttribute('fill','none'); brace.setAttribute('stroke','#d7263d'); brace.setAttribute('stroke-width','2');
+  brace.setAttribute('stroke-dasharray','7 5');
+  grid.appendChild(brace);
+  var pk=document.createElementNS(ns,'g');
+  pk.innerHTML='<rect x="300" y="86" width="46" height="40" rx="8" fill="#d7263d"/>'+
+    '<line x1="300" y1="100" x2="346" y2="100" stroke="#fff" stroke-width="2.4"/>'+
+    '<line x1="323" y1="86" x2="323" y2="100" stroke="#fff" stroke-width="2.4"/>';
+  grid.appendChild(pk);
+  var conn=document.createElementNS(ns,'line');
+  conn.setAttribute('x1',gx+gW+9); conn.setAttribute('y1',107); conn.setAttribute('x2',300); conn.setAttribute('y2',106);
+  conn.setAttribute('stroke','#d7263d'); conn.setAttribute('stroke-width','3'); conn.setAttribute('stroke-linecap','round');
+  grid.appendChild(conn);
+</script>
+</body>
+</html>

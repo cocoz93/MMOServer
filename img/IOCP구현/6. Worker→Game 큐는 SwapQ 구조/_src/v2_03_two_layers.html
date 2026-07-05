@@ -7,38 +7,38 @@
   .h-rule{ margin:13px 0 11px; }
   .h-sub{ font-size:19px; }
 
-  .layer{ border-radius:20px; padding:16px 26px; display:flex; align-items:center; gap:18px; width:100%;
-          box-shadow:0 14px 30px -22px rgba(15,23,42,.3); }
-  .layer.top{ background:linear-gradient(145deg,#fff,var(--amber-bg)); border:1.5px dashed var(--amber); }
-  .layer.bot{ background:linear-gradient(145deg,#fff,var(--green-bg)); border:1.5px solid var(--green-line); margin-top:12px; }
-  .layer .ico{ flex:0 0 auto; width:46px; height:46px; border-radius:14px; display:flex; align-items:center; justify-content:center; }
-  .layer.top .ico{ background:#fde9b0; }
-  .layer.bot .ico{ background:#c9f2df; }
-  .layer .ico svg{ width:24px; height:24px; }
-  .layer .badge{ flex:0 0 auto; font-size:14.5px; font-weight:800; color:#fff; padding:6px 15px; border-radius:999px; white-space:nowrap; }
-  .layer.top .badge{ background:linear-gradient(135deg,#fbbf24,#d97706); }
-  .layer.bot .badge{ background:linear-gradient(135deg,#34d399,#059669); }
+  .layer{ border-radius:22px; padding:22px 30px; display:flex; align-items:center; gap:22px; width:100%; }
+  .layer.top{ background:var(--red-bg);   border:1.5px dashed var(--red); }
+  .layer.bot{ background:var(--green-bg); border:1.5px solid var(--green-line); margin-top:13px; }
+  .layer .ico{ flex:0 0 auto; width:56px; height:56px; border-radius:16px; display:flex; align-items:center; justify-content:center; }
+  .layer.top .ico{ background:var(--red-line); }
+  .layer.bot .ico{ background:var(--green-line); }
+  .layer .ico svg{ width:30px; height:30px; }
   .layer .txt{ flex:1; }
-  .layer .t{ font-size:19px; font-weight:800; color:var(--ink); display:flex; align-items:center; gap:10px; }
-  .layer .d{ font-size:15px; font-weight:600; color:var(--sub); margin-top:5px; line-height:1.4; }
-  .layer .d b{ color:var(--red-deep); }
+  .layer .t{ font-size:23px; font-weight:800; color:var(--ink); display:flex; align-items:center; gap:11px; }
+  .layer .badge{ font-size:15px; font-weight:800; color:#fff; padding:5px 15px; border-radius:999px; white-space:nowrap; }
+  .layer.top .badge{ background:var(--red); }
+  .layer.bot .badge{ background:var(--green); }
+  .layer .d{ font-size:16px; font-weight:600; color:var(--sub); margin-top:6px; line-height:1.4; }
+  .layer .d b{ color:var(--red-deep); font-weight:800; }
   .layer.bot .d b{ color:var(--green-deep); }
+  .layer .big{ flex:0 0 auto; font-size:29px; font-weight:800; letter-spacing:-1.2px; white-space:nowrap; }
+  .layer.top .big{ color:var(--red-deep); }
+  .layer.bot .big{ color:var(--green-deep); }
 
-  .down{ display:flex; align-items:center; justify-content:center; gap:8px; font-size:13.5px; color:var(--faint); font-weight:800; margin:9px 0; }
-  .down svg{ width:15px; height:15px; }
+  .down{ display:flex; align-items:center; justify-content:center; gap:8px; font-size:14px; color:var(--faint); font-weight:800; margin:10px 0; }
+  .down svg{ width:16px; height:16px; }
 
-  .means{ margin-top:16px; display:flex; gap:14px; width:100%; }
-  .m{ flex:1; background:#fff; border:1px solid var(--line); border-radius:16px; padding:15px 12px 13px;
-      box-shadow:0 12px 26px -18px rgba(15,23,42,.3); text-align:center; position:relative; overflow:hidden; }
-  .m::before{ content:""; position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,#34d399,#059669); }
-  .m .ico{ width:38px; height:38px; border-radius:12px; background:var(--green-bg); display:flex; align-items:center; justify-content:center; margin:3px auto 8px; }
-  .m .ico svg{ width:20px; height:20px; }
-  .m .t{ font-size:15px; font-weight:800; color:var(--green-deep); }
-  .m .d{ font-size:12.5px; font-weight:600; color:var(--sub); margin-top:3px; }
-  .m.core{ border:1.6px solid var(--green-line); }
-  .m.core::before{ height:4px; }
-  .m.core .tag{ position:absolute; top:9px; right:9px; font-size:10.5px; font-weight:800; color:#fff; background:linear-gradient(135deg,#34d399,#059669);
-                padding:2px 8px; border-radius:999px; }
+  .meanslabel{ margin:15px 0 9px; font-size:14.5px; font-weight:800; color:var(--green-deep); }
+  .meanslabel .c{ font-size:11px; color:#fff; background:var(--green); padding:2px 9px; border-radius:999px; margin-left:8px; }
+  .means{ display:flex; gap:12px; width:100%; }
+  .m{ flex:1; background:#fff; border:1.4px solid var(--green-line); border-radius:14px; padding:12px 14px;
+      display:flex; align-items:center; gap:12px; }
+  .m .ico{ flex:0 0 auto; width:38px; height:38px; border-radius:11px; background:var(--green-bg); display:flex; align-items:center; justify-content:center; }
+  .m .ico svg{ width:21px; height:21px; }
+  .m .t{ font-size:15px; font-weight:800; color:var(--ink); }
+  .m .dd{ font-size:12.5px; font-weight:600; color:var(--sub); margin-top:2px; }
+  .m.core{ border:1.8px solid var(--green); }
 </style></head>
 <body><div class="card">
   <div class="eyebrow"><span class="no">③</span> 핵심 문제 · 두 층위</div>
@@ -48,24 +48,27 @@
 
   <div class="body" style="flex-direction:column; justify-content:center;">
     <div class="layer top">
-      <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 1-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 1 5.4-5.4l-2.3 2.3-2-2z"/></svg></div>
+      <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#b3122a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 1-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 1 5.4-5.4l-2.3 2.3-2-2z"/></svg></div>
       <div class="txt"><div class="t">소비 방식 <span class="badge">응급</span></div>
-        <div class="d">터지는 방식만 바꿀 뿐 — <b>지연·메모리로 형태만 이동</b></div>
+        <div class="d">터지는 방식만 바꿀 뿐 — 지연·메모리로 <b>유입은 그대로</b></div>
       </div>
+      <div class="big">형태만 이동</div>
     </div>
     <div class="down"><svg viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v14M6 13l6 6 6-6"/></svg>유입은 줄지 않는다</div>
     <div class="layer bot">
-      <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 4v5c0 5-3 8-7 9-4-1-7-4-7-9V7z"/></svg></div>
+      <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#0d6b49" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 4v5c0 5-3 8-7 9-4-1-7-4-7-9V7z"/></svg></div>
       <div class="txt"><div class="t">처리 용량 <span class="badge">근본</span></div>
-        <div class="d"><b>용량↑ 또는 유입↓</b>가 필요 · 고쳐도 양은 그대로</div>
+        <div class="d"><b>용량↑ 또는 유입↓</b>가 필요 · 고쳐야 양이 준다</div>
       </div>
+      <div class="big">용량 ↑</div>
     </div>
 
+    <div class="meanslabel">근본 수단<span class="c">핵심 = 스레드 샤딩</span></div>
     <div class="means">
-      <div class="m core"><div class="tag">핵심</div><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></div><div class="t">스레드 샤딩</div><div class="d">존 단위 병렬화</div></div>
-      <div class="m"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16M14 6l6 6-6 6"/></svg></div><div class="t">입력 병합</div><div class="d">최신 이동만 반영</div></div>
-      <div class="m"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5"/></svg></div><div class="t">브로드캐스트 절감</div><div class="d">시야 컬링</div></div>
-      <div class="m"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 4v5c0 5-3 8-7 9-4-1-7-4-7-9V7z"/></svg></div><div class="t">백프레셔</div><div class="d">큐 상한·스로틀</div></div>
+      <div class="m core"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#0d6b49" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></div><div><div class="t">스레드 샤딩</div><div class="dd">존 단위 병렬화</div></div></div>
+      <div class="m"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#0d6b49" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16M14 6l6 6-6 6"/></svg></div><div><div class="t">입력 병합</div><div class="dd">최신 이동만 반영</div></div></div>
+      <div class="m"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#0d6b49" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5"/></svg></div><div><div class="t">브로드캐스트 절감</div><div class="dd">시야 컬링</div></div></div>
+      <div class="m"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#0d6b49" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 4v5c0 5-3 8-7 9-4-1-7-4-7-9V7z"/></svg></div><div><div class="t">백프레셔</div><div class="dd">큐 상한·스로틀</div></div></div>
     </div>
   </div>
 

@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --slate:#566072;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1120px;height:600px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1072px;height:552px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:34px 54px 0}
+
+  .title{font-size:37px;font-weight:800;color:var(--ink);letter-spacing:-.7px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:74px;height:6px;border-radius:3px;background:var(--red);margin-top:13px}
+  .sub{margin-top:13px;font-size:19px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .lanes{margin-top:24px;display:flex;flex-direction:column;gap:16px}
+  .lane{display:flex;align-items:center;gap:20px;border-radius:18px;padding:20px 24px}
+  .lane.bad{background:#f4f6f9;border:1.5px solid #e4e8ee}
+  .lane.good{background:#fdf1f3;border:1.6px solid #f3c9d1}
+
+  .mark{width:44px;height:44px;border-radius:50%;flex:0 0 auto;display:flex;align-items:center;justify-content:center;
+    font-size:26px;font-weight:800;color:#fff}
+  .mark.bad{background:#aab4c3}
+  .mark.good{background:var(--red);box-shadow:0 4px 14px rgba(215,38,61,.28)}
+
+  .approach{width:236px;flex:0 0 auto}
+  .aname{font-size:22px;font-weight:800;color:var(--ink);letter-spacing:-.5px}
+  .lane.bad .aname{color:#6b7484}
+  .asub{margin-top:3px;font-size:15.5px;font-weight:600;color:var(--muted);letter-spacing:-.3px}
+
+  .chev{color:#c2c9d6;font-size:24px;font-weight:900;flex:0 0 auto}
+  .lane.good .chev{color:#e19aa6}
+
+  .mid{flex:1 1 auto}
+  .mtxt{font-size:20px;font-weight:700;color:#3a4254;letter-spacing:-.4px}
+  .lane.bad .mtxt{color:#7c8597}
+  .msub{margin-top:3px;font-size:15px;font-weight:600;color:#9aa3b2;letter-spacing:-.2px}
+  .lane.good .msub{color:#b57680}
+
+  .result{flex:0 0 auto;text-align:right;min-width:186px}
+  .rbig{font-size:26px;font-weight:800;letter-spacing:-.6px;white-space:nowrap}
+  .result.bad .rbig{color:#8791a3}
+  .result.good .rbig{color:var(--red)}
+  .rsub{margin-top:2px;font-size:14.5px;font-weight:700;letter-spacing:-.2px}
+  .result.bad .rsub{color:#a7aebc}
+  .result.good .rsub{color:var(--slate)}
+
+  .takeaway{margin-top:20px;background:#1f2330;border-radius:16px;padding:19px 26px;display:flex;align-items:center;gap:18px}
+  .takeaway .eq{font-size:18px;font-weight:700;color:#c7ccd6;letter-spacing:-.3px;white-space:nowrap}
+  .takeaway .eq b{color:#fff;font-weight:800}
+  .takeaway .eq .rr{color:#ff6b7e;font-weight:800}
+  .takeaway .div{width:1px;height:34px;background:#3a3f4d;flex:0 0 auto}
+  .takeaway .pnt{font-size:19px;font-weight:700;color:#fff;letter-spacing:-.3px}
+  .takeaway .pnt .rr{color:#ff6b7e;font-weight:800}
+
+  .foot{position:absolute;left:54px;right:54px;bottom:15px;padding-top:11px;border-top:1px solid #eef0f3;
+    font-size:15px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">결론 — 병목은 <span class="r">'단가'</span>가 아니라 <span class="r">'횟수'</span></div>
+    <div class="uline"></div>
+    <div class="sub">같은 복사라도 '한 건을 싸게'가 아니라 <b>'몇 번 하느냐'</b>가 병목이었다</div>
+
+    <div class="lanes">
+      <div class="lane bad">
+        <div class="mark bad">✕</div>
+        <div class="approach">
+          <div class="aname">단가 줄이기</div>
+          <div class="asub">락프리 큐 · zero-copy</div>
+        </div>
+        <div class="chev">→</div>
+        <div class="mid">
+          <div class="mtxt">복사 1건을 더 싸게</div>
+          <div class="msub">하지만 복사 횟수(370)는 그대로</div>
+        </div>
+        <div class="chev">→</div>
+        <div class="result bad">
+          <div class="rbig">효과 ≈ 0</div>
+          <div class="rsub">이전 실험 모두 기각</div>
+        </div>
+      </div>
+
+      <div class="lane good">
+        <div class="mark good">✓</div>
+        <div class="approach">
+          <div class="aname">횟수 줄이기</div>
+          <div class="asub">섹터 묶음 패킷</div>
+        </div>
+        <div class="chev">→</div>
+        <div class="mid">
+          <div class="mtxt">복사 횟수 ≈ 6배 ↓</div>
+          <div class="msub">틱당 299,000 → 50,000회</div>
+        </div>
+        <div class="chev">→</div>
+        <div class="result good">
+          <div class="rbig">tick p99 −83%</div>
+          <div class="rsub">복사 −81% · CPU −67%</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="takeaway">
+      <div class="eq">총비용 = 복사 <span class="rr">횟수</span> × 1건 단가</div>
+      <div class="div"></div>
+      <div class="pnt">단가를 깎아도 <span class="rr">횟수(N)</span>가 그대로면 총비용은 안 준다 — 지렛대는 <span class="rr">횟수</span></div>
+    </div>
+
+    <div class="foot">락프리·zero-copy는 '단가'만 건드려 SPSC·저경합 구간에선 이득 0이었음 · 섹터 묶음은 팬아웃 곱(N)을 직접 깎아 −83% 확보</div>
+  </div>
+</body>
+</html>

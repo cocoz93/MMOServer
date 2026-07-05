@@ -8,16 +8,16 @@
 
   .panels{margin-top:18px;flex:1;display:grid;grid-template-columns:1fr 1fr;gap:32px;min-height:0}
   .panel{border-radius:26px;padding:26px 30px 24px;position:relative;overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--sh-md)}
-  .panel.good{background:linear-gradient(180deg,#ffffff,#f3fdf8);border:1px solid var(--green-line)}
-  .panel.bad{background:linear-gradient(180deg,#ffffff,#fdf4f4);border:1px solid var(--red-line)}
+  .panel.good{background:var(--green-bg);border:1px solid var(--green-line)}
+  .panel.bad{background:var(--red-bg);border:1px solid var(--red-line)}
   .panel::before{content:"";position:absolute;top:0;left:30px;right:30px;height:5px;border-radius:0 0 4px 4px}
-  .panel.good::before{background:linear-gradient(90deg,#059669,#5fd0a5)}
-  .panel.bad::before{background:linear-gradient(90deg,#dc2626,#f0687a)}
+  .panel.good::before{background:var(--green)}
+  .panel.bad::before{background:var(--red)}
 
   .p-head{display:flex;align-items:center;gap:15px}
   .p-ico{flex:0 0 auto;width:56px;height:56px;border-radius:16px;background:#fff;display:flex;align-items:center;justify-content:center}
-  .good .p-ico{color:var(--green-deep);border:1px solid var(--green-line);box-shadow:0 6px 14px -6px rgba(5,150,105,.45)}
-  .bad .p-ico{color:var(--red-deep);border:1px solid var(--red-line);box-shadow:0 6px 14px -6px rgba(220,38,38,.45)}
+  .good .p-ico{color:var(--green-deep);border:1px solid var(--green-line);box-shadow:0 2px 6px rgba(15,23,42,.06)}
+  .bad .p-ico{color:var(--red-deep);border:1px solid var(--red-line);box-shadow:0 2px 6px rgba(15,23,42,.06)}
   .p-ico svg{width:31px;height:31px}
   .p-title{font-size:26px;font-weight:800;line-height:1.12}
   .good .p-title{color:var(--green-deep)}
@@ -29,26 +29,26 @@
     border-radius:16px;padding:16px 19px;box-shadow:var(--sh-sm)}
   .pstep .pn{flex:0 0 auto;width:34px;height:34px;border-radius:10px;color:#fff;font-size:17px;font-weight:800;
     display:flex;align-items:center;justify-content:center}
-  .good .pstep .pn{background:linear-gradient(135deg,#34c88f,#059669);box-shadow:0 4px 9px -4px rgba(5,150,105,.6)}
-  .bad .pstep .pn{background:linear-gradient(135deg,#f0687a,#dc2626);box-shadow:0 4px 9px -4px rgba(220,38,38,.55)}
+  .good .pstep .pn{background:var(--green)}
+  .bad .pstep .pn{background:var(--red)}
   .pstep .pd{font-size:17.5px;font-weight:700;color:var(--ink);line-height:1.25}
   .pstep .pd b{font-weight:800}
   .good .pstep .pd b{color:var(--green-deep)}
   .bad .pstep .pd b{color:var(--red-deep)}
   .pstep .lk{margin-left:auto;flex:0 0 auto;display:flex;align-items:center;color:var(--faint)}
   .pstep .lk svg{width:23px;height:23px}
-  .good .pstep.hot{background:linear-gradient(180deg,#effcf5,#e3f8ee);border-color:var(--green-line)}
+  .good .pstep.hot{background:var(--green-bg);border-color:var(--green-line)}
   .good .pstep.hot .lk{color:var(--green-deep)}
-  .bad .pstep.hot{background:linear-gradient(180deg,#fdeeee,#fbe4e4);border-color:var(--red-line)}
+  .bad .pstep.hot{background:var(--red-bg);border-color:var(--red-line)}
   .bad .pstep.hot .lk{color:var(--red-deep)}
 
   /* 누적 자물쇠 (backpressure) */
   .locks{margin-top:11px;display:flex;align-items:center;gap:12px;padding:2px}
-  .lk-box{flex:0 0 auto;width:48px;height:48px;border-radius:13px;background:linear-gradient(135deg,#fdeaea,#f6cccc);
+  .lk-box{flex:0 0 auto;width:48px;height:48px;border-radius:13px;background:var(--red-bg);
     border:1.5px solid var(--red-line);color:var(--red-deep);display:flex;align-items:center;justify-content:center;
-    box-shadow:0 6px 13px -6px rgba(220,38,38,.4)}
+    box-shadow:0 2px 6px rgba(15,23,42,.06)}
   .lk-box svg{width:25px;height:25px}
-  .lk-more{font-size:25px;font-weight:900;color:#e08e8e;letter-spacing:2px}
+  .lk-more{font-size:25px;font-weight:900;color:var(--red-line);letter-spacing:2px}
   .lk-cap{font-size:15px;font-weight:700;color:var(--red-deep);margin-left:3px;line-height:1.25}
 
   /* non-paged pool 게이지 */
@@ -58,10 +58,9 @@
   .gauge-top .gr{font-size:15px;font-weight:800;color:var(--red-deep)}
   .gauge{position:relative;height:24px;border-radius:12px;background:#f2dede;overflow:hidden}
   .gauge-fill{position:absolute;left:0;top:0;bottom:0;width:84%;border-radius:12px;
-    background:linear-gradient(90deg,#f8a0ab,#f0687a 55%,#dc2626);
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.4)}
+    background:var(--red)}
   .gauge-stripe{position:absolute;top:0;bottom:0;right:0;width:16%;
-    background:repeating-linear-gradient(45deg,rgba(220,38,38,.16) 0 6px,transparent 6px 12px)}
+    background:repeating-linear-gradient(45deg,rgba(215,38,61,.16) 0 6px,transparent 6px 12px)}
 
   .p-foot{margin-top:auto;padding-top:16px}
   .p-foot .badge{width:100%;justify-content:center;font-size:17px;padding:13px}

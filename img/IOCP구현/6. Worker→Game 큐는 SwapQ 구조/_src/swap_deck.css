@@ -1,0 +1,52 @@
+/* ===== SwapQ 덱 공통 스타일 — 1번 폴더(AcceptThread deck) 하우스 톤 복제 =====
+   1600x900 논리 x DSF3 = 4800x2700. 폰트 Pretendard 임베드(--allow-file-access-from-files 필수) */
+@font-face{font-family:'Pretendard';
+  src:url('fonts/PretendardVariable.woff2') format('woff2');
+  font-weight:100 900;font-style:normal;font-display:block}
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#eef1f5; --bg2:#e6eaf1; --card:#ffffff; --ink:#1a1e2a; --sub:#3a4254; --muted:#7c8597; --faint:#9aa3b2;
+  --line:#eef0f3; --line2:#f2f4f7; --track:#e8ecf2;
+  --red:#d7263d; --deep:#b3122a; --red-bg:#fdeef0; --red-line:#f4c4cc;
+  --blue:#3a78b8; --blue-ink:#2b6aa8; --blue-deep:#1f5088; --blue-bg:#e7f0fa; --blue-line:#cfe0f2; --slate:#566072;
+  --green:#1f9d6b; --green-ink:#15805a; --green-deep:#0d6b49; --green-bg:#e7f6ef; --green-line:#c3e6d5;
+  --mono:"SF Mono",ui-monospace,"Cascadia Mono","Consolas",monospace;
+  --sh-card:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+}
+html,body{width:1600px;height:900px;overflow:hidden;
+  background:var(--bg);
+  font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;color:var(--ink);
+  word-break:keep-all;overflow-wrap:break-word;
+  font-feature-settings:"tnum" 1,"kern" 1,"calt" 1,"ss01" 1;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+
+.card{position:absolute;inset:28px;border-radius:30px;overflow:hidden;
+  background:var(--card);
+  border:1px solid var(--line);box-shadow:var(--sh-card);
+  display:flex;flex-direction:column}
+
+/* 러닝 헤더 */
+.top{display:flex;align-items:center;justify-content:space-between;position:relative;z-index:2}
+.eyebrow{display:inline-flex;align-items:center;gap:10px;align-self:flex-start;
+  font-size:15px;font-weight:800;letter-spacing:2.6px;color:var(--muted);text-transform:uppercase}
+.eyebrow .d{width:9px;height:9px;border-radius:50%;background:var(--red);box-shadow:0 0 0 4px var(--red-bg)}
+.pageno{font-size:15px;font-weight:800;color:var(--faint);letter-spacing:1.5px}
+.pageno b{color:var(--ink)}
+
+/* 제목 계열 */
+.title{font-size:82px;line-height:1.05;font-weight:800;letter-spacing:-3px;color:var(--ink)}
+.title .r{color:var(--red)}
+.title .b{color:var(--blue-ink)}
+.title .g{color:var(--green-deep)}
+.uline{width:100px;height:6px;border-radius:3px;margin:26px 0 22px;background:var(--red)}
+.sub{font-size:25px;font-weight:500;color:var(--muted);line-height:1.5;letter-spacing:-.4px;max-width:1060px}
+.sub b{color:var(--sub);font-weight:700}
+.sub .r{color:var(--deep);font-weight:700}
+.sub .g{color:var(--green-deep);font-weight:700}
+
+/* 러닝 푸터 */
+.foot{margin-top:24px;padding-top:16px;border-top:1px solid var(--line);
+  font-size:16px;color:var(--faint);font-weight:500;letter-spacing:-.2px;
+  display:flex;justify-content:space-between;align-items:center;position:relative;z-index:2}
+.foot b{color:var(--slate);font-weight:700}
+.foot .mono{font-family:var(--mono);font-size:14.5px;color:var(--muted)}

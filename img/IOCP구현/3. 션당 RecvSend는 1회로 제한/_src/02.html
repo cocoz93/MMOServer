@@ -9,15 +9,15 @@
   .flow{margin-top:14px;flex:1;display:grid;grid-template-columns:312px 150px 360px 150px 300px;justify-content:center;align-items:center;min-height:0;position:relative;z-index:1}
 
   /* 좌: 커널 완료 큐 (세로) */
-  .kq{align-self:center;background:linear-gradient(180deg,#fff,#f6fbff);border:1px solid var(--blue-line);
+  .kq{align-self:center;background:#fff;border:1px solid var(--blue-line);
     border-radius:24px;padding:26px 24px 24px;box-shadow:var(--sh-md);display:flex;flex-direction:column;align-items:center;gap:16px;position:relative;overflow:hidden}
-  .kq::before{content:"";position:absolute;top:0;left:24px;right:24px;height:5px;border-radius:0 0 4px 4px;background:linear-gradient(90deg,#22508a,#8fbde6)}
+  .kq::before{content:"";position:absolute;top:0;left:24px;right:24px;height:5px;border-radius:0 0 4px 4px;background:var(--blue-deep)}
   .kq-head{display:flex;align-items:center;gap:12px}
-  .kq-ico{width:48px;height:48px;border-radius:14px;background:#fff;border:1px solid var(--blue-line);color:var(--blue-deep);display:flex;align-items:center;justify-content:center;box-shadow:0 5px 12px -5px rgba(38,96,165,.42)}
+  .kq-ico{width:48px;height:48px;border-radius:14px;background:#fff;border:1px solid var(--blue-line);color:var(--blue-deep);display:flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(20,30,60,.08)}
   .kq-ico svg{width:26px;height:26px}
   .kq-name{font-size:21px;font-weight:800;color:var(--ink)}
   .kq-items{display:flex;flex-direction:column;align-items:center;gap:7px}
-  .qi{width:54px;height:54px;border-radius:50%;background:radial-gradient(circle at 34% 28%,#fff,#deeaf8);border:1.8px solid var(--blue-line);color:var(--blue-deep);font-size:24px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 16px -8px rgba(38,96,165,.42)}
+  .qi{width:54px;height:54px;border-radius:50%;background:var(--blue-bg);border:1.8px solid var(--blue-line);color:var(--blue-deep);font-size:24px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(20,30,60,.08)}
   .qdown{color:var(--blue-lite);height:16px;display:flex;align-items:center}
   .qdown svg{width:21px;height:21px}
   .kq-fifo{display:inline-flex;align-items:center;gap:7px;background:var(--blue-bg);border:1px solid var(--blue-line);color:var(--blue-deep);font-size:16px;font-weight:800;padding:9px 17px;border-radius:999px}
@@ -27,20 +27,20 @@
 
   /* 중앙: 스레드1 / ? / 스레드2 */
   .threads{display:flex;flex-direction:column;align-items:center;gap:16px}
-  .thread{width:360px;border-radius:20px;padding:20px 26px;background:linear-gradient(180deg,#fff,#f6f8fc);border:1px solid #dae0ea;box-shadow:var(--sh-md);display:flex;align-items:center;gap:17px}
-  .th-ico{flex:0 0 auto;width:58px;height:58px;border-radius:16px;background:linear-gradient(135deg,#eef2f8,#dae2ee);border:1.5px solid #d2dae7;color:#48546a;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.85),0 8px 16px -8px rgba(20,30,60,.35)}
+  .thread{width:360px;border-radius:20px;padding:20px 26px;background:#fff;border:1px solid #dae0ea;box-shadow:var(--sh-md);display:flex;align-items:center;gap:17px}
+  .th-ico{flex:0 0 auto;width:58px;height:58px;border-radius:16px;background:#e2e6ec;border:1.5px solid #d2dae7;color:#48546a;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(20,30,60,.1)}
   .th-ico svg{width:31px;height:31px}
   .th-tx .tn{font-size:23px;font-weight:800;color:var(--ink)}
   .th-tx .ts{font-size:15.5px;font-weight:600;color:var(--muted);margin-top:3px}
   .th-tx .ts b{color:var(--blue-deep);font-weight:800}
   .qmark{display:flex;align-items:center;gap:15px}
-  .qc{width:78px;height:78px;border-radius:50%;background:radial-gradient(circle at 34% 28%,#fff6e2,#ffdfa4);border:2.4px solid var(--amber-line);color:var(--amber-deep);font-size:45px;font-weight:900;display:flex;align-items:center;justify-content:center;box-shadow:0 15px 32px -14px rgba(180,83,9,.55)}
-  .ql{font-size:18.5px;font-weight:800;color:var(--amber-deep);white-space:nowrap}
+  .qc{width:78px;height:78px;border-radius:50%;background:var(--red-bg);border:2.4px solid var(--red-line);color:var(--red-deep);font-size:45px;font-weight:900;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(20,30,60,.1)}
+  .ql{font-size:18.5px;font-weight:800;color:var(--red-deep);white-space:nowrap}
 
   /* 우: 결과 */
   .result{align-self:center;display:flex;flex-direction:column;align-items:center;gap:13px;text-align:center;
-    background:linear-gradient(180deg,#fff6f6,var(--red-bg));border:1px solid var(--red-line);border-radius:24px;padding:30px 26px;box-shadow:var(--sh-md)}
-  .result .rb{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f0687a,#dc2626);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 24px -9px rgba(220,38,38,.6)}
+    background:var(--red-bg);border:1px solid var(--red-line);border-radius:24px;padding:30px 26px;box-shadow:var(--sh-md)}
+  .result .rb{width:64px;height:64px;border-radius:50%;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 2px rgba(20,30,60,.1)}
   .result .rb svg{width:34px;height:34px}
   .result .rt{font-size:22.5px;font-weight:800;color:var(--red-deep);line-height:1.2}
   .result .rs{font-size:15.5px;font-weight:700;color:#b5545e}
@@ -70,7 +70,7 @@
 
       <!-- split: 큐 -> 두 스레드 -->
       <svg class="connect" viewBox="0 0 150 306" preserveAspectRatio="none" fill="none">
-        <defs><marker id="sd" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#3f7fc0"/></marker></defs>
+        <defs><marker id="sd" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#3a78b8"/></marker></defs>
         <path d="M2,153 C74,153 74,49 148,49" stroke="#6ba8dd" stroke-width="3.2" vector-effect="non-scaling-stroke" marker-end="url(#sd)"/>
         <path d="M2,153 C74,153 74,257 148,257" stroke="#6ba8dd" stroke-width="3.2" vector-effect="non-scaling-stroke" marker-end="url(#sd)"/>
       </svg>
@@ -90,7 +90,7 @@
 
       <!-- merge: 두 스레드 -> 결과 -->
       <svg class="connect" viewBox="0 0 150 306" preserveAspectRatio="none" fill="none">
-        <defs><marker id="mg" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#dc2626"/></marker></defs>
+        <defs><marker id="mg" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#d7263d"/></marker></defs>
         <path d="M2,49 C74,49 74,153 148,153" stroke="#e79aa0" stroke-width="3.2" vector-effect="non-scaling-stroke" marker-end="url(#mg)"/>
         <path d="M2,257 C74,257 74,153 148,153" stroke="#e79aa0" stroke-width="3.2" vector-effect="non-scaling-stroke" marker-end="url(#mg)"/>
       </svg>

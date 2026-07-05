@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#fff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --blue:#3a78b8; --blue-ink:#2b6aa8;
+    --ok:#16a34a; --ok-deep:#0f7a37; --slate:#566072; --pill-gray:#e9edf3;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:690px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:642px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:30px 56px 0}
+
+  .title{font-size:36px;font-weight:800;color:var(--ink);letter-spacing:-.6px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:80px;height:6px;border-radius:3px;background:var(--red);margin-top:12px}
+  .sub{margin-top:12px;font-size:19px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .stage{margin-top:24px;display:grid;grid-template-columns:1fr 96px 1fr;align-items:start}
+  .side{display:flex;flex-direction:column;align-items:center;position:relative}
+  .pill{font-size:18px;font-weight:800;padding:7px 20px;border-radius:999px;letter-spacing:-.3px;margin-bottom:18px}
+  .pill.before{background:var(--pill-gray);color:var(--slate)}
+  .pill.after{background:#e3f5ea;color:var(--ok-deep)}
+
+  .flow{display:flex;flex-direction:column;align-items:center;position:relative}
+  .box{width:340px;height:64px;border-radius:14px;display:flex;align-items:center;justify-content:center;gap:10px;
+    font-size:20px;font-weight:800;letter-spacing:-.4px;position:relative}
+  .box .ip{font-size:14px;font-weight:700;color:#9aa3b2;letter-spacing:0}
+  .box.server{background:#eaf1f9;border:1.6px solid #bcd4ea;color:var(--blue-ink)}
+  .box.client{background:#eaf6ef;border:1.6px solid #bfe2cc;color:var(--ok-deep)}
+  .box .burst{position:absolute;right:12px;top:-13px;font-size:15px;font-weight:800;color:var(--red);
+    background:#fff;border:1.5px solid #f2b8c0;border-radius:999px;padding:2px 10px;box-shadow:0 3px 10px rgba(215,38,61,.16)}
+
+  .wall{width:340px;height:80px;border-radius:12px;position:relative;overflow:hidden;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:linear-gradient(180deg,#e6394f,var(--deep));box-shadow:0 6px 20px rgba(179,18,42,.30)}
+  .wall::before{content:"";position:absolute;inset:0;opacity:.5;
+    background:repeating-linear-gradient(0deg,transparent 0 18px,rgba(0,0,0,.16) 18px 20px),
+    repeating-linear-gradient(90deg,transparent 0 46px,rgba(0,0,0,.16) 46px 48px)}
+  .wall .wn{position:relative;color:#fff;font-size:27px;font-weight:800;letter-spacing:-1px;line-height:1}
+  .wall .ws{position:relative;color:#ffe3e8;font-size:14.5px;font-weight:700;margin-top:3px;letter-spacing:-.2px}
+
+  .down{display:flex;flex-direction:column;align-items:center;margin:7px 0}
+  .down .dl{font-size:14px;font-weight:800;color:#8a93a5;letter-spacing:-.2px;margin-bottom:3px}
+
+  .lane{width:250px;height:64px;border-radius:14px;background:#f4f7fb;border:1.6px dashed #c2d0e2;
+    display:flex;align-items:center;justify-content:center;gap:14px;position:relative}
+  .lane .pc{font-size:16px;font-weight:800;padding:8px 12px;border-radius:10px;letter-spacing:-.3px}
+  .lane .pc.s{background:#eaf1f9;color:var(--blue-ink)} .lane .pc.c{background:#eaf6ef;color:var(--ok-deep)}
+  .lane .lp{font-size:19px;color:#9aa3b2;font-weight:800}
+  .loopcap{margin-top:9px;font-size:15px;font-weight:700;color:#8089a0;letter-spacing:-.2px}
+
+  .result{margin-top:16px;font-size:18px;font-weight:800;padding:10px 20px;border-radius:12px;letter-spacing:-.3px;text-align:center}
+  .result.bad{background:#fdeef0;color:var(--red);border:1.5px solid #f4c4cc}
+  .result.good{background:#e3f5ea;color:var(--ok-deep);border:1.5px solid #bfe2cc}
+
+  /* feedback loop (completion delay) */
+  .fb{position:absolute;left:-6px;top:70px;width:74px;height:196px}
+  .fb svg{overflow:visible}
+  .fblbl{position:absolute;left:-150px;top:120px;width:150px;text-align:right;font-size:13.5px;font-weight:800;color:var(--red);line-height:1.28;letter-spacing:-.2px}
+
+  .divider{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding-top:150px}
+  .divider .dt{font-size:16px;font-weight:800;color:var(--ink);text-align:center;line-height:1.2;margin-bottom:9px;letter-spacing:-.3px}
+  .vbar{width:2px;flex:1;background:linear-gradient(180deg,transparent,#e2e6ec 12%,#e2e6ec 88%,transparent);margin-top:6px}
+
+  .foot{position:absolute;left:56px;right:56px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
+    font-size:15.5px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">범인은 서버가 아니라 <span class="r">외부 회선</span> — KT 업로드 474 Mbps</div>
+    <div class="uline"></div>
+    <div class="sub">서버·클라가 <b>다른 공인 IP 대역</b> → 패킷이 LAN에서 안 끝나고 KT 통신망 경유 · 부하는 업로드(서버→클라) 방향</div>
+
+    <div class="stage">
+      <!-- BEFORE -->
+      <div class="side">
+        <div class="pill before">변경 전 · 두 PC (회선 경유)</div>
+        <div class="flow">
+          <div class="box server">서버 PC <span class="ip">222.101.x</span><span class="burst">💥 SendQ overflow</span></div>
+          <div class="down"><div class="dl">업로드 ↓</div>
+            <svg width="16" height="20"><path d="M8 0 V12" stroke="#9aa3b2" stroke-width="3.5"/><path d="M2 10 L8 20 L14 10 Z" fill="#9aa3b2"/></svg></div>
+          <div class="wall"><div class="wn">474 Mbps 벽</div><div class="ws">KT 업로드 상한 · 여기서 정체</div></div>
+          <div class="down"><div class="dl">전달 ↓</div>
+            <svg width="16" height="20"><path d="M8 0 V12" stroke="#9aa3b2" stroke-width="3.5"/><path d="M2 10 L8 20 L14 10 Z" fill="#9aa3b2"/></svg></div>
+          <div class="box client">더미 클라 PC <span class="ip">211.252.x</span></div>
+
+          <div class="fb">
+            <div class="fblbl">송신완료 통지<br>~1초 지연<br>→ 큐 안 비워짐</div>
+            <svg width="74" height="196"><path d="M64 186 C 6 186, 6 10, 60 10" stroke="#d7263d" stroke-width="3" fill="none" stroke-dasharray="6 5"/><path d="M66 2 L52 9 L60 20 Z" fill="#d7263d"/></svg>
+          </div>
+        </div>
+        <div class="result bad">overflow 26/s → 세션 강제 종료</div>
+      </div>
+
+      <!-- DIVIDER -->
+      <div class="divider">
+        <div class="dt">회선<br>제거</div>
+        <div class="vbar"></div>
+      </div>
+
+      <!-- AFTER -->
+      <div class="side">
+        <div class="pill after">변경 후 · 한 PC (loopback)</div>
+        <div class="flow">
+          <div class="lane">
+            <span class="pc s">서버</span>
+            <span class="lp">⇄</span>
+            <span class="pc c">더미 클라</span>
+          </div>
+          <div class="loopcap">loopback — 회선(WAN)을 아예 안 탐</div>
+        </div>
+        <div class="result good" style="margin-top:150px">✅ overflow 0 · 서버 실한계 측정 가능</div>
+      </div>
+    </div>
+
+    <div class="foot">1 Gbps는 집 안 LAN(랜카드) 속도일 뿐 · Ookla 업로드 <b>473.94 Mbps·loss 0%</b> = 회선 정상 포화 → 상한이 곧 송신 천장</div>
+  </div>
+</body>
+</html>

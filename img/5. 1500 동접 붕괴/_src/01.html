@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --slate:#566072;
+    --ok:#16a34a; --ok-deep:#0f7a37; --track:#eef1f5;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1140px;height:640px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1092px;height:592px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:34px 52px 0}
+
+  .title{font-size:37px;font-weight:800;color:var(--ink);letter-spacing:-.8px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:80px;height:6px;border-radius:3px;background:var(--red);margin-top:14px}
+  .sub{margin-top:13px;font-size:19px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .stage{margin-top:24px;display:grid;grid-template-columns:296px 1fr;column-gap:44px;align-items:center}
+
+  /* LEFT — shortfall bar (833 vs target 1500) */
+  .drop{position:relative;height:334px;display:flex;justify-content:center;align-items:flex-end;padding-top:6px}
+  .col{position:relative;width:150px;height:100%}
+  .cap{position:absolute;left:0;right:0;height:100%;border:2px dashed #cbd2dd;border-radius:16px;background:
+    repeating-linear-gradient(135deg,#f4f6f9 0 11px,#eef1f5 11px 22px)}
+  .caplbl{position:absolute;top:20px;left:0;right:0;text-align:center;
+    font-size:15px;font-weight:700;color:#9aa3b2;letter-spacing:-.3px;line-height:1.2}
+  .caplbl b{display:block;font-size:25px;font-weight:800;color:#9aa1b0;letter-spacing:-1px;margin-top:2px}
+  .fill{position:absolute;left:0;right:0;bottom:0;height:55.5%;border-radius:14px;
+    background:linear-gradient(180deg,#e6394f,var(--deep));box-shadow:0 -3px 22px rgba(215,38,61,.28)}
+  .fill .n{position:absolute;top:14px;left:0;right:0;text-align:center;color:#fff;font-size:44px;font-weight:800;letter-spacing:-2px;line-height:1}
+  .fill .n small{display:block;font-size:14.5px;font-weight:700;opacity:.92;letter-spacing:-.2px;margin-top:3px}
+  .dropcap{position:absolute;left:0;right:0;bottom:-2px;transform:translateY(126%);text-align:center;
+    font-size:15.5px;font-weight:600;color:#8089a0;letter-spacing:-.3px;line-height:1.35}
+  .dropcap b{color:var(--red);font-weight:800}
+
+  /* RIGHT — headroom gauges */
+  .gauges{display:flex;flex-direction:column;gap:19px}
+  .g{}
+  .ghead{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px}
+  .gname{font-size:19px;font-weight:800;color:var(--ink);letter-spacing:-.4px}
+  .gname .u{font-size:14.5px;font-weight:700;color:var(--muted);margin-left:7px}
+  .gval{font-size:18px;font-weight:800;letter-spacing:-.4px}
+  .gval.ok{color:var(--ok-deep)} .gval.bad{color:var(--red)}
+  .gtrack{position:relative;height:26px;background:var(--track);border-radius:8px;border:1px solid #e6e9ef}
+  .gfill{position:absolute;left:0;top:0;height:100%;border-radius:8px}
+  .gfill.ok{background:linear-gradient(180deg,#2fbf6b,var(--ok));box-shadow:0 2px 10px rgba(22,163,74,.22)}
+  .gfill.bad{background:linear-gradient(180deg,#e6394f,var(--deep));box-shadow:0 2px 12px rgba(215,38,61,.30)}
+  .gate{position:absolute;top:-6px;bottom:-6px;width:0;border-left:2px dashed #9aa3b2}
+  .gatelbl{position:absolute;top:-25px;font-size:12.5px;font-weight:700;color:#8089a0;transform:translateX(-50%);white-space:nowrap}
+  .tag{position:absolute;top:50%;transform:translateY(-50%);font-size:13px;font-weight:800;padding:3px 11px;border-radius:999px;letter-spacing:-.2px;white-space:nowrap}
+  .tag.ok{right:12px;background:#dff4e7;color:var(--ok-deep)}
+  .tag.bad{background:#fff;color:var(--red);border:1.5px solid #f2b8c0;box-shadow:0 2px 8px rgba(215,38,61,.14)}
+  /* overflow burst */
+  .burst{position:absolute;right:-2px;top:-7px;bottom:-7px;width:52px;display:flex;align-items:center}
+  .burst svg{overflow:visible}
+
+  .foot{position:absolute;left:52px;right:52px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
+    font-size:15px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">자원은 <span class="r">한참 여유</span>인데 — 1500 동접이 무너졌다</div>
+    <div class="uline"></div>
+    <div class="sub">CPU도 틱도 예산 안 — 무너진 건 <b>SendQ 하나</b> · 세션이 833에서 접속↔끊김 반복 평형</div>
+
+    <div class="stage">
+      <!-- LEFT : shortfall -->
+      <div class="drop">
+        <div class="col">
+          <div class="cap">
+            <div class="caplbl">목표<b>1,500</b></div>
+          </div>
+          <div class="fill">
+            <div class="n">833<small>세션 유지 상한</small></div>
+          </div>
+          <div class="dropcap">못 버티고 끊겨 내려온<br><b>실측 붕괴 평형점</b></div>
+        </div>
+      </div>
+
+      <!-- RIGHT : gauges -->
+      <div class="gauges">
+        <div class="g">
+          <div class="ghead"><div class="gname">gameloop CPU <span class="u">1 core 기준</span></div><div class="gval ok">0.10 core</div></div>
+          <div class="gtrack"><div class="gfill ok" style="width:10%"></div><span class="tag ok">여유</span></div>
+        </div>
+        <div class="g">
+          <div class="ghead"><div class="gname">sendthread CPU <span class="u">1 core 기준</span></div><div class="gval ok">0.19 core</div></div>
+          <div class="gtrack"><div class="gfill ok" style="width:19%"></div><span class="tag ok">여유</span></div>
+        </div>
+        <div class="g">
+          <div class="ghead"><div class="gname">tick p99 <span class="u">게이트 40 ms</span></div><div class="gval ok">19 ms</div></div>
+          <div class="gtrack"><div class="gfill ok" style="width:47.5%"></div><span class="tag ok">여유</span></div>
+        </div>
+        <div class="g">
+          <div class="ghead"><div class="gname" style="color:var(--red)">SendQ overflow <span class="u" style="color:#c88">세션 강제 종료</span></div><div class="gval bad">26 /s</div></div>
+          <div class="gtrack" style="border-color:#f2c4cb">
+            <div class="gfill bad" style="width:100%"></div>
+            <span class="burst"><svg width="52" height="40" viewBox="0 0 52 40"><path d="M0,3 L34,3 L34,-3 L52,20 L34,43 L34,37 L0,37 Z" fill="#b3122a"/></svg></span>
+            <span class="tag bad" style="left:14px">💥 넘침 → kill</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">동접 1,500 시도 · Release/x64 · gameloop 0.10 / sendthread 0.19 core · tick p99 19 ms(게이트 40 ms) — <b>자원 포화가 아니라 송신 경로 한계가 먼저 잡힘</b></div>
+  </div>
+</body>
+</html>

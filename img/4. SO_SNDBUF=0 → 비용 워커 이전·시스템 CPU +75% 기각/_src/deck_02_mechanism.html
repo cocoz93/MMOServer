@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --slate:#566072; --gl:#5b6b86; --gray-fill:#dbe1e9;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1140px;height:560px;overflow:hidden;
+    background:radial-gradient(1180px 560px at 50% -24%,#ffffff,rgba(255,255,255,0) 56%),var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;
+    font-feature-settings:"tnum" 1,"ss01" 1;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1092px;height:512px;
+    background:linear-gradient(180deg,#ffffff,#fcfdfe);
+    border:1px solid #ebedf1;border-radius:30px;
+    box-shadow:0 1px 2px rgba(30,40,70,.04),0 16px 32px -12px rgba(30,40,70,.10),0 46px 84px -36px rgba(30,40,70,.20),inset 0 1px 0 rgba(255,255,255,.9);
+    padding:30px 56px 0}
+
+  .title{font-size:33px;font-weight:800;color:var(--ink);letter-spacing:-.7px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:72px;height:7px;border-radius:4px;background:linear-gradient(90deg,var(--deep),#ec4257);box-shadow:0 5px 13px -3px rgba(215,38,61,.5);margin-top:13px}
+  .sub{margin-top:12px;font-size:18px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .stage{margin-top:20px;display:flex;align-items:center;justify-content:center;gap:16px}
+  .col{width:340px;display:flex;flex-direction:column;align-items:center;gap:15px}
+  .badge{font-size:17px;font-weight:800;letter-spacing:-.3px;padding:8px 20px;border-radius:999px}
+  .badge.g{background:linear-gradient(180deg,#f2f5f9,#e7ebf1);color:var(--slate);box-shadow:0 2px 6px rgba(30,40,70,.07),inset 0 1px 0 rgba(255,255,255,.8)} .badge.r{background:linear-gradient(158deg,#ec4257,#b3122a);color:#fff;box-shadow:0 9px 20px -6px rgba(179,18,42,.5),inset 0 1px 0 rgba(255,255,255,.28)}
+  .clabel{font-size:16px;font-weight:800;letter-spacing:-.2px}
+  .clabel.g{color:var(--gl)} .clabel.r{color:var(--deep)}
+
+  .donutwrap{position:relative;width:186px;height:186px}
+  .ring{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+  .ring .track{fill:none;stroke:#e7ebf1;stroke-width:13}
+  .ring .arc{fill:none;stroke-width:13;stroke-linecap:round}
+  .ring .arc.g{stroke:url(#gG);filter:drop-shadow(0 8px 15px rgba(200,28,51,.22))}
+  .ring .arc.r{stroke:url(#gR);filter:drop-shadow(0 11px 22px rgba(215,38,61,.32))}
+  .dlbl{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
+  .dlbl .n{font-weight:800;letter-spacing:-1px;color:var(--ink)}
+  .dlbl.g .n{font-size:37px} .dlbl.r .n{font-size:27px;color:var(--deep)}
+  .dlbl .u{font-size:15px;font-weight:700;color:var(--muted);margin-top:7px}
+
+  .cap{text-align:center}
+  .cap .cl{font-size:14.5px;font-weight:700;color:var(--muted);letter-spacing:.2px}
+  .cap .cv{margin-top:3px;font-size:26px;font-weight:800;letter-spacing:-.8px;color:var(--slate)}
+  .cap.r .cv{color:var(--red)} .cap .cv small{font-size:16px;font-weight:800;color:var(--muted)} .cap.r .cv small{color:var(--deep)}
+
+  .mid{width:150px;display:flex;flex-direction:column;align-items:center;gap:9px}
+  .mid .ml{font-size:15px;font-weight:800;color:var(--deep);text-align:center;letter-spacing:-.3px;line-height:1.3}
+
+  .stripe{margin:18px 56px 0;background:#fdeef0;border:1.5px solid #f6cdd4;border-radius:16px;
+    padding:15px 24px;font-size:17.5px;font-weight:600;color:#8a4550;line-height:1.45;letter-spacing:-.3px;text-align:center}
+  .stripe b{color:var(--red);font-weight:800} .stripe .ink{color:var(--ink);font-weight:700}
+
+  .foot{position:absolute;left:56px;right:56px;bottom:15px;padding-top:11px;border-top:1px solid #eef0f3;
+    font-size:15px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+  .foot .theme{color:var(--muted);font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">커널 copy를 없애면, 비용은 <span class="r">워커로 이동</span></div>
+    <div class="uline"></div>
+    <div class="sub">붉은 부분 = <b>유저버퍼가 잠기는 시간</b>. 정상은 copy 직후 반환(순간), <b>SNDBUF=0은 ACK까지 잠금</b> → 완료 처리가 워커로.</div>
+
+    <div class="stage">
+      <div class="col">
+        <div class="badge g">정상 · 기본 8K 버퍼</div>
+        <div class="donutwrap">
+          <svg class="ring" viewBox="0 0 100 100"><defs><linearGradient id="gG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f2647a"/><stop offset="1" stop-color="#b3122a"/></linearGradient></defs><circle class="track" cx="50" cy="50" r="41"/><circle class="arc g" cx="50" cy="50" r="41" pathLength="100" stroke-dasharray="11 89" transform="rotate(-90 50 50)"/></svg>
+          <div class="dlbl g"><span class="n">순간</span><span class="u">copy 후 반환</span></div>
+        </div>
+        <div class="cap"><div class="cl">IOCP 워커 CPU</div><div class="cv">0.078<small> core</small></div></div>
+      </div>
+
+      <div class="mid">
+        <svg width="88" height="34"><path d="M4 17 H66" stroke="#d7263d" stroke-width="6" stroke-linecap="round"/><path d="M60 6 L84 17 L60 28 Z" fill="#d7263d"/></svg>
+        <div class="ml">SO_SNDBUF=0<br>커널버퍼 제거</div>
+      </div>
+
+      <div class="col">
+        <div class="badge r">SNDBUF=0 · 커널버퍼 제거</div>
+        <div class="donutwrap">
+          <svg class="ring" viewBox="0 0 100 100"><defs><linearGradient id="gR" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f57286"/><stop offset=".55" stop-color="#d7263d"/><stop offset="1" stop-color="#9d0f1e"/></linearGradient></defs><circle class="track" cx="50" cy="50" r="41"/><circle class="arc r" cx="50" cy="50" r="41" pathLength="100" stroke-dasharray="90 10" transform="rotate(-90 50 50)"/></svg>
+          <div class="dlbl r"><span class="n">ACK까지</span><span class="u">page-lock</span></div>
+        </div>
+        <div class="cap r"><div class="cl">IOCP 워커 CPU</div><div class="cv">0.455<small> core · ×5.8</small></div></div>
+      </div>
+    </div>
+
+    <div class="foot">유저버퍼 = CSerialBuffer · <span class="theme">정상: copy 후 즉시 반환 → 실험: ACK까지 page-lock</span> · 보내는 일의 양은 양쪽 동일</div>
+  </div>
+</body>
+</html>

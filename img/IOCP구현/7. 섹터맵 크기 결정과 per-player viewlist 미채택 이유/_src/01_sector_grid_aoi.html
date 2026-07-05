@@ -20,8 +20,8 @@
   .cell.aoi{ background:var(--red-bg); border-color:var(--red-line); }
   .cell.me{ background:#fff; border:2.5px solid var(--red); position:relative; z-index:2; }
   .cell.me::after{ content:""; position:absolute; inset:0; margin:auto; width:20px; height:20px; border-radius:50%;
-     background:radial-gradient(circle at 35% 30%, #fb7185, var(--red-deep));
-     box-shadow:0 0 0 4px #fff, 0 5px 12px rgba(220,38,38,.45); }
+     background:var(--red);
+     box-shadow:0 0 0 4px #fff, 0 2px 6px rgba(15,23,42,.20); }
   .legend{ display:flex; gap:15px; margin-top:10px; }
   .lg{ display:flex; align-items:center; gap:7px; font-size:13.5px; font-weight:700; color:var(--sub); }
   .sw{ width:15px; height:15px; border-radius:5px; }
@@ -71,17 +71,17 @@
 
     <div class="exp">
       <div class="row">
-        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#d7263d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
         <div class="tx"><div class="t"><code>GetAroundPlayers()</code></div>
           <div class="d">본인 포함 주변 9섹터 플레이어만 수집 = 브로드캐스트 대상</div></div>
       </div>
       <div class="row">
-        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg></div>
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#d7263d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg></div>
         <div class="tx"><div class="t"><code>GetSectorDiff()</code></div>
           <div class="d">섹터 경계 이동 시 새로 든/난 섹터 → CREATE / DELETE 발송</div></div>
       </div>
       <div class="row hi">
-        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#d7263d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
         <div class="tx"><div class="t">전체 존 송신 → 9섹터 한정</div>
           <div class="d">동접↑ 시 1회 이동 이벤트 수신자 <b>O(전체) → O(섹터 밀도)</b></div></div>
       </div>

@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#fff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --blue:#3a78b8; --blue-ink:#2b6aa8;
+    --green:#16a34a; --green-deep:#0f7a37; --ok:#0d9488; --ok-deep:#0b7d72; --ok-bg:#dff5f0;
+    --slate:#566072; --pill-gray:#e9edf3;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1320px;height:720px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1272px;height:672px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:32px 46px 0}
+
+  .title{font-size:36px;font-weight:800;color:var(--ink);letter-spacing:-.6px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:80px;height:6px;border-radius:3px;background:var(--red);margin-top:13px}
+  .sub{margin-top:13px;font-size:19px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .stage{margin-top:20px;display:flex;flex-direction:column;gap:11px}
+
+  .row{display:flex;align-items:center;gap:22px;height:198px;border-radius:22px;padding:0 30px}
+  .row.before{background:#fdf5f6}
+  .row.after{background:#eef9f4}
+
+  .rowlab{width:126px;flex:0 0 auto}
+  .rowlab .a{font-size:26px;font-weight:800;letter-spacing:-.5px;line-height:1.05;display:block}
+  .rowlab .b{font-size:15px;font-weight:700;color:var(--muted);margin-top:6px;letter-spacing:-.2px;display:block}
+  .rowlab.gray .a{color:var(--slate)}
+  .rowlab.teal .a{color:var(--ok-deep)}
+
+  .flow{flex:1;display:flex;align-items:center;justify-content:center;gap:15px}
+
+  /* device node — big, clean, mono icon */
+  .node{width:190px;height:162px;border-radius:20px;background:#fff;border:1.7px solid #e7ebf1;
+    box-shadow:0 6px 16px rgba(30,40,70,.07);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;position:relative;overflow:hidden}
+  .node::before{content:"";position:absolute;top:0;left:0;right:0;height:6px}
+  .node.server::before{background:var(--blue)} .node.client::before{background:var(--green)}
+  .node .ico{font-size:42px;line-height:1}
+  .node .t{font-size:25px;font-weight:800;letter-spacing:-.5px;line-height:1}
+  .node.server .t{color:var(--blue-ink)} .node.client .t{color:var(--green-deep)}
+  .node .s{font-size:15px;font-weight:700;color:#9aa3b2;letter-spacing:-.2px}
+
+  /* wall — hero */
+  .wall{width:196px;height:162px;border-radius:18px;position:relative;overflow:hidden;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:linear-gradient(180deg,#e6394f,var(--deep));box-shadow:0 8px 22px rgba(179,18,42,.34)}
+  .wall::before{content:"";position:absolute;inset:0;opacity:.5;
+    background:repeating-linear-gradient(0deg,transparent 0 23px,rgba(0,0,0,.16) 23px 25px),
+    repeating-linear-gradient(90deg,transparent 0 48px,rgba(0,0,0,.16) 48px 50px)}
+  .wall .wn{position:relative;color:#fff;font-size:36px;font-weight:800;letter-spacing:-1.5px;line-height:1}
+  .wall .wu{position:relative;color:#fff;font-size:18px;font-weight:800;margin-top:3px}
+  .wall .ws{position:relative;color:#ffe0e5;font-size:14.5px;font-weight:700;margin-top:10px;letter-spacing:-.2px}
+
+  .arr{flex:0 0 auto}
+  .arr.r path{stroke:#d7263d;fill:#d7263d}
+
+  /* result — big number */
+  .res{width:178px;height:162px;border-radius:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex:0 0 auto}
+  .res .rn{font-weight:800;letter-spacing:-2px;line-height:.9}
+  .res .ru{font-size:20px;font-weight:800;letter-spacing:-.5px}
+  .res .rs{font-size:16px;font-weight:800;letter-spacing:-.2px;margin-top:7px}
+  .res.bad{background:#fff;border:2px solid #f2b8c0}
+  .res.bad .rn{font-size:62px;color:var(--red)} .res.bad .ru{color:var(--red)} .res.bad .rs{color:var(--red)}
+  .res.good{background:var(--ok-bg);border:2px solid #9cdccf;box-shadow:0 7px 20px rgba(13,148,136,.16)}
+  .res.good .rn{font-size:70px;color:var(--ok-deep)} .res.good .rs{color:var(--ok-deep)}
+
+  /* one-PC container (after) — label inside, no hanging element */
+  .pcbox{display:flex;flex-direction:column;align-items:center;gap:10px;border:2.5px dashed #b3d2c5;border-radius:22px;
+    background:rgba(255,255,255,.55);padding:13px 30px 17px}
+  .pclbl{font-size:16px;font-weight:800;color:var(--ok-deep);letter-spacing:-.3px}
+  .pcinner{display:flex;align-items:center;gap:20px}
+  .row.after .node{width:180px;height:126px}
+  .row.after .node .ico{font-size:34px}
+  .loop{display:flex;flex-direction:column;align-items:center;flex:0 0 auto}
+  .loop .ll{font-size:15px;font-weight:800;color:var(--ok-deep);margin-bottom:6px;letter-spacing:-.2px}
+
+  /* divider */
+  .between{display:flex;align-items:center;justify-content:center;gap:16px;height:30px}
+  .between .ln{width:200px;height:2px;border-radius:2px;background:#e0e4ea}
+  .between .bt{font-size:16px;font-weight:800;color:var(--slate);letter-spacing:-.3px;white-space:nowrap}
+  .between .bt .r{color:var(--red)}
+
+  .foot{position:absolute;left:46px;right:46px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
+    font-size:15.5px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">측정 환경 — <span class="r">회선 경유</span>(변경 전) vs 한 PC loopback(변경 후)</div>
+    <div class="uline"></div>
+    <div class="sub">서버·클라가 <b>다른 공인 IP</b> → 회선 경유가 병목 · 한 PC loopback으로 <b>회선 변수 제거</b></div>
+
+    <div class="stage">
+      <!-- ROW 1 : BEFORE -->
+      <div class="row before">
+        <div class="rowlab gray"><span class="a">변경 전</span><span class="b">두 PC · 회선</span></div>
+        <div class="flow">
+          <div class="node server"><div class="ico">🖥️</div><div class="t">서버 PC</div><div class="s">222.101.x</div></div>
+          <svg class="arr" width="48" height="24"><path d="M2 12 H32" stroke="#9aa3b2" stroke-width="5" stroke-linecap="round"/><path d="M30 4 L46 12 L30 20 Z" fill="#9aa3b2"/></svg>
+          <div class="wall"><div class="wn">474<span class="wu"> Mbps</span></div><div class="ws">KT 업로드 상한</div></div>
+          <svg class="arr" width="48" height="24"><path d="M2 12 H32" stroke="#9aa3b2" stroke-width="5" stroke-linecap="round"/><path d="M30 4 L46 12 L30 20 Z" fill="#9aa3b2"/></svg>
+          <div class="node client"><div class="ico">💻</div><div class="t">클라 PC</div><div class="s">211.252.x</div></div>
+          <svg class="arr r" width="48" height="24"><path d="M2 12 H32" stroke-width="5" stroke-linecap="round"/><path d="M30 4 L46 12 L30 20 Z"/></svg>
+          <div class="res bad"><div class="rn">26<span class="ru">/s</span></div><div class="rs">overflow 발생</div></div>
+        </div>
+      </div>
+
+      <!-- transition -->
+      <div class="between">
+        <div class="ln"></div>
+        <div class="bt"><span class="r">회선 제거</span> → loopback 전환</div>
+        <div class="ln"></div>
+      </div>
+
+      <!-- ROW 2 : AFTER -->
+      <div class="row after">
+        <div class="rowlab teal"><span class="a">변경 후</span><span class="b">한 PC · loopback</span></div>
+        <div class="flow">
+          <div class="pcbox">
+            <div class="pclbl">한 PC · loopback (회선 안 탐)</div>
+            <div class="pcinner">
+              <div class="node server"><div class="ico">🖥️</div><div class="t">서버</div><div class="s">코어 0~5</div></div>
+              <div class="loop"><span class="ll">loopback</span>
+                <svg width="84" height="36"><path d="M4 12 H68" stroke="#0d9488" stroke-width="4.5" stroke-linecap="round"/><path d="M64 5 L82 12 L64 19 Z" fill="#0d9488"/><path d="M80 29 H16" stroke="#0d9488" stroke-width="4.5" stroke-linecap="round"/><path d="M20 22 L2 29 L20 36 Z" fill="#0d9488"/></svg>
+              </div>
+              <div class="node client"><div class="ico">💻</div><div class="t">클라</div><div class="s">코어 6~9</div></div>
+            </div>
+          </div>
+          <svg class="arr" width="48" height="24"><path d="M2 12 H32" stroke="#9aa3b2" stroke-width="5" stroke-linecap="round"/><path d="M30 4 L46 12 L30 20 Z" fill="#9aa3b2"/></svg>
+          <div class="res good"><div class="rn">0</div><div class="rs">overflow 없음</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">부하는 업로드(서버→클라) 방향 · Ookla 업로드 <b>473.94 Mbps</b> 포화 = 송신 천장 → loopback으로 치우면 <b>overflow 0</b></div>
+  </div>
+</body>
+</html>

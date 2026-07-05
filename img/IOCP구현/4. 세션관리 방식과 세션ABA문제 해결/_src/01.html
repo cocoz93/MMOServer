@@ -15,7 +15,7 @@
   html,body{margin:0;width:1200px;height:760px;overflow:hidden;background:var(--bg);
     font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased}
   .card{position:absolute;top:24px;left:24px;width:1152px;height:712px;background:var(--card);
-    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 14px 44px rgba(30,40,70,.07);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
     padding:30px 56px 0}
   .title{font-size:36px;font-weight:800;color:var(--ink);letter-spacing:-.6px;line-height:1.08}
   .title .r{color:var(--red)}
@@ -35,7 +35,7 @@
   .chips{margin-top:16px;display:flex;flex-direction:column;gap:8px;width:100%}
   .chip{height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;
     font-size:16px;font-weight:800;letter-spacing:-.2px;position:relative}
-  .chip.top{background:linear-gradient(180deg,#e23f53,#cf1d34);color:#fff;box-shadow:0 4px 10px rgba(215,38,61,.3)}
+  .chip.top{background:var(--red);color:#fff}
   .chip.top .topflag{position:absolute;right:10px;font-size:11.5px;font-weight:800;
     background:rgba(255,255,255,.22);padding:2px 8px;border-radius:999px}
   .chip.rest{background:#eef1f5;color:#9199aa;border:1.5px solid #e2e6ec}
@@ -45,7 +45,7 @@
   .cell{width:46px;height:46px;border-radius:10px;display:flex;align-items:center;justify-content:center;
     font-size:13px;font-weight:800}
   .cell.empty{border:2px dashed #c7cfdb;background:#f7f9fb;color:#b9c1cf}
-  .cell.fill{background:linear-gradient(180deg,#4a86c4,#356ba8);color:#fff;box-shadow:0 3px 8px rgba(58,120,184,.28)}
+  .cell.fill{background:var(--blue);color:#fff}
   .cell.new{border:2.5px solid var(--red);background:#fdeef0;color:var(--red)}
   .sessnote{margin-top:14px;font-size:13px;font-weight:600;color:var(--muted);text-align:center;line-height:1.4}
 
@@ -62,8 +62,8 @@
   .bitbar{margin-top:10px;display:flex;height:56px;border-radius:14px;overflow:hidden;
     box-shadow:0 6px 16px rgba(30,40,70,.08)}
   .seg{display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff}
-  .seg.idx{flex:16;background:linear-gradient(180deg,#4a86c4,#356ba8)}
-  .seg.uid{flex:48;background:linear-gradient(180deg,#e23f53,#cf1d34)}
+  .seg.idx{flex:16;background:var(--blue)}
+  .seg.uid{flex:48;background:var(--red)}
   .seg .t{font-size:16px;font-weight:800;letter-spacing:-.2px}
   .seg .b{font-size:13px;font-weight:600;opacity:.88;margin-top:2px}
 

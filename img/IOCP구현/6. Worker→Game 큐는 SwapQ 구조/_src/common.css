@@ -13,17 +13,17 @@
   --ink:#0f172a; --sub:#64748b; --faint:#94a3b8; --foot:#9aa3b2;
   --line:#e8ebf2; --line2:#eef1f6; --surface:#f7f9fc;
 
-  /* 강조색 (정제) */
-  --red:#ef4444;  --red-deep:#dc2626;  --red-bg:#fef2f2;  --red-line:#f7cccc;
-  --green:#10b981;--green-deep:#059669;--green-bg:#ecfdf5;--green-line:#bbe9d4;
-  --blue:#3b82f6; --blue-deep:#2563eb; --blue-bg:#eff6ff;
-  --amber:#f59e0b;--amber-deep:#d97706;--amber-bg:#fffbeb;--amber-line:#f3dca0;
-  --gray-bar:#cbd5e1;
+  /* 강조색 (참고 톤 팔레트 — 차분한 crimson/steel-blue/green) */
+  --red:#d7263d;  --red-deep:#b3122a;  --red-bg:#fdeef0;  --red-line:#f4c4cc;
+  --green:#1f9d6b;--green-deep:#0d6b49;--green-bg:#e7f6ef;--green-line:#c3e6d5;
+  --blue:#3a78b8; --blue-deep:#2b6aa8; --blue-bg:#e7f0fa;
+  --amber:#b26a12;--amber-deep:#8f5410;--amber-bg:#f6efe4;--amber-line:#e3d3b4;
+  --gray-bar:#ccd4de;
 }
 
 html, body {
   width:1200px; height:700px;
-  background:linear-gradient(135deg,var(--bg1),var(--bg2));
+  background:var(--bg1);
   font-family:'Pretendard','Malgun Gothic',sans-serif;
   color:var(--ink); font-feature-settings:"tnum" 1;
   -webkit-font-smoothing:antialiased; text-rendering:geometricPrecision;
@@ -32,16 +32,13 @@ html, body {
 .card {
   position:absolute; inset:26px;
   background:var(--card);
-  border-radius:32px;
-  border:1px solid rgba(255,255,255,.7);
-  box-shadow:0 32px 72px -22px rgba(15,23,42,.24),
-             0 10px 24px -12px rgba(15,23,42,.10);
+  border-radius:30px;
+  border:1px solid #eef0f3;
+  box-shadow:0 1px 3px rgba(30,40,70,.05),
+             0 14px 44px rgba(30,40,70,.075);
   padding:48px 58px;
   display:flex; flex-direction:column; overflow:hidden;
 }
-/* 카드 상단 얇은 강조 띠 */
-.card::before{ content:""; position:absolute; top:0; left:0; right:0; height:6px;
-  background:linear-gradient(90deg,var(--red),#fb923c 55%,var(--amber)); opacity:.92; }
 
 /* 헤더 */
 .eyebrow{ display:inline-flex; align-items:center; gap:8px; align-self:flex-start;
@@ -54,8 +51,8 @@ html, body {
 .h-title .k{ color:var(--red-deep); }
 .h-title .kb{ color:var(--blue-deep); }
 .h-title .kg{ color:var(--green-deep); }
-.h-rule{ width:72px; height:6px; border-radius:3px; margin:16px 0 12px;
-  background:linear-gradient(90deg,var(--red),#fb7185); }
+.h-rule{ width:72px; height:5px; border-radius:3px; margin:16px 0 12px;
+  background:var(--red); }
 .h-sub{ font-size:21px; color:var(--sub); font-weight:500; line-height:1.45; }
 .h-sub b{ color:var(--ink); font-weight:700; }
 .h-sub .k{ color:var(--red-deep); font-weight:700; }

@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#fff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --blue:#3a78b8; --blue-ink:#2b6aa8;
+    --ok:#16a34a; --ok-deep:#0f7a37; --slate:#566072;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1140px;height:620px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1092px;height:572px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:30px 52px 0}
+
+  .title{font-size:36px;font-weight:800;color:var(--ink);letter-spacing:-.6px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:80px;height:6px;border-radius:3px;background:var(--red);margin-top:12px}
+  .sub{margin-top:12px;font-size:19px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .die{margin-top:26px;border:2px solid #e3e7ee;border-radius:22px;background:#f7f9fc;
+    padding:18px 22px;display:flex;align-items:stretch;gap:0;position:relative}
+  .dietag{position:absolute;top:-13px;left:26px;background:#fff;border:1.5px solid #e3e7ee;border-radius:999px;
+    padding:3px 15px;font-size:14.5px;font-weight:800;color:var(--slate);letter-spacing:-.2px}
+
+  .region{border-radius:16px;padding:14px 18px 16px}
+  .region.server{background:#eaf1f9;border:1.6px solid #bcd4ea}
+  .region.client{background:#eaf6ef;border:1.6px solid #bfe2cc}
+  .rtitle{font-size:19px;font-weight:800;letter-spacing:-.3px;display:flex;align-items:baseline;gap:9px;margin-bottom:13px}
+  .region.server .rtitle{color:var(--blue-ink)} .region.client .rtitle{color:var(--ok-deep)}
+  .rtitle .cfg{font-size:14px;font-weight:800;font-family:ui-monospace,Menlo,Consolas,monospace;
+    background:#fff;border-radius:7px;padding:2px 9px;letter-spacing:0}
+  .region.server .rtitle .cfg{color:var(--blue-ink);border:1.3px solid #cbdcee}
+  .region.client .rtitle .cfg{color:var(--ok-deep);border:1.3px solid #c7e6d1}
+
+  .grid{display:grid;gap:11px}
+  .grid.s{grid-template-columns:repeat(3,1fr)}
+  .grid.c{grid-template-columns:repeat(2,1fr)}
+  .core{width:92px;height:88px;border-radius:13px;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+  .region.server .core{border:1.6px solid #bcd4ea;box-shadow:0 3px 10px rgba(58,120,184,.12)}
+  .region.client .core{border:1.6px solid #bfe2cc;box-shadow:0 3px 10px rgba(22,163,74,.12)}
+  .core .cn{font-size:26px;font-weight:800;letter-spacing:-1px;line-height:1}
+  .region.server .core .cn{color:var(--blue-ink)} .region.client .core .cn{color:var(--ok-deep)}
+  .core .ht{display:flex;gap:4px}
+  .core .ht i{display:block;width:22px;height:7px;border-radius:3px}
+  .region.server .core .ht i{background:#bcd4ea} .region.client .core .ht i{background:#bfe2cc}
+
+  .link{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:0 8px}
+  .link .lp{font-size:34px;font-weight:800;color:#9aa3b2;line-height:1}
+  .link .lt{font-size:16px;font-weight:800;color:var(--slate);letter-spacing:-.3px;text-align:center;line-height:1.2}
+  .link .ls{font-size:13.5px;font-weight:700;color:#9aa3b2;text-align:center;letter-spacing:-.2px;line-height:1.25}
+
+  .notes{margin-top:18px;display:flex;align-items:center;gap:12px}
+  .chip{flex:1;background:#f3f5f9;border-radius:13px;padding:12px 16px;font-size:15.5px;font-weight:600;color:#46506a;letter-spacing:-.3px;line-height:1.35}
+  .chip b{font-weight:800;color:var(--ink)}
+  .chip .k{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:800;color:var(--slate)}
+  .res{background:#e3f5ea;border:1.5px solid #bfe2cc;border-radius:13px;padding:12px 20px;
+    font-size:17px;font-weight:800;color:var(--ok-deep);letter-spacing:-.3px;white-space:nowrap;text-align:center;line-height:1.3}
+
+  .foot{position:absolute;left:52px;right:52px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
+    font-size:15px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">회선 변수를 없앤 측정판 — <span class="r">한 PC · 코어 격리</span></div>
+    <div class="uline"></div>
+    <div class="sub">서버와 더미 클라를 <b>서로 다른 물리코어에 고정</b> · 같은 코어를 다퉈 지표가 지저분해지는 걸 차단</div>
+
+    <div class="die">
+      <div class="dietag">한 PC · 10 물리코어 × 논리 2 (하이퍼스레딩)</div>
+
+      <div class="region server">
+        <div class="rtitle">서버 <span class="cfg">ServerCores=0-5</span></div>
+        <div class="grid s">
+          <div class="core"><span class="cn">0</span><span class="ht"><i></i><i></i></span></div>
+          <div class="core"><span class="cn">1</span><span class="ht"><i></i><i></i></span></div>
+          <div class="core"><span class="cn">2</span><span class="ht"><i></i><i></i></span></div>
+          <div class="core"><span class="cn">3</span><span class="ht"><i></i><i></i></span></div>
+          <div class="core"><span class="cn">4</span><span class="ht"><i></i><i></i></span></div>
+          <div class="core"><span class="cn">5</span><span class="ht"><i></i><i></i></span></div>
+        </div>
+      </div>
+
+      <div class="link">
+        <div class="lt">loopback</div>
+        <div class="lp">⇄</div>
+        <div class="ls">회선 안 탐<br>(WAN 제거)</div>
+      </div>
+
+      <div class="region client">
+        <div class="rtitle">클라 <span class="cfg">ClientCores=6-9</span></div>
+        <div class="grid c">
+          <div class="core"><span class="cn">6</span><span class="ht"><i></i><i></i></span></div>
+          <div class="core"><span class="cn">7</span><span class="ht"><i></i><i></i></span></div>
+          <div class="core"><span class="cn">8</span><span class="ht"><i></i><i></i></span></div>
+          <div class="core"><span class="cn">9</span><span class="ht"><i></i><i></i></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="notes">
+      <div class="chip">코어는 <b>번호 범위</b>로 지정 · 하이퍼스레딩 <b>짝 코어는 코드가 자동으로 함께 묶음</b> (한 코어를 쪼개 쓰는 실수 방지)</div>
+      <div class="chip">클라 스레드 <b>4개 → 코어 4개</b>에 하나씩 <span class="k">ClientsPerThread=500</span></div>
+      <div class="res">✅ 코어 밖으로<br>못 나감 (하드 마스크)</div>
+    </div>
+
+    <div class="foot">윈도우가 보고한 두 프로세스 코어 설정 = 의도 일치 · 우선순위/전원 고정은 변수만 늘어 보류 → <b>다음: 이 판에서 서버 자체 송신 실한계 측정</b></div>
+  </div>
+</body>
+</html>

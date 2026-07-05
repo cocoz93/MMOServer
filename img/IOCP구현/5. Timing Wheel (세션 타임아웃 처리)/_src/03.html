@@ -8,13 +8,13 @@
     font-weight:100 900;font-style:normal;font-display:block}
   :root{
     --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
-    --red:#d7263d; --deep:#b3122a; --axis:#2f5fd0; --gray1:#ccd4de; --gray2:#b7c0cc;
+    --red:#d7263d; --deep:#b3122a; --axis:#3a78b8; --gray1:#ccd4de; --gray2:#b7c0cc;
   }
   *{box-sizing:border-box}
   html,body{margin:0;width:940px;height:680px;overflow:hidden;background:var(--bg);
     font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased}
   .card{position:absolute;top:24px;left:24px;width:892px;height:632px;background:var(--card);
-    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 14px 44px rgba(30,40,70,.07);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
     padding:34px 50px 0}
 
   .title{font-size:38px;font-weight:800;color:var(--ink);letter-spacing:-.8px;line-height:1.08}
@@ -30,8 +30,8 @@
   .col.pick .pct{color:var(--red);font-size:34px}
   .bar{width:100%;max-width:158px;border-radius:13px 13px 0 0;
     display:flex;align-items:flex-end;justify-content:center;padding-bottom:15px;
-    background:linear-gradient(180deg,var(--gray1),var(--gray2));box-shadow:0 -2px 16px rgba(90,100,120,.10)}
-  .col.pick .bar{background:linear-gradient(180deg,#ef4459,#b3122a);box-shadow:0 -2px 26px rgba(160,15,35,.30)}
+    background:var(--gray1)}
+  .col.pick .bar{background:var(--red)}
   .bar .in{color:#fff;font-size:16px;font-weight:800;letter-spacing:-.3px;white-space:nowrap;opacity:.97}
   .col:not(.pick) .bar .in{color:#4a5468}
 

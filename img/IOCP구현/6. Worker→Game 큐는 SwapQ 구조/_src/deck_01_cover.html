@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="swap_deck.css">
+<style>
+  .card{padding:64px 76px}
+
+  .mid{margin-top:auto;margin-bottom:auto;position:relative;z-index:2}
+  .kicker-tag{display:inline-flex;align-items:center;gap:9px;
+    background:var(--blue-bg);color:var(--blue-deep);
+    border:1px solid var(--blue-line);border-radius:999px;padding:8px 17px;font-size:16px;font-weight:800;letter-spacing:-.2px;margin-bottom:26px}
+  .kicker-tag .kd{width:7px;height:7px;border-radius:50%;background:var(--blue-ink)}
+
+  .title{font-size:90px;line-height:1.02;letter-spacing:-3.6px}
+  .title .sm{display:block;font-size:38px;font-weight:700;letter-spacing:-1.4px;color:var(--slate);margin-top:16px}
+  .title .sm .mono{font-family:var(--mono);font-weight:800;color:var(--deep);letter-spacing:-1px}
+  .uline{width:112px;margin:30px 0 24px}
+  .sub{max-width:980px}
+
+  .contents{margin-top:auto;display:flex;gap:18px;position:relative;z-index:2}
+  .ci{flex:1;position:relative;overflow:hidden;background:var(--card);
+    border:1px solid var(--line);border-radius:20px;padding:30px 32px;display:flex;align-items:center;gap:20px;
+    box-shadow:0 1px 3px rgba(30,40,70,.05),0 8px 22px -14px rgba(30,40,70,.14)}
+  .ci::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--blue-ink)}
+  .ci .no{flex:0 0 auto;width:56px;height:56px;border-radius:15px;
+    background:var(--blue-ink);color:#fff;font-size:24px;font-weight:800;
+    display:flex;align-items:center;justify-content:center;font-family:var(--mono)}
+  .ci .tx{display:flex;flex-direction:column;gap:4px}
+  .ci .tx .t{font-size:25px;font-weight:800;color:var(--ink);letter-spacing:-.3px}
+  .ci .tx .s{font-size:17px;font-weight:600;color:var(--muted);letter-spacing:-.2px}
+  .ci.accent{border-color:var(--red-line);background:#fdf1f3}
+  .ci.accent::before{background:var(--deep)}
+  .ci.accent .no{background:var(--deep)}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="top">
+      <div class="eyebrow"><span class="d"></span>IOCP 네트워크 라이브러리 · 아키텍처 노트</div>
+      <div class="pageno"><b>01</b> / 05</div>
+    </div>
+
+    <div class="mid">
+      <div class="kicker-tag"><span class="kd"></span>Worker → Game 이벤트 큐 설계</div>
+      <div class="title">무한 드레인을 <span class="r">끊는다</span>
+        <span class="sm"><span class="mono">SwapQ</span> — 프레임 진입마다 큐를 통째로 스왑</span>
+      </div>
+      <div class="uline"></div>
+      <div class="sub"><b>게임 스레드가 큐를 끝까지 비우던 무한 드레인</b>을, 프레임 진입 시 <b>통째로 맞바꾸는 스냅샷 스왑</b>으로 바꿨다. 락 N회→1회 · 라이브락 위험 제거 — 응급처치이자, 근본은 존 샤딩.</div>
+    </div>
+
+    <div class="contents">
+      <div class="ci"><span class="no">01</span><span class="tx"><span class="t">문제</span><span class="s">상한 없는 무한 드레인</span></span></div>
+      <div class="ci"><span class="no">02</span><span class="tx"><span class="t">구조</span><span class="s">공유 큐 ↔ 로컬 큐 스왑</span></span></div>
+      <div class="ci accent"><span class="no">03</span><span class="tx"><span class="t">결과 · 관측</span><span class="s">락 N→1 · 병목 이동</span></span></div>
+    </div>
+
+    <div class="foot">
+      <span>MMO 게임서버 구현 · <b>네트워크 라이브러리 설계&amp;구현</b></span>
+      <span class="mono">IOCP_Server · Worker→Game Queue</span>
+    </div>
+  </div>
+</body>
+</html>

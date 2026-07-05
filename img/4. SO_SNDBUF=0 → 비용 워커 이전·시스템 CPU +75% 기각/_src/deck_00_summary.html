@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --slate:#566072;
+    --amber:#e0a800; --amber-deep:#946c00; --amber-bg:#fff6da; --amber-line:#f0dfa6;
+    --mono:"SF Mono",ui-monospace,"Cascadia Mono","Consolas",monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1140px;height:560px;overflow:hidden;
+    background:radial-gradient(1180px 560px at 50% -24%,#ffffff,rgba(255,255,255,0) 56%),var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;
+    font-feature-settings:"tnum" 1,"ss01" 1;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1092px;height:512px;
+    background:linear-gradient(180deg,#ffffff,#fcfdfe);
+    border:1px solid #ebedf1;border-radius:30px;
+    box-shadow:0 1px 2px rgba(30,40,70,.04),0 16px 32px -12px rgba(30,40,70,.10),0 46px 84px -36px rgba(30,40,70,.20),inset 0 1px 0 rgba(255,255,255,.9);
+    padding:30px 56px 0}
+
+  .kick{font-size:14.5px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:9px}
+  .kick b{color:var(--deep)}
+  .title{font-size:33px;font-weight:800;color:var(--ink);letter-spacing:-.8px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:72px;height:7px;border-radius:4px;background:linear-gradient(90deg,var(--deep),#ec4257);box-shadow:0 5px 13px -3px rgba(215,38,61,.5);margin-top:13px}
+  .sub{margin-top:12px;font-size:18px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+  .sub .mono{font-family:var(--mono);font-weight:700;color:var(--slate);font-size:16.5px}
+
+  .flow{margin-top:26px;display:flex;align-items:stretch;gap:0}
+  .step{flex:1;border-radius:18px;padding:20px 14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;
+    box-shadow:0 2px 5px rgba(30,40,70,.03),0 16px 32px -22px rgba(30,40,70,.22),inset 0 1px 0 rgba(255,255,255,.7)}
+  .step.n{background:linear-gradient(180deg,#f8fafc,#eef2f7);border:1.5px solid #e2e7ee}
+  .step.mir{background:linear-gradient(180deg,#fffdf5,#fdf6e2);border:1.5px solid var(--amber-line)}
+  .step.real{background:linear-gradient(180deg,#fff6f7,#fce9ec);border:1.5px solid #f6ccd3}
+  .step.verdict{background:linear-gradient(158deg,#ee4459,#b3122a);border:1.5px solid var(--deep);
+    box-shadow:0 12px 30px -12px rgba(179,18,42,.55),inset 0 1px 0 rgba(255,255,255,.25)}
+  .step .chip{font-size:13.5px;font-weight:800;letter-spacing:-.2px;padding:5px 13px;border-radius:999px}
+  .step.n .chip{background:#e7ebf1;color:var(--slate)}
+  .step.mir .chip{background:#fff;color:var(--amber-deep);border:1px solid var(--amber-line)}
+  .step.real .chip{background:#fff;color:var(--deep);border:1px solid #f6ccd3}
+  .step.verdict .chip{background:rgba(255,255,255,.22);color:#fff}
+  .step .big{font-size:29px;font-weight:800;letter-spacing:-1px;line-height:1.04;text-align:center}
+  .step.n .big{color:var(--slate)} .step.mir .big{color:var(--amber-deep)}
+  .step.real .big{color:var(--deep)} .step.verdict .big{color:#fff;font-size:38px;letter-spacing:-1.6px}
+  .step .cap{font-size:14.5px;font-weight:700;letter-spacing:-.2px;text-align:center}
+  .step.n .cap{color:var(--muted)} .step.mir .cap{color:var(--amber-deep)}
+  .step.real .cap{color:#b06a72} .step.verdict .cap{color:#ffe0e5}
+
+  .arrow{width:40px;flex:0 0 auto;display:flex;align-items:center;justify-content:center}
+  .arrow svg{display:block}
+
+  .callout{margin-top:20px;background:linear-gradient(180deg,#fef3f5,#fce9ec);border:1.5px solid #f6ccd3;border-radius:16px;
+    padding:16px 24px;font-size:17.5px;font-weight:600;color:#8a4550;line-height:1.5;letter-spacing:-.3px;box-shadow:0 2px 6px rgba(215,38,61,.05),inset 0 1px 0 rgba(255,255,255,.5)}
+  .callout b{color:var(--red);font-weight:800}
+  .callout .ink{color:var(--ink);font-weight:700}
+
+  .foot{position:absolute;left:56px;right:56px;bottom:15px;padding-top:11px;border-top:1px solid #eef0f3;
+    font-size:15px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="kick">SO_SNDBUF=0 · SEND PATH 실험 · <b>한 장 요약</b></div>
+    <div class="title">커널 copy를 없애면 빠를까? — 결과는 시스템 CPU <span class="r">+75%</span>, <span class="r">기각</span></div>
+    <div class="uline"></div>
+    <div class="sub"><span class="mono">SO_SNDBUF=0</span>으로 WSASend copy 제거. 틱은 빨라 보였지만 <b>비용이 워커로 이동한 순손해.</b></div>
+
+    <div class="flow">
+      <div class="step n">
+        <span class="chip">① 가설</span>
+        <span class="big">copy 제거</span>
+        <span class="cap">= 빨라질까?</span>
+      </div>
+      <div class="arrow"><svg width="38" height="24"><path d="M2 12 H26" stroke="#9aa3b2" stroke-width="4" stroke-linecap="round"/><path d="M24 5 L36 12 L24 19 Z" fill="#9aa3b2"/></svg></div>
+      <div class="step mir">
+        <span class="chip">② 측정 · 착시</span>
+        <span class="big">flush ▼18%</span>
+        <span class="cap">좋아 보인다</span>
+      </div>
+      <div class="arrow"><svg width="38" height="24"><path d="M2 12 H26" stroke="#e0a800" stroke-width="4" stroke-linecap="round"/><path d="M24 5 L36 12 L24 19 Z" fill="#e0a800"/></svg></div>
+      <div class="step real">
+        <span class="chip">③ 실제</span>
+        <span class="big">워커 ×5.8</span>
+        <span class="cap">비용 워커로</span>
+      </div>
+      <div class="arrow"><svg width="38" height="24"><path d="M2 12 H26" stroke="#d7263d" stroke-width="4" stroke-linecap="round"/><path d="M24 5 L36 12 L24 19 Z" fill="#d7263d"/></svg></div>
+      <div class="step verdict">
+        <span class="chip">④ 결론</span>
+        <span class="big">+75%</span>
+        <span class="cap">순손해 · 기각</span>
+      </div>
+    </div>
+
+    <div class="callout">틱만 보면 <b>'개선' 착시</b> — 비용은 사라진 게 아니라 <b>워커로 이동</b>(+75%). <span class="ink">송신 실험은 worker CPU도 함께 봐야 한다.</span></div>
+
+    <div class="foot">MMO 게임서버 · Send Path 최적화 · 동접 1,000 A/B 실측 · <b>SO_SNDBUF=0</b>(USE_ZERO_SNDBUF) 기각 · 상세 3장 참고</div>
+  </div>
+</body>
+</html>

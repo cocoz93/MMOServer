@@ -14,11 +14,11 @@
   --line:#e9edf4; --line2:#f0f3f9; --surface:#f6f8fc;
 
   /* 강조색 (정제) */
-  --red:#ef4444;  --red-deep:#dc2626;  --red-bg:#fef2f2;  --red-line:#f6cfcf;
-  --green:#10b981;--green-deep:#059669;--green-bg:#ecfdf5;--green-line:#bbe9d4;
-  --blue:#3b82f6; --blue-deep:#2563eb; --blue-bg:#eff6ff; --blue-line:#c4dbfb;
-  --amber:#f59e0b;--amber-deep:#d97706;--amber-bg:#fffbeb;--amber-line:#f3dca0;
-  --gray-bar:#cbd5e1;
+  --red:#d7263d;  --red-deep:#b3122a;  --red-bg:#fdeef0;  --red-line:#f4c4cc;
+  --green:#1f9d6b;--green-deep:#0d6b49;--green-bg:#e7f6ef;--green-line:#c3e6d5;
+  --blue:#3a78b8; --blue-deep:#2b6aa8; --blue-bg:#e7f0fa; --blue-line:#cfe0f2;
+  --amber:#b26a12;--amber-deep:#8f5410;--amber-bg:#f6efe4;--amber-line:#e3d3b4;
+  --gray-bar:#ccd4de;
 
   /* 그림자 토큰 */
   --sh-card: 0 1px 0 rgba(255,255,255,.9) inset,
@@ -30,10 +30,7 @@
 
 html, body {
   width:1200px; height:700px;
-  background:
-    radial-gradient(1100px 520px at 10% -14%, #ffffff 0%, rgba(255,255,255,0) 58%),
-    radial-gradient(820px 460px at 110% -8%, #e9f0fb 0%, rgba(233,240,251,0) 56%),
-    linear-gradient(135deg,var(--bg1),var(--bg2));
+  background:var(--bg1);
   font-family:'Pretendard','Malgun Gothic',sans-serif;
   color:var(--ink); font-feature-settings:"tnum" 1;
   -webkit-font-smoothing:antialiased; text-rendering:geometricPrecision;
@@ -41,34 +38,27 @@ html, body {
 
 .card {
   position:absolute; inset:26px;
-  background:
-    radial-gradient(460px 320px at 100% -12%, rgba(239,68,68,.045), rgba(239,68,68,0) 70%),
-    linear-gradient(180deg,#ffffff, #fcfdfe);
-  border-radius:28px;
-  border:1px solid rgba(15,23,42,.05);
-  box-shadow:var(--sh-card);
+  background:var(--card);
+  border-radius:30px;
+  border:1px solid #eef0f3;
+  box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
   padding:48px 58px;
   display:flex; flex-direction:column; overflow:hidden;
 }
-/* 카드 상단 얇은 강조 띠 */
-.card::before{ content:""; position:absolute; top:0; left:0; right:0; height:5px;
-  background:linear-gradient(90deg,var(--red),#fb7a45 52%,var(--amber)); opacity:.95; }
 
 /* 헤더 */
 .eyebrow{ display:inline-flex; align-items:center; gap:8px; align-self:flex-start;
   font-size:15.5px; font-weight:800; letter-spacing:.2px; color:var(--red-deep);
-  background:linear-gradient(180deg,#fff5f5,var(--red-bg)); border:1px solid var(--red-line);
-  padding:7px 15px; border-radius:999px; margin-bottom:14px;
-  box-shadow:0 6px 14px -8px rgba(220,38,38,.40), 0 1px 0 rgba(255,255,255,.7) inset; }
+  background:var(--red-bg); border:1px solid var(--red-line);
+  padding:7px 15px; border-radius:999px; margin-bottom:14px; }
 .eyebrow .no{ font-weight:900; }
 
 .h-title{ font-size:46px; font-weight:800; letter-spacing:-1.7px; line-height:1.12; color:var(--ink); }
 .h-title .k{ color:var(--red-deep); }
 .h-title .kb{ color:var(--blue-deep); }
 .h-title .kg{ color:var(--green-deep); }
-.h-rule{ width:74px; height:6px; border-radius:3px; margin:16px 0 12px;
-  background:linear-gradient(90deg,var(--red),#fb7185);
-  box-shadow:0 5px 12px -4px rgba(239,68,68,.55); }
+.h-rule{ width:72px; height:5px; border-radius:3px; margin:16px 0 12px;
+  background:var(--red); }
 .h-sub{ font-size:21px; color:var(--sub); font-weight:500; line-height:1.45; }
 .h-sub b{ color:var(--ink); font-weight:700; }
 .h-sub .k{ color:var(--red-deep); font-weight:700; }

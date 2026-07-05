@@ -8,35 +8,25 @@
     font-weight:100 900;font-style:normal;font-display:block}
   *{box-sizing:border-box;margin:0;padding:0}
   :root{
-    --bg:#eef1f5; --bg2:#e6eaf1; --card:#ffffff; --ink:#1f2330; --sub:#3a4254; --muted:#7c8597; --faint:#9aa3b2;
+    --bg:#eef1f5; --card:#ffffff; --ink:#1a1e2a; --sub:#3a4254; --muted:#7c8597; --faint:#9aa3b2;
     --line:#eef0f3; --red:#d7263d; --deep:#b3122a; --red-bg:#fdeef0; --red-line:#f4c4cc;
     --blue:#3a78b8; --blue-ink:#2b6aa8; --blue-deep:#1f5088; --blue-bg:#e7f0fa; --blue-line:#cfe0f2; --slate:#566072;
-    --sh-card:0 0 0 1px rgba(30,40,70,.02),0 2px 4px -1px rgba(30,40,70,.05),0 10px 20px -6px rgba(30,40,70,.07),0 26px 44px -16px rgba(30,40,70,.12),0 52px 92px -40px rgba(24,32,58,.28),inset 0 1px 0 rgba(255,255,255,.95);
-    --grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
     --mono:"SF Mono",ui-monospace,"Cascadia Mono","Consolas",monospace;
+    --sh-card:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
   }
-  html,body{width:1600px;height:900px;overflow:hidden;
-    background:radial-gradient(1100px 560px at 88% -12%, #ffffff, rgba(255,255,255,0) 58%),
-      linear-gradient(140deg,var(--bg),var(--bg2));
+  html,body{width:1600px;height:900px;overflow:hidden;background:var(--bg);
     font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;color:var(--ink);
     word-break:keep-all;overflow-wrap:break-word;
     font-feature-settings:"tnum" 1,"kern" 1,"calt" 1;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
-  .card{position:absolute;inset:28px;border-radius:32px;border:1px solid rgba(30,40,70,.06);
-    background:
-      radial-gradient(circle at 1px 1px, rgba(43,106,168,.045) 1px, transparent 1.4px) 0 0/30px 30px,
-      radial-gradient(780px 520px at -6% 108%, rgba(43,106,168,.045), transparent 60%),
-      linear-gradient(180deg,#ffffff,#fbfcfe);
+  .card{position:absolute;inset:28px;border-radius:32px;border:1px solid var(--line);
+    background:var(--card);
     box-shadow:var(--sh-card);
     padding:44px 64px 46px;display:flex;flex-direction:column;overflow:hidden}
-  .card::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
-    background-image:var(--grain);background-size:180px 180px;opacity:.03;mix-blend-mode:soft-light}
-  .card::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;
-    background:linear-gradient(90deg,var(--deep),var(--red) 22%,#f2647a 42%,rgba(242,100,122,0) 82%)}
 
   .top{display:flex;align-items:center;justify-content:space-between}
   .eyebrow{display:inline-flex;align-items:center;gap:10px;
     font-size:15px;font-weight:800;letter-spacing:2.5px;color:var(--muted);text-transform:uppercase}
-  .eyebrow .d{width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 0 4px var(--red-bg)}
+  .eyebrow .d{width:8px;height:8px;border-radius:50%;background:var(--red)}
   .pageno{font-size:15px;font-weight:800;color:var(--faint);letter-spacing:1px}
   .pageno b{color:var(--ink)}
   .title{margin-top:16px;font-size:46px;font-weight:800;color:var(--ink);letter-spacing:-1.4px;line-height:1.05}
@@ -46,12 +36,12 @@
 
   /* 초대형 flow */
   .flow{display:flex;align-items:center;justify-content:center;gap:8px}
-  .node{border:1.5px solid #e7ebf1;border-radius:26px;background:#fff;position:relative;
-    box-shadow:0 22px 48px -26px rgba(30,40,70,.34),0 6px 16px -10px rgba(30,40,70,.10);
+  .node{border:1px solid var(--line);border-radius:26px;background:var(--card);position:relative;
+    box-shadow:0 1px 3px rgba(30,40,70,.05),0 8px 22px -14px rgba(30,40,70,.14);
     padding:24px 28px 26px;display:flex;flex-direction:column;align-items:center}
   .node::before{content:"";position:absolute;top:0;left:0;right:0;height:7px;border-radius:26px 26px 0 0}
-  .node.stack::before{background:linear-gradient(90deg,#49546a,#8c96a8)}
-  .node.sess::before{background:linear-gradient(90deg,var(--blue-ink),#7cb0de)}
+  .node.stack::before{background:var(--slate)}
+  .node.sess::before{background:var(--blue-ink)}
   .node .tag{font-size:18px;font-weight:800;padding:8px 22px;border-radius:999px;letter-spacing:-.2px;margin-bottom:20px}
   .node.stack .tag{background:#eef0f4;color:#49546a}
   .node.sess .tag{background:var(--blue-bg);color:var(--blue-ink)}
@@ -60,7 +50,7 @@
   .chips{display:flex;flex-direction:column;gap:10px;width:100%}
   .chip{height:66px;border-radius:15px;display:flex;align-items:center;justify-content:center;position:relative;
     font-size:30px;font-weight:800;font-family:var(--mono)}
-  .chip.top{background:linear-gradient(180deg,#5b96cf,#356ba8);color:#fff;box-shadow:0 9px 20px -5px rgba(43,106,168,.5)}
+  .chip.top{background:var(--blue-ink);color:#fff}
   .chip.top .fl{position:absolute;right:16px;font-size:14px;font-weight:800;font-family:'Pretendard',sans-serif;
     background:rgba(255,255,255,.26);padding:3px 12px;border-radius:999px;letter-spacing:.4px}
   .chip.rest{background:#eef1f5;color:#8892a4;border:1.5px solid #e2e6ec}
@@ -76,9 +66,9 @@
   .grid16{display:grid;grid-template-columns:repeat(4,86px);grid-gap:14px}
   .cell{width:86px;height:86px;border-radius:16px;display:flex;align-items:center;justify-content:center;
     font-size:24px;font-weight:800;font-family:var(--mono);position:relative}
-  .cell.fill{background:linear-gradient(180deg,#5b96cf,#356ba8);color:#fff;box-shadow:0 5px 13px -3px rgba(58,120,184,.42)}
+  .cell.fill{background:var(--blue-ink);color:#fff}
   .cell.empty{border:2.5px dashed #c7cfdb;background:#f7f9fb;color:#aeb7c5}
-  .cell.new{border:3.5px solid var(--red);background:var(--red-bg);color:var(--deep);box-shadow:0 9px 20px -4px rgba(215,38,61,.36)}
+  .cell.new{border:3.5px solid var(--red);background:var(--red-bg);color:var(--deep)}
   .cell.new::after{content:"NEW";position:absolute;bottom:-13px;font-family:'Pretendard',sans-serif;
     font-size:13px;font-weight:800;color:#fff;background:var(--red);padding:2px 10px;border-radius:999px;letter-spacing:.5px}
 
@@ -87,11 +77,10 @@
   .bitlabel{font-size:22px;font-weight:800;color:var(--ink);letter-spacing:-.3px;margin-bottom:13px}
   .bitlabel .m{font-family:var(--mono)}
   .bitlabel .g{font-weight:700;color:var(--faint);font-family:var(--mono);font-size:17px;margin-left:8px}
-  .bitbar{display:flex;height:98px;border-radius:18px;overflow:hidden;
-    box-shadow:0 14px 30px -12px rgba(30,40,70,.3),inset 0 1px 0 rgba(255,255,255,.2)}
+  .bitbar{display:flex;height:98px;border-radius:18px;overflow:hidden}
   .seg{display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;position:relative}
-  .seg.idx{flex:16;background:linear-gradient(180deg,#5b96cf,#2b6aa8)}
-  .seg.uid{flex:48;background:linear-gradient(180deg,#e2495c,#c11a30)}
+  .seg.idx{flex:16;background:var(--blue-ink)}
+  .seg.uid{flex:48;background:var(--red)}
   .seg::after{content:"";position:absolute;right:0;top:16%;height:68%;width:1px;background:rgba(255,255,255,.35)}
   .seg.uid::after{display:none}
   .seg .st{font-size:28px;font-weight:800;letter-spacing:-.3px}

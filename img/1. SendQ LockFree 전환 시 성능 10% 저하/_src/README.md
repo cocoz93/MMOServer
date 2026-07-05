@@ -1,7 +1,7 @@
 # 인포그래픽 소스 (`_src`)
 
 이 폴더는 상위 폴더(`SendQ LockFree 전환 시 성능 10% 저하`)에 있는 **설명 이미지 5장의 편집 가능한 소스**다.
-이미지는 HTML/CSS/SVG 로 만들고 **헤드리스 Chrome 으로 3배(3x) 캡처**해서 PNG 로 뽑는다.
+이미지는 HTML/CSS/SVG 로 만들고 **헤드리스 Chrome 으로 4배(4x) 캡처**해서 PNG 로 뽑는다.
 폰트는 **Pretendard**(가변폰트)를 `fonts/` 에 임베드해서 쓴다 — PPT 에 바로 쓸 프레젠테이션 품질.
 기억(메모리) 없는 세션이 와도 이 문서 + HTML 만 보면 바로 이어서 작업할 수 있다.
 
@@ -9,13 +9,13 @@
 
 ## 1. 무엇에 소스가 있나
 
-| 최종 이미지 (상위 폴더) | HTML 소스 | 논리크기 → 출력(3x) |
+| 최종 이미지 (상위 폴더) | HTML 소스 | 논리크기 → 출력(4x) |
 |---|---|---|
-| `01_enqueue_62ns.png` | `01.html` | 780×560 → 2340×1680 |
-| `02_ab_normalized.png` | `02.html` | 940×680 → 2820×2040 |
-| `03_before_after.png` | `03.html` | 1200×600 → 3600×1800 |
-| `04_spsc.png` | `04.html` | 1160×560 → 3480×1680 |
-| `05_dilution.png` | `05.html` | 1140×560 → 3420×1680 |
+| `01_enqueue_62ns.png` | `01.html` | 780×560 → 3120×2240 |
+| `02_ab_normalized.png` | `02.html` | 940×680 → 3760×2720 |
+| `03_before_after.png` | `03.html` | 1200×600 → 4800×2400 |
+| `04_spsc.png` | `04.html` | 1160×560 → 4640×2240 |
+| `05_dilution.png` | `05.html` | 1140×560 → 4560×2240 |
 
 > **5장 모두 HTML 소스가 있다.** (01·02·05 는 원본 PNG 를 보고 재구성했다.) 톤·폰트·팔레트가 5장 전부 동일하다.
 
@@ -39,11 +39,11 @@ powershell -ExecutionPolicy Bypass -File build.ps1
 ### 수동으로 한 장만 렌더
 ```bash
 CHROME="/c/Program Files/Google/Chrome/Application/chrome.exe"
-"$CHROME" --headless --disable-gpu --hide-scrollbars --allow-file-access-from-files \
-  --force-device-scale-factor=3 --screenshot="<이 폴더 절대경로>/01.png" --window-size=780,560 \
+"$CHROME" --headless=new --disable-gpu --hide-scrollbars --allow-file-access-from-files \
+  --user-data-dir="$TEMP/ig-prof" --force-device-scale-factor=4 --screenshot="<이 폴더 절대경로>/01.png" --window-size=780,560 \
   "file:///<이 폴더 절대경로>/01.html"
 ```
-- **핵심**: `--window-size` 는 HTML `body` 의 width/height(논리크기)와 **반드시 일치**. `--force-device-scale-factor=3` 이 3배 해상도.
+- **핵심**: `--window-size` 는 HTML `body` 의 width/height(논리크기)와 **반드시 일치**. `--force-device-scale-factor=4` 이 4배 해상도.
 - `file://` 는 절대경로 + 슬래시(`C:/...`). 폴더명 공백·한글 OK.
 
 ---
@@ -84,7 +84,15 @@ CHROME="/c/Program Files/Google/Chrome/Application/chrome.exe"
 
 ---
 
-## 5. 현재 상태 (이번 작업 결과, 2026-07-01)
+## 5. 현재 상태
+
+### 2026-07-05 — 4x + 질감 다듬기 (디테일 상향, 톤 유지)
+
+- **해상도 3x→4x** (DSF 4): 01=3120×2240 · 02=3760×2720 · 03=4800×2400 · 04=4640×2240 · 05=4560×2240. PPT/인쇄·확대에서 더 선명(화면상 3x와 체감차는 작음).
+- **질감 미세 다듬기 — 레이아웃·색·수치·문구 0 변경**: ①숫자 `font-variant-numeric:tabular-nums`(자릿수 폭 정렬) ②`text-rendering:optimizeLegibility` ③카드 `box-shadow` 1겹→2겹(앰비언트+키, 가장자리 깊이).
+- **빌드 견고화 (중요)**: 실행 중 Chrome 이 있으면 구형 `--headless`+기본 프로필은 그 인스턴스에 붙어 스크린샷이 **no-op** 됨. 그래서 `--headless=new` + **매 실행 새 `--user-data-dir`**(격리 프로필)이 필수. `build.ps1` 은 ASCII 임시폴더에서 렌더 + `Start-Process -Wait`(공백·한글 경로의 인자분할/미대기 회피), `build.sh` 는 `mktemp` 프로필(bash 는 포그라운드 대기).
+
+### 2026-07-01 — PPT 품질 업그레이드
 
 - **PPT 품질 업그레이드 완료**: 5장 전부 ①Pretendard 폰트 ②2x→3x 고해상도 ③여백·그림자·정렬 미세 다듬기. **수치·문구 등 내용은 원본과 동일하게 유지.**
 - 01·02·05 는 원본 PNG(맑은고딕·2x)를 보고 HTML 로 재구성. 03·04 는 기존 소스에 폰트 교체 + 다듬기.

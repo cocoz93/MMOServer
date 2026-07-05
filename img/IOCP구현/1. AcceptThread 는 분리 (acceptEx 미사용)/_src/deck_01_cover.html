@@ -8,100 +8,56 @@
     font-weight:100 900;font-style:normal;font-display:block}
   *{box-sizing:border-box;margin:0;padding:0}
   :root{
-    --bg:#eef1f5; --bg2:#e6eaf1; --card:#ffffff; --ink:#1a1e2a; --sub:#3a4254; --muted:#7c8597; --faint:#9aa3b2;
-    --line:#eef0f3; --line2:#f2f4f7; --track:#e8ecf2;
+    --bg:#eef1f5; --card:#ffffff; --ink:#1a1e2a; --sub:#3a4254; --muted:#7c8597; --faint:#9aa3b2;
+    --line:#eef0f3; --track:#e8ecf2;
     --red:#d7263d; --deep:#b3122a; --red-bg:#fdeef0; --red-line:#f4c4cc;
     --blue:#3a78b8; --blue-ink:#2b6aa8; --blue-deep:#1f5088; --blue-bg:#e7f0fa; --blue-line:#cfe0f2; --slate:#566072;
     --mono:"SF Mono",ui-monospace,"Cascadia Mono","Consolas",monospace;
-    --sh-card:
-      0 0 0 1px rgba(30,40,70,.02),
-      0 2px 4px -1px rgba(30,40,70,.05),
-      0 10px 20px -6px rgba(30,40,70,.07),
-      0 26px 44px -16px rgba(30,40,70,.12),
-      0 52px 92px -40px rgba(24,32,58,.28),
-      inset 0 1px 0 rgba(255,255,255,.95);
-    --grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+    --sh-card:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
   }
-  html,body{width:1600px;height:900px;overflow:hidden;
-    background:
-      radial-gradient(1240px 680px at 8% -18%, #ffffff, rgba(255,255,255,0) 58%),
-      radial-gradient(900px 620px at 108% 118%, rgba(58,120,184,.10), rgba(58,120,184,0) 60%),
-      radial-gradient(700px 520px at 100% -10%, rgba(215,38,61,.05), rgba(215,38,61,0) 60%),
-      linear-gradient(142deg,var(--bg),var(--bg2));
+  html,body{width:1600px;height:900px;overflow:hidden;background:var(--bg);
     font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;color:var(--ink);
     word-break:keep-all;overflow-wrap:break-word;
     font-feature-settings:"tnum" 1,"kern" 1,"calt" 1,"ss01" 1;
-    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;font-variant-numeric:tabular-nums}
 
-  .card{position:absolute;inset:28px;border-radius:32px;overflow:hidden;
-    background:
-      radial-gradient(circle at 1px 1px, rgba(43,106,168,.045) 1px, transparent 1.4px) 0 0/30px 30px,
-      radial-gradient(680px 460px at 102% -6%, rgba(215,38,61,.035), transparent 58%),
-      radial-gradient(760px 520px at -6% 108%, rgba(43,106,168,.05), transparent 60%),
-      linear-gradient(180deg,#ffffff,#fbfcfe);
-    border:1px solid rgba(30,40,70,.06);box-shadow:var(--sh-card);
+  .card{position:absolute;inset:28px;border-radius:30px;overflow:hidden;
+    background:var(--card);border:1px solid var(--line);box-shadow:var(--sh-card);
     padding:64px 76px;display:flex;flex-direction:column}
-  /* 미세 그레인 텍스처 (인쇄 질감) */
-  .card::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
-    background-image:var(--grain);background-size:180px 180px;opacity:.028;mix-blend-mode:soft-light}
-  /* 상단 헤어라인 그라디언트 악센트 */
-  .card::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;
-    background:linear-gradient(90deg,var(--deep),var(--red) 22%,#f2647a 42%,rgba(242,100,122,0) 82%)}
-
-  /* 우측 모티프 — IOCP 완료 링 + 노드 */
-  .motif{position:absolute;right:-30px;top:118px;width:600px;height:600px;pointer-events:none;z-index:0}
-  .motif .ring{position:absolute;border-radius:50%}
-  .r1{inset:0;background:radial-gradient(circle,rgba(58,120,184,.11),rgba(58,120,184,0) 60%)}
-  .r2{inset:96px;border:1.5px solid;border-color:rgba(43,106,168,.16) rgba(43,106,168,.05) rgba(43,106,168,.05) rgba(43,106,168,.16)}
-  .r3{inset:176px;border:1.5px dashed rgba(43,106,168,.18)}
-  .r4{inset:250px;border:1.5px solid rgba(215,38,61,.14)}
-  .mnode{position:absolute;border-radius:50%}
-  .mnode.b{width:22px;height:22px;background:radial-gradient(circle at 34% 28%,#6aa3d6,#2b6aa8);
-    box-shadow:0 10px 22px -6px rgba(43,106,168,.55),0 0 0 8px rgba(43,106,168,.07)}
-  .mnode.b2{width:15px;height:15px;background:radial-gradient(circle at 34% 28%,#8fbde6,#3a78b8);
-    box-shadow:0 8px 16px -6px rgba(43,106,168,.5),0 0 0 6px rgba(43,106,168,.06)}
-  .mnode.r{width:18px;height:18px;background:radial-gradient(circle at 34% 28%,#f2647a,#c81c33);
-    box-shadow:0 10px 20px -6px rgba(200,28,51,.55),0 0 0 7px rgba(215,38,61,.07)}
 
   .top{display:flex;align-items:center;justify-content:space-between;position:relative;z-index:2}
   .eyebrow{display:inline-flex;align-items:center;gap:11px;font-size:16px;font-weight:800;letter-spacing:2.6px;color:var(--muted);text-transform:uppercase}
-  .eyebrow .d{width:9px;height:9px;border-radius:50%;background:radial-gradient(circle at 34% 30%,#f2647a,var(--red));box-shadow:0 0 0 4px var(--red-bg),0 4px 8px -2px rgba(215,38,61,.5)}
+  .eyebrow .d{width:9px;height:9px;border-radius:50%;background:var(--red)}
   .pageno{font-size:15px;font-weight:800;color:var(--faint);letter-spacing:1.5px}
   .pageno b{color:var(--ink)}
 
   .mid{margin-top:auto;margin-bottom:auto;position:relative;z-index:2}
   .kicker-tag{display:inline-flex;align-items:center;gap:9px;
-    background:linear-gradient(180deg,#f2f8ff,var(--blue-bg));color:var(--blue-deep);
-    border:1px solid var(--blue-line);border-radius:999px;padding:8px 17px;font-size:16px;font-weight:800;letter-spacing:-.2px;margin-bottom:26px;
-    box-shadow:0 6px 14px -8px rgba(43,106,168,.4),inset 0 1px 0 rgba(255,255,255,.8)}
-  .kicker-tag .kd{width:7px;height:7px;border-radius:50%;background:var(--blue-ink);box-shadow:0 0 0 3px rgba(43,106,168,.15)}
+    background:var(--blue-bg);color:var(--blue-ink);
+    border:1px solid var(--blue-line);border-radius:999px;padding:8px 17px;font-size:16px;font-weight:800;letter-spacing:-.2px;margin-bottom:26px}
+  .kicker-tag .kd{width:7px;height:7px;border-radius:50%;background:var(--blue-ink)}
   .title{font-size:90px;line-height:1.02;font-weight:800;letter-spacing:-3.6px;color:var(--ink)}
-  .title .r{position:relative;color:var(--red);
-    background:linear-gradient(180deg,#e83a4f,var(--deep));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .title .r{color:var(--red)}
   .title .sm{display:block;font-size:39px;font-weight:700;letter-spacing:-1.4px;color:var(--slate);margin-top:16px}
   .title .sm .mono{font-family:var(--mono);font-weight:800;color:var(--deep);letter-spacing:-1px}
-  .uline{width:112px;height:7px;border-radius:4px;margin:30px 0 24px;position:relative;
-    background:linear-gradient(90deg,var(--deep),var(--red) 45%,#f9899b);
-    box-shadow:0 8px 18px -5px rgba(215,38,61,.55)}
-  .uline::after{content:"";position:absolute;left:0;top:0;height:100%;width:38px;border-radius:4px;background:var(--deep)}
+  .uline{width:100px;height:6px;border-radius:3px;margin:30px 0 24px;background:var(--red)}
   .sub{font-size:25px;font-weight:500;color:var(--muted);line-height:1.52;letter-spacing:-.4px;max-width:960px}
   .sub b{color:var(--sub);font-weight:700}
 
   .contents{margin-top:auto;display:flex;gap:16px;position:relative;z-index:2}
-  .ci{flex:1;position:relative;overflow:hidden;background:linear-gradient(180deg,#ffffff,#f8fafd);
+  .ci{flex:1;position:relative;overflow:hidden;background:var(--card);
     border:1px solid var(--line);border-radius:18px;padding:22px 24px;display:flex;align-items:center;gap:16px;
-    box-shadow:0 1px 2px rgba(30,40,70,.04),0 12px 26px -14px rgba(30,40,70,.20),inset 0 1px 0 rgba(255,255,255,.9)}
-  .ci::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#5b96cf,var(--blue-ink))}
+    box-shadow:0 1px 3px rgba(30,40,70,.05),0 8px 22px -14px rgba(30,40,70,.14)}
+  .ci::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--blue-ink)}
   .ci .no{flex:0 0 auto;width:42px;height:42px;border-radius:12px;
-    background:linear-gradient(145deg,#5b96cf,#2b6aa8);color:#fff;font-size:18px;font-weight:800;
-    display:flex;align-items:center;justify-content:center;font-family:var(--mono);
-    box-shadow:0 8px 16px -6px rgba(31,80,136,.6),inset 0 1px 0 rgba(255,255,255,.4),inset 0 -2px 4px rgba(0,0,0,.14)}
+    background:var(--blue-ink);color:#fff;font-size:18px;font-weight:800;
+    display:flex;align-items:center;justify-content:center;font-family:var(--mono)}
   .ci .tx{display:flex;flex-direction:column;gap:3px}
   .ci .tx .t{font-size:18px;font-weight:800;color:var(--ink);letter-spacing:-.3px}
   .ci .tx .s{font-size:14px;font-weight:600;color:var(--muted);letter-spacing:-.2px}
-  .ci.accent{border-color:var(--red-line);background:linear-gradient(180deg,#fffbfb,#fdf1f3)}
-  .ci.accent::before{background:linear-gradient(180deg,#ef5568,var(--deep))}
-  .ci.accent .no{background:linear-gradient(145deg,#ef5568,#b3122a);box-shadow:0 8px 16px -6px rgba(179,18,42,.55),inset 0 1px 0 rgba(255,255,255,.4),inset 0 -2px 4px rgba(0,0,0,.14)}
+  .ci.accent{border-color:var(--red-line);background:#fdf1f3}
+  .ci.accent::before{background:var(--deep)}
+  .ci.accent .no{background:var(--deep)}
 
   .foot{margin-top:30px;padding-top:18px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;
     font-size:16px;color:var(--faint);font-weight:500;letter-spacing:-.2px;position:relative;z-index:2}
@@ -111,14 +67,6 @@
 </head>
 <body>
   <div class="card">
-    <div class="motif">
-      <div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div><div class="ring r4"></div>
-      <div class="mnode b"  style="top:70px;left:292px"></div>
-      <div class="mnode b2" style="top:250px;left:44px"></div>
-      <div class="mnode r"  style="top:322px;right:70px"></div>
-      <div class="mnode b2" style="bottom:96px;left:238px"></div>
-    </div>
-
     <div class="top">
       <div class="eyebrow"><span class="d"></span>IOCP 네트워크 라이브러리 · 아키텍처 노트</div>
       <div class="pageno"><b>01</b> / 04</div>

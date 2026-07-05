@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#fff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --slate:#566072;
+    --ok:#16a34a; --ok-deep:#0f7a37; --amber:#e08a1e; --amber-deep:#b56b0c;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1180px;height:620px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1132px;height:572px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:30px 56px 0}
+
+  .title{font-size:36px;font-weight:800;color:var(--ink);letter-spacing:-.6px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:80px;height:6px;border-radius:3px;background:var(--red);margin-top:12px}
+  .sub{margin-top:12px;font-size:19px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .cards{margin-top:22px;display:grid;grid-template-columns:repeat(3,1fr);column-gap:26px}
+  .vcard{border-radius:18px;border:1.5px solid #e7ebf1;background:#fff;padding:18px 22px 20px;position:relative;overflow:hidden;
+    box-shadow:0 5px 16px rgba(30,40,70,.05);min-height:214px}
+  .vcard::before{content:"";position:absolute;top:0;left:0;right:0;height:5px}
+  .vcard.ok::before{background:var(--ok)} .vcard.warn::before{background:var(--amber)}
+
+  .vbadge{display:inline-flex;align-items:center;gap:9px;font-size:20px;font-weight:800;letter-spacing:-.4px;padding:5px 4px}
+  .vcard.ok .vbadge{color:var(--ok-deep)} .vcard.warn .vbadge{color:var(--amber-deep)}
+  .ic{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:17px;font-weight:900;flex:0 0 auto}
+  .vcard.ok .ic{background:var(--ok)} .vcard.warn .ic{background:var(--amber)}
+
+  .mlabel{margin-top:15px;font-size:14px;font-weight:800;color:#9aa3b2;letter-spacing:.3px}
+  .measure{margin-top:4px;font-size:17px;font-weight:600;color:var(--slate);letter-spacing:-.3px;line-height:1.3}
+  .result{margin-top:14px;font-size:29px;font-weight:800;color:var(--ink);letter-spacing:-.8px;line-height:1.05}
+  .result b{color:var(--ink)}
+  .vcard.ok .hl{color:var(--ok-deep)} .vcard.warn .hl{color:var(--amber-deep)}
+  .note{margin-top:8px;font-size:14.5px;font-weight:600;color:#8a93a5;letter-spacing:-.2px}
+
+  .funnel{display:flex;justify-content:center;margin-top:4px}
+  .funnel svg{overflow:visible}
+
+  .concl{margin-top:2px;border-radius:18px;background:linear-gradient(180deg,#fdeef0,#fce4e8);border:1.6px solid #f2b8c0;
+    padding:16px 30px;display:flex;align-items:center;justify-content:center;gap:22px;box-shadow:0 8px 24px rgba(215,38,61,.12)}
+  .concl .lead{font-size:16px;font-weight:800;color:var(--red);letter-spacing:-.2px;text-align:center;line-height:1.2;flex:0 0 auto}
+  .concl .big{font-size:34px;font-weight:800;color:var(--deep);letter-spacing:-1.2px;line-height:1;white-space:nowrap}
+  .concl .big .u{font-size:22px;font-weight:800}
+  .concl .tail{font-size:16.5px;font-weight:700;color:#8a4550;letter-spacing:-.3px;line-height:1.28}
+  .concl .tail b{color:var(--red);font-weight:800}
+  .concl .vdiv{width:1.5px;height:46px;background:#f2b8c0;flex:0 0 auto}
+
+  .foot{position:absolute;left:56px;right:56px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
+    font-size:15.5px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title"><span class="r">3축</span>이 한 곳을 가리킨다 — 회선 상한 474 Mbps</div>
+    <div class="uline"></div>
+    <div class="sub">서버·클라는 <b>결백</b>. 남는 용의자는 경로(회선) 하나 — overflow는 결함이 아닌 <b>포화 artifact</b></div>
+
+    <div class="cards">
+      <div class="vcard ok">
+        <div class="vbadge"><span class="ic">✓</span>서버 결백</div>
+        <div class="mlabel">측정</div>
+        <div class="measure">단일 PC(loopback) 실행</div>
+        <div class="result">overflow <span class="hl">0</span></div>
+        <div class="note">PC 분리 때만 발생 → 서버 코드 무죄</div>
+      </div>
+      <div class="vcard ok">
+        <div class="vbadge"><span class="ic">✓</span>클라 결백</div>
+        <div class="mlabel">측정</div>
+        <div class="measure">더미 클라 내장 metric</div>
+        <div class="result">recv <span class="hl">49 MB/s</span> 정상</div>
+        <div class="note">recv_overflow 0.15/s → 수신 멀쩡</div>
+      </div>
+      <div class="vcard warn">
+        <div class="vbadge"><span class="ic">!</span>경로가 포화</div>
+        <div class="mlabel">측정</div>
+        <div class="measure">부하 중 RTT · throughput</div>
+        <div class="result">RTT p99 <span class="hl">1초</span></div>
+        <div class="note">~400 Mbps 평탄(bufferbloat) → 완료 1초 지연</div>
+      </div>
+    </div>
+
+    <div class="funnel">
+      <svg width="720" height="52" viewBox="0 0 720 52">
+        <path d="M120 3 L356 40" stroke="#c2c9d6" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M360 3 L360 40" stroke="#c2c9d6" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M600 3 L364 40" stroke="#c2c9d6" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <path d="M360 30 L360 46" stroke="#d7263d" stroke-width="5" fill="none" stroke-linecap="round"/>
+        <path d="M349 40 L360 54 L371 40 Z" fill="#d7263d"/>
+      </svg>
+    </div>
+
+    <div class="concl">
+      <div class="lead">회선 상한<br>Ookla speedtest</div>
+      <div class="vdiv"></div>
+      <div class="big">473.94 <span class="u">Mbps</span></div>
+      <div class="vdiv"></div>
+      <div class="tail">업로드·loss 0% = 정상 포화<br><b>→ 이 상한이 곧 송신 천장</b></div>
+    </div>
+
+    <div class="foot">'최대 동접 ≈ 1000'도 서버 성능이 아닌 <b>회선 한계</b> · iperf3 정밀측정은 loopback 0 + speedtest 일치로 결론 확정돼 생략</div>
+  </div>
+</body>
+</html>

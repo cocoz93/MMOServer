@@ -2,26 +2,43 @@
 # Use this if you prefer PowerShell over: bash build.sh
 # Usage:  powershell -ExecutionPolicy Bypass -File build.ps1
 #
-# logical size x DSF3 = final resolution (high-res for PPT, Pretendard embedded):
-#   01 : 780x560   -> 2340x1680   (01_enqueue_62ns.png)
-#   02 : 940x680   -> 2820x2040   (02_ab_normalized.png)
-#   03 : 1200x600  -> 3600x1800   (03_before_after.png)
-#   04 : 1160x560  -> 3480x1680   (04_spsc.png)
-#   05 : 1140x560  -> 3420x1680   (05_dilution.png)
-$ErrorActionPreference = 'Stop'
+# logical size x DSF4 = final resolution (high-res for PPT, Pretendard embedded):
+#   01 : 780x560   -> 3120x2240   (01_enqueue_62ns.png)
+#   02 : 940x680   -> 3760x2720   (02_ab_normalized.png)
+#   03 : 1200x600  -> 4800x2400   (03_before_after.png)
+#   04 : 1160x560  -> 4640x2240   (04_spsc.png)
+#   05 : 1140x560  -> 4560x2240   (05_dilution.png)
 $dir = $PSScriptRoot
 
 $chrome = "C:\Program Files\Google\Chrome\Application\chrome.exe"
 if (-not (Test-Path $chrome)) { $chrome = "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" }
 if (-not (Test-Path $chrome)) { throw "Chrome/Edge not found" }
 
+# Render inside an ASCII temp dir. The source folder name has spaces + Korean, which:
+#   (1) makes the file:// URL / --screenshot arg word-split under Start-Process ("Multiple targets" error), and
+#   (2) chrome.exe is a GUI-subsystem app, so PowerShell '&' does NOT wait for the render to finish.
+# A fresh per-run profile (GUID) prevents attaching to a running Chrome / stale instance (screenshot no-op).
+$render = Join-Path $env:TEMP "ig-render"
+$profileDir = Join-Path $env:TEMP ("ig-prof-" + [Guid]::NewGuid().ToString('N').Substring(0,8))
+if (Test-Path $render) { Remove-Item $render -Recurse -Force }
+New-Item -ItemType Directory -Path $render -Force | Out-Null
+Copy-Item (Join-Path $dir "*.html") $render -Force
+Copy-Item (Join-Path $dir "fonts")  $render -Recurse -Force
+
 function Render($name, $w, $h, $out) {
-  $png = Join-Path $dir "$name.png"
+  $png = Join-Path $render "$name.png"
   if (Test-Path $png) { Remove-Item $png -Force }
-  $url = "file:///" + ($dir -replace '\\','/') + "/$name.html"
-  & $chrome --headless --disable-gpu --hide-scrollbars --allow-file-access-from-files --force-device-scale-factor=3 "--screenshot=$png" "--window-size=$w,$h" $url
+  $url = "file:///" + ($render -replace '\\','/') + "/$name.html"
+  $chromeArgs = @(
+    '--headless=new','--disable-gpu','--hide-scrollbars','--allow-file-access-from-files',
+    "--user-data-dir=$profileDir",'--force-device-scale-factor=4',
+    "--screenshot=$png","--window-size=$w,$h",$url
+  )
+  # Start-Process -Wait: synchronous, so the PNG exists before we copy it out.
+  Start-Process -FilePath $chrome -ArgumentList $chromeArgs -NoNewWindow -Wait
+  if (-not (Test-Path $png)) { throw "render failed: $name (no screenshot produced)" }
   Copy-Item $png (Join-Path $dir "..\$out") -Force
-  Write-Host "  built  ..\$out  (logical ${w}x${h}, 3x output)"
+  Write-Host "  built  ..\$out  (logical ${w}x${h}, 4x output)"
 }
 
 Write-Host "[build] using: $chrome"
@@ -30,4 +47,6 @@ Render "02" 940 680 "02_ab_normalized.png"
 Render "03" 1200 600 "03_before_after.png"
 Render "04" 1160 560 "04_spsc.png"
 Render "05" 1140 560 "05_dilution.png"
+Remove-Item $render -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item $profileDir -Recurse -Force -ErrorAction SilentlyContinue
 Write-Host "[build] done."

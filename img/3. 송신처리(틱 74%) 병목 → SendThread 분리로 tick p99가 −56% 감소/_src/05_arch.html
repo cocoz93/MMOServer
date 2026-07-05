@@ -1,0 +1,158 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<link rel="stylesheet" href="common.css">
+<style>
+  :root{ --violet-deep:#7c3aed; --mono:'SFMono-Regular',ui-monospace,'Cascadia Mono','Consolas',monospace; }
+  .card{ padding:34px 52px; overflow:visible; }
+  .m{ font-family:var(--mono); font-weight:700; letter-spacing:-.3px; }
+
+  .eyebrow{ background:linear-gradient(135deg,#e7effe,#d9e6fd); color:#1d4ed8; border-color:#bcd2fb;
+            box-shadow:0 4px 10px -5px rgba(37,99,235,.4); letter-spacing:.3px; }
+  .h-title{ font-size:41px; letter-spacing:-2px; }
+  .h-title .kg{ color:var(--violet-deep); white-space:nowrap;
+                background:linear-gradient(180deg,transparent 60%,#e0ccfa 60% 93%,transparent 93%); padding:0 7px; border-radius:4px; }
+  .h-rule{ width:72px; height:6px; background:linear-gradient(90deg,#2563eb,var(--violet-deep)); box-shadow:0 3px 8px -3px rgba(99,102,241,.55); }
+
+  .body{ align-items:center; }
+  .lanes{ display:grid; width:100%;
+          grid-template-columns:auto 152px auto minmax(200px,1fr) auto minmax(200px,1fr) auto 126px;
+          column-gap:14px; align-items:stretch; }
+  .ra{ grid-row:1; } .rb{ grid-row:3; }
+  .x1{grid-column:1} .x2{grid-column:2} .x3{grid-column:3} .x4{grid-column:4}
+  .x5{grid-column:5} .x6{grid-column:6} .x7{grid-column:7} .x8{grid-column:8}
+
+  /* ── 구분선 ── */
+  .split{ grid-column:1 / 9; grid-row:2; display:flex; align-items:center; gap:14px; margin:19px 4px; }
+  .split .ln{ flex:1; height:2px; border-radius:2px; background:linear-gradient(90deg,transparent,#c7d0dd 12%,#c7d0dd 88%,transparent); }
+  .split .lbl{ display:inline-flex; align-items:center; gap:7px; font-size:13px; font-weight:800; color:#475569; letter-spacing:-.2px;
+               background:#fff; border:1px solid #dbe2ea; padding:6px 16px; border-radius:999px; white-space:nowrap;
+               box-shadow:0 6px 14px -7px rgba(15,23,42,.3); }
+
+  /* ── 레인 태그 ── */
+  .lane-tag{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:7px; padding:0 15px;
+             font-size:18px; font-weight:900; border-radius:16px; letter-spacing:-.5px; color:#fff;
+             box-shadow:0 11px 22px -11px rgba(15,23,42,.55); }
+  .lane-tag .dot{ width:9px; height:9px; border-radius:50%; background:#fff; opacity:.95; }
+  .lane-tag.b{ background:linear-gradient(160deg,#f4574f,#d81f1f); }
+  .lane-tag.a{ background:linear-gradient(160deg,#13bd84,#059669); }
+
+  /* ── 노드 ── */
+  .node{ border-radius:19px; padding:17px 14px; position:relative;
+         display:flex; flex-direction:column; align-items:center; justify-content:center; gap:9px; min-height:128px;
+         box-shadow:0 1px 0 rgba(255,255,255,.85) inset, 0 2px 6px -1px rgba(15,23,42,.14), 0 15px 26px -14px rgba(15,23,42,.44); }
+  .ic{ width:44px; height:44px; border-radius:13px; display:flex; align-items:center; justify-content:center;
+       box-shadow:0 8px 16px -5px rgba(15,23,42,.42), 0 1px 0 rgba(255,255,255,.4) inset; }
+  .nt{ font-size:20px; font-weight:900; letter-spacing:-.6px; line-height:1.1; }
+  .tag{ font-size:12.5px; font-weight:800; padding:4px 13px; border-radius:999px; letter-spacing:-.2px; white-space:nowrap; }
+  .tag .hi{ font-weight:900; }
+
+  .node.side{ background:linear-gradient(165deg,#eef3f8,#dae3ed); border:1.5px solid #bccadb; }
+  .node.side .ic{ background:linear-gradient(160deg,#6b7c93,#4c5c72); }
+  .node.side .nt{ color:#2c3a4e; }
+
+  .node.game{ background:linear-gradient(165deg,#fff3d2,#fde3a6); border:1.5px solid #eec870; }
+  .node.game .ic{ background:linear-gradient(160deg,#f0a021,#d97706); }
+  .node.game .nt{ color:#b45309; }
+  .node.game .tag{ color:#9a6410; background:#fdecc2; border:1px solid #f0d485; }
+  .node.game.hot{ background:linear-gradient(165deg,#ffe5df,#ffc6ba); border:1.6px solid #f2a08f;
+                  box-shadow:0 1px 0 rgba(255,255,255,.7) inset, 0 3px 8px -1px rgba(220,38,38,.24), 0 17px 30px -15px rgba(220,38,38,.52); }
+  .node.game.hot .ic{ background:linear-gradient(160deg,#ef4444,#c81e1e); }
+  .node.game.hot .nt{ color:#c81e1e; }
+  .node.game.hot .tag{ color:#b31d1d; background:#ffd9d1; border:1px solid #f6b6a8; }
+  .node.game.hot .tag .hi{ color:#dc2626; }
+
+  .node.send{ background:linear-gradient(165deg,#ede0fb,#d5bcf6); border:1.8px solid #b48ee9;
+              box-shadow:0 1px 0 rgba(255,255,255,.8) inset, 0 3px 9px -1px rgba(124,58,237,.3), 0 18px 32px -15px rgba(124,58,237,.62); }
+  .node.send .ic{ background:linear-gradient(160deg,#8b5cf6,#6d28d9); }
+  .node.send .nt{ color:#6d28d9; }
+  .node.send .tag{ color:#6d28d9; background:#e6d6fb; border:1px solid #cbaef2; }
+
+  /* ── 비용 뱃지 ── */
+  .cbadge{ position:absolute; top:-13px; left:50%; transform:translateX(-50%); z-index:5; color:#fff; width:auto; height:auto;
+           font-size:12.5px; font-weight:900; padding:5px 15px; border-radius:999px; white-space:nowrap; letter-spacing:-.3px; }
+  .cbadge.red{ background:linear-gradient(135deg,#f5455c,#c81e1e); box-shadow:0 9px 17px -5px rgba(200,30,30,.6); }
+  .cbadge.grn{ background:linear-gradient(135deg,#17b57e,#047857); box-shadow:0 9px 17px -5px rgba(4,120,87,.55); }
+
+  /* ── 커넥터 ── */
+  .conn{ display:flex; align-items:center; justify-content:center; }
+  .conn svg{ display:block; }
+  .conn.key{ flex-direction:column; gap:8px; }
+  .conn.key .lbl{ font-size:11.5px; font-weight:900; color:#fff; letter-spacing:-.2px;
+                  background:linear-gradient(135deg,#8b5cf6,#7c3aed); padding:4px 12px; border-radius:999px; white-space:nowrap;
+                  box-shadow:0 7px 15px -5px rgba(124,58,237,.6); }
+  /* 전용 긴 화살표(전: 직접 송신) */
+  .longarrow{ grid-column:5 / 8; grid-row:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:9px; }
+  .longarrow .lbl{ font-size:12px; font-weight:900; color:#c81e1e; letter-spacing:-.2px; }
+  .longarrow .lbl .m{ font-size:11.5px; }
+  .longarrow .bar{ position:relative; width:100%; height:3px; border-radius:3px; background:linear-gradient(90deg,#f6b0b0,#dc2626); }
+  .longarrow .bar::after{ content:""; position:absolute; right:-1px; top:50%; transform:translateY(-50%);
+                          border-left:13px solid #dc2626; border-top:8px solid transparent; border-bottom:8px solid transparent; }
+</style></head>
+<body><div class="card">
+  <div class="eyebrow">
+    <svg class="svg-ic" width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 7h13m0 0l-4-4m4 4l-4 4M20 17H7m0 0l4-4m-4 4l4 4" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    아키텍처 · 송신 경로 재배치
+  </div>
+  <div class="h-title">송신을 게임 스레드 밖 <span class="kg">전용 SendThread</span>로</div>
+  <div class="h-rule"></div>
+
+  <div class="body">
+    <div class="lanes">
+
+      <!-- 변경 전 (row 1) -->
+      <div class="lane-tag b ra x1"><span class="dot"></span>변경 전</div>
+      <div class="node side ra x2">
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="5" y="5" width="14" height="14" rx="3" stroke="#fff" stroke-width="2"/><rect x="9.2" y="9.2" width="5.6" height="5.6" rx="1.4" fill="#fff"/><path d="M9 2.5v2.5M15 2.5v2.5M9 19v2.5M15 19v2.5M2.5 9H5M2.5 15H5M19 9h2.5M19 15h2.5" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div>
+        <div class="nt">워커 풀</div>
+      </div>
+      <div class="conn ra x3"><svg width="28" height="16" viewBox="0 0 28 16" fill="none"><defs><linearGradient id="gA" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#b3bfce"/><stop offset="1" stop-color="#7c8ba0"/></linearGradient></defs><line x1="1" y1="8" x2="16" y2="8" stroke="url(#gA)" stroke-width="3" stroke-linecap="round"/><path d="M15 3l10 5-10 5z" fill="#7c8ba0"/></svg></div>
+      <div class="node game hot ra x4">
+        <div class="cbadge red">틱 74% · 14.56ms</div>
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M21 12a9 9 0 11-2.64-6.36" stroke="#fff" stroke-width="2.1" stroke-linecap="round"/><path d="M21 4v4.2h-4.2" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="nt">게임 스레드</div>
+        <div class="tag">누적 <span class="hi">+ 송신</span></div>
+      </div>
+      <div class="longarrow"><span class="lbl"><span class="m">WSASend</span> 직접</span><span class="bar"></span></div>
+      <div class="node side ra x8">
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9.2" stroke="#fff" stroke-width="2"/><path d="M3 12h18M12 2.8c2.4 2.5 3.4 5.8 3.4 9.2s-1 6.7-3.4 9.2c-2.4-2.5-3.4-5.8-3.4-9.2S9.6 5.3 12 2.8z" stroke="#fff" stroke-width="2"/></svg></div>
+        <div class="nt">커널</div>
+      </div>
+
+      <!-- 구분선 (row 2) -->
+      <div class="split">
+        <span class="ln"></span>
+        <span class="lbl"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 5v13m0 0l-6-6m6 6l6-6" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>송신만 전용 스레드로 분리</span>
+        <span class="ln"></span>
+      </div>
+
+      <!-- 변경 후 (row 3) -->
+      <div class="lane-tag a rb x1"><span class="dot"></span>변경 후</div>
+      <div class="node side rb x2">
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="5" y="5" width="14" height="14" rx="3" stroke="#fff" stroke-width="2"/><rect x="9.2" y="9.2" width="5.6" height="5.6" rx="1.4" fill="#fff"/><path d="M9 2.5v2.5M15 2.5v2.5M9 19v2.5M15 19v2.5M2.5 9H5M2.5 15H5M19 9h2.5M19 15h2.5" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></div>
+        <div class="nt">워커 풀</div>
+      </div>
+      <div class="conn rb x3"><svg width="28" height="16" viewBox="0 0 28 16" fill="none"><line x1="1" y1="8" x2="16" y2="8" stroke="url(#gA)" stroke-width="3" stroke-linecap="round"/><path d="M15 3l10 5-10 5z" fill="#7c8ba0"/></svg></div>
+      <div class="node game rb x4">
+        <div class="cbadge grn">−14ms</div>
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M21 12a9 9 0 11-2.64-6.36" stroke="#fff" stroke-width="2.1" stroke-linecap="round"/><path d="M21 4v4.2h-4.2" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="nt">게임 스레드</div>
+        <div class="tag">누적만</div>
+      </div>
+      <div class="conn key rb x5">
+        <span class="lbl"><span class="m">sessionId</span> 배치</span>
+        <svg width="34" height="16" viewBox="0 0 34 16" fill="none"><defs><linearGradient id="gV" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#a882f0"/><stop offset="1" stop-color="#7c3aed"/></linearGradient></defs><line x1="1" y1="8" x2="20" y2="8" stroke="url(#gV)" stroke-width="3.4" stroke-linecap="round"/><path d="M19 2.5l12 5.5-12 5.5z" fill="#7c3aed"/></svg>
+      </div>
+      <div class="node send rb x6">
+        <div class="ic"><svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M21.5 2.5L11 13M21.5 2.5l-6.8 19-3.7-8.5-8.5-3.7 19-6.8z" stroke="#fff" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg></div>
+        <div class="nt">SendThread</div>
+        <div class="tag">송신 전담</div>
+      </div>
+      <div class="conn rb x7"><svg width="28" height="16" viewBox="0 0 28 16" fill="none"><line x1="1" y1="8" x2="16" y2="8" stroke="url(#gA)" stroke-width="3" stroke-linecap="round"/><path d="M15 3l10 5-10 5z" fill="#7c8ba0"/></svg></div>
+      <div class="node side rb x8">
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9.2" stroke="#fff" stroke-width="2"/><path d="M3 12h18M12 2.8c2.4 2.5 3.4 5.8 3.4 9.2s-1 6.7-3.4 9.2c-2.4-2.5-3.4-5.8-3.4-9.2S9.6 5.3 12 2.8z" stroke="#fff" stroke-width="2"/></svg></div>
+        <div class="nt">커널</div>
+      </div>
+
+    </div>
+  </div>
+  <div class="foot">1,000 동접 · 토글 <b class="m">USE_SEND_THREAD</b> A/B · 전체 CPU 비증가 → <b>채택</b></div>
+</div></body></html>

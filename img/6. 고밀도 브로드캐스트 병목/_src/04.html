@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --axis:#2f5fd0;
+    --gray-bar:#c8d0dc; --gray-deep:#aab4c3;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1160px;height:660px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1112px;height:612px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:32px 52px 0}
+
+  .title{font-size:37px;font-weight:800;color:var(--ink);letter-spacing:-.7px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:74px;height:6px;border-radius:3px;background:var(--red);margin-top:12px}
+  .sub{margin-top:12px;font-size:19px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+  .sub .ok{color:#0f7a37;font-weight:800}
+
+  .chart{margin-top:20px}
+  .plot{display:grid;grid-template-columns:repeat(4,1fr);column-gap:34px;height:322px;align-items:end;padding:0 6px}
+  .col{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end}
+  .pct{font-size:37px;font-weight:800;color:var(--red);line-height:1;margin-bottom:14px;letter-spacing:-1.5px}
+  .pair{display:flex;align-items:flex-end;justify-content:center;gap:18px;width:100%;height:258px}
+  .barwrap{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;flex:0 0 auto;width:74px}
+  .v{font-size:16px;font-weight:800;letter-spacing:-.4px;margin-bottom:8px;white-space:nowrap}
+  .v.off{color:#8791a3} .v.on{color:var(--red)}
+  .bar{width:74px;border-radius:11px 11px 0 0;display:flex;align-items:flex-end;justify-content:center;padding-bottom:12px}
+  .bar.off{background:linear-gradient(180deg,var(--gray-bar),var(--gray-deep))}
+  .bar.on{background:linear-gradient(180deg,#e6394f,var(--deep));box-shadow:0 -2px 22px rgba(215,38,61,.20)}
+  .bar .in{font-size:14.5px;font-weight:800;letter-spacing:-.2px}
+  .bar.off .in{color:#5c6675} .bar.on .in{color:#fff;opacity:.96}
+
+  .axis{position:relative;height:3px;background:#dfe4ec;border-radius:2px;margin-top:2px}
+
+  .labels{display:grid;grid-template-columns:repeat(4,1fr);column-gap:34px;margin-top:16px;padding:0 6px}
+  .lb{text-align:center}
+  .lb .nm{font-size:22px;font-weight:800;color:var(--ink);letter-spacing:-.5px}
+  .lb .ds{margin-top:4px;font-size:15.5px;font-weight:600;color:var(--muted);letter-spacing:-.3px}
+
+  .foot{position:absolute;left:52px;right:52px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
+    font-size:15px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">결과 — tick p99 <span class="r">57 → 10 ms</span> (−83%)</div>
+    <div class="uline"></div>
+    <div class="sub">A/B · 동접 2000 · 플래그만 변경 · <span class="ok">✅ 채택</span> · 회색 OFF → 빨강 ON</div>
+
+    <div class="chart">
+      <div class="plot">
+        <div class="col">
+          <div class="pct">−83%</div>
+          <div class="pair">
+            <div class="barwrap"><div class="v off">57.4</div><div class="bar off" style="height:100%"><span class="in">OFF</span></div></div>
+            <div class="barwrap"><div class="v on">9.95</div><div class="bar on" style="height:17.3%"><span class="in">ON</span></div></div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="pct">−83%</div>
+          <div class="pair">
+            <div class="barwrap"><div class="v off">19,602</div><div class="bar off" style="height:100%"><span class="in">OFF</span></div></div>
+            <div class="barwrap"><div class="v on">3,310</div><div class="bar on" style="height:16.9%"><span class="in">ON</span></div></div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="pct">−81%</div>
+          <div class="pair">
+            <div class="barwrap"><div class="v off">15.7</div><div class="bar off" style="height:100%"><span class="in">OFF</span></div></div>
+            <div class="barwrap"><div class="v on">3.0</div><div class="bar on" style="height:19.1%"><span class="in">ON</span></div></div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="pct">−67%</div>
+          <div class="pair">
+            <div class="barwrap"><div class="v off">0.50</div><div class="bar off" style="height:100%"><span class="in">OFF</span></div></div>
+            <div class="barwrap"><div class="v on">0.16</div><div class="bar on" style="height:32%"><span class="in">ON</span></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="axis"></div>
+
+      <div class="labels">
+        <div class="lb"><div class="nm">tick p99</div><div class="ds">틱 지연 (ms)</div></div>
+        <div class="lb"><div class="nm">broadcast_calls</div><div class="ds">브로드캐스트 (회/s)</div></div>
+        <div class="lb"><div class="nm">복사 (gathercopy)</div><div class="ds">복사 시간 (ms)</div></div>
+        <div class="lb"><div class="nm">gameloop CPU</div><div class="ds">코어 점유</div></div>
+      </div>
+    </div>
+
+    <div class="foot">막대 높이 = OFF 100 기준 정규화 · 값은 실측 | 트레이드오프: 평균 패킷 19.6→67.1B(+242%, coalescing이 흡수) · syscall(wsa_send) −5%로 거의 불변 → 이득은 <b>복사·CPU</b></div>
+  </div>
+</body>
+</html>

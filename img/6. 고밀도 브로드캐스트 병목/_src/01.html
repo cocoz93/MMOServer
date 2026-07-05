@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --slate:#566072; --track:#eef1f5;
+    --g1:#b7c0cf; --g2:#dbe0e8;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:900px;height:600px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:852px;height:552px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:34px 48px 0}
+
+  .title{font-size:35px;font-weight:800;color:var(--ink);letter-spacing:-.8px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:64px;height:6px;border-radius:3px;background:var(--red);margin-top:14px}
+  .sub{margin-top:14px;font-size:19px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .stage{margin-top:22px;display:grid;grid-template-columns:236px 1fr;column-gap:34px;align-items:center}
+
+  .donutwrap{position:relative;width:224px;height:224px;justify-self:center}
+  .donut{position:absolute;inset:0;border-radius:50%;
+    background:conic-gradient(#ec4a5e 0deg,#c1122c 255.6deg,var(--g1) 255.6deg 327.6deg,var(--g2) 327.6deg 360deg);
+    -webkit-mask:radial-gradient(circle at center,transparent 57%,#000 58%);
+            mask:radial-gradient(circle at center,transparent 57%,#000 58%);
+    filter:drop-shadow(0 8px 20px rgba(215,38,61,.16))}
+  .dlbl{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
+  .dlbl .n{font-size:66px;font-weight:800;color:var(--red);letter-spacing:-3px}
+  .dlbl .c{font-size:15px;font-weight:700;color:var(--slate);margin-top:9px;letter-spacing:-.2px}
+  .dlbl .c2{font-size:13px;font-weight:600;color:var(--muted);margin-top:5px;letter-spacing:-.2px}
+
+  .legend{display:flex;flex-direction:column;gap:21px;padding-right:2px}
+  .row .rt{display:flex;align-items:center;gap:10px}
+  .dot{width:13px;height:13px;border-radius:50%;flex:0 0 auto}
+  .dot.r{background:var(--red)} .dot.g1{background:var(--g1)} .dot.g2{background:var(--g2)}
+  .name{font-size:19px;font-weight:800;color:var(--ink);letter-spacing:-.4px}
+  .name .mut{color:var(--muted);font-weight:600;font-size:16px}
+  .val{margin-top:6px;font-size:16px;font-weight:800;letter-spacing:-.3px;white-space:nowrap}
+  .val.r{color:var(--red)} .val.g{color:#6b7484}
+  .bar{margin-top:8px;height:11px;border-radius:6px;background:var(--track);overflow:hidden}
+  .fill{height:100%;border-radius:6px}
+  .fill.r{background:linear-gradient(90deg,#ec4a5e,var(--red))}
+  .fill.g{background:#c9d0db}
+
+  .foot{position:absolute;left:48px;right:48px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
+    font-size:15px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">고밀도 교전 — 틱의 <span class="r">71%</span>가 '복사'</div>
+    <div class="uline"></div>
+    <div class="sub">틱 목표 <b>40ms</b>인데 p99가 <b>57ms</b>로 초과 · 평균은 예산 안, <b>꼬리만 튐</b></div>
+
+    <div class="stage">
+      <div class="donutwrap">
+        <div class="donut"></div>
+        <div class="dlbl">
+          <span class="n">71%</span>
+          <span class="c">수신자별 복사</span>
+          <span class="c2">틱 최대 소비처</span>
+        </div>
+      </div>
+
+      <div class="legend">
+        <div class="row">
+          <div class="rt"><span class="dot r"></span><span class="name">수신자별 복사 <span class="mut">· 팬아웃 370</span></span></div>
+          <div class="val r">≈ 22 ms · 71% ← 병목</div>
+          <div class="bar"><div class="fill r" style="width:71%"></div></div>
+        </div>
+        <div class="row">
+          <div class="rt"><span class="dot g1"></span><span class="name">게임 로직 <span class="mut">· 이동 · 섹터 · 클램핑</span></span></div>
+          <div class="val g">≈ 6 ms · 20%</div>
+          <div class="bar"><div class="fill g" style="width:20%"></div></div>
+        </div>
+        <div class="row">
+          <div class="rt"><span class="dot g2"></span><span class="name">주변 모으기 + 기타</span></div>
+          <div class="val g">≈ 3 ms · 9%</div>
+          <div class="bar"><div class="fill g" style="width:9%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">동접 2000 · 맵 1개(120×120) · 채널분할 없음 · 틱 ≈31ms(평균) 분해 | 워커 CPU ≈0%, 게임루프 1스레드만 66% — 단일 루프에 막힘</div>
+  </div>
+</body>
+</html>

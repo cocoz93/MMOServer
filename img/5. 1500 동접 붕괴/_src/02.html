@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#fff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --blue:#3a78b8; --blue-ink:#2b6aa8; --slate:#566072;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:600px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:552px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:30px 56px 0}
+
+  .title{font-size:37px;font-weight:800;color:var(--ink);letter-spacing:-.6px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:80px;height:6px;border-radius:3px;background:var(--red);margin-top:12px}
+  .sub{margin-top:12px;font-size:19px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .pipe{margin-top:26px;display:flex;align-items:center;justify-content:space-between}
+
+  .node{width:196px;height:150px;border-radius:18px;border:1.5px solid #e7ebf1;background:#fff;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+    box-shadow:0 5px 16px rgba(30,40,70,.05);position:relative;overflow:hidden}
+  .node::before{content:"";position:absolute;top:0;left:0;right:0;height:5px}
+  .node.b::before{background:var(--blue)} .node.r::before{background:var(--red)}
+  .node .tag{font-size:14px;font-weight:800;padding:3px 13px;border-radius:999px;letter-spacing:-.2px}
+  .node.b .tag{background:#e7f0fa;color:var(--blue-ink)} .node.r .tag{background:#fde7ea;color:var(--red)}
+  .node .t{font-size:23px;font-weight:800;color:var(--ink);letter-spacing:-.5px}
+  .node .s{font-size:14.5px;color:#8a93a5;font-weight:600;letter-spacing:-.2px;text-align:center;line-height:1.3}
+  .node .big{font-size:20px;font-weight:800;color:var(--ink);letter-spacing:-.4px}
+  .node .big .a{color:var(--red)}
+
+  .qcard{width:280px;height:190px;border-radius:20px;border:2px solid #f2c4cb;background:#fff7f8;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:11px;position:relative}
+  .qcard .qt{font-size:18px;font-weight:800;color:var(--ink);letter-spacing:-.3px}
+  .qcard .qt b{color:var(--red)}
+  .slots{display:flex;gap:6px;align-items:center}
+  .slot{width:24px;height:38px;border-radius:6px;border:1.6px solid #e6b9c1;background:#fdeef0}
+  .slot.f{border-color:#a8324a;background:linear-gradient(180deg,#e6394f,var(--deep))}
+  .qcard .over{position:absolute;right:-15px;top:50%;transform:translateY(-50%)}
+  .qcard .qc{font-size:14px;font-weight:700;color:#9a5560;letter-spacing:-.2px}
+
+  .arr{display:flex;flex-direction:column;align-items:center;width:132px}
+  .arr .al{font-size:15px;font-weight:800;letter-spacing:-.3px;text-align:center;line-height:1.25;margin-bottom:6px}
+  .arr .as{font-size:12.5px;font-weight:700;margin-top:5px;letter-spacing:-.2px}
+  .arr.in .al{color:var(--blue-ink)} .arr.in .as{color:#8a93a5}
+  .arr.out .al{color:var(--red)} .arr.out .as{color:#9a5560}
+
+  .client{width:96px;display:flex;flex-direction:column;align-items:center;gap:7px}
+  .client .ico{width:58px;height:58px;border-radius:15px;background:#f1f3f7;border:1.5px solid #e3e7ee;
+    display:flex;align-items:center;justify-content:center;font-size:32px}
+  .client .cl{font-size:16px;font-weight:700;color:var(--slate)}
+
+  .chain{margin-top:40px;display:flex;align-items:center;justify-content:center;gap:13px}
+  .chip{padding:15px 24px;border-radius:14px;font-size:19px;font-weight:600;background:#f3f5f9;color:#46506a;letter-spacing:-.3px;white-space:nowrap}
+  .chip b{font-weight:800;color:var(--ink)}
+  .chip.ok{background:#eaf6ef;color:#2c7a4d} .chip.ok b{color:#0f7a37}
+  .chip.concl{background:#fdeef0;color:#b3122a;border:1.5px solid #f4c4cc} .chip.concl b{color:var(--red)}
+  .chev{color:#c2c9d6;font-size:23px;font-weight:900}
+
+  .foot{position:absolute;left:56px;right:56px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
+    font-size:15.5px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">왜 무너졌나 — 자원이 아니라 <span class="r">송신 경로</span>가 막혔다</div>
+    <div class="uline"></div>
+    <div class="sub">빠르게 쌓이는데(fanout↑) <b>세션당 WSASend는 1개만 in-flight</b> · 빼는 속도가 못 따라가 큐가 넘침</div>
+
+    <div class="pipe">
+      <div class="node b">
+        <div class="tag">생산 · 게임루프</div>
+        <div class="t">밀도 ↑</div>
+        <div class="big">fanout 184 <span class="a">→ 223</span></div>
+        <div class="s">세션당 송신량 급증</div>
+      </div>
+
+      <div class="arr in">
+        <div class="al">빠르게 쌓임</div>
+        <svg width="118" height="30"><path d="M2 15 H92" stroke="#2b6aa8" stroke-width="11" stroke-linecap="round" fill="none"/><path d="M88 2 L116 15 L88 28 Z" fill="#2b6aa8"/></svg>
+        <div class="as">넣기 (Enqueue)</div>
+      </div>
+
+      <div class="qcard">
+        <div class="qt">per-session <b>SendQ 가득</b></div>
+        <div class="slots">
+          <span class="slot f"></span><span class="slot f"></span><span class="slot f"></span><span class="slot f"></span><span class="slot f"></span><span class="slot f"></span>
+          <span class="over"><svg width="46" height="46" viewBox="0 0 46 46"><path d="M0,7 L28,7 L28,0 L46,23 L28,46 L28,39 L0,39 Z" fill="#b3122a"/></svg></span>
+        </div>
+        <div class="qc">넣는 속도 ≫ 빼는 속도 → overflow</div>
+      </div>
+
+      <div class="arr out">
+        <div class="al">1개씩만 · 느림</div>
+        <svg width="118" height="16"><path d="M2 8 H92" stroke="#d7263d" stroke-width="3" stroke-linecap="round" fill="none"/><path d="M90 3 L104 8 L90 13 Z" fill="#d7263d"/></svg>
+        <div class="as">빼기 · WSASend 1 in-flight (_sending)</div>
+      </div>
+
+      <div class="client">
+        <div class="ico">💻</div>
+        <div class="cl">클라</div>
+      </div>
+    </div>
+
+    <div class="chain">
+      <div class="chip ok"><b>CPU·틱은 여유</b></div>
+      <div class="chev">→</div>
+      <div class="chip">완료 통지가 밀림 · <b>contention 5,533/s</b> <span style="color:#9aa3b2">(1000땐 0.9)</span></div>
+      <div class="chev">→</div>
+      <div class="chip concl">큐 가득 → <b>overflow 26/s</b> → 세션 강제 종료</div>
+    </div>
+
+    <div class="foot">메커니즘: fanout 184→223 → 세션당 in-flight=1(<b>_sending</b> 직렬화) → 완료가 못 따라감 → per-session SendQ 가득 → Enqueue 실패 → disconnect</div>
+  </div>
+</body>
+</html>

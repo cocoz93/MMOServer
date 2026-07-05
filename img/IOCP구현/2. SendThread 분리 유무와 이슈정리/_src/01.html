@@ -14,7 +14,7 @@
   html,body{margin:0;width:1040px;height:560px;overflow:hidden;background:var(--bg);
     font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased}
   .card{position:absolute;top:20px;left:20px;width:1000px;height:520px;background:var(--card);
-    border:1px solid var(--line);border-radius:28px;box-shadow:0 14px 44px rgba(30,40,70,.07);
+    border:1px solid var(--line);border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
     padding:30px 46px 0}
 
   .title{font-size:29px;font-weight:800;color:var(--ink);letter-spacing:-.5px}
@@ -32,9 +32,9 @@
   .tag.reject{background:var(--pill-gray);color:var(--slate)}
 
   .cluster{display:grid;grid-template-columns:repeat(2,104px);grid-template-rows:repeat(2,104px);gap:10px}
-  .worker{position:relative;border-radius:50%;background:radial-gradient(circle at 32% 28%,#ea5468,#c81c33);
+  .worker{position:relative;border-radius:50%;background:var(--red);
     display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:17px;
-    box-shadow:0 8px 18px rgba(199,30,50,.28)}
+    box-shadow:0 1px 3px rgba(30,40,70,.08)}
   .worker .send{position:absolute;right:-10px;bottom:-8px;background:#fff;color:var(--red-deep);
     font-size:11.5px;font-weight:800;padding:3px 9px;border-radius:999px;box-shadow:0 3px 8px rgba(0,0,0,.14)}
 

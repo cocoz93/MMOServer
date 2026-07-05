@@ -16,24 +16,24 @@
   .node .lab{ font-size:19px; font-weight:800; }
   .node .sub{ font-size:13.5px; font-weight:600; margin-top:4px; }
 
-  .workers .box{ background:var(--blue-bg); border:1.5px solid #bcd6fb; }
-  .workers .ico{ background:#dbeafe; }
+  .workers .box{ background:var(--blue-bg); border:1.5px solid var(--blue-line); }
+  .workers .ico{ background:#d6e4f5; }
   .workers .lab{ color:var(--blue-deep); }
   .workers .sub{ color:#5a7ca8; }
 
-  .queue .box{ background:linear-gradient(145deg,#fef3c7,#fde9b0); border:1.5px dashed var(--amber); min-width:190px; position:relative; }
-  .queue .ico{ background:#fde9b0; }
-  .queue .lab{ color:var(--amber-deep); }
-  .queue .sub{ color:#b07c1e; }
-  .queue .grow{ position:absolute; top:-15px; right:-10px; background:linear-gradient(135deg,#f87171,#dc2626); color:#fff;
-                font-size:12.5px; font-weight:800; padding:5px 12px; border-radius:999px; box-shadow:0 6px 14px -6px rgba(220,38,38,.55); white-space:nowrap; }
+  .queue .box{ background:#e2e6ec; border:1.5px dashed #c2cad6; min-width:190px; position:relative; }
+  .queue .ico{ background:#d9dfe7; }
+  .queue .lab{ color:#566072; }
+  .queue .sub{ color:#7c8597; }
+  .queue .grow{ position:absolute; top:-15px; right:-10px; background:#d7263d; color:#fff;
+                font-size:12.5px; font-weight:800; padding:5px 12px; border-radius:999px; box-shadow:0 2px 6px -2px rgba(215,38,61,.35); white-space:nowrap; }
 
-  .game .box{ background:linear-gradient(145deg,#fff,var(--red-bg)); border:1.5px solid var(--red-line); position:relative; }
+  .game .box{ background:var(--red-bg); border:1.5px solid var(--red-line); position:relative; }
   .game .ico{ background:#fee2e2; }
   .game .lab{ color:var(--red-deep); }
   .game .sub{ color:#a34747; }
-  .game .loop{ position:absolute; top:-13px; left:50%; transform:translateX(-50%); background:linear-gradient(135deg,#f87171,#dc2626);
-               color:#fff; font-size:12px; font-weight:800; padding:4px 11px; border-radius:999px; box-shadow:0 6px 14px -6px rgba(220,38,38,.55); white-space:nowrap; display:flex; align-items:center; gap:4px; }
+  .game .loop{ position:absolute; top:-13px; left:50%; transform:translateX(-50%); background:#d7263d;
+               color:#fff; font-size:12px; font-weight:800; padding:4px 11px; border-radius:999px; box-shadow:0 2px 6px -2px rgba(215,38,61,.35); white-space:nowrap; display:flex; align-items:center; gap:4px; }
   .game .loop svg{ width:11px; height:11px; animation:none; }
 
   .arrow{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:0 8px; }
@@ -49,7 +49,7 @@
   .chips{ display:flex; gap:14px; width:100%; }
   .chip2{ flex:1; background:#fff; border:1px solid var(--line); border-radius:18px; box-shadow:0 12px 26px -20px rgba(15,23,42,.35);
           padding:16px 10px 14px; text-align:center; display:flex; flex-direction:column; align-items:center; position:relative; overflow:hidden; }
-  .chip2::before{ content:""; position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,#f87171,#dc2626); }
+  .chip2::before{ content:""; position:absolute; top:0; left:0; right:0; height:3px; background:#d7263d; }
   .chip2 .ico{ width:40px; height:40px; border-radius:13px; background:var(--red-bg); display:flex; align-items:center; justify-content:center; margin-bottom:9px; margin-top:3px; }
   .chip2 .ico svg{ width:21px; height:21px; }
   .chip2 .t{ font-size:15.5px; font-weight:800; color:var(--ink); }
@@ -65,7 +65,7 @@
     <div class="stage">
       <div class="node workers">
         <div class="box">
-          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></div>
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#2b6aa8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></div>
           <div class="lab">Worker</div><div class="sub">이벤트 생성</div>
         </div>
       </div>
@@ -77,19 +77,19 @@
       <div class="node queue">
         <div class="box">
           <div class="grow">계속 증가 ↑</div>
-          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></div>
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#566072" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></div>
           <div class="lab">Event Queue</div><div class="sub">유입 &gt; 소비</div>
         </div>
       </div>
       <div class="arrow hot">
-        <svg viewBox="0 0 200 20"><defs><marker id="a2" markerWidth="9" markerHeight="9" refX="6.5" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#dc2626"/></marker></defs>
-          <line x1="4" y1="10" x2="188" y2="10" stroke="#dc2626" stroke-width="4" stroke-linecap="round" marker-end="url(#a2)"/></svg>
+        <svg viewBox="0 0 200 20"><defs><marker id="a2" markerWidth="9" markerHeight="9" refX="6.5" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#d7263d"/></marker></defs>
+          <line x1="4" y1="10" x2="188" y2="10" stroke="#d7263d" stroke-width="4" stroke-linecap="round" marker-end="url(#a2)"/></svg>
         <div class="cap">while(!empty) 전부 소비</div>
       </div>
       <div class="node game">
         <div class="box">
           <div class="loop"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3"/><path d="M18 3v4h-4M6 21v-4h4"/></svg>무한 루프</div>
-          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5l3.5 2"/></svg></div>
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#d7263d" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5l3.5 2"/></svg></div>
           <div class="lab">Game Thread</div><div class="sub">상한 없음 · 라이브 드레인</div>
         </div>
       </div>
@@ -98,10 +98,10 @@
     <div class="divider"><div class="line"></div><div class="lab">▼ 관측되는 증상</div><div class="line"></div></div>
 
     <div class="chips">
-      <div class="chip2"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2"/></svg></div><div class="t">로직 지연</div><div class="d">한 프레임 밀림</div></div>
-      <div class="chip2"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-7 4 14 2-7h6"/></svg></div><div class="t">정합 붕괴</div><div class="d">이동 적분 튐</div></div>
-      <div class="chip2"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg></div><div class="t">틱 적체</div><div class="d">큐 계속 증가</div></div>
-      <div class="chip2"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12c2-5 14-5 16 0M4 12c2 5 14 5 16 0"/></svg></div><div class="t">러버밴딩</div><div class="d">월드 갱신 정지</div></div>
+      <div class="chip2"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#d7263d" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2"/></svg></div><div class="t">로직 지연</div><div class="d">한 프레임 밀림</div></div>
+      <div class="chip2"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#d7263d" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-7 4 14 2-7h6"/></svg></div><div class="t">정합 붕괴</div><div class="d">이동 적분 튐</div></div>
+      <div class="chip2"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#d7263d" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg></div><div class="t">틱 적체</div><div class="d">큐 계속 증가</div></div>
+      <div class="chip2"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#d7263d" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12c2-5 14-5 16 0M4 12c2 5 14 5 16 0"/></svg></div><div class="t">러버밴딩</div><div class="d">월드 갱신 정지</div></div>
     </div>
   </div>
 

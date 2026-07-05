@@ -11,12 +11,12 @@
   .col{ flex:1; border-radius:22px; padding:20px 18px 16px; display:flex; flex-direction:column; align-items:center; }
   .col.bad{ background:var(--surface);   border:1.5px solid var(--line); }
   .col.ok{  background:var(--green-bg);  border:1.8px solid var(--green-line); }
-  .col.big2{background:var(--amber-bg);  border:1.5px solid var(--amber-line); }
+  .col.big2{background:var(--surface);  border:1.5px solid var(--line); }
 
   .tag{ font-size:16px; font-weight:800; padding:6px 16px; border-radius:999px; color:#fff; }
-  .col.bad .tag{  background:linear-gradient(135deg,#94a3b8,#64748b); }
-  .col.ok .tag{   background:linear-gradient(135deg,#34d399,#059669); }
-  .col.big2 .tag{ background:linear-gradient(135deg,#fbbf24,#d97706); }
+  .col.bad .tag{  background:#566072; }
+  .col.ok .tag{   background:#1f9d6b; }
+  .col.big2 .tag{ background:#566072; }
   .sz{ font-size:14px; font-weight:800; color:var(--sub); margin:9px 0 2px; letter-spacing:.2px; }
   .col.ok .sz{ color:var(--green-deep); }
 
@@ -46,14 +46,14 @@
         <div class="tag">작게 잡으면</div>
         <div class="sz">섹터 &lt; 시야</div>
         <div class="dia"><svg viewBox="0 0 150 150" width="188" height="188">
-          <g fill="#fef2f2" stroke="#ef4444" stroke-width="1.6">
+          <g fill="#fdeef0" stroke="#d7263d" stroke-width="1.6">
             <rect x="42" y="42" width="22" height="22" rx="3"/><rect x="66" y="42" width="22" height="22" rx="3"/><rect x="90" y="42" width="22" height="22" rx="3"/>
             <rect x="42" y="66" width="22" height="22" rx="3"/><rect x="66" y="66" width="22" height="22" rx="3"/><rect x="90" y="66" width="22" height="22" rx="3"/>
             <rect x="42" y="90" width="22" height="22" rx="3"/><rect x="66" y="90" width="22" height="22" rx="3"/><rect x="90" y="90" width="22" height="22" rx="3"/>
           </g>
-          <circle cx="77" cy="77" r="58" fill="rgba(59,130,246,.08)" stroke="#2563eb" stroke-width="2.4" stroke-dasharray="6 5"/>
-          <circle cx="122" cy="66" r="6.5" fill="#ef4444" stroke="#fff" stroke-width="2.2"/>
-          <circle cx="66" cy="123" r="6.5" fill="#ef4444" stroke="#fff" stroke-width="2.2"/>
+          <circle cx="77" cy="77" r="58" fill="rgba(58,120,184,.08)" stroke="#3a78b8" stroke-width="2.4" stroke-dasharray="6 5"/>
+          <circle cx="122" cy="66" r="6.5" fill="#d7263d" stroke="#fff" stroke-width="2.2"/>
+          <circle cx="66" cy="123" r="6.5" fill="#d7263d" stroke="#fff" stroke-width="2.2"/>
         </svg></div>
         <div class="vds">
           <div class="vd good"><span class="i">✓</span>브로드캐스트 대상 정밀</div>
@@ -65,15 +65,15 @@
         <div class="tag">채택 ✓</div>
         <div class="sz">섹터 ≈ 시야</div>
         <div class="dia"><svg viewBox="0 0 150 150" width="188" height="188">
-          <g fill="#ecfdf5" stroke="#10b981" stroke-width="1.8">
+          <g fill="#e7f6ef" stroke="#1f9d6b" stroke-width="1.8">
             <rect x="27" y="27" width="30" height="30" rx="4"/><rect x="60" y="27" width="30" height="30" rx="4"/><rect x="93" y="27" width="30" height="30" rx="4"/>
             <rect x="27" y="60" width="30" height="30" rx="4"/><rect x="60" y="60" width="30" height="30" rx="4"/><rect x="93" y="60" width="30" height="30" rx="4"/>
             <rect x="27" y="93" width="30" height="30" rx="4"/><rect x="60" y="93" width="30" height="30" rx="4"/><rect x="93" y="93" width="30" height="30" rx="4"/>
           </g>
-          <circle cx="75" cy="75" r="46" fill="rgba(16,185,129,.09)" stroke="#059669" stroke-width="2.4" stroke-dasharray="6 5"/>
-          <circle cx="62" cy="70" r="6" fill="#059669" stroke="#fff" stroke-width="2"/>
-          <circle cx="90" cy="86" r="6" fill="#059669" stroke="#fff" stroke-width="2"/>
-          <circle cx="78" cy="58" r="6" fill="#059669" stroke="#fff" stroke-width="2"/>
+          <circle cx="75" cy="75" r="46" fill="rgba(31,157,107,.09)" stroke="#1f9d6b" stroke-width="2.4" stroke-dasharray="6 5"/>
+          <circle cx="62" cy="70" r="6" fill="#1f9d6b" stroke="#fff" stroke-width="2"/>
+          <circle cx="90" cy="86" r="6" fill="#1f9d6b" stroke="#fff" stroke-width="2"/>
+          <circle cx="78" cy="58" r="6" fill="#1f9d6b" stroke="#fff" stroke-width="2"/>
         </svg></div>
         <div class="vds">
           <div class="vd good"><span class="i">✓</span>9섹터가 시야를 덮음</div>
@@ -85,15 +85,15 @@
         <div class="tag">크게 잡으면</div>
         <div class="sz">섹터 ≫ 시야</div>
         <div class="dia"><svg viewBox="0 0 150 150" width="188" height="188">
-          <g fill="#fffbeb" stroke="#f59e0b" stroke-width="1.8">
+          <g fill="#e2e6ec" stroke="#7c8597" stroke-width="1.8">
             <rect x="25" y="25" width="48" height="48" rx="5"/><rect x="77" y="25" width="48" height="48" rx="5"/>
             <rect x="25" y="77" width="48" height="48" rx="5"/><rect x="77" y="77" width="48" height="48" rx="5"/>
           </g>
-          <g fill="#d97706" stroke="#fff" stroke-width="1.8">
+          <g fill="#566072" stroke="#fff" stroke-width="1.8">
             <circle cx="38" cy="40" r="5.5"/><circle cx="55" cy="38" r="5.5"/><circle cx="46" cy="52" r="5.5"/>
             <circle cx="62" cy="55" r="5.5"/><circle cx="35" cy="60" r="5.5"/><circle cx="55" cy="66" r="5.5"/>
           </g>
-          <circle cx="100" cy="100" r="20" fill="rgba(245,158,11,.10)" stroke="#d97706" stroke-width="2.2" stroke-dasharray="5 4"/>
+          <circle cx="100" cy="100" r="20" fill="rgba(124,133,151,.10)" stroke="#7c8597" stroke-width="2.2" stroke-dasharray="5 4"/>
         </svg></div>
         <div class="vds">
           <div class="vd neu"><span class="i">•</span>섹터 이동 이벤트 드묾</div>
