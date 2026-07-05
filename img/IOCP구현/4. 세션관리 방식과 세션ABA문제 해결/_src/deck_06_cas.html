@@ -17,7 +17,7 @@
     --mono:"SF Mono",ui-monospace,"Cascadia Mono","Consolas",monospace;
   }
   html,body{width:1600px;height:900px;overflow:hidden;
-    background:radial-gradient(1100px 560px at 12% -12%, #ffffff, rgba(255,255,255,0) 58%),
+    background:radial-gradient(1100px 560px at 50% -14%, #ffffff, rgba(255,255,255,0) 58%),
       linear-gradient(140deg,var(--bg),var(--bg2));
     font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;color:var(--ink);
     word-break:keep-all;overflow-wrap:break-word;
@@ -25,105 +25,78 @@
   .card{position:absolute;inset:28px;border-radius:32px;border:1px solid rgba(30,40,70,.06);
     background:
       radial-gradient(circle at 1px 1px, rgba(43,106,168,.045) 1px, transparent 1.4px) 0 0/30px 30px,
-      radial-gradient(720px 500px at -6% -8%, rgba(215,38,61,.05), transparent 58%),
-      radial-gradient(760px 540px at 106% 112%, rgba(31,138,91,.06), transparent 60%),
+      radial-gradient(760px 540px at 78% 120%, rgba(31,138,91,.07), transparent 60%),
+      radial-gradient(620px 460px at -4% -6%, rgba(215,38,61,.045), transparent 58%),
       linear-gradient(180deg,#ffffff,#fbfcfe);
     box-shadow:var(--sh-card);
-    padding:40px 56px 38px;display:flex;flex-direction:column;overflow:hidden}
+    padding:44px 60px 44px;display:flex;flex-direction:column;overflow:hidden}
   .card::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
     background-image:var(--grain);background-size:180px 180px;opacity:.03;mix-blend-mode:soft-light}
   .card::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;
-    background:linear-gradient(90deg,var(--deep),var(--red) 20%,#f2647a 40%,#54a97e 72%,rgba(31,138,91,0) 96%)}
+    background:linear-gradient(90deg,var(--deep),var(--red) 18%,#f2647a 38%,#54a97e 72%,rgba(31,138,91,0) 96%)}
 
-  .top{display:flex;align-items:center;justify-content:space-between}
+  .top{display:flex;align-items:center;justify-content:space-between;position:relative;z-index:2}
   .eyebrow{display:inline-flex;align-items:center;gap:11px;
     font-size:16px;font-weight:800;letter-spacing:2.6px;color:var(--muted);text-transform:uppercase}
   .eyebrow .d{width:9px;height:9px;border-radius:50%;background:var(--red);box-shadow:0 0 0 4px var(--red-bg)}
   .ddtag{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:800;letter-spacing:.4px;
-    color:var(--slate);background:#eef1f5;border:1px solid #e2e6ec;border-radius:999px;padding:7px 15px}
+    color:var(--slate);background:linear-gradient(180deg,#f3f5f8,#e9edf2);border:1px solid #e2e6ec;border-radius:999px;padding:7px 15px;
+    box-shadow:0 2px 5px -2px rgba(30,40,70,.16),inset 0 1px 0 rgba(255,255,255,.9)}
   .ddtag b{color:var(--deep)}
 
-  .title{margin-top:14px;font-size:47px;font-weight:800;color:var(--ink);letter-spacing:-1.6px;line-height:1.04}
-  .title .r{color:var(--deep)} .title .g{color:var(--grn-ink)} .title .mono{font-family:var(--mono);font-size:42px}
+  .title{margin-top:14px;font-size:50px;font-weight:800;color:var(--ink);letter-spacing:-1.7px;line-height:1.04;position:relative;z-index:2}
+  .title .r{color:var(--deep)} .title .g{color:var(--grn-ink)} .title .mono{font-family:var(--mono);font-size:45px}
 
-  .stage{flex:1;display:grid;grid-template-columns:1fr 620px;gap:36px;min-height:0;padding-top:18px}
-  .probcol{display:flex;flex-direction:column;min-height:0}
-  .fixcol{display:flex;flex-direction:column;min-height:0}
-  .colbody{display:contents}
+  .stage{flex:1;display:flex;flex-direction:column;justify-content:center;gap:34px;padding-top:6px;position:relative;z-index:2}
 
-  .col-label{font-size:15px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;margin-bottom:14px;
-    display:flex;align-items:center;gap:10px}
-  .col-label::after{content:"";flex:1;height:1.5px}
-  .col-label.prob{color:var(--deep)} .col-label.prob::after{background:var(--red-line)}
-  .col-label.fix{color:var(--grn-ink)} .col-label.fix::after{background:var(--grn-line)}
+  /* hero scene: 0 → (+1 revive) → CAS shield ✗ → 1 blocked */
+  .scene{display:flex;align-items:center;justify-content:center;gap:20px}
+  .tok{position:relative;flex:0 0 auto;width:168px;height:168px;border-radius:34px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .tok .n{font-family:var(--mono);font-size:82px;font-weight:800;line-height:1}
+  .tok .lb{font-size:17px;font-weight:800;margin-top:8px;letter-spacing:-.3px}
+  .tok.dead{background:linear-gradient(180deg,#eef1f5,#dfe4ec);border:2px solid #d0d6df;
+    box-shadow:inset 0 4px 9px rgba(30,40,70,.14),inset 0 -1px 0 rgba(255,255,255,.7),0 8px 20px -10px rgba(30,40,70,.28)}
+  .tok.dead .n{color:#7a8494;text-shadow:0 1px 0 rgba(255,255,255,.7)} .tok.dead .lb{color:#8a94a4}
+  .tok.ghost{background:repeating-linear-gradient(135deg,#f7f8fa,#f7f8fa 9px,#eaedf2 9px,#eaedf2 18px);
+    border:2.5px dashed #ccd3dd;box-shadow:inset 0 2px 6px rgba(30,40,70,.06),0 3px 8px -4px rgba(30,40,70,.18)}
+  .tok.ghost .n{color:#b3bcc8} .tok.ghost .lb{color:#aab3c0}
 
-  .lanehd{display:grid;grid-template-columns:1fr 50px 1fr;margin-bottom:12px}
-  .lanehd .lh{font-size:16px;font-weight:800;letter-spacing:-.2px;display:flex;align-items:center;gap:8px}
-  .lanehd .lh.a{color:var(--blue-ink)} .lanehd .lh.b{color:var(--slate);grid-column:3;justify-content:flex-end}
-  .lanehd .lh .mn{font-family:var(--mono);font-size:13px;font-weight:700;opacity:.8}
+  .attempt{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:8px;width:132px}
+  .attempt .pl{font-family:var(--mono);font-size:30px;font-weight:800;color:var(--slate)}
+  .attempt .cap{font-size:15px;font-weight:800;color:var(--muted);letter-spacing:-.2px;text-align:center}
 
-  .tl{position:relative;flex:1;display:flex;flex-direction:column;justify-content:space-between;gap:13px}
-  .tl::before{content:"";position:absolute;left:50%;transform:translateX(-1px);top:8px;bottom:8px;width:2.5px;
-    background:repeating-linear-gradient(180deg,#c9d2de,#c9d2de 6px,transparent 6px,transparent 12px)}
-  .trow{display:grid;grid-template-columns:1fr 50px 1fr;align-items:center}
-  .num{grid-column:2;justify-self:center;z-index:2;width:42px;height:42px;border-radius:50%;
-    background:#fff;border:3px solid #c9d2de;color:var(--muted);font-family:var(--mono);font-size:19px;font-weight:800;
-    display:flex;align-items:center;justify-content:center;box-shadow:0 5px 12px -3px rgba(30,40,70,.3)}
-  .ts{border-radius:17px;padding:19px 23px;position:relative;box-shadow:0 14px 30px -14px rgba(30,40,70,.32)}
-  .ts.a{grid-column:1} .ts.b{grid-column:3}
-  .ts .act{font-size:23px;font-weight:800;letter-spacing:-.3px;line-height:1.26}
-  .ts .act .m{font-family:var(--mono);font-size:20px}
-  .ts .sub2{margin-top:5px;font-size:16.5px;font-weight:700;letter-spacing:-.2px}
-  .ts.blue{background:linear-gradient(180deg,#f2f8fd,#e7f1fb);border:1.5px solid var(--blue-line)}
-  .ts.blue .act{color:var(--blue-deep)} .ts.blue .act .m{color:var(--blue-ink)} .ts.blue .ok{color:var(--grn)}
-  .ts.grey{background:#f2f4f8;border:1.5px solid #e0e5ec}
-  .ts.grey .act{color:var(--slate)} .ts.grey .act .m{color:#6b7484} .ts.grey .sub2{color:var(--muted)}
-  .ts.grey .gaptag{position:absolute;top:-11px;left:15px;font-size:12px;font-weight:800;letter-spacing:.3px;
-    color:#fff;background:var(--deep);padding:3px 11px;border-radius:999px;box-shadow:0 5px 12px -3px rgba(179,18,42,.5)}
-  .ts.red{background:linear-gradient(180deg,#fff0f2,#fddfe4);border:2.5px solid var(--red);
-    box-shadow:0 20px 36px -14px rgba(215,38,61,.42)}
-  .ts.red .act{color:var(--deep);font-size:26px} .ts.red .act .m{color:var(--deep);font-size:23px}
-  .ts.red .sub2{color:#c33}
-  .ts.red .zt{position:absolute;top:-12px;right:15px;font-size:12.5px;font-weight:800;letter-spacing:.5px;
-    color:#fff;background:var(--red);padding:3px 12px;border-radius:999px;box-shadow:0 6px 14px -3px rgba(215,38,61,.55)}
-  .num.zn{border-color:var(--red);color:var(--deep);background:var(--red-bg)}
+  .shieldwrap{position:relative;flex:0 0 auto;width:230px;height:230px;display:flex;align-items:center;justify-content:center}
+  .shieldwrap::before{content:"";position:absolute;width:300px;height:300px;border-radius:50%;z-index:0;pointer-events:none;
+    background:repeating-radial-gradient(circle at center, rgba(31,138,91,0) 0 24px, rgba(31,138,91,.07) 24px 25px, rgba(31,138,91,0) 25px 50px),
+      radial-gradient(circle,rgba(52,190,124,.28),rgba(52,190,124,0) 66%)}
+  .shield{position:relative;z-index:1;width:200px;height:200px;display:flex;align-items:center;justify-content:center;
+    filter:drop-shadow(0 26px 34px rgba(31,138,91,.5)) drop-shadow(0 6px 12px rgba(15,86,56,.4))}
+  .shield .lab{position:absolute;bottom:-6px;font-family:var(--mono);font-size:20px;font-weight:800;color:#fff;letter-spacing:1px;
+    background:linear-gradient(180deg,#1a9560,#0f6f47);padding:5px 20px;border-radius:999px;
+    box-shadow:0 8px 16px -4px rgba(15,86,56,.6),inset 0 1px 0 rgba(255,255,255,.35)}
 
-  /* RIGHT — GIANT CAS block hero */
-  .casbox{border:2px solid var(--grn-line);border-radius:24px;background:linear-gradient(180deg,#f2fbf6,#e7f6ee);
-    padding:26px 30px 24px;position:relative;box-shadow:0 30px 60px -30px rgba(31,138,91,.44)}
-  .casbox::before{content:"";position:absolute;top:0;left:0;right:0;height:7px;border-radius:24px 24px 0 0;
-    background:linear-gradient(90deg,var(--grn),#54c48c)}
-  .casbox .cl2{font-size:15px;font-weight:800;letter-spacing:.5px;color:var(--grn-ink);text-transform:uppercase;margin-bottom:20px}
+  .verdict{align-self:center;display:flex;align-items:center;gap:22px}
+  .verdict .cond{font-family:var(--mono);font-size:26px;font-weight:800;color:var(--deep);
+    background:linear-gradient(180deg,#ffffff,#fef4f5);border:1.6px solid var(--red-line);border-radius:15px;padding:14px 24px;
+    box-shadow:0 8px 18px -10px rgba(215,38,61,.32),inset 0 1px 0 rgba(255,255,255,.9)}
+  .verdict .cond .ko{font-family:'Pretendard',"Malgun Gothic",sans-serif;letter-spacing:-.3px}
+  .verdict .big{font-size:52px;font-weight:800;letter-spacing:-1.4px;
+    background:linear-gradient(160deg,#2aa06d 0%,#12724a 82%);-webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 2px 4px rgba(18,114,74,.18))}
 
-  .casviz{display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:28px}
-  .tok{width:108px;height:108px;border-radius:26px;display:flex;flex-direction:column;align-items:center;justify-content:center;flex:0 0 auto}
-  .tok .n{font-family:var(--mono);font-size:52px;font-weight:800;line-height:1}
-  .tok .tl2{font-size:13.5px;font-weight:800;margin-top:4px;letter-spacing:-.2px}
-  .tok.dead{background:#eceff3;border:2px solid #d6dbe3;color:#8a94a4} .tok.dead .n{color:#7a8494}
-  .tok.ghost{background:repeating-linear-gradient(135deg,#f6f7f9,#f6f7f9 7px,#eef0f4 7px,#eef0f4 14px);
-    border:2px dashed #cfd6df;color:#b3bcc8} .tok.ghost .n{color:#b3bcc8}
-  .plus{display:flex;flex-direction:column;align-items:center;gap:3px}
-  .plus .pl{font-family:var(--mono);font-size:17px;font-weight:800;color:var(--slate)}
-  .shield{position:relative;width:132px;height:132px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;
-    filter:drop-shadow(0 18px 26px rgba(31,138,91,.46))}
-  .shield .lab{position:absolute;bottom:-8px;font-family:var(--mono);font-size:14.5px;font-weight:800;color:#fff;
-    background:#127a4e;padding:3px 13px;border-radius:999px}
-  .casresult{display:flex;align-items:center;justify-content:center;gap:20px;flex-wrap:wrap}
-  .casresult .cond{font-family:var(--mono);font-size:21px;font-weight:800;color:var(--deep);
-    background:#fff;border:1.5px solid var(--red-line);border-radius:13px;padding:11px 18px}
-  .casresult .big{font-size:41px;font-weight:800;color:var(--grn-ink);letter-spacing:-.8px}
-
-  .roles{margin-top:auto;padding-top:22px;display:flex;flex-direction:column;gap:11px}
-  .roles .rh{font-size:14.5px;font-weight:800;letter-spacing:.4px;color:var(--slate);text-transform:uppercase;margin-bottom:2px;
-    display:flex;align-items:center;gap:9px}
-  .roles .rh .bd{font-size:12.5px;font-weight:800;color:#fff;background:var(--slate);padding:3px 11px;border-radius:999px;letter-spacing:.3px}
-  .role{display:flex;align-items:center;gap:14px;padding:14px 17px;border-radius:14px;
-    border:1.5px solid var(--line);background:#fff;box-shadow:0 10px 20px -14px rgba(30,40,70,.3)}
-  .role .rn{flex:0 0 auto;font-family:var(--mono);font-size:14.5px;font-weight:800;padding:6px 13px;border-radius:9px;white-space:nowrap}
-  .role.cas .rn{background:var(--grn-bg);color:var(--grn-ink);border:1px solid var(--grn-line)}
-  .role.flag .rn{background:var(--blue-bg);color:var(--blue-ink);border:1px solid var(--blue-line)}
-  .role .rt{font-size:16.5px;font-weight:700;color:var(--sub);letter-spacing:-.3px;line-height:1.35}
+  /* minimal footer: 둘 다 필요 */
+  .roles{align-self:center;display:flex;align-items:center;gap:16px}
+  .role{display:flex;align-items:center;gap:14px;padding:15px 24px;border-radius:16px;
+    background:linear-gradient(180deg,#ffffff,#fafbfd);border:1.5px solid var(--line);
+    box-shadow:0 12px 26px -18px rgba(30,40,70,.3),inset 0 1px 0 rgba(255,255,255,.9)}
+  .role .rn{flex:0 0 auto;font-family:var(--mono);font-size:17px;font-weight:800;padding:8px 15px;border-radius:11px;white-space:nowrap;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.7)}
+  .role.cas .rn{background:linear-gradient(180deg,#eef8f2,#dcf0e6);color:var(--grn-ink);border:1px solid var(--grn-line)}
+  .role.flag .rn{background:linear-gradient(180deg,#eff5fc,#dceaf7);color:var(--blue-ink);border:1px solid var(--blue-line)}
+  .role .rt{font-size:18px;font-weight:700;color:var(--sub);letter-spacing:-.3px;line-height:1.3}
   .role .rt b{color:var(--ink);font-weight:800} .role .rt .m{font-family:var(--mono);font-size:15px}
+  .roles .amp{font-size:16px;font-weight:800;color:var(--muted);letter-spacing:.5px}
 </style>
 </head>
 <body>
@@ -132,88 +105,64 @@
       <div class="eyebrow"><span class="d"></span>Session · Zombie Reference</div>
       <div class="ddtag"><b>심화</b> · Deep Dive</div>
     </div>
-    <div class="title">확인·증가 사이 <span class="r">틈</span> → 좀비 참조를 <span class="g">CAS</span>로 원천 차단</div>
+    <div class="title">죽은 세션을 되살리는 <span class="r mono">0→1</span>을 <span class="g">CAS</span>가 원천 차단</div>
 
     <div class="stage">
-      <div class="probcol">
-        <div class="colbody">
-        <div class="col-label prob">문제 · 단독 스레드 이중 해제</div>
-        <div class="lanehd">
-          <div class="lh a">Thread A <span class="mn">Acquire</span></div>
-          <div class="lh b">내부 <span class="mn">Release</span></div>
+      <div class="scene">
+        <div class="tok dead"><span class="n">0</span><span class="lb">해제됨 · IOCount 0</span></div>
+
+        <div class="attempt">
+          <svg width="120" height="30" viewBox="0 0 120 30" fill="none">
+            <path d="M6 15 H92" stroke="#aeb6c3" stroke-width="6" stroke-linecap="round" stroke-dasharray="2 11"/>
+            <path d="M88 4 L118 15 L88 26 Z" fill="#aeb6c3"/>
+          </svg>
+          <span class="pl">+1</span>
+          <span class="cap">되살리기 시도<br>(좀비 참조)</span>
         </div>
-        <div class="tl">
-          <div class="trow">
-            <div class="ts a blue">
-              <div class="act"><span class="m">_disconnecting</span> <span class="ok">== FALSE ✓</span></div>
-            </div>
-            <div class="num">1</div>
-          </div>
-          <div class="trow">
-            <div class="num">2</div>
-            <div class="ts b grey">
-              <span class="gaptag">이 틈에 끼어듦</span>
-              <div class="act">IOCount <span class="m">1→0</span> · Release</div>
-              <div class="sub2">Close · Push(index) — 해제 완료</div>
-            </div>
-          </div>
-          <div class="trow">
-            <div class="ts a red">
-              <span class="zt">ZOMBIE</span>
-              <div class="act">Increment <span class="m">0→1</span></div>
-              <div class="sub2">죽은 세션을 되살림</div>
-            </div>
-            <div class="num zn">3</div>
-          </div>
-          <div class="trow">
-            <div class="ts a red">
-              <div class="act">💥 이중 해제</div>
-              <div class="sub2">같은 index 두 번 Push</div>
-            </div>
-            <div class="num zn">4</div>
+
+        <div class="shieldwrap">
+          <div class="shield">
+            <svg width="200" height="200" viewBox="0 0 72 72" fill="none">
+              <defs>
+                <linearGradient id="shg" x1="14" y1="6" x2="58" y2="66" gradientUnits="userSpaceOnUse">
+                  <stop offset="0" stop-color="#48bd88"/><stop offset=".48" stop-color="#22945f"/><stop offset="1" stop-color="#0e6a42"/>
+                </linearGradient>
+                <linearGradient id="shedge" x1="36" y1="4" x2="36" y2="69" gradientUnits="userSpaceOnUse">
+                  <stop offset="0" stop-color="#7fd6ab"/><stop offset="1" stop-color="#0c5c39"/>
+                </linearGradient>
+                <radialGradient id="shspec" cx="33" cy="19" r="30" gradientUnits="userSpaceOnUse">
+                  <stop offset="0" stop-color="#ffffff" stop-opacity=".6"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+                </radialGradient>
+              </defs>
+              <path d="M36 4 L62 14 V37 C62 53 50 63.5 36 69 C22 63.5 10 53 10 37 V14 Z" fill="url(#shg)" stroke="url(#shedge)" stroke-width="1.6"/>
+              <path d="M36 8.3 L58.4 16.9 V37 C58.4 50.4 48.2 59.7 36 64.7 C23.8 59.7 13.6 50.4 13.6 37 V16.9 Z" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="1"/>
+              <path d="M36 4 L62 14 V37 C62 45 58 51 52 55 L36 4 Z" fill="url(#shspec)"/>
+              <g transform="rotate(45 36 37)">
+                <path d="M25 37 H47 M36 26 V48" stroke="#0b5738" stroke-width="7.6" stroke-linecap="round" opacity=".3"/>
+                <path d="M25 37 H47 M36 26 V48" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/>
+              </g>
+            </svg>
+            <span class="lab">CAS</span>
           </div>
         </div>
-        </div>
+
+        <div class="tok ghost"><span class="n">1</span><span class="lb">차단됨</span></div>
       </div>
 
-      <div class="fixcol">
-        <div class="colbody">
-        <div class="col-label fix">해결 · CAS로 0→1 차단</div>
-        <div class="casbox">
-          <div class="cl2">Atomic Compare-And-Swap</div>
-          <div class="casviz">
-            <div class="tok dead"><span class="n">0</span><span class="tl2">해제됨</span></div>
-            <div class="plus">
-              <svg width="52" height="26"><path d="M2 13 H34" stroke="#9aa3b2" stroke-width="5" stroke-linecap="round" fill="none"/><path d="M33 4 L50 13 L33 22 Z" fill="#9aa3b2"/></svg>
-              <span class="pl">+1</span>
-            </div>
-            <div class="shield">
-              <svg width="130" height="130" viewBox="0 0 72 72" fill="none">
-                <path d="M36 5 L62 15 V37 C62 53 50 63 36 68 C22 63 10 53 10 37 V15 Z" fill="#1f8a5b" stroke="#127a4e" stroke-width="2"/>
-                <path d="M36 5 L62 15 V37 C62 45 58 51 52 55 L36 5 Z" fill="rgba(255,255,255,.14)"/>
-                <path d="M26 36 L44 36 M35 27 L35 45" stroke="#fff" stroke-width="6" stroke-linecap="round" transform="rotate(45 35 36)"/>
-              </svg>
-              <span class="lab">CAS</span>
-            </div>
-            <div class="tok ghost"><span class="n">1</span></div>
-          </div>
-          <div class="casresult">
-            <span class="cond">cur == 0 → 실패</span>
-            <span class="big">0→1 원천 차단</span>
-          </div>
-        </div>
+      <div class="verdict">
+        <span class="cond">cur == 0 → <span class="ko">실패</span></span>
+        <span class="big">0→1 원천 차단</span>
+      </div>
 
-        <div class="roles">
-          <div class="rh"><span class="bd">둘 다 필요</span>서로 다른 문제를 막는다</div>
-          <div class="role cas">
-            <span class="rn">CAS</span>
-            <span class="rt"><b>해제된 세션</b>(<span class="m">IOCount 0</span>)의 좀비 참조 차단</span>
-          </div>
-          <div class="role flag">
-            <span class="rn">_disconnecting</span>
-            <span class="rt"><b>종료 중 세션</b>(<span class="m">&gt; 0</span>)에 새 IO 게시 차단</span>
-          </div>
+      <div class="roles">
+        <div class="role cas">
+          <span class="rn">CAS</span>
+          <span class="rt"><b>해제된 세션</b>(<span class="m">0</span>)의 좀비 참조 차단</span>
         </div>
+        <span class="amp">＋</span>
+        <div class="role flag">
+          <span class="rn">_disconnecting</span>
+          <span class="rt"><b>종료 중 세션</b>(<span class="m">&gt;0</span>)에 새 IO 차단</span>
         </div>
       </div>
     </div>

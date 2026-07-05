@@ -40,7 +40,8 @@
     font-size:16px;font-weight:800;letter-spacing:2.6px;color:var(--muted);text-transform:uppercase}
   .eyebrow .d{width:9px;height:9px;border-radius:50%;background:var(--grn);box-shadow:0 0 0 4px var(--grn-bg)}
   .ddtag{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:800;letter-spacing:.4px;
-    color:var(--slate);background:#eef1f5;border:1px solid #e2e6ec;border-radius:999px;padding:7px 15px}
+    color:var(--slate);background:linear-gradient(180deg,#f4f6f9,#eaedf2);border:1px solid #e2e6ec;border-radius:999px;padding:7px 15px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 1px 2px rgba(30,40,70,.05)}
   .ddtag b{color:var(--grn-ink)}
 
   .title{margin-top:16px;font-size:56px;font-weight:800;color:var(--ink);letter-spacing:-2px;line-height:1.02}
@@ -49,76 +50,135 @@
 
   .stage{flex:1;display:flex;align-items:stretch;justify-content:center;gap:0;padding-top:24px}
 
-  .panel{flex:1;border-radius:28px;background:#fff;position:relative;overflow:hidden;
+  .panel{flex:1;border-radius:28px;position:relative;overflow:hidden;
     display:flex;flex-direction:column;padding:30px 34px 30px}
-  .panel::before{content:"";position:absolute;top:0;left:0;right:0;height:7px}
-  .panel.fin{border:1.5px solid #e3e8ef;box-shadow:0 26px 54px -30px rgba(30,40,70,.34),0 8px 20px -12px rgba(30,40,70,.1)}
+  .panel::before{content:"";position:absolute;top:0;left:0;right:0;height:7px;z-index:4}
+  .panel.fin{background:linear-gradient(180deg,#fdfdfe,#f6f8fa);border:1.5px solid #e3e8ef;
+    box-shadow:0 26px 54px -30px rgba(30,40,70,.34),0 8px 20px -12px rgba(30,40,70,.1),inset 0 1px 0 rgba(255,255,255,.9)}
   .panel.fin::before{background:linear-gradient(90deg,#96a0b0,#c6cdd8)}
-  .panel.rst{border:2px solid var(--grn-line);transform:scale(1.04);z-index:2;
-    box-shadow:0 40px 80px -34px rgba(31,138,91,.5),0 12px 30px -14px rgba(31,138,91,.28),inset 0 1px 0 rgba(255,255,255,.9)}
+  .panel.rst{background:linear-gradient(180deg,#ffffff,#f5fbf8);border:2px solid var(--grn-line);z-index:2;
+    box-shadow:0 48px 92px -34px rgba(31,138,91,.5),0 18px 40px -18px rgba(31,138,91,.3),0 4px 10px -4px rgba(31,138,91,.18),
+      inset 0 1px 0 rgba(255,255,255,.95),inset 0 0 0 1px rgba(31,138,91,.06)}
   .panel.rst::before{background:linear-gradient(90deg,var(--grn),#4fc78a)}
   .panel.rst::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;z-index:0;
-    background:radial-gradient(460px 300px at 50% 118%, rgba(31,138,91,.11), transparent 70%)}
+    background:
+      linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,0) 20%),
+      radial-gradient(520px 320px at 50% 122%, rgba(31,138,91,.14), transparent 70%)}
 
-  .p-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;position:relative;z-index:1}
+  .p-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;position:relative;z-index:3}
   .p-t{font-size:31px;font-weight:800;letter-spacing:-.6px}
   .panel.fin .p-t{color:var(--slate)} .panel.rst .p-t{color:var(--grn-ink)}
-  .p-s{font-family:var(--mono);font-size:16px;font-weight:800;padding:6px 13px;border-radius:9px}
-  .panel.fin .p-s{color:var(--faint);background:#f1f3f7}
-  .panel.rst .p-s{color:var(--grn);background:var(--grn-bg)}
+  .p-s{font-family:var(--mono);font-size:16px;font-weight:800;padding:6px 13px;border-radius:9px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.7),0 1px 2px rgba(30,40,70,.05)}
+  .panel.fin .p-s{color:var(--faint);background:#f1f3f7;border:1px solid #e6eaf0}
+  .panel.rst .p-s{color:var(--grn);background:var(--grn-bg);border:1px solid var(--grn-line)}
 
-  .lanes{display:flex;justify-content:space-between;margin:18px 6px 6px;position:relative;z-index:1;
+  .lanes{display:flex;justify-content:space-between;margin:18px 8px 6px;position:relative;z-index:3;
     font-size:15px;font-weight:800;letter-spacing:.6px;color:var(--muted);text-transform:uppercase}
   .lanes .sv{color:var(--blue-ink)}
 
-  .seq{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px;padding:12px 4px}
-  .seq::before,.seq::after{content:"";position:absolute;top:8px;bottom:8px;width:2.5px;
-    background:repeating-linear-gradient(180deg,#cbd3de,#cbd3de 7px,transparent 7px,transparent 15px)}
-  .seq::before{left:16px} .seq::after{right:16px}
+  .seq{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px;padding:8px 20px}
 
-  /* FIN — 4 bold arrows */
-  .arr{position:relative;z-index:1;height:44px;display:flex;align-items:center}
-  .arr svg{width:100%;height:44px;overflow:visible}
-  .arr .lb{position:absolute;left:50%;top:2px;transform:translateX(-50%);font-family:var(--mono);
-    font-size:16px;font-weight:800;background:#fff;padding:0 12px;color:var(--slate)}
+  /* dashed lifelines + station node caps */
+  .ll{position:absolute;top:4px;bottom:4px;width:2px;border-radius:2px;z-index:1}
+  .ll.sv{left:20px;background:repeating-linear-gradient(180deg,#b9cbe0,#b9cbe0 6px,transparent 6px,transparent 14px)}
+  .ll.cl{right:20px;background:repeating-linear-gradient(180deg,#cbd3de,#cbd3de 6px,transparent 6px,transparent 14px)}
+  .ll::before{content:"";position:absolute;top:-4px;left:50%;transform:translateX(-50%);
+    width:12px;height:12px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(30,40,70,.16)}
+  .ll.sv::before{border:2.5px solid #6f9fce}
+  .ll.cl::before{border:2.5px solid #aeb7c3}
+  .panel.rst .ll.sv{background:repeating-linear-gradient(180deg,#a8d3bd,#a8d3bd 6px,transparent 6px,transparent 14px)}
+  .panel.rst .ll.sv::before{border-color:#5bb488}
+  .panel.rst .ll.cl::before{border-color:#b7bdc6}
 
-  /* RST — one giant arrow banner (clip-path, drop-shadow) */
-  .bolt{display:flex;align-items:center;justify-content:center}
-  .boltbar{width:90%;height:88px;display:flex;align-items:center;justify-content:center;
-    background:linear-gradient(100deg,#2aa06e,#0e7146);
-    clip-path:polygon(0 0, calc(100% - 58px) 0, 100% 50%, calc(100% - 58px) 100%, 0 100%);
-    filter:drop-shadow(0 18px 22px rgba(15,110,72,.42))}
-  .boltbar .t{font-family:var(--mono);font-size:38px;font-weight:800;color:#fff;letter-spacing:3px;
-    padding-right:44px;text-shadow:0 2px 6px rgba(8,60,40,.45)}
+  /* FIN — refined CSS arrows (gradient shaft + head + station dot) */
+  .arr{position:relative;z-index:2;height:50px}
+  .arr .shaft{position:absolute;top:50%;transform:translateY(-50%);height:7px;border-radius:4px;z-index:1}
+  .arr .head{position:absolute;top:50%;transform:translateY(-50%);width:0;height:0;z-index:2}
+  .arr .dot{position:absolute;top:50%;transform:translate(-50%,-50%);width:11px;height:11px;border-radius:50%;z-index:2;
+    box-shadow:0 0 0 3px #fff,0 1px 2px rgba(30,40,70,.2)}
+  .arr .lb{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-family:var(--mono);
+    font-size:18px;font-weight:800;background:#fff;padding:3px 15px;border-radius:7px;color:#5a6472;z-index:3;
+    box-shadow:0 1px 3px rgba(30,40,70,.1),inset 0 0 0 1px rgba(30,40,70,.03)}
+  .arr .lb.muted{color:#9aa3b2}
+  /* out (→): tail dot on server, head at client */
+  .arr.out .shaft{left:6px;right:20px;background:linear-gradient(90deg,#adb5c1,#6b7480)}
+  .arr.out .head{right:0;border-left:18px solid #6b7480;border-top:10px solid transparent;border-bottom:10px solid transparent}
+  .arr.out .dot{left:0;background:#6b7480}
+  /* in (←): tail dot on client, head at server */
+  .arr.in .shaft{left:20px;right:6px;background:linear-gradient(270deg,#adb5c1,#6b7480)}
+  .arr.in .head{left:0;border-right:18px solid #6b7480;border-top:10px solid transparent;border-bottom:10px solid transparent}
+  .arr.in .dot{left:100%;background:#6b7480}
+  /* light (ACK) variant */
+  .arr.lt.out .shaft{background:linear-gradient(90deg,#d0d6de,#9aa3b2)}
+  .arr.lt.in .shaft{background:linear-gradient(270deg,#d0d6de,#9aa3b2)}
+  .arr.lt.out .head{border-left-color:#9aa3b2}
+  .arr.lt.in .head{border-right-color:#9aa3b2}
+  .arr.lt .dot{background:#9aa3b2}
+
+  /* RST — one giant tactile arrow banner */
+  .seq .rings{position:absolute;inset:0;z-index:0;pointer-events:none;
+    background:repeating-radial-gradient(circle at 6% 50%, rgba(31,138,91,.06) 0 1.5px, transparent 1.5px 34px);
+    -webkit-mask-image:linear-gradient(90deg,#000,transparent 86%);mask-image:linear-gradient(90deg,#000,transparent 86%)}
+  .bolt{position:relative;z-index:2;display:flex;align-items:center;justify-content:center;padding:0 6px}
+  .bolt .glow{position:absolute;inset:2px 4px;z-index:0;pointer-events:none;
+    background:radial-gradient(62% 130% at 50% 50%, rgba(31,160,110,.34), transparent 72%);filter:blur(9px)}
+  .boltbar{position:relative;z-index:1;width:100%;height:72px;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(118deg,#46c48b 0%,#22a06e 32%,#128153 66%,#0a6842 100%);
+    clip-path:polygon(0 0, calc(100% - 50px) 0, 100% 50%, calc(100% - 50px) 100%, 0 100%);
+    box-shadow:inset 0 2px 0 rgba(255,255,255,.5),inset 0 -10px 18px rgba(6,58,37,.42),inset 0 0 0 1px rgba(255,255,255,.16);
+    filter:drop-shadow(0 3px 4px rgba(10,80,52,.3)) drop-shadow(0 14px 22px rgba(12,110,72,.36))}
+  .boltbar::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+    background:linear-gradient(180deg,rgba(255,255,255,.42) 0%,rgba(255,255,255,.08) 40%,transparent 60%)}
+  .boltbar .t{position:relative;z-index:2;font-family:var(--mono);font-size:34px;font-weight:800;color:#fff;letter-spacing:3px;
+    padding-right:44px;text-shadow:0 2px 6px rgba(6,50,34,.5),0 1px 0 rgba(255,255,255,.18)}
 
   /* hero cost / win block */
-  .hero{display:flex;align-items:center;gap:22px;border-radius:22px;padding:24px 28px;position:relative;z-index:1}
-  .hero .ic{flex:0 0 auto;width:80px;height:80px;border-radius:22px;display:flex;align-items:center;justify-content:center}
+  .hero{display:flex;align-items:center;gap:22px;border-radius:22px;padding:24px 28px;position:relative;z-index:3}
+  .hero .ic{position:relative;overflow:hidden;flex:0 0 auto;width:72px;height:72px;border-radius:20px;display:flex;align-items:center;justify-content:center}
+  .hero .ic::before{content:"";position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(80% 72% at 28% 20%, rgba(255,255,255,.5), transparent 62%)}
+  .hero .ic svg{position:relative;z-index:1}
   .hero .tx{display:flex;flex-direction:column;line-height:1}
   .hero .lab{font-size:18px;font-weight:800;letter-spacing:.2px;margin-bottom:9px}
   .hero .big{font-weight:800;letter-spacing:-1.5px;display:flex;align-items:baseline;gap:5px}
-  .hero .big .n{font-size:66px} .hero .big .u{font-size:32px;font-weight:800}
+  .hero .big .n{font-size:60px;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+  .hero .big .u{font-size:28px;font-weight:800}
 
-  .hero.cost{background:linear-gradient(180deg,#fef2f4,#fde3e7);border:1.5px solid var(--red-line)}
+  .hero.cost{background:linear-gradient(180deg,#fef2f4,#fde3e7);border:1.5px solid var(--red-line);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.85),0 14px 30px -20px rgba(179,18,42,.4)}
   .hero.cost .ic{background:linear-gradient(150deg,#ef5568,#b3122a);box-shadow:0 14px 26px -8px rgba(179,18,42,.55),inset 0 1px 0 rgba(255,255,255,.3)}
-  .hero.cost .lab{color:var(--deep)} .hero.cost .big{color:var(--deep)}
-  .hero.win{background:linear-gradient(180deg,#eefaf3,#dff5e9);border:1.6px solid var(--grn-line)}
+  .hero.cost .lab{color:var(--deep)}
+  .hero.cost .big{color:var(--deep);filter:drop-shadow(0 2px 1.5px rgba(140,10,25,.16))}
+  .hero.cost .big .n{background-image:linear-gradient(155deg,#e6455b 0%,#b3122a 55%,#8a0d20 100%)}
+  .hero.win{background:linear-gradient(180deg,#eefaf3,#dff5e9);border:1.6px solid var(--grn-line);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 18px 34px -20px rgba(31,138,91,.5)}
   .hero.win .ic{background:linear-gradient(150deg,#33ac74,#1f8a5b);box-shadow:0 16px 30px -8px rgba(31,138,91,.6),inset 0 1px 0 rgba(255,255,255,.35)}
-  .hero.win .lab{color:var(--grn-ink)} .hero.win .big{color:var(--grn-ink)}
+  .hero.win .lab{color:var(--grn-ink)}
+  .hero.win .big{color:var(--grn-ink);filter:drop-shadow(0 2px 1.5px rgba(15,90,58,.18))}
+  .hero.win .big .n{background-image:linear-gradient(155deg,#37b57d 0%,#1f8a5b 55%,#12683f 100%)}
 
-  .vs{width:104px;display:flex;align-items:center;justify-content:center;position:relative;z-index:5}
-  .vs .med{width:76px;height:76px;border-radius:50%;background:linear-gradient(160deg,#ffffff,#eef1f6);
-    border:1.5px solid #e2e7ee;display:flex;align-items:center;justify-content:center;
-    box-shadow:0 20px 36px -14px rgba(30,40,70,.38),inset 0 2px 4px rgba(255,255,255,.9);
-    font-size:25px;font-weight:900;letter-spacing:.5px;color:var(--faint)}
+  /* VS — embossed metallic medallion */
+  .vs{width:104px;display:flex;align-items:center;justify-content:center;position:relative;z-index:6}
+  .vs::before{content:"";position:absolute;width:158px;height:158px;border-radius:50%;z-index:-1;pointer-events:none;
+    background:radial-gradient(circle, rgba(120,132,150,.16), rgba(120,132,150,0) 62%)}
+  .vs .med{position:relative;width:80px;height:80px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    background:conic-gradient(from 214deg,#f6f8fb,#e0e5ec,#ffffff,#e6eaf1,#f6f8fb);
+    box-shadow:0 24px 42px -16px rgba(30,40,70,.45),0 8px 16px -8px rgba(30,40,70,.3),
+      inset 0 2px 2px rgba(255,255,255,1),inset 0 -4px 8px rgba(30,40,70,.12),inset 0 0 0 1px rgba(255,255,255,.7)}
+  .vs .med::before{content:"";position:absolute;inset:6px;border-radius:50%;
+    background:linear-gradient(158deg,#ffffff,#eef1f6 58%,#dfe4ec);
+    box-shadow:inset 0 1px 2px rgba(255,255,255,.95),inset 0 -3px 6px rgba(30,40,70,.12)}
+  .vs .med b{position:relative;z-index:1;font-size:25px;font-weight:900;letter-spacing:.5px;
+    color:#7a828f;text-shadow:0 1px 0 #fff,0 -1px 1px rgba(30,40,70,.18)}
 
-  .foot{margin-top:22px;display:flex;align-items:center;justify-content:center;gap:16px}
-  .foot .fchip{display:inline-flex;align-items:center;gap:11px;font-size:18px;font-weight:800;color:var(--sub);
-    background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 22px;letter-spacing:-.3px;
-    box-shadow:0 10px 24px -16px rgba(30,40,70,.3)}
-  .foot .fchip .k{width:8px;height:8px;border-radius:50%;background:var(--grn)}
+  .foot{margin-top:24px;display:flex;align-items:center;justify-content:center;gap:16px}
+  .foot .fchip{display:inline-flex;align-items:center;gap:13px;font-size:20px;font-weight:800;color:var(--sub);
+    background:linear-gradient(180deg,#ffffff,#fafbfc);border:1px solid var(--line);border-radius:15px;padding:16px 28px;letter-spacing:-.3px;
+    box-shadow:0 12px 26px -16px rgba(30,40,70,.3),inset 0 1px 0 rgba(255,255,255,.9)}
+  .foot .fchip .k{width:8px;height:8px;border-radius:50%;background:var(--grn);box-shadow:0 0 0 3px var(--grn-bg)}
   .foot .fchip b{color:var(--deep)}
-  .foot .fchip.code{font-family:var(--mono);font-size:16px;color:var(--slate);background:#eef1f5;border-color:#e0e5ec}
+  .foot .fchip.code{font-family:var(--mono);font-size:16px;color:var(--slate);background:linear-gradient(180deg,#f2f4f8,#eceff4);border-color:#e0e5ec}
 </style>
 </head>
 <body>
@@ -134,47 +194,45 @@
         <div class="p-head"><span class="p-t">정상 종료</span><span class="p-s">FIN · 4-way</span></div>
         <div class="lanes"><span class="sv">Server</span><span>Client</span></div>
         <div class="seq">
-          <div class="arr">
-            <svg viewBox="0 0 480 44" preserveAspectRatio="none"><path d="M16 28 H436" stroke="#7c8797" stroke-width="6" fill="none"/><path d="M436 14 L466 28 L436 42 Z" fill="#7c8797"/></svg>
-            <span class="lb">FIN</span>
+          <span class="ll sv"></span><span class="ll cl"></span>
+          <div class="arr out">
+            <span class="shaft"></span><span class="dot"></span><span class="head"></span><span class="lb">FIN</span>
           </div>
-          <div class="arr">
-            <svg viewBox="0 0 480 44" preserveAspectRatio="none"><path d="M44 28 H464" stroke="#aab3c0" stroke-width="6" fill="none"/><path d="M44 14 L14 28 L44 42 Z" fill="#aab3c0"/></svg>
-            <span class="lb" style="color:var(--muted)">ACK</span>
+          <div class="arr in lt">
+            <span class="shaft"></span><span class="dot"></span><span class="head"></span><span class="lb muted">ACK</span>
           </div>
-          <div class="arr">
-            <svg viewBox="0 0 480 44" preserveAspectRatio="none"><path d="M44 28 H464" stroke="#7c8797" stroke-width="6" fill="none"/><path d="M44 14 L14 28 L44 42 Z" fill="#7c8797"/></svg>
-            <span class="lb">FIN</span>
+          <div class="arr in">
+            <span class="shaft"></span><span class="dot"></span><span class="head"></span><span class="lb">FIN</span>
           </div>
-          <div class="arr">
-            <svg viewBox="0 0 480 44" preserveAspectRatio="none"><path d="M16 28 H436" stroke="#aab3c0" stroke-width="6" fill="none"/><path d="M436 14 L466 28 L436 42 Z" fill="#aab3c0"/></svg>
-            <span class="lb" style="color:var(--muted)">ACK</span>
+          <div class="arr out lt">
+            <span class="shaft"></span><span class="dot"></span><span class="head"></span><span class="lb muted">ACK</span>
           </div>
         </div>
         <div class="hero cost">
-          <div class="ic"><svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3.2 2"/></svg></div>
+          <div class="ic"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3.2 2"/></svg></div>
           <div class="tx"><span class="lab">TIME_WAIT 점유</span><span class="big"><span class="n">2</span><span class="u">분</span></span></div>
         </div>
       </div>
 
-      <div class="vs"><div class="med">VS</div></div>
+      <div class="vs"><div class="med"><b>VS</b></div></div>
 
       <div class="panel rst">
         <div class="p-head"><span class="p-t">RST 종료</span><span class="p-s">SO_LINGER {1,0}</span></div>
         <div class="lanes"><span class="sv">Server</span><span>Client</span></div>
         <div class="seq">
-          <div class="bolt"><div class="boltbar"><span class="t">RST</span></div></div>
+          <span class="ll sv"></span><span class="ll cl"></span>
+          <div class="rings"></div>
+          <div class="bolt"><div class="glow"></div><div class="boltbar"><span class="t">RST</span></div></div>
         </div>
         <div class="hero win">
-          <div class="ic"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+          <div class="ic"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
           <div class="tx"><span class="lab">TIME_WAIT 없음 · 포트 즉시 해방</span><span class="big"><span class="n">즉시</span></span></div>
         </div>
       </div>
     </div>
 
     <div class="foot">
-      <span class="fchip"><span class="k"></span>서버측 종료는 대개 <b>비정상</b>(핵·타임아웃·킥)</span>
-      <span class="fchip code">l_onoff = 1 · l_linger = 0</span>
+      <span class="fchip"><span class="k"></span>게임 서버의 종료는 대개 <b>비정상 상황</b> (핵 · 타임아웃 · 킥) → 잔여 데이터 유실 허용</span>
     </div>
   </div>
 </body>

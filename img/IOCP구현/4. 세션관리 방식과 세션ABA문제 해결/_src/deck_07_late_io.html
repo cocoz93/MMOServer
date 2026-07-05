@@ -17,7 +17,7 @@
     --mono:"SF Mono",ui-monospace,"Cascadia Mono","Consolas",monospace;
   }
   html,body{width:1600px;height:900px;overflow:hidden;
-    background:radial-gradient(1100px 560px at 12% -12%, #ffffff, rgba(255,255,255,0) 58%),
+    background:radial-gradient(1100px 560px at 50% -14%, #ffffff, rgba(255,255,255,0) 58%),
       linear-gradient(140deg,var(--bg),var(--bg2));
     font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;color:var(--ink);
     word-break:keep-all;overflow-wrap:break-word;
@@ -25,111 +25,122 @@
   .card{position:absolute;inset:28px;border-radius:32px;border:1px solid rgba(30,40,70,.06);
     background:
       radial-gradient(circle at 1px 1px, rgba(43,106,168,.045) 1px, transparent 1.4px) 0 0/30px 30px,
-      radial-gradient(720px 500px at -6% -8%, rgba(215,38,61,.05), transparent 58%),
-      radial-gradient(760px 540px at 106% 112%, rgba(31,138,91,.06), transparent 60%),
+      radial-gradient(780px 560px at 72% 122%, rgba(31,138,91,.07), transparent 60%),
+      radial-gradient(600px 440px at -4% -6%, rgba(215,38,61,.045), transparent 58%),
       linear-gradient(180deg,#ffffff,#fbfcfe);
     box-shadow:var(--sh-card);
-    padding:40px 56px 38px;display:flex;flex-direction:column;overflow:hidden}
+    padding:44px 60px 42px;display:flex;flex-direction:column;overflow:hidden}
   .card::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
     background-image:var(--grain);background-size:180px 180px;opacity:.03;mix-blend-mode:soft-light}
   .card::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;
-    background:linear-gradient(90deg,var(--deep),var(--red) 20%,#f2647a 40%,#54a97e 72%,rgba(31,138,91,0) 96%)}
+    background:linear-gradient(90deg,var(--deep),var(--red) 18%,#f2647a 38%,#54a97e 72%,rgba(31,138,91,0) 96%)}
 
-  .top{display:flex;align-items:center;justify-content:space-between}
+  .top{display:flex;align-items:center;justify-content:space-between;position:relative;z-index:2}
   .eyebrow{display:inline-flex;align-items:center;gap:11px;
     font-size:16px;font-weight:800;letter-spacing:2.6px;color:var(--muted);text-transform:uppercase}
   .eyebrow .d{width:9px;height:9px;border-radius:50%;background:var(--red);box-shadow:0 0 0 4px var(--red-bg)}
   .ddtag{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:800;letter-spacing:.4px;
-    color:var(--slate);background:#eef1f5;border:1px solid #e2e6ec;border-radius:999px;padding:7px 15px}
-  .ddtag b{color:var(--deep)}
+    color:var(--slate);background:linear-gradient(180deg,#f3f5f8,#e9edf2);border:1px solid #e2e6ec;border-radius:999px;padding:7px 15px;
+    box-shadow:0 2px 5px -2px rgba(30,40,70,.16),inset 0 1px 0 rgba(255,255,255,.9)}
+  .ddtag b{color:var(--grn-ink)}
 
-  .title{margin-top:14px;font-size:47px;font-weight:800;color:var(--ink);letter-spacing:-1.6px;line-height:1.04}
-  .title .r{color:var(--deep)} .title .g{color:var(--grn-ink)} .title .mono{font-family:var(--mono);font-size:42px}
+  .title{margin-top:13px;font-size:47px;font-weight:800;color:var(--ink);letter-spacing:-1.6px;line-height:1.04;position:relative;z-index:2}
+  .title .r{color:var(--deep)} .title .g{color:var(--grn-ink)}
 
-  .stage{flex:1;display:grid;grid-template-columns:1fr 620px;gap:36px;min-height:0;padding-top:18px}
-  .probcol{display:flex;flex-direction:column;min-height:0}
-  .fixcol{display:flex;flex-direction:column;min-height:0}
-  .colbody{display:contents}
+  .stage{flex:1;display:flex;flex-direction:column;padding-top:20px;position:relative;z-index:2}
 
-  .col-label{font-size:15px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;margin-bottom:14px;
-    display:flex;align-items:center;gap:10px}
-  .col-label::after{content:"";flex:1;height:1.5px}
-  .col-label.prob{color:var(--deep)} .col-label.prob::after{background:var(--red-line)}
-  .col-label.fix{color:var(--grn-ink)} .col-label.fix::after{background:var(--grn-line)}
+  /* ===== timeline panel ===== */
+  .tl{flex:1;border-radius:26px;position:relative;overflow:hidden;display:flex;flex-direction:column;padding:26px 42px 26px;
+    background:linear-gradient(180deg,#ffffff,#f6f9fc);border:1.5px solid #e3e8ef;
+    box-shadow:0 42px 82px -34px rgba(30,40,70,.42),0 12px 28px -14px rgba(30,40,70,.14),inset 0 1px 0 rgba(255,255,255,.95)}
+  .tl::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;z-index:5;
+    background:linear-gradient(90deg,var(--blue) 0%,#8a95a6 32%,var(--red) 58%,#4fc78a 90%)}
+  .tl::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;z-index:0;
+    background:radial-gradient(560px 300px at 66% 118%, rgba(215,38,61,.05), transparent 66%)}
 
-  .lanehd{display:grid;grid-template-columns:1fr 50px 1fr;margin-bottom:12px}
-  .lanehd .lh{font-size:16px;font-weight:800;letter-spacing:-.2px;display:flex;align-items:center;gap:8px}
-  .lanehd .lh.a{color:var(--blue-ink)} .lanehd .lh.b{color:var(--slate);grid-column:3;justify-content:flex-end}
-  .lanehd .lh .mn{font-family:var(--mono);font-size:13px;font-weight:700;opacity:.8}
+  .tl-head{display:flex;align-items:center;justify-content:space-between;position:relative;z-index:4}
+  .p-t{font-size:31px;font-weight:800;letter-spacing:-.6px;color:var(--ink)}
+  .p-t .ar{color:var(--faint);font-weight:700;margin:0 5px}
+  .tag{font-size:17px;font-weight:800;letter-spacing:-.2px;color:var(--grn-ink);
+    background:linear-gradient(180deg,#eef8f2,#e0f2e8);border:1px solid var(--grn-line);border-radius:999px;padding:9px 19px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.85),0 2px 5px -3px rgba(31,138,91,.4)}
+  .tag b{color:var(--grn)}
 
-  .tl{position:relative;flex:1;display:flex;flex-direction:column;justify-content:space-between;gap:14px}
-  .tl::before{content:"";position:absolute;left:50%;transform:translateX(-1px);top:8px;bottom:8px;width:2.5px;
-    background:repeating-linear-gradient(180deg,#c9d2de,#c9d2de 6px,transparent 6px,transparent 12px)}
-  .trow{display:grid;grid-template-columns:1fr 50px 1fr;align-items:center}
-  .num{grid-column:2;justify-self:center;z-index:2;width:42px;height:42px;border-radius:50%;
-    background:#fff;border:3px solid #c9d2de;color:var(--muted);font-family:var(--mono);font-size:19px;font-weight:800;
-    display:flex;align-items:center;justify-content:center;box-shadow:0 5px 12px -3px rgba(30,40,70,.3)}
-  .ts{border-radius:17px;padding:19px 23px;position:relative;box-shadow:0 14px 30px -14px rgba(30,40,70,.32)}
-  .ts.a{grid-column:1} .ts.b{grid-column:3}
-  .ts .act{font-size:23px;font-weight:800;letter-spacing:-.3px;line-height:1.26}
-  .ts .act .m{font-family:var(--mono);font-size:20px}
-  .ts .sub2{margin-top:5px;font-size:16.5px;font-weight:700;letter-spacing:-.2px}
-  .ts.blue{background:linear-gradient(180deg,#f2f8fd,#e7f1fb);border:1.5px solid var(--blue-line)}
-  .ts.blue .act{color:var(--blue-deep)} .ts.blue .act .m{color:var(--blue-ink)} .ts.blue .ok{color:var(--grn)}
-  .ts.grey{background:#f2f4f8;border:1.5px solid #e0e5ec}
-  .ts.grey .act{color:var(--slate)} .ts.grey .act .m{color:#6b7484} .ts.grey .sub2{color:var(--muted)}
-  .ts.grey .gaptag{position:absolute;top:-11px;right:15px;font-size:12px;font-weight:800;letter-spacing:.3px;
-    color:#fff;background:var(--deep);padding:3px 11px;border-radius:999px;box-shadow:0 5px 12px -3px rgba(179,18,42,.5)}
-  .ts.red{background:linear-gradient(180deg,#fff0f2,#fddfe4);border:2.5px solid var(--red);
-    box-shadow:0 20px 36px -14px rgba(215,38,61,.42)}
-  .ts.red .act{color:var(--deep);font-size:26px} .ts.red .act .m{color:var(--deep);font-size:23px}
-  .ts.red .sub2{color:#c33}
-  .ts.red .zt{position:absolute;top:-12px;left:15px;font-size:12.5px;font-weight:800;letter-spacing:.5px;
-    color:#fff;background:var(--red);padding:3px 12px;border-radius:999px;box-shadow:0 6px 14px -3px rgba(215,38,61,.55)}
-  .num.zn{border-color:var(--red);color:var(--deep);background:var(--red-bg)}
+  /* fixed-coordinate diagram canvas */
+  .flow{position:relative;height:356px;margin:auto 0}
 
-  .consequence{margin-top:18px;display:flex;align-items:center;gap:16px;border-radius:17px;padding:20px 24px;
-    background:var(--deep);color:#fff;box-shadow:0 22px 40px -16px rgba(179,18,42,.62)}
-  .consequence .ic{flex:0 0 auto;font-size:30px}
-  .consequence .ct{font-size:21.5px;font-weight:800;letter-spacing:-.3px;line-height:1.3}
-  .consequence .ct .m{font-family:var(--mono);font-size:17.5px;background:rgba(255,255,255,.16);padding:2px 10px;border-radius:6px}
+  .rlabel{position:absolute;left:2px;font-size:14px;font-weight:800;letter-spacing:1.4px;text-transform:uppercase;color:var(--faint);z-index:2}
+  .rlabel.other{top:104px} .rlabel.io{top:200px}
 
-  /* RIGHT — GIANT post-check recall hero */
-  .casbox{border:2px solid var(--grn-line);border-radius:24px;background:linear-gradient(180deg,#f2fbf6,#e7f6ee);
-    padding:26px 30px 24px;position:relative;box-shadow:0 30px 60px -30px rgba(31,138,91,.44)}
-  .casbox::before{content:"";position:absolute;top:0;left:0;right:0;height:7px;border-radius:24px 24px 0 0;
-    background:linear-gradient(90deg,var(--grn),#54c48c)}
-  .casbox .cl2{font-size:15px;font-weight:800;letter-spacing:.5px;color:var(--grn-ink);text-transform:uppercase;margin-bottom:18px}
+  /* 다른 스레드 lifeline */
+  .dash{position:absolute;top:118px;left:5.5%;right:4.5%;height:0;border-top:2px dashed #d2d9e2;z-index:0}
 
-  .catchviz{display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:24px}
-  .iochip{width:144px;height:102px;border-radius:18px;background:#fff;border:2.5px dashed #c9d2de;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;flex:0 0 auto}
-  .iochip .n{font-family:var(--mono);font-size:23px;font-weight:800;color:var(--slate)}
-  .iochip .s{font-size:14px;font-weight:800;color:var(--muted);margin-top:4px}
-  .recheck{display:flex;flex-direction:column;align-items:center;gap:4px}
-  .recheck .pl{font-size:14.5px;font-weight:800;color:var(--slate)}
-  .recall{position:relative;width:132px;height:132px;border-radius:50%;flex:0 0 auto;
-    background:linear-gradient(150deg,#33ac74,#158a58);display:flex;align-items:center;justify-content:center;
-    box-shadow:0 24px 40px -12px rgba(31,138,91,.62),inset 0 2px 0 rgba(255,255,255,.3)}
-  .recall .lab{position:absolute;bottom:-12px;font-family:var(--mono);font-size:14.5px;font-weight:800;color:#fff;
-    background:#0f7146;padding:4px 14px;border-radius:999px;white-space:nowrap}
-  .catchbig{text-align:center;font-size:37px;font-weight:800;color:var(--grn-ink);letter-spacing:-.8px}
-  .catchbig b{color:var(--deep)}
-  .catchcode{margin-top:18px;background:#0f2a20;border-radius:12px;padding:16px 18px;font-family:var(--mono);
-    font-size:16px;font-weight:700;color:#cfeede;text-align:center;box-shadow:inset 0 2px 6px rgba(0,0,0,.25)}
-  .catchcode .k{color:#ffb4b4} .catchcode .fn{color:#7fd6a8}
+  /* disconnect intrusion */
+  .evtcap{position:absolute;top:6px;transform:translateX(-50%);width:540px;text-align:center;z-index:4;
+    font-size:17px;font-weight:700;color:#8f1023;letter-spacing:-.3px;line-height:1.4}
+  .evtcap b{font-weight:800}.evtcap .rd{color:var(--deep)}
+  .evtcap .m{font-family:var(--mono);font-size:15.5px;font-weight:800;color:var(--deep)}
+  .pill{position:absolute;top:60px;transform:translateX(-50%);z-index:5;display:inline-flex;align-items:center;gap:10px;
+    font-family:var(--mono);font-size:20px;font-weight:800;color:#fff;white-space:nowrap;
+    background:linear-gradient(180deg,#e6455b,#c3162e);border-radius:13px;padding:11px 21px;
+    box-shadow:0 16px 28px -10px rgba(179,18,42,.6),inset 0 1px 0 rgba(255,255,255,.3),inset 0 -3px 8px rgba(120,8,22,.4)}
+  .knob{position:absolute;top:111px;transform:translateX(-50%);width:16px;height:16px;border-radius:50%;background:#d7263d;z-index:5;
+    box-shadow:0 0 0 4px #fff,0 0 0 6px rgba(215,38,61,.22),0 3px 6px rgba(179,18,42,.45)}
+  .drop{position:absolute;top:127px;transform:translateX(-50%);z-index:4;display:flex;flex-direction:column;align-items:center}
+  .drop .sh{width:5px;height:68px;border-radius:3px;background:linear-gradient(180deg,#ef5568,#d7263d);
+    box-shadow:0 0 11px rgba(215,38,61,.45)}
+  .drop .hd{width:0;height:0;margin-top:-1px;border-top:15px solid #d7263d;
+    border-left:9px solid transparent;border-right:9px solid transparent;filter:drop-shadow(0 3px 3px rgba(179,18,42,.4))}
 
-  .roles{margin-top:auto;padding-top:20px;display:flex;flex-direction:column;gap:11px}
-  .roles .rh{font-size:14.5px;font-weight:800;letter-spacing:.4px;color:var(--slate);text-transform:uppercase;margin-bottom:2px;
-    display:flex;align-items:center;gap:9px}
-  .roles .rh .bd{font-size:12.5px;font-weight:800;color:#fff;background:var(--grn);padding:3px 11px;border-radius:999px;letter-spacing:.3px}
-  .role{display:flex;align-items:center;gap:14px;padding:14px 17px;border-radius:14px;
-    border:1.5px solid var(--line);background:#fff;box-shadow:0 10px 20px -14px rgba(30,40,70,.3)}
-  .role .rn{flex:0 0 auto;font-family:var(--mono);font-size:14px;font-weight:800;padding:6px 13px;border-radius:9px;white-space:nowrap}
-  .role.pre .rn{background:var(--blue-bg);color:var(--blue-ink);border:1px solid var(--blue-line)}
-  .role.post .rn{background:var(--grn-bg);color:var(--grn-ink);border:1px solid var(--grn-line)}
-  .role .rt{font-size:16.5px;font-weight:700;color:var(--sub);letter-spacing:-.3px;line-height:1.35}
-  .role .rt b{color:var(--ink);font-weight:800}
+  /* IO 스레드 timeline lane (grey → red race → green resolved) */
+  .lane{position:absolute;top:210px;left:5.5%;right:4.5%;height:11px;transform:translateY(-50%);border-radius:7px;z-index:1;
+    background:linear-gradient(90deg,#c6cdd8 0%,#b4bdc9 58%,#b4bdc9 82%,#5cc793 87%,#22a06a 100%);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.65),0 1px 2px rgba(30,40,70,.12)}
+  .lane .tip{position:absolute;right:-6px;top:50%;transform:translateY(-50%);
+    width:0;height:0;border-left:19px solid #22a06a;border-top:11px solid transparent;border-bottom:11px solid transparent}
+  .danger{position:absolute;top:210px;left:16.667%;width:66.666%;height:16px;transform:translateY(-50%);border-radius:8px;z-index:2;
+    background:
+      repeating-linear-gradient(-45deg, rgba(255,255,255,.32) 0 6px, rgba(255,255,255,0) 6px 13px),
+      linear-gradient(90deg,#ef5568,#d7263d);
+    box-shadow:0 0 0 1px rgba(179,18,42,.28),0 8px 20px -6px rgba(215,38,61,.65),0 0 26px rgba(215,38,61,.38)}
+  .racecap{position:absolute;top:230px;transform:translateX(-50%);z-index:3;
+    font-family:var(--mono);font-size:14px;font-weight:800;letter-spacing:1.8px;text-transform:uppercase;color:#c31f36}
+
+  /* station nodes on lane */
+  .node{position:absolute;top:210px;transform:translate(-50%,-50%);width:94px;height:94px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;z-index:3;
+    box-shadow:0 20px 34px -12px rgba(30,40,70,.42),0 6px 11px -4px rgba(30,40,70,.3),
+      inset 0 2px 5px rgba(255,255,255,.42),inset 0 -9px 16px rgba(0,0,0,.2),inset 0 0 0 1px rgba(255,255,255,.16)}
+  .node svg{position:relative;z-index:2;filter:drop-shadow(0 2px 3px rgba(0,0,0,.3))}
+  .node::before{content:"";position:absolute;top:11px;left:19px;right:34px;height:27px;border-radius:50%;pointer-events:none;
+    background:radial-gradient(72px 30px at 40% 15%,rgba(255,255,255,.62),rgba(255,255,255,0) 72%)}
+  .node.pre{left:16.667%;background:linear-gradient(150deg,#6aa2d6 2%,#3a78b8 52%,#255f9c 100%)}
+  .node.mid{left:50%;background:linear-gradient(150deg,#909aab 2%,#6b7688 52%,#535d6f 100%)}
+  .node.post{left:83.333%;background:linear-gradient(150deg,#4cbe86 2%,#25a06a 46%,#0f7a49 100%);
+    box-shadow:0 24px 40px -12px rgba(15,113,70,.6),0 7px 14px -5px rgba(15,113,70,.45),
+      inset 0 2px 6px rgba(255,255,255,.42),inset 0 -10px 18px rgba(6,60,38,.4),inset 0 0 0 1px rgba(255,255,255,.16),
+      0 0 0 10px rgba(31,138,91,.09)}
+
+  /* station legend under each node */
+  .legend{position:absolute;top:282px;left:0;right:0;display:grid;grid-template-columns:1fr 1fr 1fr;z-index:3}
+  .lg{display:flex;flex-direction:column;align-items:center;text-align:center;gap:9px;padding:0 26px}
+  .lg .t{font-size:24px;font-weight:800;letter-spacing:-.4px}
+  .lg.pre .t{color:var(--blue-ink)} .lg.mid .t{color:var(--slate)} .lg.post .t{color:var(--grn-ink)}
+  .lg .c{font-size:18px;font-weight:600;color:var(--sub);line-height:1.4}
+  .lg .c b{font-weight:800;color:var(--ink)}
+  .lg .c .m{font-family:var(--mono);font-size:16px;font-weight:800}
+
+  /* ===== code payoff: two guards, one predicate ===== */
+  .codeband{margin-top:16px;align-self:center;border-radius:16px;padding:18px 36px;position:relative;overflow:hidden;
+    background:radial-gradient(260px 130px at 88% 130%, rgba(45,163,108,.2), transparent 70%),linear-gradient(180deg,#132f27,#0c231b);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.06),inset 0 2px 12px rgba(0,0,0,.36),0 22px 40px -20px rgba(9,42,28,.8)}
+  .crow{display:flex;align-items:center;gap:26px}
+  .crow + .crow{margin-top:13px}
+  .crow .cd{font-family:var(--mono);font-size:21px;font-weight:700;color:#d4efe0;letter-spacing:.1px;min-width:520px}
+  .crow .cd .k{color:#ff9fa6}.crow .cd .fn{color:#84dcae}.crow .cd .dim{color:#7d968c}
+  .crow .an{font-size:16.5px;font-weight:800;letter-spacing:-.2px;padding:6px 15px;border-radius:10px;white-space:nowrap}
+  .crow .an.pre{color:#bfe0fb;background:rgba(58,120,184,.22);border:1px solid rgba(120,170,220,.3)}
+  .crow .an.post{color:#bff0d5;background:rgba(31,138,91,.24);border:1px solid rgba(90,190,140,.34)}
 </style>
 </head>
 <body>
@@ -138,79 +149,59 @@
       <div class="eyebrow"><span class="d"></span>Session · Late-posted IO</div>
       <div class="ddtag"><b>심화</b> · Deep Dive</div>
     </div>
-    <div class="title">pre-check 뒤 끼어든 <span class="r">disconnect</span> → <span class="g">post-check</span>로 회수</div>
+    <div class="title">제출 직후 <span class="g">다시 확인</span>해 <span class="r">놓친 IO</span>를 회수</div>
 
     <div class="stage">
-      <div class="probcol">
-        <div class="colbody">
-        <div class="col-label prob">문제 · 취소를 놓친 IO</div>
-        <div class="lanehd">
-          <div class="lh a">Thread A <span class="mn">PostRecv</span></div>
-          <div class="lh b">Thread B <span class="mn">Disconnect</span></div>
+      <div class="tl">
+        <div class="tl-head">
+          <span class="p-t">WSARecv 제출 <span class="ar">→</span> 재확인 타임라인</span>
+          <span class="tag">2겹 방어선 · 사전 + 사후</span>
         </div>
-        <div class="tl">
-          <div class="trow">
-            <div class="ts a blue">
-              <div class="act"><span class="m">_disconnecting</span> → <span class="ok">FALSE</span></div>
-              <div class="sub2">pre-check 통과 — 제출 진행</div>
-            </div>
-            <div class="num">1</div>
+
+        <div class="flow">
+          <!-- 다른 스레드: pre-check 통과 직후 disconnect가 끼어듦 (제출 前) -->
+          <span class="rlabel other">다른 스레드</span>
+          <span class="dash"></span>
+          <span class="evtcap" style="left:33.333%"><span class="m">_disconnecting = 1</span>&nbsp;·&nbsp;취소 스윕이 돌지만 <b class="rd">아직 제출 전이라 이 IO는 못 잡음</b></span>
+          <span class="pill" style="left:33.333%">
+            <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 13h6l-1 9 9-11h-6l1-9z"/></svg>
+            disconnect()
+          </span>
+          <span class="knob" style="left:33.333%"></span>
+          <div class="drop" style="left:33.333%"><span class="sh"></span><span class="hd"></span></div>
+
+          <!-- IO 스레드 타임라인 -->
+          <span class="rlabel io">IO 스레드</span>
+          <span class="lane"><span class="tip"></span></span>
+          <span class="danger"></span>
+          <span class="racecap" style="left:33.333%">race window</span>
+
+          <div class="node pre">
+            <svg viewBox="0 0 24 24" width="42" height="42" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21.4c4.6-1.9 7.3-5.2 7.3-10.2V5.4L12 2.6 4.7 5.4v5.8c0 5 2.7 8.3 7.3 10.2z"/><path d="M8.6 12.1l2.4 2.4 4.6-4.9"/></svg>
           </div>
-          <div class="trow">
-            <div class="num">2</div>
-            <div class="ts b grey">
-              <span class="gaptag">이 사이 끼어듦</span>
-              <div class="act"><span class="m">= TRUE</span> · CancelIoEx()</div>
-              <div class="sub2">안 걸린 IO는 취소 대상 없음</div>
-            </div>
+          <div class="node mid">
+            <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="#fff" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2.5 11 13"/><path d="M21.5 2.5 14.8 21.5l-3.8-8.5-8.5-3.8 19-6.7z"/></svg>
           </div>
-          <div class="trow">
-            <div class="ts a red">
-              <span class="zt">취소 안 됨</span>
-              <div class="act"><span class="m">WSARecv()</span> posted</div>
-              <div class="sub2">CancelIoEx 이후라 대상에서 빠짐</div>
-            </div>
-            <div class="num zn">3</div>
+          <div class="node post">
+            <svg viewBox="0 0 24 24" width="43" height="43" fill="none" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H10"/></svg>
           </div>
-        </div>
-        <div class="consequence">
-          <span class="ic">💥</span>
-          <span class="ct">Recv <span class="m">영구 pending</span> → IOCount <span class="m">0 불가</span> → 세션 누수</span>
-        </div>
+
+          <div class="legend">
+            <div class="lg pre"><span class="t">pre-check</span><span class="c">닫히는 세션엔 <b>IO를 안 건다</b></span></div>
+            <div class="lg mid"><span class="t">WSARecv 제출</span><span class="c">커널에 등록 → <b class="m">pending</b></span></div>
+            <div class="lg post"><span class="t">post-check</span><span class="c">누락된 그 IO만 <b>즉시 회수</b></span></div>
+          </div>
         </div>
       </div>
 
-      <div class="fixcol">
-        <div class="colbody">
-        <div class="col-label fix">해결 · 제출 직후 재확인</div>
-        <div class="casbox">
-          <div class="cl2">Post-submit Re-check</div>
-          <div class="catchviz">
-            <div class="iochip"><span class="n">WSARecv</span><span class="s">방금 제출</span></div>
-            <div class="recheck">
-              <svg width="54" height="26"><path d="M2 13 H36" stroke="#5cb98a" stroke-width="5" stroke-linecap="round" fill="none"/><path d="M35 4 L52 13 L35 22 Z" fill="#33ac74"/></svg>
-              <span class="pl">재확인</span>
-            </div>
-            <div class="recall">
-              <svg width="66" height="66" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h11a6 6 0 0 1 0 12H8"/><path d="M7 4 3 8l4 4"/></svg>
-              <span class="lab">CancelIoEx</span>
-            </div>
-          </div>
-          <div class="catchbig"><b>그 IO 하나만</b> 즉시 회수</div>
-          <div class="catchcode"><span class="k">if</span> (_disconnecting) <span class="fn">CancelIoEx</span>(&ex-&gt;overlapped)</div>
+      <div class="codeband">
+        <div class="crow">
+          <span class="cd"><span class="k">if</span> (_disconnecting) <span class="k">return</span><span class="dim">;</span></span>
+          <span class="an pre">pre-check · 사전 차단</span>
         </div>
-
-        <div class="roles">
-          <div class="rh"><span class="bd">2겹 방어선</span>제출 전 · 제출 후</div>
-          <div class="role pre">
-            <span class="rn">pre-check</span>
-            <span class="rt">닫히는 세션에 <b>IO 게시 자체를 차단</b></span>
-          </div>
-          <div class="role post">
-            <span class="rn">post-check</span>
-            <span class="rt">끼어든 disconnect <b>race를 회수</b></span>
-          </div>
-        </div>
+        <div class="crow">
+          <span class="cd"><span class="k">if</span> (_disconnecting) <span class="fn">CancelIoEx</span>(socket, <span class="dim">&amp;</span>ex-<span class="dim">&gt;</span>overlapped)<span class="dim">;</span></span>
+          <span class="an post">post-check · 사후 회수</span>
         </div>
       </div>
     </div>

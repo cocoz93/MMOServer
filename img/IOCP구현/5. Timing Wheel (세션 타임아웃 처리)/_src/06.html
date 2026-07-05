@@ -11,27 +11,27 @@
     --red:#d7263d; --indigo:#818cf8; --indigo-deep:#4f46e5; --slate:#566072;
   }
   *{box-sizing:border-box}
-  html,body{margin:0;width:1200px;height:640px;overflow:hidden;background:var(--bg);
+  html,body{margin:0;width:1200px;height:700px;overflow:hidden;background:var(--bg);
     font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased}
-  .card{position:absolute;top:24px;left:24px;width:1152px;height:592px;background:var(--card);
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:652px;background:var(--card);
     border:1px solid #eef0f3;border-radius:30px;box-shadow:0 14px 44px rgba(30,40,70,.07);
-    padding:32px 56px 0}
+    padding:34px 56px 0}
 
-  .title{font-size:37px;font-weight:800;color:var(--ink);letter-spacing:-.7px;line-height:1.08}
+  .title{font-size:38px;font-weight:800;color:var(--ink);letter-spacing:-.7px;line-height:1.08}
   .title .r{color:var(--red)}
   .uline{width:82px;height:6px;border-radius:3px;background:var(--red);margin-top:12px}
-  .sub{margin-top:12px;font-size:19.5px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub{margin-top:12px;font-size:20px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
   .sub b{color:#3a4254;font-weight:700}
 
-  .stage{margin-top:10px}
-  .stage svg{display:block;width:1040px;height:300px}
+  .stage{margin-top:6px}
+  .stage svg{display:block;width:1040px;height:360px}
 
-  .band{margin-top:14px;display:flex;align-items:center;gap:14px;background:#f7f8fb;border:1.5px solid #e7ebf1;
-    border-left:6px solid var(--indigo-deep);border-radius:14px;padding:15px 22px}
-  .band .ic{font-size:24px;flex:none}
-  .band .bt{font-size:18.5px;font-weight:600;color:#46506a;letter-spacing:-.3px;line-height:1.35}
+  .band{margin-top:10px;display:flex;align-items:center;gap:14px;background:#f7f8fb;border:1.5px solid #e7ebf1;
+    border-left:6px solid var(--indigo-deep);border-radius:14px;padding:16px 24px}
+  .band .ic{font-size:26px;flex:none}
+  .band .bt{font-size:19.5px;font-weight:600;color:#46506a;letter-spacing:-.3px;line-height:1.35}
   .band .bt b{font-weight:800;color:var(--indigo-deep)}
-  .band .bt code{font-family:'Pretendard',sans-serif;font-weight:800;color:var(--ink);background:#eef0f6;padding:1px 8px;border-radius:6px}
+  .band .bt code{font-family:'Pretendard',sans-serif;font-weight:800;color:var(--ink);background:#eef0f6;padding:1px 9px;border-radius:6px}
 
   .foot{position:absolute;left:56px;right:56px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
     font-size:15px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
@@ -45,55 +45,51 @@
     <div class="sub">슬롯 배열이 <b>원형 버퍼</b>처럼 순환 · 각 슬롯 = sentinel 기반 이중 연결 리스트</div>
 
     <div class="stage">
-      <svg viewBox="0 0 1040 300" xmlns="http://www.w3.org/2000/svg">
+      <svg viewBox="0 0 1100 380" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <marker id="ah" markerWidth="8" markerHeight="8" refX="5.5" refY="4" orient="auto">
             <path d="M0,0 L8,4 L0,8 Z" fill="#8a93a5"/></marker>
           <marker id="ahR" markerWidth="9" markerHeight="9" refX="6" refY="4.5" orient="auto">
             <path d="M0,0 L9,4.5 L0,9 Z" fill="#d7263d"/></marker>
+          <marker id="ahI" markerWidth="8" markerHeight="8" refX="5.5" refY="4" orient="auto">
+            <path d="M0,0 L8,4 L0,8 Z" fill="#818cf8"/></marker>
         </defs>
 
-        <!-- ===== zoom cone (behind) ===== -->
-        <polygon points="286,128 286,176 470,262 470,58" fill="#eef1f7" opacity="0.55"/>
-        <line x1="286" y1="128" x2="470" y2="58"  stroke="#c7cedb" stroke-width="1.6" stroke-dasharray="5 4"/>
-        <line x1="286" y1="176" x2="470" y2="262" stroke="#c7cedb" stroke-width="1.6" stroke-dasharray="5 4"/>
-        <text x="372" y="150" text-anchor="middle" font-size="15" font-weight="800" fill="#8a93a5">확대 ▸</text>
-
-        <!-- ===== ring (built by script into #ring) ===== -->
+        <!-- ===== ring (left) ===== -->
         <g id="ring"></g>
-        <circle cx="165" cy="150" r="40" fill="#fff" stroke="#e2e6ec" stroke-width="2"/>
-        <text x="165" y="144" text-anchor="middle" font-size="17" font-weight="800" fill="#566072">13 슬롯</text>
-        <text x="165" y="166" text-anchor="middle" font-size="13.5" font-weight="700" fill="#9aa3b2">원형 버퍼</text>
-        <!-- cursor label -->
-        <text x="196" y="24" text-anchor="middle" font-size="14" font-weight="800" fill="#d7263d">cursor</text>
-        <!-- zoomed slot label -->
-        <text x="300" y="205" text-anchor="middle" font-size="15" font-weight="800" fill="#4f46e5">Slot 3</text>
+        <circle cx="195" cy="192" r="56" fill="#fff" stroke="#e2e6ec" stroke-width="2"/>
+        <text x="195" y="186" text-anchor="middle" font-size="22" font-weight="800" fill="#566072">13 슬롯</text>
+        <text x="195" y="212" text-anchor="middle" font-size="14.5" font-weight="700" fill="#9aa3b2">원형 버퍼</text>
+        <text x="233" y="28" text-anchor="middle" font-size="15" font-weight="800" fill="#d7263d">cursor</text>
+
+        <!-- ===== connector: highlighted slot -> list ===== -->
+        <line x1="358" y1="204" x2="448" y2="192" stroke="#b7c0cc" stroke-width="6" stroke-linecap="round" marker-end="url(#ah)"/>
 
         <!-- ===== doubly-linked list (right) ===== -->
-        <text x="748" y="34" text-anchor="middle" font-size="17" font-weight="800" fill="#1f2330">한 슬롯의 내부 — 이중 연결 리스트</text>
+        <text x="750" y="60" text-anchor="middle" font-size="30" font-weight="800" fill="#1f2330">한 슬롯의 내부 — 이중 연결 리스트</text>
 
         <!-- sentinel -->
-        <rect x="500" y="92" width="150" height="74" rx="13" fill="#e0e7ff" stroke="#818cf8" stroke-width="2"/>
-        <text x="575" y="124" text-anchor="middle" font-size="18" font-weight="800" fill="#4338ca">sentinel</text>
-        <text x="575" y="146" text-anchor="middle" font-size="13" font-weight="700" fill="#6d6fd0">더미 헤드</text>
+        <rect x="452" y="144" width="168" height="96" rx="16" fill="#e0e7ff" stroke="#818cf8" stroke-width="2"/>
+        <text x="536" y="186" text-anchor="middle" font-size="24" font-weight="800" fill="#4338ca">sentinel</text>
+        <text x="536" y="211" text-anchor="middle" font-size="14" font-weight="700" fill="#6d6fd0">더미 헤드</text>
         <!-- Session D -->
-        <rect x="695" y="92" width="150" height="74" rx="13" fill="#fff" stroke="#9ca3af" stroke-width="1.8"/>
-        <text x="770" y="130" text-anchor="middle" font-size="18" font-weight="800" fill="#374151">Session D</text>
-        <text x="770" y="150" text-anchor="middle" font-size="12.5" font-weight="700" fill="#9ca3af">node</text>
+        <rect x="666" y="144" width="168" height="96" rx="16" fill="#fff" stroke="#9ca3af" stroke-width="1.8"/>
+        <text x="750" y="184" text-anchor="middle" font-size="22" font-weight="800" fill="#374151">Session D</text>
+        <text x="750" y="209" text-anchor="middle" font-size="13.5" font-weight="700" fill="#9ca3af">node</text>
         <!-- Session E -->
-        <rect x="890" y="92" width="150" height="74" rx="13" fill="#fff" stroke="#9ca3af" stroke-width="1.8"/>
-        <text x="965" y="130" text-anchor="middle" font-size="18" font-weight="800" fill="#374151">Session E</text>
-        <text x="965" y="150" text-anchor="middle" font-size="12.5" font-weight="700" fill="#9ca3af">node</text>
+        <rect x="880" y="144" width="168" height="96" rx="16" fill="#fff" stroke="#9ca3af" stroke-width="1.8"/>
+        <text x="964" y="184" text-anchor="middle" font-size="22" font-weight="800" fill="#374151">Session E</text>
+        <text x="964" y="209" text-anchor="middle" font-size="13.5" font-weight="700" fill="#9ca3af">node</text>
 
-        <!-- double arrows between adjacent -->
-        <line x1="655" y1="129" x2="690" y2="129" stroke="#8a93a5" stroke-width="2.4" marker-start="url(#ah)" marker-end="url(#ah)"/>
-        <line x1="850" y1="129" x2="885" y2="129" stroke="#8a93a5" stroke-width="2.4" marker-start="url(#ah)" marker-end="url(#ah)"/>
-        <text x="672" y="112" text-anchor="middle" font-size="11.5" font-weight="800" fill="#9aa3b2">prev/next</text>
+        <!-- prev/next arrows -->
+        <line x1="622" y1="192" x2="664" y2="192" stroke="#8a93a5" stroke-width="2.8" marker-start="url(#ah)" marker-end="url(#ah)"/>
+        <line x1="836" y1="192" x2="878" y2="192" stroke="#8a93a5" stroke-width="2.8" marker-start="url(#ah)" marker-end="url(#ah)"/>
+        <text x="643" y="174" text-anchor="middle" font-size="12" font-weight="800" fill="#9aa3b2">prev/next</text>
 
-        <!-- circular wrap: E back to sentinel -->
-        <path d="M965 168 C 965 240, 575 240, 575 168" fill="none" stroke="#818cf8" stroke-width="2.2"
-              stroke-dasharray="6 4" marker-start="url(#ah)" marker-end="url(#ah)"/>
-        <text x="770" y="235" text-anchor="middle" font-size="13" font-weight="800" fill="#6d6fd0">tail ↔ sentinel 순환 (환형 리스트)</text>
+        <!-- circular wrap: tail back to sentinel -->
+        <path d="M964 240 C 964 328, 536 328, 536 240" fill="none" stroke="#818cf8" stroke-width="2.6"
+              stroke-dasharray="7 5" marker-start="url(#ahI)" marker-end="url(#ahI)"/>
+        <text x="750" y="352" text-anchor="middle" font-size="22" font-weight="800" fill="#6d6fd0">tail ↔ sentinel 순환 (환형 리스트)</text>
       </svg>
     </div>
 
@@ -102,7 +98,7 @@
       <div class="bt">노드는 세션 인덱스로 <b>사전 할당</b> — <code>nodes[sessionIndex]</code> 로 O(1) 접근하며, 런타임 동적 할당·해제가 없다.</div>
     </div>
 
-    <div class="foot">슬롯 배열 = 원형 버퍼 · 각 슬롯의 이중 연결 리스트에 세션 노드가 매달림 · <b>sentinel(더미 헤드)</b>로 빈 리스트에서도 분기 없이 삽입/제거 · 노드는 <b>사전 할당</b></div>
+    <div class="foot">슬롯 배열이 원형 버퍼처럼 순환 · 각 슬롯 내부는 <b>sentinel(더미 헤드)</b> 기반 이중 연결 리스트 · 빈 리스트에서도 분기 없이 삽입/제거</div>
   </div>
 
 <script>
@@ -112,35 +108,22 @@ function wedge(cx,cy,rO,rI,a0,a1){
   return `M ${P(rO,a0)} A ${rO} ${rO} 0 ${large} 1 ${P(rO,a1)} L ${P(rI,a1)} A ${rI} ${rI} 0 ${large} 0 ${P(rI,a0)} Z`;
 }
 (function(){
-  const cx=165,cy=150,rO=120,rI=72,N=13,gap=2.6,step=360/N,ns="http://www.w3.org/2000/svg";
+  const cx=195,cy=192,rO=158,rI=96,N=13,gap=2.6,step=360/N,ns="http://www.w3.org/2000/svg";
   const g=document.getElementById('ring');
-  const mid=(rO+rI)/2;
   for(let i=0;i<N;i++){
     const a0=(-90+i*step+gap/2)*Math.PI/180, a1=(-90+(i+1)*step-gap/2)*Math.PI/180;
     const p=document.createElementNS(ns,'path');
     p.setAttribute('d',wedge(cx,cy,rO,rI,a0,a1));
-    if(i===3){p.setAttribute('fill','#818cf8');}
-    else{p.setAttribute('fill','#e2e6ec');}
+    p.setAttribute('fill', i===3 ? '#818cf8' : '#e2e6ec');
     g.appendChild(p);
-    // occupancy dots on a couple of other slots
-    if(i===6||i===10){
-      const ac=(-90+(i+0.5)*step)*Math.PI/180;
-      for(let d=0;d<3;d++){
-        const dot=document.createElementNS(ns,'circle');
-        dot.setAttribute('cx',(cx+(rO+10+d*7)*Math.cos(ac)).toFixed(2));
-        dot.setAttribute('cy',(cy+(rO+10+d*7)*Math.sin(ac)).toFixed(2));
-        dot.setAttribute('r','2.4');dot.setAttribute('fill','#b7c0cc');
-        g.appendChild(dot);
-      }
-    }
   }
   // cursor hand -> slot 0 (top)
   const ca=(-90+0.5*step)*Math.PI/180;
-  const hx=cx+ (rI+6)*Math.cos(ca), hy=cy+(rI+6)*Math.sin(ca);
-  const tx=cx+ (rO-6)*Math.cos(ca), ty=cy+(rO-6)*Math.sin(ca);
+  const hx=cx+(rI+8)*Math.cos(ca), hy=cy+(rI+8)*Math.sin(ca);
+  const tx=cx+(rO-6)*Math.cos(ca), ty=cy+(rO-6)*Math.sin(ca);
   const hand=document.createElementNS(ns,'line');
   hand.setAttribute('x1',hx);hand.setAttribute('y1',hy);hand.setAttribute('x2',tx);hand.setAttribute('y2',ty);
-  hand.setAttribute('stroke','#d7263d');hand.setAttribute('stroke-width','4');hand.setAttribute('stroke-linecap','round');
+  hand.setAttribute('stroke','#d7263d');hand.setAttribute('stroke-width','4.5');hand.setAttribute('stroke-linecap','round');
   hand.setAttribute('marker-end','url(#ahR)');
   g.appendChild(hand);
 })();

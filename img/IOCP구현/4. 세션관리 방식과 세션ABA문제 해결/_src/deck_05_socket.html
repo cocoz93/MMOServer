@@ -35,66 +35,85 @@
   .card::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;
     background:linear-gradient(90deg,var(--blue-deep),var(--blue) 30%,#7cb0de 55%,rgba(124,176,222,0) 88%)}
 
-  .top{display:flex;align-items:center;justify-content:space-between}
+  /* faint concentric "protection field" rings behind the lock */
+  .motif{position:absolute;z-index:0;width:860px;height:860px;left:50%;top:50%;transform:translate(-50%,-50%);
+    border-radius:50%;pointer-events:none;
+    background:repeating-radial-gradient(circle at center, rgba(43,106,168,.06) 0 1.3px, rgba(43,106,168,0) 1.3px 54px);
+    -webkit-mask:radial-gradient(circle at center, #000 0 30%, rgba(0,0,0,.55) 52%, transparent 76%);
+            mask:radial-gradient(circle at center, #000 0 30%, rgba(0,0,0,.55) 52%, transparent 76%);}
+  .motif::after{content:"";position:absolute;inset:0;border-radius:50%;
+    background:radial-gradient(circle at center, rgba(43,106,168,.05), transparent 60%)}
+
+  .top{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between}
   .eyebrow{display:inline-flex;align-items:center;gap:11px;
     font-size:16px;font-weight:800;letter-spacing:2.6px;color:var(--muted);text-transform:uppercase}
   .eyebrow .d{width:9px;height:9px;border-radius:50%;background:var(--blue-ink);box-shadow:0 0 0 4px var(--blue-bg)}
   .ddtag{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:800;letter-spacing:.4px;
-    color:var(--slate);background:#eef1f5;border:1px solid #e2e6ec;border-radius:999px;padding:7px 15px}
+    color:var(--slate);background:linear-gradient(180deg,#f3f5f9,#e9edf3);border:1px solid #e2e6ec;border-radius:999px;padding:7px 15px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 1px 2px rgba(30,40,70,.05)}
   .ddtag b{color:var(--blue-deep)}
 
-  .title{margin-top:16px;font-size:54px;font-weight:800;color:var(--ink);letter-spacing:-1.8px;line-height:1.03}
-  .title .b{color:var(--blue-ink)} .title .mono{font-family:var(--mono);font-size:49px;color:var(--blue-deep)}
+  .title{position:relative;z-index:2;margin-top:16px;font-size:54px;font-weight:800;color:var(--ink);letter-spacing:-1.8px;line-height:1.03}
+  .title .b{color:var(--blue-ink)} .title .mono{font-family:var(--mono);font-size:49px;color:var(--blue-deep);letter-spacing:-1px}
   .title .r{color:var(--deep)}
 
-  .stage{flex:1;display:flex;flex-direction:column;justify-content:center;gap:24px;padding-top:14px}
+  .stage{position:relative;z-index:2;flex:1;display:flex;flex-direction:column;justify-content:center;gap:26px;padding-top:12px}
   .flow{display:flex;align-items:center;justify-content:center;gap:0}
 
-  .side{width:326px;border-radius:22px;background:#fff;position:relative;overflow:hidden;
+  .side{width:326px;border-radius:22px;background:linear-gradient(180deg,#ffffff,#fbfdff);position:relative;overflow:hidden;
     display:flex;flex-direction:column;padding:26px 28px 28px;
-    box-shadow:0 24px 50px -30px rgba(30,40,70,.34),0 6px 16px -10px rgba(30,40,70,.1)}
+    box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 30px 56px -30px rgba(30,40,70,.36),0 12px 26px -16px rgba(30,40,70,.16),0 3px 8px -4px rgba(30,40,70,.08)}
   .side::before{content:"";position:absolute;top:0;left:0;right:0;height:6px}
-  .side .tag{font-size:15px;font-weight:800;letter-spacing:.3px;padding:6px 15px;border-radius:999px;align-self:flex-start;margin-bottom:18px}
-  .side .big{font-size:30px;font-weight:800;letter-spacing:-.6px;line-height:1.14}
+  .side::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;
+    background:radial-gradient(circle at 1px 1px, rgba(43,106,168,.05) 1px, transparent 1.4px) 0 0/22px 22px;opacity:.5}
+  .side .tag{position:relative;z-index:1;font-size:15px;font-weight:800;letter-spacing:.3px;padding:6px 15px;border-radius:999px;align-self:flex-start;margin-bottom:18px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.7)}
+  .side .big{position:relative;z-index:1;font-size:30px;font-weight:800;letter-spacing:-.6px;line-height:1.14}
   .side .big em{font-style:normal;font-family:var(--mono)}
-  .side .chip{margin-top:20px;display:flex;align-items:center;gap:9px;border-radius:12px;padding:13px 15px;
-    font-family:var(--mono);font-size:16px;font-weight:800;letter-spacing:-.2px}
-  .side .chip .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+  .side .chip{position:relative;z-index:1;margin-top:20px;display:flex;align-items:center;gap:9px;border-radius:12px;padding:13px 15px;
+    font-family:var(--mono);font-size:16px;font-weight:800;letter-spacing:-.2px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.75),0 2px 5px -2px rgba(30,40,70,.1)}
+  .side .chip .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;box-shadow:0 0 0 3px rgba(255,255,255,.6)}
   .side .chip .ko{font-family:'Pretendard',"Malgun Gothic",sans-serif}
 
   .side.io{border:1.5px solid var(--blue-line)}
-  .side.io::before{background:linear-gradient(90deg,var(--blue-ink),#7cb0de)}
-  .side.io .tag{background:var(--blue-bg);color:var(--blue-ink)}
+  .side.io::before{background:linear-gradient(90deg,var(--blue-deep),var(--blue-ink) 40%,#7cb0de)}
+  .side.io .tag{background:linear-gradient(180deg,#eef5fc,var(--blue-bg));color:var(--blue-ink)}
   .side.io .big em{color:var(--blue-deep)}
-  .side.io .chip{background:#f2f7fc;border:1px solid var(--blue-line);color:var(--blue-ink)} .side.io .chip .dot{background:var(--blue-ink)}
+  .side.io .chip{background:linear-gradient(180deg,#f4f9fe,#eaf3fc);border:1px solid var(--blue-line);color:var(--blue-ink)} .side.io .chip .dot{background:var(--blue-ink)}
   .side.rel{border:1.6px solid var(--grn-line)}
-  .side.rel::before{background:linear-gradient(90deg,var(--grn),#54c48c)}
-  .side.rel .tag{background:var(--grn-bg);color:var(--grn-ink)}
+  .side.rel::before{background:linear-gradient(90deg,var(--grn-ink),var(--grn) 45%,#54c48c)}
+  .side.rel .tag{background:linear-gradient(180deg,#eef9f2,var(--grn-bg));color:var(--grn-ink)}
   .side.rel .big{color:var(--grn-ink)} .side.rel .big em{font-family:var(--mono)}
-  .side.rel .chip{background:var(--grn-bg);border:1px solid var(--grn-line);color:var(--grn-ink)} .side.rel .chip .dot{background:var(--grn)}
+  .side.rel .chip{background:linear-gradient(180deg,#eef9f2,var(--grn-bg));border:1px solid var(--grn-line);color:var(--grn-ink)} .side.rel .chip .dot{background:var(--grn)}
 
-  .conn{width:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+  .conn{width:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:11px}
   .conn .cl{font-size:14.5px;font-weight:800;color:var(--muted);letter-spacing:-.2px;text-align:center;line-height:1.25}
-  .conn .cl .m{font-family:var(--mono);font-size:12.5px;color:var(--faint);display:block;margin-top:2px}
+  .conn .cl .sub2{display:block;margin-top:3px;font-size:12.5px;font-weight:700;color:var(--faint)}
+  .conn .cl .sub2 .m{font-family:var(--mono);letter-spacing:0}
 
   /* GIANT lock hero */
   .lockhero{position:relative;width:430px;display:flex;flex-direction:column;align-items:center;padding:0 8px}
-  .lockhero .glow{position:absolute;top:26px;left:50%;transform:translateX(-50%);width:300px;height:300px;border-radius:50%;
-    background:radial-gradient(circle, rgba(43,106,168,.16), transparent 66%);z-index:0}
-  .lockhero .lk{position:relative;z-index:1;filter:drop-shadow(0 30px 34px rgba(31,80,136,.34))}
-  .lockhero .cond{position:relative;z-index:1;margin-top:12px;font-family:var(--mono);font-size:31px;font-weight:800;color:#fff;
-    background:linear-gradient(145deg,#3f81c4,#1f5088);padding:13px 34px;border-radius:999px;letter-spacing:.5px;
-    box-shadow:0 18px 32px -8px rgba(31,80,136,.58)}
-  .lockhero .verdict{position:relative;z-index:1;margin-top:16px;font-size:38px;font-weight:800;letter-spacing:-1px;color:var(--blue-deep);
+  .lockhero .glow{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:340px;height:340px;border-radius:50%;
+    background:radial-gradient(circle, rgba(43,106,168,.20), rgba(43,106,168,.09) 42%, transparent 68%);z-index:0}
+  .lockhero .lk{position:relative;z-index:1;filter:drop-shadow(0 34px 30px rgba(31,80,136,.30))}
+  .lockhero .cond{position:relative;z-index:2;margin-top:6px;font-family:var(--mono);font-size:31px;font-weight:800;color:#fff;
+    background:linear-gradient(158deg,#4d8ecf 2%,#2c6aa8 46%,#1c4a80 100%);padding:13px 34px;border-radius:999px;letter-spacing:.5px;
+    border:1px solid rgba(255,255,255,.16);
+    box-shadow:0 22px 36px -12px rgba(31,80,136,.62),0 6px 14px -6px rgba(31,80,136,.44),inset 0 1.5px 0 rgba(255,255,255,.42),inset 0 -3px 8px rgba(10,36,66,.4)}
+  .lockhero .verdict{position:relative;z-index:2;margin-top:16px;font-size:38px;font-weight:800;letter-spacing:-1px;color:var(--blue-deep);
     display:flex;align-items:center;gap:12px}
   .lockhero .verdict .strike{font-family:var(--mono);font-size:30px;color:var(--muted);text-decoration:line-through;text-decoration-color:var(--red);text-decoration-thickness:3px}
-  .lockhero .sub{position:relative;z-index:1;margin-top:8px;font-size:19px;font-weight:700;color:var(--slate);letter-spacing:-.3px}
+  .lockhero .sub{position:relative;z-index:2;margin-top:8px;font-size:19px;font-weight:700;color:var(--slate);letter-spacing:-.3px}
 
-  .win{display:flex;align-items:center;gap:18px;align-self:center;
-    background:linear-gradient(180deg,#eefaf3,#dff5e9);border:1.6px solid var(--grn-line);border-radius:18px;padding:20px 34px;
-    box-shadow:0 22px 46px -30px rgba(31,138,91,.4)}
-  .win .ck{flex:0 0 auto;width:46px;height:46px;border-radius:50%;background:linear-gradient(145deg,#33ac74,#1f8a5b);
-    display:flex;align-items:center;justify-content:center;box-shadow:0 12px 22px -8px rgba(31,138,91,.55)}
+  .win{position:relative;display:flex;align-items:center;gap:18px;align-self:center;
+    background:linear-gradient(180deg,#f0fbf5,#ddf4e8);border:1.6px solid var(--grn-line);border-radius:18px;padding:20px 36px;
+    box-shadow:0 26px 48px -30px rgba(31,138,91,.44),0 8px 18px -12px rgba(31,138,91,.2),inset 0 1px 0 rgba(255,255,255,.85)}
+  .win::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:4px;border-radius:0 4px 4px 0;
+    background:linear-gradient(180deg,#54c48c,var(--grn))}
+  .win .ck{flex:0 0 auto;width:46px;height:46px;border-radius:50%;background:linear-gradient(145deg,#3bb87e,#1f8a5b);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 14px 22px -8px rgba(31,138,91,.6),inset 0 1.5px 0 rgba(255,255,255,.5),inset 0 -3px 7px rgba(12,80,52,.35)}
   .win .wt{font-size:24px;font-weight:800;color:var(--grn-ink);letter-spacing:-.4px}
   .win .wt b{color:#0f5638;text-decoration:underline;text-decoration-color:#9ad9ba;text-underline-offset:4px}
   .win .wt .r{color:var(--deep)}
@@ -102,6 +121,7 @@
 </head>
 <body>
   <div class="card">
+    <div class="motif"></div>
     <div class="top">
       <div class="eyebrow"><span class="d"></span>Session · Socket ABA</div>
       <div class="ddtag"><b>심화</b> · Deep Dive</div>
@@ -117,22 +137,59 @@
         </div>
 
         <div class="conn">
-          <svg width="70" height="30"><path d="M2 15 H48" stroke="#9db4cf" stroke-width="6" stroke-linecap="round" fill="none"/><path d="M46 4 L68 15 L46 26 Z" fill="#9db4cf"/></svg>
-          <div class="cl">pin<span class="m">acquire</span></div>
+          <svg width="96" height="30" viewBox="0 0 96 30" fill="none">
+            <defs>
+              <linearGradient id="cgl" gradientUnits="userSpaceOnUse" x1="6" y1="15" x2="67" y2="15">
+                <stop offset="0" stop-color="#4f88c3"/><stop offset="1" stop-color="#2b6199"/></linearGradient>
+            </defs>
+            <path d="M6 15 H67" stroke="url(#cgl)" stroke-width="8" stroke-linecap="round"/>
+            <path d="M61 3.5 L95 15 L61 26.5 Z" fill="#2b6199"/>
+            <circle cx="6" cy="15" r="5.5" fill="#3a78b8" stroke="#fff" stroke-width="2"/>
+          </svg>
+          <div class="cl">pin<span class="sub2"><span class="m">acquire</span></span></div>
         </div>
 
         <div class="lockhero">
           <div class="glow"></div>
-          <svg class="lk" width="178" height="206" viewBox="0 0 120 140" fill="none">
+          <svg class="lk" width="212" height="250" viewBox="0 0 200 240" fill="none">
             <defs>
-              <linearGradient id="bd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5b96cf"/><stop offset="1" stop-color="#26608f"/></linearGradient>
-              <linearGradient id="sh" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fbde6"/><stop offset="1" stop-color="#3a78b8"/></linearGradient>
+              <linearGradient id="body" x1="16%" y1="4%" x2="88%" y2="100%">
+                <stop offset="0" stop-color="#7fb2df"/><stop offset=".26" stop-color="#5591ca"/>
+                <stop offset=".62" stop-color="#33699f"/><stop offset="1" stop-color="#1f4d7d"/></linearGradient>
+              <linearGradient id="shk" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#bcd8f0"/><stop offset=".46" stop-color="#6ea0d0"/><stop offset="1" stop-color="#2e69a0"/></linearGradient>
+              <linearGradient id="shkhi" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#eef5fc"/><stop offset="1" stop-color="rgba(238,245,252,0)"/></linearGradient>
+              <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="rgba(255,255,255,.55)"/><stop offset=".55" stop-color="rgba(255,255,255,.10)"/><stop offset="1" stop-color="rgba(255,255,255,0)"/></linearGradient>
+              <linearGradient id="hole" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#0a2540"/><stop offset="1" stop-color="#1c4a78"/></linearGradient>
+              <clipPath id="bodyclip"><rect x="34" y="104" width="132" height="118" rx="26"/></clipPath>
+              <filter id="lksh" x="-45%" y="-30%" width="190%" height="175%">
+                <feDropShadow dx="0" dy="20" stdDeviation="16" flood-color="#1f5088" flood-opacity="0.34"/></filter>
             </defs>
-            <path d="M35 64 V45 a25 25 0 0 1 50 0 V64" fill="none" stroke="url(#sh)" stroke-width="13" stroke-linecap="round"/>
-            <rect x="21" y="62" width="78" height="66" rx="17" fill="url(#bd)" stroke="#1f5088" stroke-width="1.5"/>
-            <rect x="21" y="62" width="78" height="20" rx="17" fill="rgba(255,255,255,.16)"/>
-            <circle cx="60" cy="90" r="9.5" fill="#fff"/>
-            <rect x="55" y="93" width="10" height="22" rx="5" fill="#fff"/>
+
+            <!-- shackle: base + inner shade + rim light -->
+            <path d="M64 114 V80 A36 36 0 0 1 136 80 V114" fill="none" stroke="url(#shk)" stroke-width="16" stroke-linecap="round"/>
+            <path d="M64 114 V80 A36 36 0 0 1 136 80 V114" fill="none" stroke="#173f68" stroke-width="16" stroke-linecap="round" opacity=".14"/>
+            <path d="M71 96 V80 A29 29 0 0 1 129 80 V90" fill="none" stroke="url(#shkhi)" stroke-width="4" stroke-linecap="round"/>
+
+            <!-- body -->
+            <g filter="url(#lksh)"><rect x="34" y="104" width="132" height="118" rx="26" fill="url(#body)"/></g>
+            <g clip-path="url(#bodyclip)">
+              <rect x="34" y="104" width="132" height="62" fill="url(#sheen)"/>
+              <ellipse cx="70" cy="150" rx="17" ry="82" fill="rgba(255,255,255,.07)"/>
+            </g>
+            <!-- bevel borders -->
+            <rect x="35" y="105" width="130" height="116" rx="25" fill="none" stroke="#9ecbee" stroke-width="1.4" opacity=".5"/>
+            <rect x="34" y="104" width="132" height="118" rx="26" fill="none" stroke="#16375d" stroke-width="1.2" opacity=".45"/>
+
+            <!-- recessed keyhole -->
+            <path d="M94.2 152 L106 152 L110.5 189 L89.5 189 Z" fill="url(#hole)"/>
+            <circle cx="100" cy="150" r="13.5" fill="url(#hole)"/>
+            <path d="M87 148 A13.5 13.5 0 0 1 113 148" fill="none" stroke="#071d33" stroke-width="2.4" stroke-linecap="round" opacity=".55"/>
+            <path d="M89 158 A13.5 13.5 0 0 0 111 158" fill="none" stroke="#78add9" stroke-width="1.8" stroke-linecap="round" opacity=".5"/>
+            <path d="M90.5 189 H109.5" stroke="#78add9" stroke-width="1.6" stroke-linecap="round" opacity=".4"/>
           </svg>
           <div class="cond">IOCount ≥ 1</div>
           <div class="verdict"><span class="strike">closesocket</span> 잠금</div>
@@ -140,13 +197,21 @@
         </div>
 
         <div class="conn">
-          <svg width="70" height="30"><path d="M2 15 H48" stroke="#7cc4a0" stroke-width="6" stroke-linecap="round" fill="none"/><path d="M46 4 L68 15 L46 26 Z" fill="#33ac74"/></svg>
-          <div class="cl">IOCount = 0<span class="m">pending 완료</span></div>
+          <svg width="96" height="30" viewBox="0 0 96 30" fill="none">
+            <defs>
+              <linearGradient id="cgr" gradientUnits="userSpaceOnUse" x1="6" y1="15" x2="67" y2="15">
+                <stop offset="0" stop-color="#34a06d"/><stop offset="1" stop-color="#197a4f"/></linearGradient>
+            </defs>
+            <path d="M6 15 H67" stroke="url(#cgr)" stroke-width="8" stroke-linecap="round"/>
+            <path d="M61 3.5 L95 15 L61 26.5 Z" fill="#197a4f"/>
+            <circle cx="6" cy="15" r="5.5" fill="#1f8a5b" stroke="#fff" stroke-width="2"/>
+          </svg>
+          <div class="cl">IOCount = 0<span class="sub2"><span class="m">pending</span> 완료</span></div>
         </div>
 
         <div class="side rel">
           <span class="tag">해제 시점</span>
-          <div class="big"><em>ReleaseSession</em><br>→ closesocket</div>
+          <div class="big"><em>ReleaseSession</em><br>→ <em>closesocket</em></div>
           <div class="chip"><span class="dot"></span>Push(index)<span class="ko"> · 핸들 반납</span></div>
         </div>
       </div>
