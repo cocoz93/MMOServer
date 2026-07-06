@@ -10,12 +10,12 @@
 
   .deck{ flex:1; display:flex; gap:20px; align-items:stretch; }
   .opt{ border-radius:24px; padding:22px 22px 24px; display:flex; flex-direction:column; align-items:center; text-align:center; }
-  .opt.pick{ flex:1.28; background:var(--green-bg); border:2.2px solid var(--green); }
+  .opt.pick{ flex:1.28; background:var(--blue-bg); border:2.2px solid var(--blue); }
   .opt.rej{ flex:1; background:#fff; border:1.6px solid var(--line); }
 
   .badge{ font-size:15px; font-weight:800; padding:6px 18px; border-radius:999px; }
-  .opt.pick .badge{ background:var(--green); color:#fff; }
-  .opt.rej  .badge{ background:var(--gray-bg); color:var(--faint); }
+  .opt.pick .badge{ background:var(--blue-deep); color:#fff; }
+  .opt.rej  .badge{ background:#eef2f7; color:var(--faint); }
   .name{ font-size:22px; font-weight:800; color:var(--ink); margin-top:11px; letter-spacing:-.4px; }
   .opt.rej .name{ color:var(--sub); }
 
@@ -25,20 +25,18 @@
   .metric{ font-weight:800; letter-spacing:-2px; line-height:1; margin-top:5px; }
   .metric .big{ font-size:52px; }
   .metric .u{ font-size:26px; letter-spacing:-1px; }
-  .opt.pick .metric{ color:var(--green-deep); }
-  .opt.rej.v .metric{ color:var(--red-deep); }
-  .opt.rej.t .metric{ color:var(--blue-deep); }
+  .opt.pick .metric{ color:var(--blue-deep); }
+  .opt.rej .metric{ color:var(--red-deep); }
 
   .note{ font-size:14px; font-weight:600; color:var(--sub); margin-top:13px; line-height:1.42; max-width:290px; word-break:keep-all; }
   .note b{ font-weight:800; }
-  .opt.pick .note b{ color:var(--green-deep); }
-  .opt.rej.v .note b{ color:var(--red-deep); }
-  .opt.rej.t .note b{ color:var(--blue-deep); }
+  .opt.pick .note b{ color:var(--blue-deep); }
+  .opt.rej .note b{ color:var(--sub); }
   .note .mono{ font-family:"SF Mono",ui-monospace,"Consolas",monospace; font-weight:800; }
 </style></head>
 <body><div class="card">
   <div class="eyebrow">AOI 설계 · 한 장 요약</div>
-  <div class="h-title">왜 <span class="kg">섹터 그리드</span> AOI인가</div>
+  <div class="h-title">왜 <span class="kb">섹터 그리드</span> AOI인가</div>
   <div class="h-rule"></div>
   <div class="h-sub">균일 그리드 + 주변 <b>9섹터 브로드캐스트</b> · 맵 <span class="mono">120×120</span> · 섹터 <span class="mono">20×20</span> → <span class="mono">6×6</span> · 크기는 INI 주입</div>
 
@@ -50,16 +48,16 @@
       <div class="viz">
         <svg width="150" height="150" viewBox="0 0 150 150">
           <g>
-            <rect x="6"  y="6"  width="42" height="42" rx="9" fill="#d7edE0" stroke="#1f9d6b" stroke-width="2"/>
-            <rect x="54" y="6"  width="42" height="42" rx="9" fill="#d7edE0" stroke="#1f9d6b" stroke-width="2"/>
-            <rect x="102" y="6" width="42" height="42" rx="9" fill="#d7edE0" stroke="#1f9d6b" stroke-width="2"/>
-            <rect x="6"  y="54" width="42" height="42" rx="9" fill="#d7edE0" stroke="#1f9d6b" stroke-width="2"/>
-            <rect x="54" y="54" width="42" height="42" rx="9" fill="#1f9d6b" stroke="#0d6b49" stroke-width="2"/>
-            <rect x="102" y="54" width="42" height="42" rx="9" fill="#d7edE0" stroke="#1f9d6b" stroke-width="2"/>
-            <rect x="6"  y="102" width="42" height="42" rx="9" fill="#d7edE0" stroke="#1f9d6b" stroke-width="2"/>
-            <rect x="54" y="102" width="42" height="42" rx="9" fill="#d7edE0" stroke="#1f9d6b" stroke-width="2"/>
-            <rect x="102" y="102" width="42" height="42" rx="9" fill="#d7edE0" stroke="#1f9d6b" stroke-width="2"/>
-            <circle cx="75" cy="75" r="10" fill="#d7263d"/>
+            <rect x="6"  y="6"  width="42" height="42" rx="9" fill="#e7f0fa" stroke="#3a78b8" stroke-width="2"/>
+            <rect x="54" y="6"  width="42" height="42" rx="9" fill="#e7f0fa" stroke="#3a78b8" stroke-width="2"/>
+            <rect x="102" y="6" width="42" height="42" rx="9" fill="#e7f0fa" stroke="#3a78b8" stroke-width="2"/>
+            <rect x="6"  y="54" width="42" height="42" rx="9" fill="#e7f0fa" stroke="#3a78b8" stroke-width="2"/>
+            <rect x="54" y="54" width="42" height="42" rx="9" fill="#3a78b8" stroke="#2b6aa8" stroke-width="2"/>
+            <rect x="102" y="54" width="42" height="42" rx="9" fill="#e7f0fa" stroke="#3a78b8" stroke-width="2"/>
+            <rect x="6"  y="102" width="42" height="42" rx="9" fill="#e7f0fa" stroke="#3a78b8" stroke-width="2"/>
+            <rect x="54" y="102" width="42" height="42" rx="9" fill="#e7f0fa" stroke="#3a78b8" stroke-width="2"/>
+            <rect x="102" y="102" width="42" height="42" rx="9" fill="#e7f0fa" stroke="#3a78b8" stroke-width="2"/>
+            <circle cx="75" cy="75" r="11" fill="#d7263d" stroke="#fff" stroke-width="2.5"/>
           </g>
         </svg>
       </div>
@@ -74,12 +72,12 @@
       <div class="name">per-player viewlist</div>
       <div class="viz">
         <svg width="132" height="132" viewBox="0 0 132 132">
-          <circle cx="66" cy="66" r="56" fill="none" stroke="#f4c4cc" stroke-width="2.4" stroke-dasharray="5 6"/>
-          <circle cx="66" cy="66" r="38" fill="none" stroke="#eeb6bf" stroke-width="2.4" stroke-dasharray="5 6"/>
+          <circle cx="66" cy="66" r="56" fill="none" stroke="#c9d2de" stroke-width="2.4" stroke-dasharray="5 6"/>
+          <circle cx="66" cy="66" r="38" fill="none" stroke="#d3dbe6" stroke-width="2.4" stroke-dasharray="5 6"/>
+          <line x1="66" y1="66" x2="120" y2="52" stroke="#94a3b8" stroke-width="2.6"/>
+          <circle cx="98" cy="34" r="6" fill="#aab6c6"/><circle cx="34" cy="98" r="6" fill="#aab6c6"/>
+          <circle cx="106" cy="86" r="6" fill="#aab6c6"/><circle cx="40" cy="42" r="6" fill="#aab6c6"/>
           <circle cx="66" cy="66" r="7" fill="#d7263d"/>
-          <line x1="66" y1="66" x2="120" y2="52" stroke="#d7263d" stroke-width="2.6"/>
-          <circle cx="98" cy="34" r="6" fill="#e78a97"/><circle cx="34" cy="98" r="6" fill="#e78a97"/>
-          <circle cx="106" cy="86" r="6" fill="#e78a97"/><circle cx="40" cy="42" r="6" fill="#e78a97"/>
         </svg>
       </div>
       <div class="mlabel">시야 갱신</div>
@@ -93,12 +91,12 @@
       <div class="name">quadtree / k-d</div>
       <div class="viz">
         <svg width="150" height="130" viewBox="0 0 150 130">
-          <g stroke="#94a3b8" stroke-width="2.4" fill="none">
+          <g stroke="#c3ccd8" stroke-width="2.4" fill="none">
             <line x1="75" y1="22" x2="40" y2="64"/><line x1="75" y1="22" x2="110" y2="64"/>
             <line x1="40" y1="64" x2="20" y2="106"/><line x1="40" y1="64" x2="60" y2="106"/>
             <line x1="110" y1="64" x2="90" y2="106"/><line x1="110" y1="64" x2="130" y2="106"/>
           </g>
-          <g fill="#e7f0fa" stroke="#3a78b8" stroke-width="2.6">
+          <g fill="#eef2f7" stroke="#94a3b8" stroke-width="2.6">
             <circle cx="75" cy="22" r="15"/><circle cx="40" cy="64" r="13"/><circle cx="110" cy="64" r="13"/>
             <circle cx="20" cy="106" r="11"/><circle cx="60" cy="106" r="11"/><circle cx="90" cy="106" r="11"/><circle cx="130" cy="106" r="11"/>
           </g>

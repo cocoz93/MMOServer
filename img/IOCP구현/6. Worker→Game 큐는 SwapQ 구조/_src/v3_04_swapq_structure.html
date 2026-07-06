@@ -1,0 +1,148 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<link rel="stylesheet" href="common.css">
+<style>
+  :root{ --blue-line:#cfe0f2; --mono:"SF Mono",ui-monospace,"Cascadia Mono","Consolas",monospace; }
+  .card{ padding:44px 60px 30px; }
+  .eyebrow{ margin-bottom:12px; }
+  .h-title{ font-size:48px; letter-spacing:-2px; }
+  .h-title .kb{ color:var(--blue-deep); }
+  .h-title .mono{ font-family:var(--mono); font-weight:800; color:var(--blue-deep); letter-spacing:-1px; }
+  .h-rule{ margin:16px 0 12px; }
+  .h-sub{ font-size:21px; }
+  .h-sub .kb{ color:var(--blue-deep); font-weight:800; }
+
+  /* ===== 스테이지 : 변경 전 | N→1 | 변경 후 ===== */
+  .stage{ flex:1; display:flex; align-items:stretch; gap:18px; margin-top:26px; min-height:0; }
+  .panel{ border-radius:24px; padding:22px 24px; display:flex; flex-direction:column;
+          align-items:center; justify-content:center; gap:20px; }
+  .ptag{ font-size:16px; font-weight:800; color:#fff; padding:7px 18px; border-radius:999px; letter-spacing:-.3px; }
+  .before{ flex:0 0 336px; background:var(--red-bg); border:1.8px solid var(--red-line); }
+  .before .ptag{ background:var(--red); }
+  .after{ flex:1; background:var(--blue-bg); border:1.8px solid var(--blue-line); }
+  .after .ptag{ background:var(--blue-deep); }
+
+  /* 큐 박스 (큼직) */
+  .qbox{ background:#fff; border:2.4px solid; border-radius:18px; padding:14px 16px 16px;
+         display:flex; flex-direction:column; align-items:center; gap:11px; position:relative; }
+  .qbox .qlabel{ font-family:var(--mono); font-size:16px; font-weight:800; letter-spacing:-.3px; }
+  .qcells{ display:flex; gap:8px; }
+  .qcell{ width:30px; height:46px; border-radius:7px; }
+  .qcell.r{ background:linear-gradient(180deg,#e6394f,#d7263d); }
+  .qcell.b{ background:linear-gradient(180deg,#4c88c6,#2b6aa8); }
+  .qcell.e{ background:#eef2f7; border:1.5px solid #e2e8f1; }
+  .qbox.red{ border-color:var(--red-line); }
+  .qbox.blue{ border-color:var(--blue-line); }
+  .qbox.red  .qlabel{ color:var(--red-deep); }
+  .qbox.blue .qlabel{ color:var(--blue-deep); }
+
+  /* 액터 라벨 */
+  .actor{ font-size:18px; font-weight:800; color:#fff; padding:9px 20px; border-radius:13px; letter-spacing:-.3px; }
+  .actor.worker{ background:#5b6472; }
+  .actor.game{ background:var(--ink); }
+
+  /* 큰 자물쇠 */
+  .biglock{ width:60px; height:60px; }
+
+  .cap{ font-size:17px; font-weight:700; color:var(--sub); letter-spacing:-.3px; text-align:center; word-break:keep-all; }
+  .cap b{ font-weight:800; }
+  .before .cap b{ color:var(--red-deep); }
+  .after  .cap b{ color:var(--blue-deep); }
+
+  /* --- 변경 전 : 한 큐 공유 --- */
+  .before .contend{ display:flex; align-items:center; gap:14px; }
+  .before .acts{ display:flex; flex-direction:column; gap:10px; }
+  .before .contend .arrows{ display:flex; flex-direction:column; align-items:center; }
+
+  /* --- 전환 앵커 N→1 --- */
+  .pivot{ flex:0 0 128px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; }
+  .pivot .plabel{ font-size:15px; font-weight:800; color:var(--sub); letter-spacing:-.3px; }
+  .pivot .n2one{ display:flex; align-items:baseline; gap:8px; font-weight:800; letter-spacing:-2px; line-height:1; }
+  .pivot .n2one .from{ font-size:46px; color:var(--red); }
+  .pivot .n2one .ar{ font-size:32px; color:var(--faint); font-weight:900; }
+  .pivot .n2one .to{ font-size:64px; color:var(--blue-deep); }
+  .pivot .per{ font-size:15px; font-weight:800; color:var(--faint); letter-spacing:-.2px; }
+  .pivot .swtag{ font-family:var(--mono); font-size:14px; font-weight:800; color:var(--blue-deep);
+                 background:#fff; border:1.4px solid var(--blue-line); padding:5px 12px; border-radius:999px; margin-top:4px; }
+
+  /* --- 변경 후 : 두 큐 swap --- */
+  .after .swaprow{ display:flex; align-items:center; justify-content:center; gap:16px; }
+  .after .qwrap{ display:flex; flex-direction:column; align-items:center; gap:12px; }
+  .after .qwrap .actor{ font-size:16px; padding:7px 16px; }
+  .swapglyph{ display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .swapglyph svg{ width:74px; height:50px; }
+  .swapglyph .st{ font-family:var(--mono); font-size:14px; font-weight:800; color:var(--blue-deep);
+                  background:#fff; border:1.5px solid var(--blue-line); padding:4px 12px; border-radius:999px; white-space:nowrap; }
+
+  .foot{ padding-top:14px; font-size:15px; }
+  .foot .mono{ font-family:var(--mono); font-weight:800; color:var(--sub); }
+</style></head>
+<body><div class="card">
+  <div class="eyebrow"><span class="no">④</span>&nbsp; 구현 · SwapQ 구조</div>
+  <div class="h-title">공유 큐를 <span class="kb">통째로 맞바꾼다</span> — <span class="mono">SwapQ</span></div>
+  <div class="h-rule"></div>
+  <div class="h-sub">프레임마다 두 큐를 통째로 스왑 → 게임 스레드는 자기 큐를 <span class="kb">락 없이</span> 비운다</div>
+
+  <div class="stage">
+
+    <!-- 변경 전 : 큐 1개 -->
+    <div class="panel before">
+      <div class="ptag">변경 전 · 큐 1개</div>
+      <div class="contend">
+        <div class="acts">
+          <div class="actor worker">Worker</div>
+          <div class="actor game">Game</div>
+        </div>
+        <svg width="34" height="60" viewBox="0 0 34 60">
+          <path d="M4 16 H24" stroke="#9aa3b2" stroke-width="4" stroke-linecap="round"/><path d="M22 10 L32 16 L22 22 Z" fill="#9aa3b2"/>
+          <path d="M4 44 H24" stroke="#e6394f" stroke-width="4" stroke-linecap="round"/><path d="M22 38 L32 44 L22 50 Z" fill="#e6394f"/>
+        </svg>
+        <div class="qbox red">
+          <div class="qlabel">shared</div>
+          <div class="qcells"><span class="qcell r"></span><span class="qcell r"></span><span class="qcell r"></span><span class="qcell r"></span></div>
+          <svg class="biglock" viewBox="0 0 24 24"><path d="M7 11V7.5a5 5 0 0 1 10 0V11" fill="none" stroke="#b3122a" stroke-width="2.2"/><rect x="4.5" y="11" width="15" height="9.5" rx="2.4" fill="#b3122a"/></svg>
+        </div>
+      </div>
+      <div class="cap">한 큐를 <b>둘이 공유</b> · <b>pop마다 락</b> · 상한 없음</div>
+    </div>
+
+    <!-- 앵커 : 락 N → 1 -->
+    <div class="pivot">
+      <div class="plabel">락 획득</div>
+      <div class="n2one"><span class="from">N</span><span class="ar">→</span><span class="to">1</span></div>
+      <div class="per">회 / 프레임</div>
+      <div class="swtag">std::swap</div>
+    </div>
+
+    <!-- 변경 후 : 큐 2개 swap -->
+    <div class="panel after">
+      <div class="ptag">변경 후 · 큐 2개 (SwapQ)</div>
+      <div class="swaprow">
+        <div class="qwrap">
+          <div class="actor worker">Worker 채움</div>
+          <div class="qbox blue">
+            <div class="qlabel">shared</div>
+            <div class="qcells"><span class="qcell b"></span><span class="qcell b"></span><span class="qcell e"></span><span class="qcell e"></span></div>
+          </div>
+        </div>
+        <div class="swapglyph">
+          <svg viewBox="0 0 74 50">
+            <path d="M8 18 H58 M58 18 L49 11 M58 18 L49 25" stroke="#2b6aa8" stroke-width="3.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M66 34 H16 M16 34 L25 27 M16 34 L25 41" stroke="#2b6aa8" stroke-width="3.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <div class="st">swap</div>
+        </div>
+        <div class="qwrap">
+          <div class="actor game">Game drain</div>
+          <div class="qbox blue">
+            <div class="qlabel">local</div>
+            <div class="qcells"><span class="qcell b"></span><span class="qcell b"></span><span class="qcell b"></span><span class="qcell b"></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="cap">각자 <b>다른 큐</b> · 게임은 <b>락 없이 drain</b> · 상한 = 스왑 순간 크기</div>
+    </div>
+
+  </div>
+
+  <div class="foot"><span class="mono">IOCPServer::SwapOut()</span> · <span class="mono">GameServer::_localEvents</span> — 핸들러 무손상 · 도착분 이월 ≤ 1프레임(≈40ms)</div>
+</div></body></html>

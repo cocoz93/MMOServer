@@ -1,0 +1,81 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<link rel="stylesheet" href="common.css">
+<style>
+  :root{ --blue-line:#cfe0f2; --mono:"SF Mono",ui-monospace,"Cascadia Mono","Consolas",monospace; }
+  .card{ padding:44px 60px 30px; }
+  .eyebrow{ margin-bottom:12px; }
+  .h-title{ font-size:48px; letter-spacing:-2px; }
+  .h-title .k{ color:var(--red-deep); }
+  .h-title .kb{ color:var(--blue-deep); }
+  .h-rule{ margin:16px 0 12px; }
+  .h-sub{ font-size:21px; }
+  .h-sub b{ color:var(--ink); font-weight:800; }
+
+  .stage{ flex:1; display:flex; align-items:stretch; gap:26px; margin-top:22px; min-height:0; }
+  .panel{ flex:1; min-height:0; border-radius:24px; padding:20px 24px; display:flex; flex-direction:column; align-items:center; gap:13px; }
+  .panel.burst{ background:var(--blue-bg); border:1.8px solid var(--blue-line); }
+  .panel.over{ background:var(--red-bg); border:1.8px solid var(--red-line); }
+
+  .ptag{ align-self:flex-start; font-size:17px; font-weight:800; color:#fff; padding:8px 20px; border-radius:999px; letter-spacing:-.3px; }
+  .burst .ptag{ background:var(--blue-deep); }
+  .over .ptag{ background:var(--red); }
+
+  .chart{ width:100%; flex:1; min-height:0; background:#fff; border-radius:16px; border:1.5px solid var(--line); padding:14px 16px 10px; position:relative; }
+  .chart svg{ display:block; width:100%; height:100%; }
+  .chart .axis{ position:absolute; right:18px; bottom:12px; font-size:14px; font-weight:700; color:var(--faint); }
+
+  .verdict{ font-size:19px; font-weight:800; padding:10px 26px; border-radius:999px; letter-spacing:-.3px; }
+  .burst .verdict{ background:#fff; color:var(--blue-deep); border:2px solid var(--blue-line); }
+  .over .verdict{ background:var(--red); color:#fff; }
+
+  .cap{ font-size:17px; font-weight:700; color:var(--sub); text-align:center; letter-spacing:-.3px; word-break:keep-all; }
+  .cap b{ font-weight:800; }
+  .burst .cap b{ color:var(--blue-deep); } .over .cap b{ color:var(--red-deep); }
+
+  .foot{ padding-top:14px; font-size:16px; }
+  .foot b{ color:var(--red-deep); }
+</style></head>
+<body><div class="card">
+  <div class="eyebrow"><span class="no">②</span>&nbsp; 원인 · 측정으로 가른다</div>
+  <div class="h-title"><span class="kb">순간 버스트</span>인가, <span class="k">지속 과부하</span>인가</div>
+  <div class="h-rule"></div>
+  <div class="h-sub">큐 길이 <b>모양이 다르다</b> — 곧 꺼지는 스파이크인가, 계속 오르는 곡선인가</div>
+
+  <div class="stage">
+
+    <!-- 순간 버스트 -->
+    <div class="panel burst">
+      <div class="ptag">순간 버스트</div>
+      <div class="chart">
+        <svg viewBox="0 0 320 150">
+          <line x1="0" y1="45" x2="320" y2="45" stroke="#eef2f7" stroke-width="2"/>
+          <line x1="0" y1="90" x2="320" y2="90" stroke="#eef2f7" stroke-width="2"/>
+          <polyline points="6,128 70,124 108,120 128,26 150,74 180,110 230,124 314,126" fill="none" stroke="#2b6aa8" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>
+          <circle cx="128" cy="26" r="8" fill="#2b6aa8"/>
+        </svg>
+        <span class="axis">시간 →</span>
+      </div>
+      <div class="verdict">본질적 문제 아님</div>
+      <div class="cap">일시적으로 쌓였다 <b>곧 비워짐</b> · 한 프레임만 나빠지고 회복</div>
+    </div>
+
+    <!-- 지속 과부하 -->
+    <div class="panel over">
+      <div class="ptag">지속 과부하</div>
+      <div class="chart">
+        <svg viewBox="0 0 320 150">
+          <line x1="0" y1="45" x2="320" y2="45" stroke="#fbe3e7" stroke-width="2"/>
+          <line x1="0" y1="90" x2="320" y2="90" stroke="#fbe3e7" stroke-width="2"/>
+          <polyline points="6,132 80,118 150,96 220,60 280,32 314,22" fill="none" stroke="#d7263d" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/>
+          <circle cx="314" cy="22" r="8" fill="#d7263d"/>
+        </svg>
+        <span class="axis">시간 →</span>
+      </div>
+      <div class="verdict">근본 원인</div>
+      <div class="cap">유입이 <b>소비 용량을 계속 초과</b> · 프레임 안에 못 끝남</div>
+    </div>
+
+  </div>
+
+  <div class="foot">근원 — 소비 방식이 아니라 <b>단일 게임 스레드의 처리 용량</b>이 유입을 못 따라간다 (모든 존 이벤트가 한 스레드로 직렬화)</div>
+</div></body></html>

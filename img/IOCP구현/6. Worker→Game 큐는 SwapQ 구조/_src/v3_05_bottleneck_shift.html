@@ -1,0 +1,117 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<link rel="stylesheet" href="common.css">
+<style>
+  :root{ --blue-line:#cfe0f2; --mono:"SF Mono",ui-monospace,"Cascadia Mono","Consolas",monospace; }
+  .card{ padding:44px 60px 30px; }
+  .eyebrow{ margin-bottom:12px; }
+  .h-title{ font-size:48px; letter-spacing:-2px; display:flex; align-items:center; gap:16px; }
+  .h-title .k{ color:var(--red-deep); }
+  .h-title .hypo{ font-size:18px; font-weight:800; color:#5b6472; background:#eef1f6;
+                  border:1.5px solid #d7dde6; padding:6px 15px; border-radius:999px; letter-spacing:-.2px;
+                  display:inline-flex; align-items:center; gap:8px; }
+  .h-title .hypo::before{ content:""; width:9px; height:9px; border-radius:50%; background:#9aa3b2; }
+  .h-rule{ margin:16px 0 12px; }
+  .h-sub{ font-size:21px; }
+  .h-sub b{ color:var(--ink); font-weight:800; }
+  .h-sub .k{ color:var(--red-deep); font-weight:800; }
+
+  .stage{ flex:1; display:flex; flex-direction:column; justify-content:center; gap:22px; margin-top:20px; min-height:0; }
+
+  /* 노드 행 */
+  .nodes{ display:flex; align-items:center; justify-content:center; gap:20px; }
+  .node{ flex:0 0 300px; border-radius:22px; padding:22px 26px; display:flex; flex-direction:column; gap:11px; }
+  .node .nhead{ display:flex; align-items:center; gap:13px; }
+  .node .ico{ width:52px; height:52px; border-radius:14px; display:flex; align-items:center; justify-content:center; }
+  .node .ico svg{ width:30px; height:30px; }
+  .node .nt{ font-size:26px; font-weight:800; letter-spacing:-.5px; }
+  .node .ntag{ align-self:flex-start; font-size:15px; font-weight:800; padding:7px 16px; border-radius:999px; letter-spacing:-.3px; }
+
+  .node.server{ background:var(--blue-bg); border:1.8px solid var(--blue-line); }
+  .node.server .ico{ background:var(--blue-deep); color:#fff; }
+  .node.server .nt{ color:var(--blue-deep); }
+  .node.server .ntag{ background:#fff; color:var(--blue-deep); border:1.6px solid var(--blue-line); }
+
+  .node.client{ background:var(--red-bg); border:1.8px solid var(--red-line); position:relative; }
+  .node.client .ico{ background:var(--red); color:#fff; }
+  .node.client .nt{ color:var(--red-deep); }
+  .node.client .ntag{ background:var(--red); color:#fff; }
+  .node.client .here{ position:absolute; top:-15px; right:18px; background:var(--red); color:#fff; font-size:14px; font-weight:800;
+                      padding:6px 15px; border-radius:999px; box-shadow:0 5px 14px rgba(215,38,61,.32); }
+
+  /* 트래픽 화살표 */
+  .traffic{ flex:1; display:flex; flex-direction:column; align-items:center; gap:8px; min-width:0; }
+  .traffic .tt{ font-size:16px; font-weight:800; color:var(--blue-deep); letter-spacing:-.3px; }
+  .traffic .abody{ position:relative; width:100%; height:34px; }
+  .traffic svg{ display:block; width:100%; height:100%; }
+  .traffic .tb{ font-size:14px; font-weight:700; color:var(--muted); letter-spacing:-.3px; text-align:center; }
+
+  /* 원인 체인 */
+  .chain{ display:flex; align-items:center; justify-content:center; gap:9px; flex-wrap:nowrap; }
+  .chain .cchip{ font-size:16px; font-weight:700; color:var(--sub); background:var(--surface);
+                 border:1px solid var(--line); padding:9px 16px; border-radius:11px; letter-spacing:-.3px; white-space:nowrap; }
+  .chain .cchip b{ font-weight:800; color:var(--ink); }
+  .chain .cchip.end{ background:var(--red-bg); border-color:var(--red-line); color:var(--red-deep); }
+  .chain .cchip.end b{ color:var(--red-deep); }
+  .chain .chev{ font-size:20px; font-weight:900; color:var(--faint); }
+
+  .foot{ padding-top:14px; font-size:16px; }
+  .foot b{ color:var(--blue-deep); }
+  .foot .mono{ font-family:var(--mono); font-weight:800; color:var(--sub); }
+</style></head>
+<body><div class="card">
+  <div class="eyebrow"><span class="no">⑤</span>&nbsp; 관측 · RTT 증가</div>
+  <div class="h-title">병목이 <span class="k">클라</span>로 옮겨갔다 <span class="hypo">측정 확정 전 · 가설</span></div>
+  <div class="h-rule"></div>
+  <div class="h-sub">swapQ로 <b>서버를 고쳤는데</b> RTT가 늘었다 — 직관과 반대라 <span class="k">병목이 서버→클라로 이동</span>했다고 본다</div>
+
+  <div class="stage">
+
+    <!-- 서버 → 트래픽 → 클라 -->
+    <div class="nodes">
+      <div class="node server">
+        <div class="nhead">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="7" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/><path d="M7 7.5h.01M7 17h.01"/></svg></div>
+          <div class="nt">서버</div>
+        </div>
+        <div class="ntag">swapQ로 정상화 ✓ · 병목 해소</div>
+      </div>
+
+      <div class="traffic">
+        <div class="tt">하류 패킷 ↑</div>
+        <div class="abody">
+          <svg viewBox="0 0 220 34" preserveAspectRatio="xMidYMid meet">
+            <line x1="6" y1="17" x2="196" y2="17" stroke="#3a78b8" stroke-width="7" stroke-linecap="round"/>
+            <path d="M192 6 L214 17 L192 28 Z" fill="#3a78b8"/>
+            <circle cx="60" cy="17" r="4.5" fill="#fff"/><circle cx="100" cy="17" r="4.5" fill="#fff"/><circle cx="140" cy="17" r="4.5" fill="#fff"/>
+          </svg>
+        </div>
+        <div class="tb">SYNC 500ms · 브로드캐스트 부활 (정상 동작)</div>
+      </div>
+
+      <div class="node client">
+        <div class="here">병목 ← 여기로</div>
+        <div class="nhead">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
+          <div class="nt">클라</div>
+        </div>
+        <div class="ntag">단일 select() · 호출당 O(fd)</div>
+      </div>
+    </div>
+
+    <!-- 원인 체인 -->
+    <div class="chain">
+      <div class="cchip"><b>서버 정상화</b></div>
+      <span class="chev">→</span>
+      <div class="cchip">트래픽 <b>↑</b></div>
+      <span class="chev">→</span>
+      <div class="cchip">클라 <b>select() 한계</b></div>
+      <span class="chev">→</span>
+      <div class="cchip">자기 echo 지연</div>
+      <span class="chev">→</span>
+      <div class="cchip end"><b>RTT ↑</b></div>
+    </div>
+
+  </div>
+
+  <div class="foot">확정법 — <span class="mono">ClientsPerThread</span>↓로 select 스레드 늘려 RTT 떨어지면 <b>범인은 클라</b> · 별도 PC로 코어 경합 교란 제거</div>
+</div></body></html>

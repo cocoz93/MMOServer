@@ -10,15 +10,15 @@
   .cols{ flex:1; display:flex; gap:22px; width:100%; align-items:stretch; }
   .col{ flex:1; border-radius:22px; padding:20px 18px 16px; display:flex; flex-direction:column; align-items:center; }
   .col.bad{ background:var(--surface);   border:1.5px solid var(--line); }
-  .col.ok{  background:var(--green-bg);  border:1.8px solid var(--green-line); }
-  .col.big2{background:var(--surface);  border:1.5px solid var(--line); }
+  .col.ok{  background:var(--blue-bg);   border:1.8px solid var(--blue-line); }
+  .col.big2{background:var(--surface);   border:1.5px solid var(--line); }
 
   .tag{ font-size:16px; font-weight:800; padding:6px 16px; border-radius:999px; color:#fff; }
   .col.bad .tag{  background:#566072; }
-  .col.ok .tag{   background:#1f9d6b; }
+  .col.ok .tag{   background:var(--blue-deep); }
   .col.big2 .tag{ background:#566072; }
   .sz{ font-size:14px; font-weight:800; color:var(--sub); margin:9px 0 2px; letter-spacing:.2px; }
-  .col.ok .sz{ color:var(--green-deep); }
+  .col.ok .sz{ color:var(--blue-deep); }
 
   .dia{ margin:12px 0 6px; }
   .dia svg{ display:block; }
@@ -26,8 +26,8 @@
   .vds{ margin-top:auto; padding-top:10px; display:flex; flex-direction:column; align-items:center; gap:8px; width:100%; }
   .vd{ font-size:15px; font-weight:700; line-height:1.35; text-align:center; }
   .vd .i{ font-weight:900; margin-right:4px; }
-  .vd.good{ color:var(--green-deep); }
-  .vd.good .i{ color:var(--green); }
+  .vd.good{ color:var(--blue-deep); }
+  .vd.good .i{ color:var(--blue); }
   .vd.bad{ color:var(--red-deep); }
   .vd.bad .i{ color:var(--red); }
   .vd.neu{ color:var(--sub); }
@@ -35,23 +35,23 @@
 </style></head>
 <body><div class="card">
   <div class="eyebrow"><span class="no">②</span> 크기 결정 · 시야와의 관계</div>
-  <div class="h-title">섹터는 시야보다 <span class="k">약간 크게</span></div>
+  <div class="h-title">섹터는 시야보다 <span class="kb">약간 크게</span></div>
   <div class="h-rule"></div>
   <div class="h-sub">주변 9섹터 커버 <b>60×60</b>이 클라 뷰 <b>80×21</b>을 세로로 덮음 · 섹터 ≈ 화면 절반</div>
 
   <div class="body">
     <div class="cols">
-      <!-- 작게 -->
+      <!-- 작게 : 섹터 회색 · 시야 회색 · 누락 객체 빨강 -->
       <div class="col bad">
         <div class="tag">작게 잡으면</div>
         <div class="sz">섹터 &lt; 시야</div>
         <div class="dia"><svg viewBox="0 0 150 150" width="188" height="188">
-          <g fill="#fdeef0" stroke="#d7263d" stroke-width="1.6">
+          <g fill="#eef2f7" stroke="#94a3b8" stroke-width="1.6">
             <rect x="42" y="42" width="22" height="22" rx="3"/><rect x="66" y="42" width="22" height="22" rx="3"/><rect x="90" y="42" width="22" height="22" rx="3"/>
             <rect x="42" y="66" width="22" height="22" rx="3"/><rect x="66" y="66" width="22" height="22" rx="3"/><rect x="90" y="66" width="22" height="22" rx="3"/>
             <rect x="42" y="90" width="22" height="22" rx="3"/><rect x="66" y="90" width="22" height="22" rx="3"/><rect x="90" y="90" width="22" height="22" rx="3"/>
           </g>
-          <circle cx="77" cy="77" r="58" fill="rgba(58,120,184,.08)" stroke="#3a78b8" stroke-width="2.4" stroke-dasharray="6 5"/>
+          <circle cx="77" cy="77" r="58" fill="rgba(138,148,166,.07)" stroke="#8a94a6" stroke-width="2.4" stroke-dasharray="6 5"/>
           <circle cx="122" cy="66" r="6.5" fill="#d7263d" stroke="#fff" stroke-width="2.2"/>
           <circle cx="66" cy="123" r="6.5" fill="#d7263d" stroke="#fff" stroke-width="2.2"/>
         </svg></div>
@@ -60,40 +60,40 @@
           <div class="vd bad"><span class="i">✕</span>9섹터 밖 → 화면 안 팝업</div>
         </div>
       </div>
-      <!-- 채택 -->
+      <!-- 채택 : 섹터 파랑 · 시야 회색(덮임) · 객체 파랑 -->
       <div class="col ok">
         <div class="tag">채택 ✓</div>
         <div class="sz">섹터 ≈ 시야</div>
         <div class="dia"><svg viewBox="0 0 150 150" width="188" height="188">
-          <g fill="#e7f6ef" stroke="#1f9d6b" stroke-width="1.8">
+          <g fill="#e7f0fa" stroke="#3a78b8" stroke-width="1.8">
             <rect x="27" y="27" width="30" height="30" rx="4"/><rect x="60" y="27" width="30" height="30" rx="4"/><rect x="93" y="27" width="30" height="30" rx="4"/>
             <rect x="27" y="60" width="30" height="30" rx="4"/><rect x="60" y="60" width="30" height="30" rx="4"/><rect x="93" y="60" width="30" height="30" rx="4"/>
             <rect x="27" y="93" width="30" height="30" rx="4"/><rect x="60" y="93" width="30" height="30" rx="4"/><rect x="93" y="93" width="30" height="30" rx="4"/>
           </g>
-          <circle cx="75" cy="75" r="46" fill="rgba(31,157,107,.09)" stroke="#1f9d6b" stroke-width="2.4" stroke-dasharray="6 5"/>
-          <circle cx="62" cy="70" r="6" fill="#1f9d6b" stroke="#fff" stroke-width="2"/>
-          <circle cx="90" cy="86" r="6" fill="#1f9d6b" stroke="#fff" stroke-width="2"/>
-          <circle cx="78" cy="58" r="6" fill="#1f9d6b" stroke="#fff" stroke-width="2"/>
+          <circle cx="75" cy="75" r="46" fill="rgba(138,148,166,.08)" stroke="#8a94a6" stroke-width="2.4" stroke-dasharray="6 5"/>
+          <circle cx="62" cy="70" r="6" fill="#3a78b8" stroke="#fff" stroke-width="2"/>
+          <circle cx="90" cy="86" r="6" fill="#3a78b8" stroke="#fff" stroke-width="2"/>
+          <circle cx="78" cy="58" r="6" fill="#3a78b8" stroke="#fff" stroke-width="2"/>
         </svg></div>
         <div class="vds">
           <div class="vd good"><span class="i">✓</span>9섹터가 시야를 덮음</div>
           <div class="vd good"><span class="i">✓</span>팝업 방지 · 갱신 드묾</div>
         </div>
       </div>
-      <!-- 크게 -->
+      <!-- 크게 : 섹터 회색 · 과밀 객체 회색 · 시야 회색 -->
       <div class="col big2">
         <div class="tag">크게 잡으면</div>
         <div class="sz">섹터 ≫ 시야</div>
         <div class="dia"><svg viewBox="0 0 150 150" width="188" height="188">
-          <g fill="#e2e6ec" stroke="#7c8597" stroke-width="1.8">
+          <g fill="#e6eaf0" stroke="#94a3b8" stroke-width="1.8">
             <rect x="25" y="25" width="48" height="48" rx="5"/><rect x="77" y="25" width="48" height="48" rx="5"/>
             <rect x="25" y="77" width="48" height="48" rx="5"/><rect x="77" y="77" width="48" height="48" rx="5"/>
           </g>
-          <g fill="#566072" stroke="#fff" stroke-width="1.8">
+          <g fill="#7c8597" stroke="#fff" stroke-width="1.8">
             <circle cx="38" cy="40" r="5.5"/><circle cx="55" cy="38" r="5.5"/><circle cx="46" cy="52" r="5.5"/>
             <circle cx="62" cy="55" r="5.5"/><circle cx="35" cy="60" r="5.5"/><circle cx="55" cy="66" r="5.5"/>
           </g>
-          <circle cx="100" cy="100" r="20" fill="rgba(124,133,151,.10)" stroke="#7c8597" stroke-width="2.2" stroke-dasharray="5 4"/>
+          <circle cx="100" cy="100" r="20" fill="rgba(138,148,166,.10)" stroke="#8a94a6" stroke-width="2.2" stroke-dasharray="5 4"/>
         </svg></div>
         <div class="vds">
           <div class="vd neu"><span class="i">•</span>섹터 이동 이벤트 드묾</div>

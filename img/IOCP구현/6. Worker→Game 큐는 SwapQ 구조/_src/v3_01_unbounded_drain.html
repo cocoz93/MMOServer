@@ -1,0 +1,100 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<link rel="stylesheet" href="common.css">
+<style>
+  :root{ --blue-line:#cfe0f2; --mono:"SF Mono",ui-monospace,"Cascadia Mono","Consolas",monospace; }
+  .card{ padding:44px 60px 30px; }
+  .eyebrow{ margin-bottom:12px; }
+  .h-title{ font-size:48px; letter-spacing:-2px; }
+  .h-title .k{ color:var(--red-deep); }
+  .h-rule{ margin:16px 0 12px; }
+  .h-sub{ font-size:21px; }
+  .h-sub b{ color:var(--red-deep); font-weight:800; }
+
+  .stage{ flex:1; display:flex; flex-direction:column; justify-content:center; gap:30px; margin-top:22px; min-height:0; }
+
+  /* ── 메커니즘 행 ── */
+  .mech{ display:flex; align-items:center; justify-content:center; gap:18px; }
+  .actor{ color:#fff; border-radius:16px; padding:16px 24px; display:flex; flex-direction:column; align-items:center; gap:4px; letter-spacing:-.3px; }
+  .actor .nm{ font-size:22px; font-weight:800; }
+  .actor .sub2{ font-size:14px; font-weight:700; opacity:.9; }
+  .actor.worker{ background:#5b6472; }
+  .actor.game{ background:var(--ink); position:relative; }
+  .loop{ display:inline-flex; align-items:center; gap:7px; margin-top:4px; background:rgba(255,255,255,.16);
+         padding:5px 12px; border-radius:999px; font-family:var(--mono); font-size:14px; font-weight:800; }
+
+  .flowlbl{ display:flex; flex-direction:column; align-items:center; gap:7px; }
+  .flowlbl .t{ font-size:15px; font-weight:800; letter-spacing:-.3px; }
+  .flowlbl.fast .t{ color:var(--red-deep); } .flowlbl.slow .t{ color:var(--faint); }
+
+  .qbox{ background:#fff; border:2.4px solid var(--red-line); border-radius:18px; padding:14px 16px 12px;
+         display:flex; flex-direction:column; align-items:center; gap:9px; position:relative; }
+  .qbox .grow{ position:absolute; top:-14px; right:-14px; background:var(--red); color:#fff; font-size:13px; font-weight:800;
+               padding:5px 12px; border-radius:999px; box-shadow:0 4px 12px rgba(215,38,61,.3); }
+  .qcells{ display:flex; gap:7px; }
+  .qcell{ width:26px; height:44px; border-radius:6px; background:linear-gradient(180deg,#e6394f,#d7263d); }
+  .qbox .qcap{ font-size:14px; font-weight:800; color:var(--red-deep); letter-spacing:-.3px; }
+
+  /* ── 프레임 예산 초과 막대 ── */
+  .budget{ background:var(--surface); border:1.6px solid var(--line); border-radius:20px; padding:22px 28px;
+           display:flex; align-items:center; gap:24px; }
+  .budget .blab{ flex:0 0 auto; font-size:19px; font-weight:800; color:var(--ink); letter-spacing:-.4px; line-height:1.3; }
+  .budget .blab .s{ display:block; font-size:14px; font-weight:700; color:var(--faint); }
+  .track{ flex:1; position:relative; height:52px; }
+  .track .bar{ position:absolute; inset:0; display:flex; border-radius:11px; overflow:hidden; }
+  .track .ok{ width:56%; background:var(--gray-bar); display:flex; align-items:center; padding-left:16px;
+              font-size:15px; font-weight:800; color:#5b6472; }
+  .track .over{ width:44%; background:linear-gradient(90deg,#e6394f,#b3122a); display:flex; align-items:center; justify-content:center;
+                font-size:16px; font-weight:800; color:#fff; letter-spacing:-.3px; }
+  .track .mark{ position:absolute; left:56%; top:-12px; bottom:-12px; width:0; border-left:2.4px dashed #8a93a5; }
+  .track .mark .ms{ position:absolute; top:-24px; left:50%; transform:translateX(-50%); white-space:nowrap;
+                    font-size:15px; font-weight:800; color:var(--ink); font-family:var(--mono); }
+  .budget .arr{ flex:0 0 auto; display:flex; flex-direction:column; align-items:center; gap:5px;
+                font-size:15px; font-weight:800; color:var(--red-deep); letter-spacing:-.3px; }
+
+  .foot{ padding-top:14px; font-size:16px; }
+  .foot b{ color:var(--red-deep); }
+</style></head>
+<body><div class="card">
+  <div class="eyebrow"><span class="no">①</span>&nbsp; 문제 · 무한 드레인</div>
+  <div class="h-title">소비 루프에 <span class="k">상한이 없다</span></div>
+  <div class="h-rule"></div>
+  <div class="h-sub">게임 스레드가 “큐가 빌 때까지” 전부 소비 → 유입 &gt; 소비면 프레임 안에 못 끝나 <b>틱이 밀린다</b></div>
+
+  <div class="stage">
+
+    <!-- 메커니즘 -->
+    <div class="mech">
+      <div class="actor worker"><span class="nm">Worker</span><span class="sub2">이벤트 생성</span></div>
+      <div class="flowlbl fast">
+        <span class="t">유입 빠름</span>
+        <svg width="80" height="22" viewBox="0 0 80 22"><line x1="4" y1="11" x2="62" y2="11" stroke="#d7263d" stroke-width="7" stroke-linecap="round"/><path d="M58 2 L78 11 L58 20 Z" fill="#d7263d"/></svg>
+      </div>
+      <div class="qbox">
+        <span class="grow">↑ 계속 자람</span>
+        <div class="qcells"><span class="qcell"></span><span class="qcell"></span><span class="qcell"></span><span class="qcell"></span><span class="qcell"></span><span class="qcell"></span></div>
+        <span class="qcap">Event Queue</span>
+      </div>
+      <div class="flowlbl slow">
+        <span class="t">소비 느림</span>
+        <svg width="80" height="22" viewBox="0 0 80 22"><line x1="4" y1="11" x2="64" y2="11" stroke="#b8c0cc" stroke-width="3.4" stroke-linecap="round"/><path d="M61 5 L74 11 L61 17 Z" fill="#b8c0cc"/></svg>
+      </div>
+      <div class="actor game"><span class="nm">Game Thread</span><span class="loop">↻ while(!empty)</span></div>
+    </div>
+
+    <!-- 프레임 예산 초과 -->
+    <div class="budget">
+      <div class="blab">1 프레임 예산<span class="s">틱 25/s 기준</span></div>
+      <div class="track">
+        <div class="bar">
+          <div class="ok">정상 작업</div>
+          <div class="over">예산 초과 ▶</div>
+        </div>
+        <div class="mark"><span class="ms">40ms</span></div>
+      </div>
+      <div class="arr">다음 프레임<br>으로 밀림</div>
+    </div>
+
+  </div>
+
+  <div class="foot">클라 증상 — 접속·해제는 되는데 <b>월드 갱신만 멈춘 듯</b> · 러버밴딩 · 위치 불일치 (틱 지연·큐 적체 누적)</div>
+</div></body></html>

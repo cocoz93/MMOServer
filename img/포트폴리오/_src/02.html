@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#eef1f5; --bg2:#e6eaf1; --card:#ffffff; --ink:#1f2330; --sub:#3a4254; --muted:#7c8597; --faint:#9aa3b2;
+    --line:#eef0f3; --line2:#f2f4f7; --track:#e8ecf2;
+    --red:#d7263d; --deep:#b3122a; --red-bg:#fdeef0; --red-line:#f4c4cc;
+    --blue:#3a78b8; --blue-ink:#2b6aa8; --blue-bg:#e7f0fa; --blue-line:#cfe0f2; --slate:#566072;
+    --green:#1f9d6b; --green-ink:#15805a; --green-bg:#e7f6ef; --green-line:#c3e6d5;
+  }
+  html,body{width:1600px;height:900px;overflow:hidden;
+    background:radial-gradient(1100px 560px at 88% -12%, #ffffff, rgba(255,255,255,0) 58%),
+      linear-gradient(140deg,var(--bg),var(--bg2));
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;color:var(--ink);word-break:keep-all;
+    font-feature-settings:"tnum" 1;-webkit-font-smoothing:antialiased;text-rendering:geometricPrecision}
+  .card{position:absolute;inset:28px;background:var(--card);border:1px solid var(--line);border-radius:32px;
+    box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 34px 70px -34px rgba(30,40,70,.24),0 14px 32px -18px rgba(30,40,70,.10);
+    padding:44px 56px 38px;display:flex;flex-direction:column;overflow:hidden}
+
+  .eyebrow{display:inline-flex;align-items:center;gap:10px;align-self:flex-start;
+    font-size:15px;font-weight:800;letter-spacing:2.5px;color:var(--muted);text-transform:uppercase}
+  .eyebrow .d{width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 0 4px var(--red-bg)}
+  .title{margin-top:14px;font-size:42px;font-weight:800;color:var(--ink);letter-spacing:-1.2px;line-height:1.1}
+  .title .r{color:var(--deep)}
+  .uline{width:88px;height:6px;border-radius:3px;margin:14px 0 12px;
+    background:linear-gradient(90deg,var(--red),#f2647a);box-shadow:0 5px 12px -5px rgba(215,38,61,.5)}
+  .sub{font-size:20px;font-weight:500;color:var(--muted);line-height:1.5;letter-spacing:-.3px;max-width:1320px}
+  .sub b{color:var(--sub);font-weight:700}
+
+  .fill{flex:1;display:flex;flex-direction:column;justify-content:center;gap:20px;padding-top:6px}
+
+  .grid{display:flex;gap:20px}
+  .node{flex:1;min-height:392px;background:linear-gradient(180deg,#fff,#fafcff);border:1px solid var(--line);border-radius:20px;
+    position:relative;overflow:hidden;padding:28px 24px 24px;display:flex;flex-direction:column;
+    box-shadow:0 18px 40px -26px rgba(30,40,70,.30),0 6px 16px -10px rgba(30,40,70,.10)}
+  .node::before{content:"";position:absolute;top:0;left:0;right:0;height:5px}
+  .node.r::before{background:linear-gradient(90deg,var(--red),#f2647a)}
+  .node.b::before{background:linear-gradient(90deg,var(--blue-ink),#7cb0de)}
+  .node.g::before{background:linear-gradient(90deg,var(--green-ink),#5fc39a)}
+  .node.s::before{background:linear-gradient(90deg,#49546a,#8c96a8)}
+
+  .tag{align-self:flex-start;font-size:13px;font-weight:800;padding:5px 13px;border-radius:999px;letter-spacing:-.2px;white-space:nowrap}
+  .node.r .tag{background:var(--red-bg);color:var(--deep)}
+  .node.b .tag{background:var(--blue-bg);color:var(--blue-ink)}
+  .node.g .tag{background:var(--green-bg);color:var(--green-ink)}
+  .node.s .tag{background:#eef0f4;color:#49546a}
+  .nt{margin-top:16px;font-size:26px;font-weight:800;color:var(--ink);letter-spacing:-.6px;line-height:1.18;min-height:64px}
+
+  .bl{margin-top:18px;list-style:none;display:flex;flex-direction:column;gap:15px}
+  .bl li{position:relative;padding-left:20px;font-size:16.5px;font-weight:600;color:var(--slate);line-height:1.5;letter-spacing:-.3px}
+  .bl li b{color:var(--ink);font-weight:800}
+  .bl li::before{content:"";position:absolute;left:2px;top:7px;width:8px;height:8px;border-radius:2px;transform:rotate(45deg)}
+  .node.r .bl li::before{background:var(--red)}
+  .node.b .bl li::before{background:var(--blue-ink)}
+  .node.g .bl li::before{background:var(--green-ink)}
+  .node.s .bl li::before{background:#49546a}
+
+  .res{margin-top:auto;font-size:16px;font-weight:800;letter-spacing:-.3px;border-radius:11px;padding:14px 16px;border:1px solid;line-height:1.35}
+  .node.r .res{background:var(--red-bg);color:var(--deep);border-color:var(--red-line)}
+  .node.b .res{background:var(--blue-bg);color:var(--blue-ink);border-color:var(--blue-line)}
+  .node.g .res{background:var(--green-bg);color:var(--green-ink);border-color:var(--green-line)}
+  .node.s .res{background:#eef0f4;color:#49546a;border-color:#dfe3ea}
+
+  .more{display:flex;align-items:center;gap:16px;background:linear-gradient(180deg,#fafbfd,#f3f6fa);
+    border:1px solid var(--line);border-radius:14px;padding:14px 22px}
+  .more .ml{font-size:12.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--faint);white-space:nowrap}
+  .more .mi{font-size:15.5px;font-weight:600;color:var(--slate);letter-spacing:-.3px}
+  .more .mi b{color:var(--ink);font-weight:700}
+
+  .foot{margin-top:16px;padding-top:15px;border-top:1px solid var(--line);
+    font-size:15.5px;color:var(--faint);font-weight:500;letter-spacing:-.2px;display:flex;align-items:center;gap:20px}
+  .foot b{color:var(--slate);font-weight:700}
+  .foot .right{margin-left:auto}
+  .foot .r{color:var(--deep);font-weight:800}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="eyebrow"><span class="d"></span>Voyager · Combat Skill System</div>
+    <div class="title">하드코딩 대신 <span class="r">데이터로</span> — 전투 스킬 시스템 설계·구현</div>
+    <div class="uline"></div>
+    <div class="sub">다단계 스킬·AoE·넉백을 테이블 설정으로 다루도록 구조화 — <b>설계 판단이 필요했던 4가지.</b></div>
+
+    <div class="fill">
+      <div class="grid">
+        <!-- 1 -->
+        <div class="node r">
+          <span class="tag">데이터 드리븐 설계</span>
+          <div class="nt">스킬 체인 시스템</div>
+          <ul class="bl">
+            <li>투창 → 착탄 → 토템 → 폭발 <b>4단계 체인</b></li>
+            <li><b>OnDestroy</b> 훅으로 파괴 시점에 후속 스킬 발동</li>
+            <li>체인을 테이블 값으로 정의 (하드코딩 X)</li>
+          </ul>
+          <div class="res">신규 스킬 = <b>행 추가만, 코드 0</b></div>
+        </div>
+        <!-- 2 -->
+        <div class="node b">
+          <span class="tag">시스템 확장</span>
+          <div class="nt">AoE 3모드</div>
+          <ul class="bl">
+            <li><b>Normal · Tracking · Sequential</b></li>
+            <li>대상 추적 / 위치 예고 후 순차 폭발</li>
+            <li><b>HitCount</b> 컬럼을 시스템별로 재정의</li>
+          </ul>
+          <div class="res">기존 호환 유지 · <b>로직 변경 0</b></div>
+        </div>
+        <!-- 3 -->
+        <div class="node g">
+          <span class="tag">아키텍처 결정</span>
+          <div class="nt">착탄 후 처리<br>대안 3안 비교</div>
+          <ul class="bl">
+            <li>A 유지 · B 토템 대체 · C 전용 분리</li>
+            <li><b>확장성 · 역할분리</b> 기준으로 평가</li>
+            <li>과도한 개편 회피 판단</li>
+          </ul>
+          <div class="res"><b>A 채택</b> · NextSkill 분리로 C 전환로 확보</div>
+        </div>
+        <!-- 4 -->
+        <div class="node s">
+          <span class="tag">리팩터링</span>
+          <div class="nt">넉백 이원화 통합</div>
+          <ul class="bl">
+            <li>직접 호출 + 버프 <b>2경로</b>로 분산돼 있던 것</li>
+            <li><b>TargetShape</b> 기반 방향 규칙으로 통일</li>
+            <li>영역형=방사형 / 라인형=일방향</li>
+          </ul>
+          <div class="res">스킬별 <b>하드코딩 0</b></div>
+        </div>
+      </div>
+
+      <div class="more">
+        <span class="ml">그 외 구현</span>
+        <span class="mi">투사체 <b>관통</b> 시스템 · <b>Fluent Builder</b> 패턴(이동·AoE·스킬) · 몬스터 <b>배회 AI</b> · 배틀로얄 컨텐츠 <b>스레드 분리</b> 설계</span>
+      </div>
+    </div>
+
+    <div class="foot">
+      <span><b>Voyager · Project R (MMO)</b> 서버팀 · 2026.2–4</span>
+      <span>C++17 · io_uring · FlatBuffers · Unity</span>
+      <span class="right"><span class="r">상세</span> — Notion 「[Voyager] Project R」</span>
+    </div>
+  </div>
+</body>
+</html>

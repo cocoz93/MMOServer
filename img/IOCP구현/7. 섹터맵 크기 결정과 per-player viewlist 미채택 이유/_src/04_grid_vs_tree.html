@@ -9,26 +9,25 @@
 
   .cols{ flex:1; display:flex; gap:26px; width:100%; align-items:stretch; }
   .col{ flex:1; border-radius:24px; padding:22px 26px 20px; display:flex; flex-direction:column; align-items:center; position:relative; }
-  .col.grid2{ background:var(--green-bg); border:1.8px solid var(--green-line); }
-  .col.tree{  background:var(--blue-bg);  border:1.5px solid var(--blue-line); }
+  .col.grid2{ background:var(--blue-bg); border:1.8px solid var(--blue-line); }
+  .col.tree{  background:#f4f6f9;       border:1.5px solid #dde3ec; }
 
   .tag{ font-size:18px; font-weight:800; padding:8px 22px; border-radius:999px; color:#fff; }
-  .col.grid2 .tag{ background:var(--green); }
-  .col.tree  .tag{ background:var(--blue); }
+  .col.grid2 .tag{ background:var(--blue-deep); }
+  .col.tree  .tag{ background:#64748b; }
 
   .viz{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:13px; width:100%; }
   .vlabel{ font-size:15.5px; font-weight:800; }
-  .col.grid2 .vlabel{ color:var(--green-deep); }
-  .col.tree  .vlabel{ color:var(--blue-deep); }
+  .col.grid2 .vlabel{ color:var(--blue-deep); }
+  .col.tree  .vlabel{ color:var(--sub); }
 
   /* 그리드: 연속 메모리 블록 (큼직) */
   .mem{ display:flex; gap:3px; }
-  .mc{ width:38px; height:52px; background:#fff; border:2px solid var(--green-line); }
+  .mc{ width:38px; height:52px; background:#fff; border:2px solid var(--blue-line); }
   .mc:first-child{ border-radius:9px 0 0 9px; } .mc:last-child{ border-radius:0 9px 9px 0; }
-  .mc.on{ background:var(--green); border-color:var(--green); }
+  .mc.on{ background:var(--blue); border-color:var(--blue); }
   .mono{ font-family:"SF Mono",ui-monospace,"Consolas",monospace; font-size:14.5px; font-weight:800; }
-  .col.grid2 .mono b{ color:var(--green-deep); }
-  .col.tree  .mono b{ color:var(--blue-deep); }
+  .col.grid2 .mono b{ color:var(--blue-deep); }
 
   /* 트리: 흩어진 노드 (큼직) */
   .treewrap{ display:flex; align-items:center; justify-content:center; }
@@ -36,28 +35,28 @@
   /* 큰 스탯 2개 */
   .stats{ display:flex; gap:14px; width:100%; margin-top:2px; }
   .stat{ flex:1; background:#fff; border-radius:16px; padding:13px 10px; text-align:center; }
-  .col.grid2 .stat{ border:1.5px solid var(--green-line); }
-  .col.tree  .stat{ border:1.5px solid var(--blue-line); }
+  .col.grid2 .stat{ border:1.5px solid var(--blue-line); }
+  .col.tree  .stat{ border:1.5px solid #dde3ec; }
   .stat .k{ font-size:13px; font-weight:800; color:var(--faint); }
   .stat .v{ font-size:31px; font-weight:800; letter-spacing:-1.2px; margin-top:4px; line-height:1; }
   .stat .v.sm{ font-size:23px; }
-  .col.grid2 .stat .v{ color:var(--green-deep); }
-  .col.tree  .stat .v{ color:var(--blue-deep); }
+  .col.grid2 .stat .v{ color:var(--blue-deep); }
+  .col.tree  .stat .v{ color:var(--red-deep); }
 
   .strength{ margin-top:14px; align-self:stretch; text-align:center; font-size:15px; font-weight:800; padding:12px; border-radius:14px; }
   .strength b{ font-weight:800; }
-  .col.grid2 .strength{ background:#fff; color:var(--green-deep); border:1.5px solid var(--green-line); }
-  .col.tree  .strength{ background:#fff; color:var(--blue-deep);  border:1.5px solid var(--blue-line); }
+  .col.grid2 .strength{ background:#fff; color:var(--blue-deep); border:1.5px solid var(--blue-line); }
+  .col.tree  .strength{ background:#fff; color:var(--sub);       border:1.5px solid #dde3ec; }
 </style></head>
 <body><div class="card">
   <div class="eyebrow"><span class="no">④</span> 자료구조 · 왜 트리가 아닌가</div>
-  <div class="h-title">균일 <span class="kg">그리드</span> vs <span class="kb">트리</span> <span style="font-size:24px;color:var(--faint);font-weight:700;">(quadtree / k-d)</span></div>
+  <div class="h-title">균일 <span class="kb">그리드</span> vs <span style="color:var(--sub);">트리</span> <span style="font-size:24px;color:var(--faint);font-weight:700;">(quadtree / k-d)</span></div>
   <div class="h-rule"></div>
   <div class="h-sub">균일 분포 전제 → <b>O(1) 인덱스 · 캐시 연속</b>이 트리 동적 분할보다 단순·빠름</div>
 
   <div class="body">
     <div class="cols">
-      <!-- 그리드 -->
+      <!-- 그리드 (채택 = 파랑) -->
       <div class="col grid2">
         <div class="tag">균일 그리드 · 채택 ✓</div>
         <div class="viz">
@@ -71,18 +70,18 @@
         </div>
         <div class="strength">균일 분포에 최적 — <b>push_back / swap-pop</b></div>
       </div>
-      <!-- 트리 -->
+      <!-- 트리 (대안 = 회색, 비용 지표만 빨강) -->
       <div class="col tree">
         <div class="tag">quadtree / k-d tree · 대안</div>
         <div class="viz">
           <div class="vlabel">노드마다 포인터 추적 · 흩어진 배치</div>
           <div class="treewrap"><svg viewBox="0 0 300 150" width="300" height="150">
-            <g stroke="#94a3b8" stroke-width="2.4" fill="none">
+            <g stroke="#c3ccd8" stroke-width="2.4" fill="none">
               <line x1="150" y1="28" x2="80" y2="76"/><line x1="150" y1="28" x2="220" y2="76"/>
               <line x1="80" y1="76" x2="40" y2="122"/><line x1="80" y1="76" x2="118" y2="122"/>
               <line x1="220" y1="76" x2="182" y2="122"/><line x1="220" y1="76" x2="260" y2="122"/>
             </g>
-            <g fill="#e7f0fa" stroke="#3a78b8" stroke-width="2.6">
+            <g fill="#eef2f7" stroke="#94a3b8" stroke-width="2.6">
               <circle cx="150" cy="28" r="17"/><circle cx="80" cy="76" r="15"/><circle cx="220" cy="76" r="15"/>
               <circle cx="40" cy="122" r="13"/><circle cx="118" cy="122" r="13"/><circle cx="182" cy="122" r="13"/><circle cx="260" cy="122" r="13"/>
             </g>

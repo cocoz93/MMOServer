@@ -3,6 +3,7 @@
 #
 # logical size x DSF4 = final resolution (high-res, Pretendard embedded):
 #   01 : 1460x744  -> 5840x2976   (01_bottleneck_chronicle.png)
+#   02 : 1600x900  -> 6400x3600   (02_datadriven_combat.png, house_hero 양식)
 $dir = $PSScriptRoot
 
 $chrome = "C:\Program Files\Google\Chrome\Application\chrome.exe"
@@ -38,6 +39,7 @@ function Render($name, $w, $h, $out) {
 
 Write-Host "[build] using: $chrome"
 Render "01" 1460 744 "01_bottleneck_chronicle.png"
+Render "02" 1600 900 "02_datadriven_combat.png"
 Remove-Item $render -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item $profileDir -Recurse -Force -ErrorAction SilentlyContinue
 Write-Host "[build] done."

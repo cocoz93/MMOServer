@@ -1,0 +1,94 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<link rel="stylesheet" href="common.css">
+<style>
+  :root{ --blue-line:#cfe0f2; --mono:"SF Mono",ui-monospace,"Cascadia Mono","Consolas",monospace; }
+  .card{ padding:44px 60px 30px; }
+  .eyebrow{ margin-bottom:12px; }
+  .h-title{ font-size:48px; letter-spacing:-2px; }
+  .h-title .k{ color:var(--red-deep); }
+  .h-title .kb{ color:var(--blue-deep); }
+  .h-rule{ margin:16px 0 12px; }
+  .h-sub{ font-size:21px; }
+  .h-sub b{ color:var(--ink); font-weight:800; }
+
+  .stage{ flex:1; display:flex; flex-direction:column; justify-content:center; gap:10px; margin-top:20px; min-height:0; }
+
+  .layer{ border-radius:22px; padding:20px 28px; display:flex; align-items:center; gap:26px; }
+  .layer .ltag{ flex:0 0 auto; font-size:16px; font-weight:800; color:#fff; padding:8px 20px; border-radius:12px; letter-spacing:-.3px; }
+  .layer .lmain{ flex:0 0 auto; }
+  .layer .lmain .lt{ font-size:26px; font-weight:800; color:var(--ink); letter-spacing:-.6px; }
+  .layer .lmain .ls{ font-size:16px; font-weight:700; color:var(--sub); letter-spacing:-.3px; margin-top:2px; }
+  .layer .lright{ margin-left:auto; font-size:24px; font-weight:800; letter-spacing:-.5px; text-align:right; white-space:nowrap; }
+
+  .emerg{ background:var(--red-bg); border:1.8px solid var(--red-line); }
+  .emerg .ltag{ background:var(--red); }
+  .emerg .lright{ color:var(--red-deep); }
+  .emerg .lmain .lt .mono{ font-family:var(--mono); color:var(--red-deep); }
+
+  .root{ background:var(--blue-bg); border:1.8px solid var(--blue-line); flex-direction:column; align-items:stretch; gap:16px; }
+  .root .rtop{ display:flex; align-items:center; gap:26px; }
+  .root .ltag{ background:var(--blue-deep); }
+  .root .lright{ color:var(--blue-deep); }
+
+  .between{ display:flex; align-items:center; justify-content:center; gap:12px; font-size:16px; font-weight:800; color:var(--red-deep); letter-spacing:-.3px; }
+  .between svg{ width:20px; height:26px; }
+
+  .means{ display:flex; gap:12px; }
+  .mchip{ flex:1; background:#fff; border:1.6px solid var(--blue-line); border-radius:14px; padding:13px 16px;
+          display:flex; flex-direction:column; gap:3px; position:relative; }
+  .mchip .mt{ font-size:18px; font-weight:800; color:var(--ink); letter-spacing:-.3px; }
+  .mchip .ms{ font-size:14px; font-weight:700; color:var(--muted); letter-spacing:-.2px; }
+  .mchip.star{ border-color:var(--blue-deep); border-width:2.4px; background:#f4f9fe; }
+  .mchip.star .mt{ color:var(--blue-deep); }
+  .mchip .badge{ position:absolute; top:-11px; right:12px; background:var(--blue-deep); color:#fff;
+                 font-size:12px; font-weight:800; padding:3px 11px; border-radius:999px; letter-spacing:-.2px; }
+
+  .foot{ padding-top:14px; font-size:16px; }
+  .foot b{ color:var(--blue-deep); }
+</style></head>
+<body><div class="card">
+  <div class="eyebrow"><span class="no">③</span>&nbsp; 핵심 · 두 층위</div>
+  <div class="h-title"><span class="k">응급</span>과 <span class="kb">근본</span>은 고치는 층위가 다르다</div>
+  <div class="h-rule"></div>
+  <div class="h-sub">소비 방식을 고치는 건 <b>응급 처치</b> · 유입을 못 따라가는 <b>용량</b>이 근본</div>
+
+  <div class="stage">
+
+    <!-- 응급 층위 -->
+    <div class="layer emerg">
+      <div class="ltag">응급</div>
+      <div class="lmain">
+        <div class="lt">소비 방식 <span class="mono">(SwapQ)</span></div>
+        <div class="ls">터지는 형태만 바꿈 · 지연·메모리로 이연</div>
+      </div>
+      <div class="lright">형태만 이동</div>
+    </div>
+
+    <!-- 사이 -->
+    <div class="between">
+      <svg viewBox="0 0 20 26"><line x1="10" y1="1" x2="10" y2="16" stroke="#d7263d" stroke-width="3.4" stroke-linecap="round"/><path d="M4 14 L10 24 L16 14 Z" fill="#d7263d"/></svg>
+      유입은 줄지 않는다
+    </div>
+
+    <!-- 근본 층위 -->
+    <div class="layer root">
+      <div class="rtop">
+        <div class="ltag">근본</div>
+        <div class="lmain">
+          <div class="lt">처리 용량</div>
+          <div class="ls">유입을 못 따라가는 진짜 한계 · 고쳐야 양이 준다</div>
+        </div>
+        <div class="lright">용량 ↑ &nbsp;/&nbsp; 유입 ↓</div>
+      </div>
+      <div class="means">
+        <div class="mchip star"><span class="badge">가장 본질</span><span class="mt">스레드 샤딩</span><span class="ms">존 단위 병렬화</span></div>
+        <div class="mchip"><span class="mt">입력 병합</span><span class="ms">한 틱 최신 이동만</span></div>
+        <div class="mchip"><span class="mt">브로드캐스트 절감</span><span class="ms">시야 컬링 · 주기화</span></div>
+        <div class="mchip"><span class="mt">백프레셔</span><span class="ms">큐 상한 · 접속 스로틀</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="foot">SwapQ(응급)는 <b>매 프레임 실행을 보장</b>할 뿐 · 병목 단계를 먼저 측정한 뒤 순서대로 — 근본은 <b>존 단위 샤딩</b></div>
+</div></body></html>
