@@ -50,3 +50,10 @@
 //   0: 기존 — 이벤트마다 즉시 BroadcastAroundSector (baseline)
 //   주의: 틱 내 start→stop 전이 "연출"은 최종상태만 남아 손실(위치 정합은 유지).
 #define USE_SECTOR_AGGREGATION 1
+
+// DB 저장 파이프라인 실험 — dirty flag 기반 비동기 위치 저장 (존 서버 관점)
+//   서버 메모리 = 진실, DB = 저장소. 바뀐 플레이어만 주기적으로 전용 워커 스레드가 MySQL에 UPSERT.
+//   목적: 전량 저장 부담을 dirty flag로 줄이고, 저장 I/O를 게임 틱 임계경로에서 떼어낸다.
+//   1: DB 워커 활성 (MySQL 필요, 지표 mmo_db_*) [실험]
+//   0: DB 없이 기존 동작 그대로 (회귀 기준선) [기본]
+#define USE_DB_WORKER 1

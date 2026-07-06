@@ -310,6 +310,16 @@ void CGameServer::Stop()
     if (_gameThread.joinable())
         _gameThread.join();
 
+#if USE_DB_WORKER
+    // 게임 스레드 종료 후(단일 스레드 시점) 전원 최종 저장 → 드레인 → 워커 종료
+    if (_dbWorker)
+    {
+        SaveAllPlayers();
+        _dbWorker->Shutdown(0);
+        _dbWorker.reset();
+    }
+#endif
+
     if (_network)
     {
         _network->ShutdownServer();
@@ -330,6 +340,88 @@ void CGameServer::Stop()
     }
     _sessionToPlayer.clear();
 }
+
+#if USE_DB_WORKER
+// ==========================================================================
+// DB 저장 파이프라인 (dirty flag 기반 비동기 위치 저장)
+// ==========================================================================
+
+bool CGameServer::InitDB(const DBConfig& dbConfig, int savePeriodSec, int workerCount, int queueMax)
+{
+    _dbWorker = std::make_unique<CDBWorker>(_monitor);
+    if (!_dbWorker->Start(dbConfig, workerCount, queueMax))
+    {
+        SLOG_ERROR("[DB] InitDB failed - check MySQL connection/config");
+        _dbWorker.reset();
+        return false;
+    }
+    _dbSavePeriodFrames = (savePeriodSec > 0 ? savePeriodSec : 10) * FRAME_PER_SEC;
+    _dbSaveFrameCounter = 0;
+    return true;
+}
+
+bool CGameServer::ShouldSave(const CPlayer* player) const
+{
+    // 저장 대상 판정(주기·종료 공통):
+    //   MOVING   = 위치가 계속 변하는 중 → 저장 후 dirty가 리셋돼도 매 주기 재저장 필요
+    //   _dbDirty = 정지/접속/존변경/클램프로 생긴 미저장 변경(일회성, 저장 후 리셋)
+    return player->_moveState == MoveState::MOVING || player->_dbDirty;
+}
+
+DBSaveJob CGameServer::MakeSaveJob(const CPlayer* player) const
+{
+    DBSaveJob job;
+    job.accountId = player->_accountId;
+    job.x         = player->_x;
+    job.y         = player->_y;
+    job.mapId     = CMapManager::GetMapIdFromZoneId(player->_zoneId);
+    return job;
+}
+
+void CGameServer::EnqueuePlayerSave(CPlayer* player)
+{
+    _dbWorker->Enqueue(MakeSaveJob(player));
+    player->_dbDirty = false;   // 저장 요청 후 리셋 (로그아웃 등 단건)
+}
+
+void CGameServer::TickPeriodicSave()
+{
+    if (++_dbSaveFrameCounter < _dbSavePeriodFrames)
+        return;
+    _dbSaveFrameCounter = 0;
+
+    // 서버 메모리 = 진실. 저장 대상(ShouldSave)만 배치에 모아 워커에 1회 핸드오프.
+    //   thread_local 재사용으로 매 주기 할당 회피 (게임 스레드 단독 접근).
+    thread_local std::vector<DBSaveJob> batch;
+    batch.clear();
+    for (auto& kv : _sessionToPlayer)
+    {
+        CPlayer* player = kv.second;
+        if (ShouldSave(player))
+        {
+            batch.push_back(MakeSaveJob(player));
+            player->_dbDirty = false;   // 저장 요청 후 리셋
+        }
+    }
+    _dbWorker->EnqueueBatch(batch);   // lock 1회 + notify 1회
+}
+
+void CGameServer::SaveAllPlayers()
+{
+    // 종료는 유실 방지 우선 — dirty/MOVING 무관하게 전원 최종 저장(안전망).
+    // 주기 저장(ShouldSave 필터)과 목적이 다름: 여기선 dirty 추적을 신뢰하지 않고 무조건 다 씀.
+    std::vector<DBSaveJob> batch;
+    batch.reserve(_sessionToPlayer.size());
+    for (auto& kv : _sessionToPlayer)
+    {
+        batch.push_back(MakeSaveJob(kv.second));
+        kv.second->_dbDirty = false;
+    }
+    _dbWorker->EnqueueBatch(batch);   // 배치 1회 핸드오프
+}
+#else
+bool CGameServer::InitDB(const DBConfig&, int, int, int) { return true; }   // 토글 OFF: no-op
+#endif
 
 // ==========================================================================
 // 게임 루프
@@ -402,6 +494,9 @@ void CGameServer::GameLoopThread()
         // 3-1) 맵 경계 클램핑으로 정지된 플레이어에게 MOVE_STOP 브로드캐스트
         for (CPlayer* player : _tickClampedPlayers)
         {
+#if USE_DB_WORKER
+            player->_dbDirty = true;   // 경계 클램프로 위치 변경 → 저장 대상
+#endif
             CZone* zone = _mapManager.GetZone(player->_zoneId);
             if (zone != nullptr)
             {
@@ -489,6 +584,11 @@ void CGameServer::GameLoopThread()
             _cleanupFrameCount = 0;
             _mapManager.CleanupEmptyChannels();
         }
+
+#if USE_DB_WORKER
+        // 5-1) DB 주기 저장 — dirty(또는 MOVING) 플레이어만 워커에 enqueue (틱 임계경로 밖 I/O)
+        TickPeriodicSave();
+#endif
 
         // 6) Tick 시간 기록 + 프레임 제한
         auto frameEnd = Clock::now();
@@ -580,6 +680,12 @@ void CGameServer::OnConnected(int64_t sessionId)
     player->_lastSyncX = player->_x;
     player->_lastSyncY = player->_y;
 
+#if USE_DB_WORKER
+    // 1단계 임시: playerId를 계정 식별자로 사용 (2단계는 접속 핸드셰이크로 수신)
+    player->_accountId = player->_playerId;
+    player->_dbDirty   = true;   // 접속 위치를 첫 주기에 저장(신규 행 INSERT 유도)
+#endif
+
     // 1) 존 메타 정보 전송
     SendZoneInfo(player, zone);
 
@@ -606,6 +712,12 @@ void CGameServer::OnDisconnected(int64_t sessionId)
 
     // 경계 매핑 해제 (zone 유무와 무관하게 반드시 수행)
     _sessionToPlayer.erase(it);
+
+#if USE_DB_WORKER
+    // 로그아웃 최종 저장 (스냅샷은 값 복사라 직후 delete 안전)
+    if (_dbWorker)
+        EnqueuePlayerSave(player);
+#endif
 
     // 플레이어 삭제 (CGameServer가 생명주기 소유)
     delete player;
@@ -824,6 +936,10 @@ void CGameServer::RecvMoveStop(CPlayer* player, CSerialBuffer* pMsg)
     // 서버 권위 모델: 서버 좌표 유지, 상태만 변경
     player->_direction = static_cast<Direction>(recvMsg.direction);
     player->_moveState = MoveState::IDLE;
+
+#if USE_DB_WORKER
+    player->_dbDirty = true;   // 정지 → IDLE 전이(주기저장 MOVING 조건에서 빠지므로 최종위치 마킹)
+#endif
 
     // 섹터 이동 판정
     int32_t newSectorX = zone->GetSectorManager().CalcSectorX(player->_x);
@@ -1120,6 +1236,10 @@ void CGameServer::RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg)
     }
 
     InterlockedIncrement64(&_monitor._gameLoop._zoneChangeCount);
+
+#if USE_DB_WORKER
+    player->_dbDirty = true;   // 존/맵 이동 → 위치·map_id 변경, 저장 대상
+#endif
 
     // 델타 동기화 기준 좌표 초기화
     player->_lastSyncX = player->_x;

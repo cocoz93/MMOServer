@@ -55,6 +55,14 @@ public:
     volatile LONG64 _recvBufferOverflow = 0;             // RecvQ 오버플로 (수신 버퍼 가득 참)
     volatile LONG64 _sendDiscardedBytes = 0;             // Disconnect 시 SendQ 잔여 바이트 (체류량 보정용)
 
+    // ── DB 저장 파이프라인 (USE_DB_WORKER) — dirty flag 비동기 저장 ──
+    alignas(64) volatile LONG64 _dbSavedJobs = 0;    // UPSERT 성공 누적
+    volatile LONG64 _dbFailedJobs = 0;               // UPSERT 실패 누적
+    volatile LONG64 _dbDroppedJobs = 0;              // 백프레셔 드롭 누적 (슬롯 큐 상한 초과)
+    static constexpr int MAX_DB_WORKERS = 16;
+    volatile LONG64 _dbQueueDepth[MAX_DB_WORKERS] = {};  // 워커별 게이지: 마지막 배치 인출량
+    volatile LONG _dbWorkerCount = 0;                    // 노출 루프 상한 (CDBWorker::Start에서 설정)
+
     // ══════════════════════════════════════════════════════════════
     // 게이지 (up/down)
     // ══════════════════════════════════════════════════════════════

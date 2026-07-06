@@ -57,6 +57,11 @@ public:
     // USE_SECTOR_AGGREGATION: 이번 틱 섹터 묶음 dirty 등록 여부 (중복 방지, 틱 끝 리셋)
     bool _moveDirty = false;
 
+    // USE_DB_WORKER: 계정 식별자 (1단계는 스폰 시 서버가 임시 부여, 2단계는 접속 핸드셰이크로 수신)
+    int64_t _accountId = 0;
+    // USE_DB_WORKER: 마지막 저장 이후 위치가 바뀌었는지 (주기 저장 대상 선별, 저장 후 리셋)
+    bool _dbDirty = false;
+
 private:
     int64_t _sessionId;   // 네트워크 세션 ID (CGameServer만 접근)
 };

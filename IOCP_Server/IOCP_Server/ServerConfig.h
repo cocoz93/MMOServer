@@ -45,6 +45,19 @@ struct ServerConfig
     unsigned long long affinityMask = 0;   // 프로세스를 묶을 CPU 코어 마스크 (0=미적용)
     int         workerThreads = 0;         // IOCP 워커 스레드 수 (0=서버 affinity 코어 수로 자동 산정)
     int         sendWorkers   = 0;         // 전용 송신 워커 수 (0/1=단일, 2+=sessionId%K 워커 풀; A/B 실험용)
+
+    // [DB] 저장 파이프라인 설정 (값은 USE_DB_WORKER 토글과 무관하게 항상 로드)
+    std::string dbHost              = "127.0.0.1";
+    int         dbPort              = 3306;
+    std::string dbUser              = "root";
+    std::string dbPassword;
+    std::string dbDatabase          = "mmo";
+    int         dbWorkers           = 1;    // 1단계는 단일 워커
+    int         dbSavePeriodSec     = 10;   // dirty 저장 주기(초)
+    int         dbConnectTimeoutSec = 3;
+    int         dbRwTimeoutSec      = 5;    // 읽기/쓰기 소켓 타임아웃(초) — DB 무응답 시 재연결 판단
+    int         dbQueueMax          = 20000; // 백프레셔: 워커당 큐 상한(초과분 드롭)
+
     std::vector<MapConfig> maps;
 
     // 실행 파일 경로 기준으로 IOCP_ServerConfig.ini 로드
@@ -90,6 +103,23 @@ struct ServerConfig
 
         // SendWorkers: 전용 송신 워커 수 (0/1=단일 스레드, 2+=sessionId%K 워커 풀)
         sendWorkers = GetPrivateProfileIntW(L"Server", L"SendWorkers", 0, path);
+
+        // [DB] 섹션 — DB 저장 파이프라인 (문자열은 기존 WtoA로 std::string 변환)
+        wchar_t dbBuf[256];
+        GetPrivateProfileStringW(L"DB", L"Host", L"127.0.0.1", dbBuf, 256, path);
+        dbHost = WtoA(dbBuf);
+        dbPort = GetPrivateProfileIntW(L"DB", L"Port", 3306, path);
+        GetPrivateProfileStringW(L"DB", L"User", L"root", dbBuf, 256, path);
+        dbUser = WtoA(dbBuf);
+        GetPrivateProfileStringW(L"DB", L"Password", L"", dbBuf, 256, path);
+        dbPassword = WtoA(dbBuf);
+        GetPrivateProfileStringW(L"DB", L"Database", L"mmo", dbBuf, 256, path);
+        dbDatabase = WtoA(dbBuf);
+        dbWorkers           = GetPrivateProfileIntW(L"DB", L"Workers", 1, path);
+        dbSavePeriodSec     = GetPrivateProfileIntW(L"DB", L"SavePeriodSec", 10, path);
+        dbConnectTimeoutSec = GetPrivateProfileIntW(L"DB", L"ConnectTimeoutSec", 3, path);
+        dbRwTimeoutSec      = GetPrivateProfileIntW(L"DB", L"RwTimeoutSec", 5, path);
+        dbQueueMax          = GetPrivateProfileIntW(L"DB", L"QueueMax", 20000, path);
 
         int mapCount = GetPrivateProfileIntW(L"Server", L"MapCount", 3, path);
 
@@ -186,6 +216,8 @@ private:
         SLOG_INFO("  Affinity    : 0x{:X}", affinityMask);
         SLOG_INFO("  WorkerThr   : {} (0=auto)", workerThreads);
         SLOG_INFO("  SendWkr     : {} (0/1=single)", sendWorkers);
+        SLOG_INFO("  DB          : {}:{} db={} user={} workers={} save={}s qmax={}",
+                  dbHost, dbPort, dbDatabase, dbUser, dbWorkers, dbSavePeriodSec, dbQueueMax);
         SLOG_INFO("  Maps        : {}", maps.size());
     }
 };

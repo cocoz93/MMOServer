@@ -29,6 +29,7 @@
 #include "Player.h"
 #include "MonitorManager.h"
 #include "Common.h"
+#include "DB/DBWorker.h"
 
 class CSerialBuffer;
 
@@ -44,6 +45,9 @@ public:
     // 게임 서버 모드 초기화 (맵 설정 배열)
     bool Init(ServerMode mode, int port, int maxClients,
               const MapConfig* maps, int32_t mapCount, int workerThreads = 0, int sendWorkers = 0);
+
+    // DB 저장 파이프라인 초기화 (USE_DB_WORKER=0이면 no-op). Start() 전에 호출.
+    bool InitDB(const DBConfig& dbConfig, int savePeriodSec, int workerCount, int queueMax);
 
     // 서버 시작/종료
     bool Start();
@@ -65,6 +69,15 @@ private:
     void RecvChat(CPlayer* player, CSerialBuffer* pMsg);
     void RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg);
     void RecvAdminLogin(CPlayer* player, CSerialBuffer* pMsg);
+
+#if USE_DB_WORKER
+    // DB 저장 파이프라인 (dirty flag 기반 비동기 위치 저장)
+    bool ShouldSave(const CPlayer* player) const;        // 저장 대상 판정(MOVING||dirty) — 주기·종료 공통
+    DBSaveJob MakeSaveJob(const CPlayer* player) const;  // 위치 스냅샷 생성 (단건·배치 공용)
+    void EnqueuePlayerSave(CPlayer* player);   // 단건: 스냅샷 enqueue + dirty clear (로그아웃)
+    void TickPeriodicSave();                   // 주기: 저장 대상 배치를 1회 핸드오프
+    void SaveAllPlayers();                     // 종료: 전원 최종 저장(안전망, dirty 무관)
+#endif
 
     // 섹터 변경 시 시야 진입/이탈 브로드캐스트
     void ProcessSectorChange(CZone* zone, CPlayer* player,
@@ -162,4 +175,11 @@ private:
     int64_t _tickBroadcastEnqueueUs = 0;  // 수신자별 처리(복사 포함)
     int64_t _tickMembershipSends = 0;     // 멤버십 변경 복사(BroadcastAroundSector 밖 경로) 송신 횟수
     int64_t _tickMembershipUs = 0;        // 멤버십 송신(ProcessSectorChange 구간) 시간 — 틱 끝 _membershipCostUs로 반영
+
+#if USE_DB_WORKER
+    // DB 저장 파이프라인 (dirty flag 기반 비동기 위치 저장)
+    std::unique_ptr<CDBWorker> _dbWorker;
+    int _dbSavePeriodFrames = 250;   // SavePeriodSec × 25fps (InitDB에서 설정)
+    int _dbSaveFrameCounter  = 0;
+#endif
 };

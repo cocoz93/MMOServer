@@ -26,6 +26,23 @@ void SignalProcessShutdown()
     cv.notify_one();
 }
 
+// Ctrl+C / 콘솔 종료 → graceful shutdown 트리거 (server.Stop에서 DB 최종저장·드레인 수행)
+BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType)
+{
+    switch (ctrlType)
+    {
+    case CTRL_C_EVENT:
+    case CTRL_BREAK_EVENT:
+    case CTRL_CLOSE_EVENT:
+    case CTRL_SHUTDOWN_EVENT:
+    case CTRL_LOGOFF_EVENT:
+        SignalProcessShutdown();
+        return TRUE;
+    default:
+        return FALSE;
+    }
+}
+
 int main()
 {
     // 로거 초기화 (RAII — 소멸자에서 Shutdown)
@@ -63,6 +80,26 @@ int main()
         SLOG_ERROR("[Error] Server Init failed");
         return 1;
     }
+
+    // DB 저장 파이프라인 초기화 (USE_DB_WORKER=0이면 no-op)
+    {
+        DBConfig dbConfig;
+        dbConfig.host              = config.dbHost;
+        dbConfig.port              = config.dbPort;
+        dbConfig.user              = config.dbUser;
+        dbConfig.password          = config.dbPassword;
+        dbConfig.database          = config.dbDatabase;
+        dbConfig.connectTimeoutSec = config.dbConnectTimeoutSec;
+        dbConfig.rwTimeoutSec      = config.dbRwTimeoutSec;
+        if (!server.InitDB(dbConfig, config.dbSavePeriodSec, config.dbWorkers, config.dbQueueMax))
+        {
+            SLOG_ERROR("[Error] DB init failed");
+            return 1;
+        }
+    }
+
+    // Ctrl+C / 콘솔 종료 시 graceful shutdown (server.Stop이 DB 드레인 수행)
+    SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE);
 
     if (!server.Start())
     {

@@ -142,6 +142,23 @@ private:
                      "Uncounted membership-change copies (sector-change/enter/leave); compare vs broadcast_targets",
                      _monitor._gameLoop._membershipSends);
 
+        // ── DB 저장 파이프라인 (USE_DB_WORKER) — dirty flag 비동기 저장 ──
+        WriteCounter(ss, "mmo_db_saved_total",
+                     "Total player rows saved (UPSERT ok)", _monitor._dbSavedJobs);
+        WriteCounter(ss, "mmo_db_failed_total",
+                     "Total DB save failures", _monitor._dbFailedJobs);
+        WriteCounter(ss, "mmo_db_dropped_total",
+                     "Total jobs dropped by backpressure (slot queue full)", _monitor._dbDroppedJobs);
+        if (_monitor._dbWorkerCount > 0)
+        {
+            ss << "# HELP mmo_db_queue_depth Jobs pulled in last drain, per DB worker (sustained growth = worker falling behind)\n";
+            ss << "# TYPE mmo_db_queue_depth gauge\n";
+            const LONG dbCount = _monitor._dbWorkerCount;
+            for (int i = 0; i < dbCount && i < CMonitorManager::MAX_DB_WORKERS; ++i)
+                ss << "mmo_db_queue_depth{dbworker=\"" << i << "\"} " << _monitor._dbQueueDepth[i] << "\n";
+            ss << "\n";
+        }
+
         // ── 구간별 시간 (초 단위 counter) ──
         WritePhaseCounters(ss);
 
