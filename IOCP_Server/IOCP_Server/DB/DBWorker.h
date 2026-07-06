@@ -59,6 +59,11 @@ struct DBWorkerSlot
     std::condition_variable  cv;
     std::vector<DBSaveJob>   queue;           // 게임 push / 워커 swap-out
     void*                    mysql = nullptr; // 실제 MYSQL* (헤더 오염 차단 위해 void*)
+    void*                    stmt  = nullptr; // MYSQL_STMT* — prepared 핸들 (커넥션 종속)
+    int64_t                  bAccountId = 0;  // ↓ stmt 파라미터 바인딩 버퍼 (execute 직전 잡 값 복사)
+    float                    bX = 0.0f;
+    float                    bY = 0.0f;
+    int32_t                  bMapId = 0;
     int                      index = 0;
 };
 
@@ -85,7 +90,8 @@ public:
 private:
     void WorkerThread(int idx);
     bool Connect(void*& outMysql);            // 슬롯 커넥션 1개 생성
-    bool ExecSave(void*& mysql, const DBSaveJob& job);   // 커넥션 유실 시 mysql을 null로(재연결은 WorkerThread)
+    bool PrepareStmt(DBWorkerSlot& slot);     // slot.mysql로 prepared stmt 준비 + 파라미터 바인딩
+    bool ExecSave(DBWorkerSlot& slot, const DBSaveJob& job);   // 커넥션 유실 시 stmt/mysql을 null로(재연결은 WorkerThread)
     void PushToSlot(DBWorkerSlot& slot, const DBSaveJob* jobs, size_t count);  // 백프레셔 포함
 
     int SlotIndex(int64_t accountId) const    // accountId % K (음수 방어)

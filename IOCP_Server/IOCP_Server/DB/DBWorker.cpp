@@ -45,11 +45,16 @@ bool CDBWorker::Start(const DBConfig& config, int workerCount, int queueMax)
     {
         auto slot = std::make_unique<DBWorkerSlot>();
         slot->index = i;
-        if (!Connect(slot->mysql))
+        if (!Connect(slot->mysql) || !PrepareStmt(*slot))
         {
-            SLOG_ERROR("[DB] worker {} connect failed", i);
+            SLOG_ERROR("[DB] worker {} connect/prepare failed", i);
+            if (slot->stmt)  { mysql_stmt_close(static_cast<MYSQL_STMT*>(slot->stmt)); slot->stmt = nullptr; }
+            if (slot->mysql) { mysql_close(static_cast<MYSQL*>(slot->mysql)); slot->mysql = nullptr; }
             for (auto& s : _workers)
+            {
+                if (s->stmt)  { mysql_stmt_close(static_cast<MYSQL_STMT*>(s->stmt)); s->stmt = nullptr; }
                 if (s->mysql) { mysql_close(static_cast<MYSQL*>(s->mysql)); s->mysql = nullptr; }
+            }
             _workers.clear();
             mysql_library_end();       // library_init 롤백 (Start 실패 시 누수 방지)
             _libInited = false;
@@ -183,7 +188,13 @@ void CDBWorker::WorkerThread(int idx)
             if (Connect(fresh))
             {
                 slot.mysql = fresh;
-                SLOG_INFO("[DB] worker {} reconnected", idx);
+                if (PrepareStmt(slot))
+                    SLOG_INFO("[DB] worker {} reconnected", idx);
+                else
+                {
+                    mysql_close(static_cast<MYSQL*>(slot.mysql));   // stmt 준비 실패 → 커넥션 롤백
+                    slot.mysql = nullptr;
+                }
             }
             // 실패하면 이번 배치는 전부 실패 처리되고, 다음 배치에서 다시 시도
         }
@@ -192,7 +203,7 @@ void CDBWorker::WorkerThread(int idx)
 
         for (const DBSaveJob& job : local)
         {
-            if (ExecSave(slot.mysql, job))   // slot.mysql 참조 — 유실 시 ExecSave가 null로 만듦
+            if (ExecSave(slot, job))   // 유실 시 ExecSave가 stmt/mysql을 null로 만듦
                 InterlockedIncrement64(&_monitor._dbSavedJobs);
             else
                 InterlockedIncrement64(&_monitor._dbFailedJobs);
@@ -203,43 +214,76 @@ void CDBWorker::WorkerThread(int idx)
     mysql_thread_end();
 }
 
-bool CDBWorker::ExecSave(void*& mysql, const DBSaveJob& job)
+bool CDBWorker::PrepareStmt(DBWorkerSlot& slot)
 {
-    if (mysql == nullptr)
-        return false;   // 커넥션 끊긴 상태(재연결 대기 중) — 즉시 실패, 무한 대기 없음
-
-    // 파라미터가 전부 숫자(정수/실수)라 문자열 조립이 안전(인젝션 표면 없음).
-    // prepared statement는 3단계 성능 A/B(text vs prepared)에서 도입.
-    char sql[512];   // 최악(큰 좌표/account_id) 여유. 넘치면 snprintf 가드가 저장 실패로 안전 처리.
-    int n = std::snprintf(sql, sizeof(sql),
-        "INSERT INTO characters (account_id,x,y,map_id) VALUES (%lld,%.3f,%.3f,%d) "
-        "ON DUPLICATE KEY UPDATE x=%.3f,y=%.3f,map_id=%d",
-        static_cast<long long>(job.accountId), job.x, job.y, job.mapId,
-        job.x, job.y, job.mapId);
-
-    if (n <= 0 || n >= static_cast<int>(sizeof(sql)))
+    MYSQL* m = static_cast<MYSQL*>(slot.mysql);
+    MYSQL_STMT* st = mysql_stmt_init(m);
+    if (st == nullptr)
     {
-        SLOG_ERROR("[DB] save sql format error (account={})", job.accountId);
+        SLOG_ERROR("[DB] stmt_init failed: {}", mysql_error(m));
         return false;
     }
 
-    MYSQL* m = static_cast<MYSQL*>(mysql);
-    if (mysql_real_query(m, sql, static_cast<unsigned long>(n)) == 0)
+    // VALUES 4개 + ON DUPLICATE KEY UPDATE 3개 = ? 7개 (x·y·map_id는 양쪽이 같은 버퍼 참조)
+    static const char SQL[] =
+        "INSERT INTO characters (account_id,x,y,map_id) VALUES (?,?,?,?) "
+        "ON DUPLICATE KEY UPDATE x=?,y=?,map_id=?";
+    if (mysql_stmt_prepare(st, SQL, sizeof(SQL) - 1) != 0)
+    {
+        SLOG_ERROR("[DB] stmt_prepare failed: {}", mysql_stmt_error(st));
+        mysql_stmt_close(st);
+        return false;
+    }
+
+    // 파라미터 바인딩 — 버퍼는 슬롯 멤버(execute 직전 값만 갱신). MYSQL_TYPE_LONG=32bit, LONGLONG=64bit.
+    MYSQL_BIND b[7] = {};
+    b[0].buffer_type = MYSQL_TYPE_LONGLONG; b[0].buffer = &slot.bAccountId;
+    b[1].buffer_type = MYSQL_TYPE_FLOAT;    b[1].buffer = &slot.bX;
+    b[2].buffer_type = MYSQL_TYPE_FLOAT;    b[2].buffer = &slot.bY;
+    b[3].buffer_type = MYSQL_TYPE_LONG;     b[3].buffer = &slot.bMapId;
+    b[4] = b[1];  // UPDATE x      = 같은 bX
+    b[5] = b[2];  // UPDATE y      = 같은 bY
+    b[6] = b[3];  // UPDATE map_id = 같은 bMapId
+    if (mysql_stmt_bind_param(st, b) != 0)
+    {
+        SLOG_ERROR("[DB] stmt_bind_param failed: {}", mysql_stmt_error(st));
+        mysql_stmt_close(st);
+        return false;
+    }
+
+    slot.stmt = st;
+    return true;
+}
+
+bool CDBWorker::ExecSave(DBWorkerSlot& slot, const DBSaveJob& job)
+{
+    if (slot.mysql == nullptr || slot.stmt == nullptr)
+        return false;   // 커넥션/stmt 없음(재연결 대기 중) — 즉시 실패, 무한 대기 없음
+
+    // 바인딩 버퍼에 이번 잡 값 복사 (stmt는 이 버퍼 주소를 이미 가리킴 → execute만 하면 됨)
+    slot.bAccountId = job.accountId;
+    slot.bX         = job.x;
+    slot.bY         = job.y;
+    slot.bMapId     = job.mapId;
+
+    MYSQL_STMT* st = static_cast<MYSQL_STMT*>(slot.stmt);
+    if (mysql_stmt_execute(st) == 0)
         return true;
 
-    // 저장 실패 — 커넥션 유실인지, 단순 쿼리 오류인지 구분
-    const unsigned int err = mysql_errno(m);
+    // 저장 실패 — 커넥션 유실인지, 단순 오류(제약 위반 등)인지 구분
+    const unsigned int err = mysql_stmt_errno(st);
     if (err == CR_SERVER_GONE_ERROR || err == CR_SERVER_LOST)
     {
-        // 커넥션이 죽음 → 닫고 null로. 재연결은 WorkerThread가 다음 배치 시작 때 시도(백오프).
+        // 커넥션이 죽음 → stmt·커넥션 닫고 null로. 재연결은 WorkerThread가 다음 배치 시작 때 시도(백오프).
         SLOG_WARN("[DB] connection lost (errno={}) — will reconnect next batch", err);
-        mysql_close(m);
-        mysql = nullptr;
+        mysql_stmt_close(st);
+        slot.stmt = nullptr;
+        mysql_close(static_cast<MYSQL*>(slot.mysql));
+        slot.mysql = nullptr;
     }
     else
     {
-        // 커넥션은 살아있고 쿼리만 실패(문법·제약 위반 등) — 재연결해도 소용없음
-        SLOG_ERROR("[DB] save failed (account={}): {}", job.accountId, mysql_error(m));
+        SLOG_ERROR("[DB] save failed (account={}): {}", job.accountId, mysql_stmt_error(st));
     }
     return false;
 }
@@ -261,7 +305,10 @@ void CDBWorker::Shutdown(int drainTimeoutSec)
             s->thread.join();
 
     for (auto& s : _workers)
+    {
+        if (s->stmt)  { mysql_stmt_close(static_cast<MYSQL_STMT*>(s->stmt)); s->stmt = nullptr; }
         if (s->mysql) { mysql_close(static_cast<MYSQL*>(s->mysql)); s->mysql = nullptr; }
+    }
 
     _workers.clear();
 
