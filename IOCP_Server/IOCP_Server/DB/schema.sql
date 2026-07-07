@@ -8,8 +8,8 @@
 --        The server flushes only "dirty" (changed) players periodically.
 -- ==========================================================================
 
-CREATE DATABASE IF NOT EXISTS mmo DEFAULT CHARACTER SET utf8mb4;
-USE mmo;
+CREATE DATABASE IF NOT EXISTS gamedb DEFAULT CHARACTER SET utf8mb4;
+USE gamedb;
 
 CREATE TABLE IF NOT EXISTS characters (
     account_id BIGINT      NOT NULL PRIMARY KEY,

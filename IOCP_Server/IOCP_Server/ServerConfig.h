@@ -51,7 +51,7 @@ struct ServerConfig
     int         dbPort              = 3306;
     std::string dbUser              = "root";
     std::string dbPassword;
-    std::string dbDatabase          = "mmo";
+    std::string dbDatabase          = "gamedb";
     int         dbWorkers           = 1;    // 1단계는 단일 워커
     int         dbSavePeriodSec     = 10;   // dirty 저장 주기(초)
     int         dbConnectTimeoutSec = 3;
@@ -113,7 +113,7 @@ struct ServerConfig
         dbUser = WtoA(dbBuf);
         GetPrivateProfileStringW(L"DB", L"Password", L"", dbBuf, 256, path);
         dbPassword = WtoA(dbBuf);
-        GetPrivateProfileStringW(L"DB", L"Database", L"mmo", dbBuf, 256, path);
+        GetPrivateProfileStringW(L"DB", L"Database", L"gamedb", dbBuf, 256, path);
         dbDatabase = WtoA(dbBuf);
         dbWorkers           = GetPrivateProfileIntW(L"DB", L"Workers", 1, path);
         dbSavePeriodSec     = GetPrivateProfileIntW(L"DB", L"SavePeriodSec", 10, path);

@@ -25,7 +25,7 @@ struct DBConfig
     int         port              = 3306;
     std::string user              = "root";
     std::string password;
-    std::string database          = "mmo";
+    std::string database          = "gamedb";
     int         connectTimeoutSec = 3;
     int         rwTimeoutSec       = 5;   // 읽기/쓰기 소켓 타임아웃(초) — DB 무응답 시 쿼리 무한대기 방지
 };
