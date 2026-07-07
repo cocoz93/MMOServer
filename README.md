@@ -7,7 +7,7 @@
 
 ## 🔗 링크
 - **소개 페이지** — https://cocoz93.github.io/portfolio/
-- **상세 기술 문서** — Notion 「MMO 게임서버 구현」
+- **상세 기술 문서** — [Notion 「MMO 게임서버 구현」](https://app.notion.com/p/MMO-33616a0b9f5980e5a220c3e1928c2fe5)
 
 ## 🛠 기술 스택
 C++17 · Windows IOCP · WinSock · Prometheus · Grafana
