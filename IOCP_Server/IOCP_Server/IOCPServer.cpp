@@ -727,6 +727,7 @@ void CIOCPServer::ParsePackets(CSession* session)
         ? sizeof(EchoMsgHeader)  // 2byte (size만, 페이로드 크기)
         : sizeof(MsgHeader);     // 4byte (size + type, 전체 크기)
 
+    int64_t parsedPackets = 0;   // [계측 배치] per-packet 원자증가 → 종료 시 1회
     while (true)
     {
         size_t dataSize = session->_recvQ.GetDataSize();
@@ -758,6 +759,8 @@ void CIOCPServer::ParsePackets(CSession* session)
             LOG_ERROR_STREAM("[Error] Invalid packet size: " << totalPacketSize
                 << " - SessionId: " << session->_sessionId);
             InterlockedIncrement64(&_monitor._packetErrors);
+            if (parsedPackets != 0)
+                InterlockedExchangeAdd64(&_monitor._recvPackets, parsedPackets);
             RequestDisconnectSession(session);
             return;
         }
@@ -775,13 +778,15 @@ void CIOCPServer::ParsePackets(CSession* session)
         {
             LOG_ERROR_STREAM("[Error] Packet dequeue failed - SessionId: " << session->_sessionId);
             pMsg->SubRef();
+            if (parsedPackets != 0)
+                InterlockedExchangeAdd64(&_monitor._recvPackets, parsedPackets);
             RequestDisconnectSession(session);
             return;
         }
         pMsg->MoveWritePos(static_cast<int>(totalPacketSize));
 
-        // 수신 패킷 지표 기록
-        InterlockedIncrement64(&_monitor._recvPackets);
+        // 수신 패킷 카운트 (지역 누적, 종료 시 1회 반영)
+        ++parsedPackets;
 
         // 수신 버퍼는 단일 소비자(GameLogicThread)이므로 Seal 불필요
         // Seal하면 operator>>/GetData가 차단되어 역직렬화 불가
@@ -805,6 +810,10 @@ void CIOCPServer::ParsePackets(CSession* session)
         }
 
     }
+
+    // 파싱한 패킷 수 1회 반영
+    if (parsedPackets != 0)
+        InterlockedExchangeAdd64(&_monitor._recvPackets, parsedPackets);
 }
 
 // Send 완료 통지 처리

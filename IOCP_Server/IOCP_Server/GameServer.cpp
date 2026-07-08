@@ -577,6 +577,9 @@ void CGameServer::GameLoopThread()
         _tickMembershipSends = 0;
         _tickMembershipUs = 0;
 
+        // [계측 오버헤드 절감] handle-latency 지역 누적분 → 전역 1회 반영
+        _monitor._gameLoop.FlushHandleLatency();
+
         // 5) 빈 동적 채널 정리
         ++_cleanupFrameCount;
         if (_cleanupFrameCount >= CLEANUP_INTERVAL_FRAMES)
@@ -634,7 +637,7 @@ void CGameServer::ProcessNetworkEvents()
             {
                 int64_t nowNs = std::chrono::duration_cast<std::chrono::nanoseconds>(
                     std::chrono::steady_clock::now().time_since_epoch()).count();
-                _monitor._gameLoop.RecordHandleLatency(
+                _monitor._gameLoop.RecordHandleLatencyLocal(
                     static_cast<double>(nowNs - event.enqueueTimeNs) / 1.0e6);
             }
             break;

@@ -165,22 +165,47 @@ public:
         volatile LONG64 _handleSumUs = 0;   // 합계 (마이크로초)
         volatile LONG64 _handleCount = 0;   // 총 처리 이벤트 수
 
-        // Handle-latency 기록 (밀리초 단위)
-        void RecordHandleLatency(double ms)
+        // [계측 오버헤드 절감] 게임 스레드 전용 틱-로컬 누적기 (비원자 — 게임 루프만 접근).
+        //   패킷마다 누적 → 틱 끝 FlushHandleLatency()가 전역에 1회 반영 (원자연산 패킷당 3 → 틱당 최대 12).
+        LONG64 _tickHandleBuckets[HANDLE_BUCKET_COUNT] = {};
+        LONG64 _tickHandleSumUs = 0;
+        LONG64 _tickHandleCount = 0;
+
+        // Handle-latency 기록 (밀리초) — 게임 스레드 전용 지역 누적. 전역 반영은 FlushHandleLatency().
+        void RecordHandleLatencyLocal(double ms)
         {
-            LONG64 us = static_cast<LONG64>(ms * 1000.0);
-            InterlockedExchangeAdd64(&_handleSumUs, us);
-            InterlockedIncrement64(&_handleCount);
+            _tickHandleSumUs += static_cast<LONG64>(ms * 1000.0);
+            _tickHandleCount += 1;
 
             for (int i = 0; i < HANDLE_BUCKET_COUNT - 1; ++i)
             {
                 if (ms <= HANDLE_BUCKET_BOUNDS[i])
                 {
-                    InterlockedIncrement64(&_handleBuckets[i]);
+                    _tickHandleBuckets[i] += 1;
                     return;
                 }
             }
-            InterlockedIncrement64(&_handleBuckets[HANDLE_BUCKET_COUNT - 1]);
+            _tickHandleBuckets[HANDLE_BUCKET_COUNT - 1] += 1;
+        }
+
+        // 틱 끝 1회 호출 — 지역 누적분을 전역(원자) 카운터에 반영 후 리셋.
+        void FlushHandleLatency()
+        {
+            if (_tickHandleCount == 0)
+                return;   // 이번 틱 수신 처리 없음 → 원자연산 생략
+
+            InterlockedExchangeAdd64(&_handleSumUs, _tickHandleSumUs);
+            InterlockedExchangeAdd64(&_handleCount, _tickHandleCount);
+            for (int i = 0; i < HANDLE_BUCKET_COUNT; ++i)
+            {
+                if (_tickHandleBuckets[i] != 0)
+                {
+                    InterlockedExchangeAdd64(&_handleBuckets[i], _tickHandleBuckets[i]);
+                    _tickHandleBuckets[i] = 0;
+                }
+            }
+            _tickHandleSumUs = 0;
+            _tickHandleCount = 0;
         }
     } _gameLoop;
 
