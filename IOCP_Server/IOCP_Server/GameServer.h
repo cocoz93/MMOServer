@@ -149,7 +149,19 @@ private:
     int32_t _nextPlayerId = 1;  // 전역 playerId 카운터 (싱글스레드 게임 루프)
 
     // 네트워크 경계: sessionId → CPlayer* (수신 시 플레이어 조회)
-    std::unordered_map<int64_t, CPlayer*> _sessionToPlayer;
+    //   sessionId 상위 16비트 = 세션 슬롯 인덱스 → 해시맵 대신 인덱스 배열 직접 접근 (캐시미스 제거).
+    //   슬롯 재사용(ABA)은 FindPlayer의 _sessionId 일치 검사로 방어. 접근은 게임 스레드 단독.
+    std::vector<CPlayer*> _sessionSlots;
+
+    // 슬롯 조회 + 재사용 가드 — 등록된 세션이 아니면 nullptr
+    CPlayer* FindPlayer(int64_t sessionId) const
+    {
+        uint16_t idx = CSession::ExtractIndex(sessionId);
+        if (idx >= _sessionSlots.size())
+            return nullptr;
+        CPlayer* p = _sessionSlots[idx];
+        return (p != nullptr && p->_sessionId == sessionId) ? p : nullptr;
+    }
 
     // 프레임 진입 시점 이벤트를 스왑해 받는 로컬 큐 (멤버 재사용 → deque 블록 보존으로 매 프레임 재할당 방지)
     std::queue<NetworkEvent> _localEvents;

@@ -265,7 +265,7 @@ bool CGameServer::Init(ServerMode mode, int port, int maxClients,
         // 프레임 재사용 컨테이너 reserve (워밍업 realloc 방지)
         // 전체 서버 범위 버퍼도 maxPerChannel 기준 — 초과 시 자연 증가 후 capacity 유지
         int32_t maxPerChannel = maps[0].maxPlayersPerChannel;
-        _sessionToPlayer.reserve(maxClients);
+        _sessionSlots.assign(maxClients, nullptr);   // 인덱스 직접 접근용 슬롯 (sessionId 인덱스로 접근)
         _broadcastBuffer.reserve(maxPerChannel);       // 주변 9섹터 단위
         _eventAroundBuffer.reserve(maxPerChannel);     // 주변 9섹터 단위
         _pendingSectorChanges.reserve(maxPerChannel);  // 전체 서버 프레임 이벤트
@@ -334,11 +334,11 @@ void CGameServer::Stop()
     }
 
     // 잔여 플레이어 정리 (CGameServer가 생명주기 소유)
-    for (auto& pair : _sessionToPlayer)
+    for (CPlayer* player : _sessionSlots)   // nullptr는 delete 무해
     {
-        delete pair.second;
+        delete player;
     }
-    _sessionToPlayer.clear();
+    _sessionSlots.clear();
 }
 
 #if USE_DB_WORKER
@@ -394,9 +394,10 @@ void CGameServer::TickPeriodicSave()
     //   thread_local 재사용으로 매 주기 할당 회피 (게임 스레드 단독 접근).
     thread_local std::vector<DBSaveJob> batch;
     batch.clear();
-    for (auto& kv : _sessionToPlayer)
+    for (CPlayer* player : _sessionSlots)
     {
-        CPlayer* player = kv.second;
+        if (player == nullptr)
+            continue;
         if (ShouldSave(player))
         {
             batch.push_back(MakeSaveJob(player));
@@ -411,11 +412,13 @@ void CGameServer::SaveAllPlayers()
     // 종료는 유실 방지 우선 — dirty/MOVING 무관하게 전원 최종 저장(안전망).
     // 주기 저장(ShouldSave 필터)과 목적이 다름: 여기선 dirty 추적을 신뢰하지 않고 무조건 다 씀.
     std::vector<DBSaveJob> batch;
-    batch.reserve(_sessionToPlayer.size());
-    for (auto& kv : _sessionToPlayer)
+    batch.reserve(_sessionSlots.size());
+    for (CPlayer* player : _sessionSlots)
     {
-        batch.push_back(MakeSaveJob(kv.second));
-        kv.second->_dbDirty = false;
+        if (player == nullptr)
+            continue;
+        batch.push_back(MakeSaveJob(player));
+        player->_dbDirty = false;
     }
     _dbWorker->EnqueueBatch(batch);   // 배치 1회 핸드오프
 }
@@ -649,7 +652,7 @@ void CGameServer::ProcessNetworkEvents()
 void CGameServer::OnConnected(int64_t sessionId)
 {
     // 이미 등록된 세션이면 무시 (중복 접속 방어)
-    if (_sessionToPlayer.find(sessionId) != _sessionToPlayer.end())
+    if (FindPlayer(sessionId) != nullptr)
     {
         _network->RequestDisconnectSession(sessionId);
         return;
@@ -677,7 +680,7 @@ void CGameServer::OnConnected(int64_t sessionId)
 
     // 경계 매핑 등록
     player->_sessionId = sessionId;
-    _sessionToPlayer[sessionId] = player;
+    _sessionSlots[CSession::ExtractIndex(sessionId)] = player;
 
     // 델타 동기화 기준 좌표 초기화 (스폰 직후 불필요한 동기화 방지)
     player->_lastSyncX = player->_x;
@@ -701,11 +704,9 @@ void CGameServer::OnConnected(int64_t sessionId)
 
 void CGameServer::OnDisconnected(int64_t sessionId)
 {
-    auto it = _sessionToPlayer.find(sessionId);
-    if (it == _sessionToPlayer.end())
+    CPlayer* player = FindPlayer(sessionId);
+    if (player == nullptr)
         return;
-
-    CPlayer* player = it->second;
     CZone* zone = _mapManager.GetZone(player->_zoneId);
     if (zone != nullptr)
     {
@@ -714,7 +715,7 @@ void CGameServer::OnDisconnected(int64_t sessionId)
     }
 
     // 경계 매핑 해제 (zone 유무와 무관하게 반드시 수행)
-    _sessionToPlayer.erase(it);
+    _sessionSlots[CSession::ExtractIndex(sessionId)] = nullptr;
 
 #if USE_DB_WORKER
     // 로그아웃 최종 저장 (스냅샷은 값 복사라 직후 delete 안전)
@@ -745,13 +746,12 @@ void CGameServer::OnReceived(int64_t sessionId, CSerialBuffer* pMsg)
     }
 
     // 경계 계층: sessionId → CPlayer* 변환 (이후 컨텐츠 로직은 CPlayer*만 사용)
-    auto it = _sessionToPlayer.find(sessionId);
-    if (it == _sessionToPlayer.end())
+    CPlayer* player = FindPlayer(sessionId);
+    if (player == nullptr)
     {
         pMsg->SubRef();
         return;
     }
-    CPlayer* player = it->second;
 
     switch (header.type)
     {
@@ -1232,7 +1232,7 @@ void CGameServer::RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg)
         }
 
         // 복귀도 실패 → 좀비 방지를 위해 연결 해제
-        _sessionToPlayer.erase(sessionId);
+        _sessionSlots[CSession::ExtractIndex(sessionId)] = nullptr;
         delete player;
         _network->RequestDisconnectSession(sessionId);
         return;
