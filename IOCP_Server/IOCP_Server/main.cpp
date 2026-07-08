@@ -84,13 +84,13 @@ int main()
     // DB 저장 파이프라인 초기화 (USE_DB_WORKER=0이면 no-op)
     {
         DBConfig dbConfig;
-        dbConfig.host              = config.dbHost;
-        dbConfig.port              = config.dbPort;
-        dbConfig.user              = config.dbUser;
-        dbConfig.password          = config.dbPassword;
-        dbConfig.database          = config.dbDatabase;
-        dbConfig.connectTimeoutSec = config.dbConnectTimeoutSec;
-        dbConfig.rwTimeoutSec      = config.dbRwTimeoutSec;
+        dbConfig.host              = config.dbHost;               // DB 서버 주소 (기본 127.0.0.1)
+        dbConfig.port              = config.dbPort;               // DB 포트 (MySQL 기본 3306)
+        dbConfig.user              = config.dbUser;               // 접속 계정
+        dbConfig.password          = config.dbPassword;           // 접속 비밀번호
+        dbConfig.database          = config.dbDatabase;           // 사용할 스키마명 (기본 gamedb)
+        dbConfig.connectTimeoutSec = config.dbConnectTimeoutSec;  // 접속 시도 타임아웃(초) — 이 시간 안에 연결 못 하면 실패 반환
+        dbConfig.rwTimeoutSec      = config.dbRwTimeoutSec;       // 읽기/쓰기 소켓 타임아웃(초) — DB 무응답 시 쿼리 무한대기 방지
         if (!server.InitDB(dbConfig, config.dbSavePeriodSec, config.dbWorkers, config.dbQueueMax))
         {
             SLOG_ERROR("[Error] DB init failed");
