@@ -51,6 +51,16 @@
 //   주의: 틱 내 start→stop 전이 "연출"은 최종상태만 남아 손실(위치 정합은 유지).
 #define USE_SECTOR_AGGREGATION 1
 
+// 멤버십(시야 진입/이탈 CREATE/DELETE) 아웃바운드 팬아웃 중복 빌드 제거 실험 — Phase 1.
+// ProcessSectorChange에서 "나를 상대에게 통보"(수신자마다 내용 동일)는 지금 수신자 수만큼 패킷을 재빌드한다.
+// → 1회만 빌드해 배치 AddRef로 팬아웃(BroadcastSectorPacket 소유권/계측 패턴 재사용).
+//   "상대를 나에게 통보"(수신자마다 내용 제각각)는 Phase 1 범위 밖이라 개별 송신 유지.
+//   1: 아웃바운드 1회 빌드 후 팬아웃 [실험]
+//   0: 기존 — 수신자마다 SendCreateOtherPlayer/SendDeletePlayer로 매번 빌드 (baseline)
+//   전제: USE_SECTOR_AGGREGATION=1 (이동 묶음 다음 병목이 멤버십). 송신 순서·수신자·횟수(_membershipSends)는 불변,
+//         이득은 버퍼 빌드(Alloc+직렬화) 반복 제거로 _membershipCostUs 절감뿐. A/B는 같은 바이너리 토글로 측정.
+#define USE_MEMBERSHIP_FANOUT_DEDUP 1
+
 // DB 저장 파이프라인 실험 — dirty flag 기반 비동기 위치 저장 (존 서버 관점)
 //   서버 메모리 = 진실, DB = 저장소. 바뀐 플레이어만 주기적으로 전용 워커 스레드가 MySQL에 UPSERT.
 //   목적: 전량 저장 부담을 dirty flag로 줄이고, 저장 I/O를 게임 틱 임계경로에서 떼어낸다.

@@ -1425,6 +1425,45 @@ void CGameServer::ProcessSectorChange(CZone* zone, CPlayer* player,
         player->_sectorX, player->_sectorY,
         added, addedCount, removed, removedCount);
 
+#if USE_MEMBERSHIP_FANOUT_DEDUP
+    // [Phase 1] 아웃바운드(나→상대, 수신자마다 내용 동일)는 1회 빌드 후 팬아웃,
+    //           인바운드(상대→나, 수신자마다 내용 제각각)는 개별 송신 유지.
+    //           수신자별 순서·수신자·횟수는 OFF와 동일 — 재빌드(Alloc+직렬화) 반복만 제거.
+
+    // 이탈 섹터 — 상호 DELETE
+    if (removedCount > 0)
+    {
+        // 아웃바운드: "나를 삭제" 1개 빌드 → 이탈 섹터 전원에게 팬아웃 (player는 이탈 섹터에 없어 exclude 불필요)
+        FanoutToSectors(zone, removed, removedCount, MakeDeletePlayer(player->_playerId), nullptr);
+
+        // 인바운드: "상대를 삭제"는 상대마다 내용이 달라 개별 송신
+        for (int32_t i = 0; i < removedCount; ++i)
+        {
+            const auto& players = zone->GetSectorManager().GetSectorPlayers(removed[i].x, removed[i].y);
+            for (CPlayer* other : players)
+                SendDeletePlayer(player, other);   // 나에게 상대를 삭제
+        }
+    }
+
+    // 진입 섹터 — 상호 CREATE
+    if (addedCount > 0)
+    {
+        // 아웃바운드: "나를 생성" 1개 빌드 → 진입 섹터 전원에게 팬아웃 (자기 자신 제외)
+        FanoutToSectors(zone, added, addedCount, MakeCreateOtherPlayer(player, SpawnReason::NORMAL), player);
+
+        // 인바운드: "상대를 생성"은 상대마다 내용이 달라 개별 송신
+        for (int32_t i = 0; i < addedCount; ++i)
+        {
+            const auto& players = zone->GetSectorManager().GetSectorPlayers(added[i].x, added[i].y);
+            for (CPlayer* other : players)
+            {
+                if (other == player)
+                    continue;  // 멀티섹터 점프 시 자기 자신 방지
+                SendCreateOtherPlayer(player, other);   // 나에게 상대를 생성
+            }
+        }
+    }
+#else
     // 이탈 섹터 — 상호 DELETE
     for (int32_t i = 0; i < removedCount; ++i)
     {
@@ -1449,7 +1488,61 @@ void CGameServer::ProcessSectorChange(CZone* zone, CPlayer* player,
             SendCreateOtherPlayer(player, other);   // 나에게 상대를 생성
         }
     }
+#endif
 }
+
+#if USE_MEMBERSHIP_FANOUT_DEDUP
+// [Phase 1] 미리 빌드한 버퍼 1개를 여러 섹터의 플레이어에게 팬아웃 (아웃바운드 멤버십 전용).
+// BroadcastSectorPacket과 동일한 2패스 배치 AddRef 패턴: 유효 타겟 선카운트 → AddRef(N) → 타겟별 송신 → 최종 SubRef.
+// 두 패스 사이 세션 변동 없음(단일 게임루프 스레드) → 카운트 정합 보장. _membershipSends는 OFF와 동일하게 타겟당 1 집계.
+void CGameServer::FanoutToSectors(CZone* zone,
+                                  const CSectorManager::SectorPos* sectors, int32_t sectorCount,
+                                  CSerialBuffer* pMsg, CPlayer* exclude)
+{
+    // 1패스: 유효 타겟(세션 보유, exclude 제외) 선카운트
+    size_t validCount = 0;
+    for (int32_t i = 0; i < sectorCount; ++i)
+    {
+        const auto& players = zone->GetSectorManager().GetSectorPlayers(sectors[i].x, sectors[i].y);
+        for (CPlayer* other : players)
+        {
+            if (other == exclude || other->_sessionId == -1)
+                continue;
+            ++validCount;
+        }
+    }
+
+    if (validCount > 0)
+        pMsg->AddRef(static_cast<LONG64>(validCount));   // 타겟별 소유권 일괄 확보 (원자연산 N→1)
+
+    // 2패스: 팬아웃 — RequestSendMsg가 타겟별 소유권 1 소비 (성공/실패 모든 경로에서 SubRef)
+    const int dataSize = pMsg->GetDataSize();
+    size_t sentPkts = 0;
+    for (int32_t i = 0; i < sectorCount; ++i)
+    {
+        const auto& players = zone->GetSectorManager().GetSectorPlayers(sectors[i].x, sectors[i].y);
+        for (CPlayer* other : players)
+        {
+            if (other == exclude)
+                continue;
+            ++_tickMembershipSends;   // 멤버십 복사량(횟수) — OFF의 SendXxx 호출당 1과 동일 집계 (세션 무효 포함)
+            if (other->_sessionId == -1)
+                continue;
+            if (_network->RequestSendMsg(other->_sessionId, pMsg, SendFlush::Deferred))
+                ++sentPkts;
+        }
+    }
+
+    if (sentPkts > 0)
+    {
+        InterlockedExchangeAdd64(&_monitor._sendPackets, static_cast<LONG64>(sentPkts));
+        InterlockedExchangeAdd64(&_monitor._sendEnqueuedBytes,
+            static_cast<LONG64>(sentPkts) * dataSize);
+    }
+
+    pMsg->SubRef();   // 빌더가 넘긴 소유권 1 회수 (타겟 0명이어도 안전)
+}
+#endif // USE_MEMBERSHIP_FANOUT_DEDUP
 
 #if USE_SECTOR_AGGREGATION
 // ==========================================================================
