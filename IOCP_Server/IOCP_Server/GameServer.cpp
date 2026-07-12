@@ -216,8 +216,51 @@ namespace
             *buf << p->_y;
         }
         FinalizePacket(buf);
+        // (정정) GetDataSize는 BeginPacket이 쓴 MsgHeader 4B를 포함 — offsetof 기준이 맞는 식
         assert(buf->GetDataSize() ==
-            static_cast<int>(sizeof(uint16_t) + count * sizeof(SectorUpdateEntry)));
+            static_cast<int>(offsetof(MSG_S2C_SECTOR_UPDATES, entries) + count * sizeof(SectorUpdateEntry)));
+        return buf;
+    }
+#endif
+
+#if USE_MEMBERSHIP_INBOUND_BUNDLE
+    // [Phase 2] 인바운드 멤버십 묶음 — 상대 [0,count)의 생성 정보를 배치 1패킷으로 직렬화.
+    // 필드 순서는 MakeCreateOtherPlayer 바디와 동일 (클라가 엔트리를 기존 CREATE 이벤트로 분해).
+    CSerialBuffer* MakeCreatePlayerBatch(CPlayer* const* players, int count)
+    {
+        CSerialBuffer* buf = CSerialBuffer::Alloc();
+        BeginPacket(buf, MSG_S2C_CREATE_PLAYER_BATCH::TYPE);
+        *buf << static_cast<WORD>(count);
+        for (int i = 0; i < count; ++i)
+        {
+            CPlayer* p = players[i];
+            *buf << static_cast<int>(p->_playerId);
+            *buf << static_cast<BYTE>(p->_direction);
+            *buf << static_cast<BYTE>(p->_moveState);
+            *buf << static_cast<BYTE>(p->_displayChar);
+            *buf << static_cast<BYTE>(p->_colorIndex);
+            *buf << static_cast<BYTE>(SpawnReason::NORMAL);   // 인바운드(걸어서 시야 진입) 경로 고정 — OFF의 기본 인자와 동일
+            *buf << p->_x;
+            *buf << p->_y;
+            *buf << static_cast<int>(p->_speed);
+        }
+        FinalizePacket(buf);
+        assert(buf->GetDataSize() ==
+            static_cast<int>(offsetof(MSG_S2C_CREATE_PLAYER_BATCH, entries) + count * sizeof(CreatePlayerBatchEntry)));
+        return buf;
+    }
+
+    // [Phase 2] 인바운드 멤버십 묶음 — 상대 [0,count)의 playerId를 배치 1패킷으로 직렬화.
+    CSerialBuffer* MakeDeletePlayerBatch(CPlayer* const* players, int count)
+    {
+        CSerialBuffer* buf = CSerialBuffer::Alloc();
+        BeginPacket(buf, MSG_S2C_DELETE_PLAYER_BATCH::TYPE);
+        *buf << static_cast<WORD>(count);
+        for (int i = 0; i < count; ++i)
+            *buf << static_cast<int>(players[i]->_playerId);
+        FinalizePacket(buf);
+        assert(buf->GetDataSize() ==
+            static_cast<int>(offsetof(MSG_S2C_DELETE_PLAYER_BATCH, entries) + count * sizeof(DeletePlayerBatchEntry)));
         return buf;
     }
 #endif
@@ -1129,6 +1172,31 @@ void CGameServer::SendDeletePlayer(CPlayer* target, CPlayer* player)
     SendPacket(target, MakeDeletePlayer(player->_playerId));
 }
 
+#if USE_MEMBERSHIP_INBOUND_BUNDLE
+// [Phase 2] 인바운드 멤버십 배치 송신 — 상대 목록을 배치 상한씩 잘라 mover 1명에게 송신.
+// _membershipSends는 OFF의 개별 SendXxx 호출당 1과 동일하게 엔트리당 1 집계 (A/B 통제지표 불변).
+// count=0이면 아무것도 안 보냄 — OFF의 빈 루프와 동일.
+void CGameServer::SendCreatePlayerBatch(CPlayer* target, CPlayer* const* others, int count)
+{
+    _tickMembershipSends += count;
+    for (int i = 0; i < count; i += CREATE_PLAYER_BATCH_MAX_ENTRIES)
+    {
+        int chunk = (std::min)(count - i, CREATE_PLAYER_BATCH_MAX_ENTRIES);
+        SendPacket(target, MakeCreatePlayerBatch(others + i, chunk));
+    }
+}
+
+void CGameServer::SendDeletePlayerBatch(CPlayer* target, CPlayer* const* others, int count)
+{
+    _tickMembershipSends += count;
+    for (int i = 0; i < count; i += DELETE_PLAYER_BATCH_MAX_ENTRIES)
+    {
+        int chunk = (std::min)(count - i, DELETE_PLAYER_BATCH_MAX_ENTRIES);
+        SendPacket(target, MakeDeletePlayerBatch(others + i, chunk));
+    }
+}
+#endif // USE_MEMBERSHIP_INBOUND_BUNDLE
+
 void CGameServer::SendSyncPosition(CPlayer* target)
 {
     SendPacket(target, MakeSyncPosition(target->_playerId, target->_x, target->_y));
@@ -1436,6 +1504,19 @@ void CGameServer::ProcessSectorChange(CZone* zone, CPlayer* player,
         // 아웃바운드: "나를 삭제" 1개 빌드 → 이탈 섹터 전원에게 팬아웃 (player는 이탈 섹터에 없어 exclude 불필요)
         FanoutToSectors(zone, removed, removedCount, MakeDeletePlayer(player->_playerId), nullptr);
 
+#if USE_MEMBERSHIP_INBOUND_BUNDLE
+        // [Phase 2] 인바운드: 수신자가 mover 1명 → 상대들을 배치 패킷(상한 초과 시 청크 분할)으로 접음.
+        //           엔트리 순서 = OFF의 개별 송신 순서(섹터 순회순) 그대로.
+        _membershipInboundBuffer.clear();
+        for (int32_t i = 0; i < removedCount; ++i)
+        {
+            const auto& players = zone->GetSectorManager().GetSectorPlayers(removed[i].x, removed[i].y);
+            for (CPlayer* other : players)
+                _membershipInboundBuffer.push_back(other);
+        }
+        SendDeletePlayerBatch(player, _membershipInboundBuffer.data(),
+                              static_cast<int>(_membershipInboundBuffer.size()));
+#else
         // 인바운드: "상대를 삭제"는 상대마다 내용이 달라 개별 송신
         for (int32_t i = 0; i < removedCount; ++i)
         {
@@ -1443,6 +1524,7 @@ void CGameServer::ProcessSectorChange(CZone* zone, CPlayer* player,
             for (CPlayer* other : players)
                 SendDeletePlayer(player, other);   // 나에게 상대를 삭제
         }
+#endif
     }
 
     // 진입 섹터 — 상호 CREATE
@@ -1451,6 +1533,22 @@ void CGameServer::ProcessSectorChange(CZone* zone, CPlayer* player,
         // 아웃바운드: "나를 생성" 1개 빌드 → 진입 섹터 전원에게 팬아웃 (자기 자신 제외)
         FanoutToSectors(zone, added, addedCount, MakeCreateOtherPlayer(player, SpawnReason::NORMAL), player);
 
+#if USE_MEMBERSHIP_INBOUND_BUNDLE
+        // [Phase 2] 인바운드: 상대들을 배치 패킷(상한 초과 시 청크 분할)으로 — 자기 자신 제외는 OFF와 동일.
+        _membershipInboundBuffer.clear();
+        for (int32_t i = 0; i < addedCount; ++i)
+        {
+            const auto& players = zone->GetSectorManager().GetSectorPlayers(added[i].x, added[i].y);
+            for (CPlayer* other : players)
+            {
+                if (other == player)
+                    continue;  // 멀티섹터 점프 시 자기 자신 방지
+                _membershipInboundBuffer.push_back(other);
+            }
+        }
+        SendCreatePlayerBatch(player, _membershipInboundBuffer.data(),
+                              static_cast<int>(_membershipInboundBuffer.size()));
+#else
         // 인바운드: "상대를 생성"은 상대마다 내용이 달라 개별 송신
         for (int32_t i = 0; i < addedCount; ++i)
         {
@@ -1462,6 +1560,7 @@ void CGameServer::ProcessSectorChange(CZone* zone, CPlayer* player,
                 SendCreateOtherPlayer(player, other);   // 나에게 상대를 생성
             }
         }
+#endif
     }
 #else
     // 이탈 섹터 — 상호 DELETE

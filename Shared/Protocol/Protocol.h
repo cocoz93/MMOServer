@@ -68,7 +68,13 @@ enum class MsgType : uint16_t
     //--------------------------------------------------
     // 섹터 묶음 업데이트 (USE_SECTOR_AGGREGATION)
     //--------------------------------------------------
-    S2C_SECTOR_UPDATES      // 서버 → 클라이언트: 한 섹터의 이번 틱 최종 위치/상태 묶음
+    S2C_SECTOR_UPDATES,     // 서버 → 클라이언트: 한 섹터의 이번 틱 최종 위치/상태 묶음
+
+    //--------------------------------------------------
+    // 멤버십 인바운드 묶음 (USE_MEMBERSHIP_INBOUND_BUNDLE)
+    //--------------------------------------------------
+    S2C_CREATE_PLAYER_BATCH,// 서버 → 클라이언트: 시야 진입 상대 묶음 (mover 전용, CREATE N개→1패킷)
+    S2C_DELETE_PLAYER_BATCH // 서버 → 클라이언트: 시야 이탈 상대 묶음 (mover 전용, DELETE N개→1패킷)
 };
 
 // 패킷 헤더 (모든 패킷 공통)
@@ -265,6 +271,62 @@ struct MSG_S2C_SECTOR_UPDATES
     SectorUpdateEntry entries[SECTOR_UPDATE_MAX_ENTRIES];
 
     MSG_S2C_SECTOR_UPDATES() : header{ sizeof(*this), TYPE }, count(0), entries{} {}
+};
+
+//==================================================
+// 멤버십 인바운드 묶음 (USE_MEMBERSHIP_INBOUND_BUNDLE)
+//==================================================
+
+// 묶음 1엔트리 — 시야에 들어온 상대 1명의 생성 정보 (21B, pack(1))
+// 필드 구성은 MSG_S2C_CREATE_OTHER_PLAYER 바디와 동일 — 클라가 엔트리를 기존 CREATE 이벤트로 분해한다.
+struct CreatePlayerBatchEntry
+{
+    int32_t playerId;
+    uint8_t direction;    // Direction enum
+    uint8_t moveState;    // MoveState enum (진입 시 이동 중일 수 있음)
+    uint8_t displayChar;  // 서버 권위 표시 문자 (ASCII: A-Z, a-z, 0-9)
+    uint8_t colorIndex;   // 서버 권위 색상 인덱스 (0-6)
+    uint8_t spawnReason;  // SpawnReason enum (등장 사유)
+    float   x;
+    float   y;
+    int32_t speed;
+};
+
+// 묶음 1엔트리 — 시야에서 나간 상대 1명 (4B, MSG_S2C_DELETE_PLAYER 바디와 동일)
+struct DeletePlayerBatchEntry
+{
+    int32_t playerId;
+};
+
+// 배치당 최대 엔트리 수. 패킷이 1460B를 넘지 않게 (SECTOR_UPDATE_MAX_ENTRIES와 동일 정책):
+//   CREATE: (MSG_DEFAULT_SIZE 1460 - 헤더4 - count2) / 엔트리21 = 최대 69개 → 여유 두고 64.
+//   DELETE: (1460 - 6) / 엔트리4 = 최대 363개 → 여유 두고 350.
+// 초과분은 서버가 청크 분할 송신
+constexpr int CREATE_PLAYER_BATCH_MAX_ENTRIES = 64;
+constexpr int DELETE_PLAYER_BATCH_MAX_ENTRIES = 350;
+
+// S2C: 시야 진입 상대 묶음 — 인바운드(상대→나) CREATE N개를 mover 1명에게 1패킷으로.
+// 가변 길이 — 와이어에는 header + count + CreatePlayerBatchEntry × count 만 실린다.
+// entries는 최대치 배열로 선언하되 빌더가 count개만 직렬화하고 header.size를 백패치한다.
+struct MSG_S2C_CREATE_PLAYER_BATCH
+{
+    static constexpr MsgType TYPE = MsgType::S2C_CREATE_PLAYER_BATCH;
+    MsgHeader header;
+    uint16_t  count;
+    CreatePlayerBatchEntry entries[CREATE_PLAYER_BATCH_MAX_ENTRIES];
+
+    MSG_S2C_CREATE_PLAYER_BATCH() : header{ sizeof(*this), TYPE }, count(0), entries{} {}
+};
+
+// S2C: 시야 이탈 상대 묶음 — 인바운드(상대→나) DELETE N개를 mover 1명에게 1패킷으로.
+struct MSG_S2C_DELETE_PLAYER_BATCH
+{
+    static constexpr MsgType TYPE = MsgType::S2C_DELETE_PLAYER_BATCH;
+    MsgHeader header;
+    uint16_t  count;
+    DeletePlayerBatchEntry entries[DELETE_PLAYER_BATCH_MAX_ENTRIES];
+
+    MSG_S2C_DELETE_PLAYER_BATCH() : header{ sizeof(*this), TYPE }, count(0), entries{} {}
 };
 
 //==================================================

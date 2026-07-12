@@ -125,6 +125,11 @@ private:
     void SendCreateMyPlayer(CPlayer* target);
     void SendCreateOtherPlayer(CPlayer* target, CPlayer* player, SpawnReason reason = SpawnReason::NORMAL);
     void SendDeletePlayer(CPlayer* target, CPlayer* player);
+#if USE_MEMBERSHIP_INBOUND_BUNDLE
+    // [Phase 2] 인바운드 멤버십 배치 — 상대 목록을 배치 상한씩 잘라 mover 1명에게 송신 (엔트리당 _membershipSends 1 집계)
+    void SendCreatePlayerBatch(CPlayer* target, CPlayer* const* others, int count);
+    void SendDeletePlayerBatch(CPlayer* target, CPlayer* const* others, int count);
+#endif
     void SendSyncPosition(CPlayer* target);
     void SendZoneChangeOk(CPlayer* target, int32_t mapId, int32_t channelIndex);
     void SendZoneChangeFail(CPlayer* target, uint8_t reason);
@@ -188,6 +193,11 @@ private:
 
     // USE_SECTOR_AGGREGATION: 이번 틱 이동/sync로 상태가 바뀐 플레이어 (틱 끝에 섹터별 묶음 송신)
     std::vector<CPlayer*> _dirtyMovers;
+
+#if USE_MEMBERSHIP_INBOUND_BUNDLE
+    // USE_MEMBERSHIP_INBOUND_BUNDLE: 인바운드 멤버십 배치 수집 전용 (ProcessSectorChange 내 수집→직렬화→송신 완결, 이월 없음)
+    std::vector<CPlayer*> _membershipInboundBuffer;
+#endif
 
     // 비용종류별 계측 — 틱 내 누적 후 틱 끝 1회 모니터 반영 (단일 게임루프 스레드 전용 → 누적 자체엔 원자연산 불필요)
     // BroadcastAroundSector가 network/game_logic/broadcast_sync 어느 단계에서 호출돼도 이 멤버에 합산된다.

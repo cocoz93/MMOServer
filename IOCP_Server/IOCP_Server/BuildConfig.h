@@ -61,6 +61,19 @@
 //         이득은 버퍼 빌드(Alloc+직렬화) 반복 제거로 _membershipCostUs 절감뿐. A/B는 같은 바이너리 토글로 측정.
 #define USE_MEMBERSHIP_FANOUT_DEDUP 1
 
+// 멤버십 인바운드(상대→나) 묶음 실험 — Phase 2.
+// ProcessSectorChange에서 "상대를 나(mover)에게 통보"는 수신자가 mover 1명뿐인데 상대 수만큼
+// 개별 패킷(빌드+송신)을 만든다 → 상대들을 배치 패킷(S2C_CREATE/DELETE_PLAYER_BATCH, 상한 초과 시 청크 분할)으로 접음.
+//   1: 인바운드 배치 송신 — 빌드·송신 모두 상대 N개→청크 수 [실험]
+//   0: 기존 — 상대마다 SendCreateOtherPlayer/SendDeletePlayer 개별 송신 (P1 채택 상태 = baseline)
+//   전제: USE_MEMBERSHIP_FANOUT_DEDUP=1 (P1 위에 얹는 증분). 수신자·엔트리 순서·_membershipSends(엔트리당 1)는 불변,
+//         이득은 패킷당 고정비(Alloc+헤더+enqueue) 제거와 송신 패킷수 감소. A/B는 이 토글로 측정.
+#define USE_MEMBERSHIP_INBOUND_BUNDLE 1
+
+#if USE_MEMBERSHIP_INBOUND_BUNDLE && !USE_MEMBERSHIP_FANOUT_DEDUP
+	#error "USE_MEMBERSHIP_INBOUND_BUNDLE requires USE_MEMBERSHIP_FANOUT_DEDUP=1 (P1 위에 얹는 증분)"
+#endif
+
 // DB 저장 파이프라인 실험 — dirty flag 기반 비동기 위치 저장 (존 서버 관점)
 //   서버 메모리 = 진실, DB = 저장소. 바뀐 플레이어만 주기적으로 전용 워커 스레드가 MySQL에 UPSERT.
 //   목적: 전량 저장 부담을 dirty flag로 줄이고, 저장 I/O를 게임 틱 임계경로에서 떼어낸다.

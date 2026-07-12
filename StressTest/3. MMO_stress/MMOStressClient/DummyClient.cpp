@@ -202,6 +202,8 @@ uint16_t DummyClient::GetPacketSize(MsgType type)
     case MsgType::S2C_MOVE_STOP:           return sizeof(MSG_S2C_MOVE_STOP);
     case MsgType::S2C_CHAT:               return static_cast<uint16_t>(offsetof(MSG_S2C_CHAT, message) + sizeof(wchar_t)); // 가변 길이: 최소 크기
     case MsgType::S2C_SECTOR_UPDATES:     return static_cast<uint16_t>(offsetof(MSG_S2C_SECTOR_UPDATES, entries));        // 가변 길이: 최소 = header+count
+    case MsgType::S2C_CREATE_PLAYER_BATCH: return static_cast<uint16_t>(offsetof(MSG_S2C_CREATE_PLAYER_BATCH, entries));  // 가변 길이: 최소 = header+count
+    case MsgType::S2C_DELETE_PLAYER_BATCH: return static_cast<uint16_t>(offsetof(MSG_S2C_DELETE_PLAYER_BATCH, entries));  // 가변 길이: 최소 = header+count
     case MsgType::S2C_SYNC_POSITION:      return sizeof(MSG_S2C_SYNC_POSITION);
     case MsgType::S2C_ZONE_CHANGE_OK:     return sizeof(MSG_S2C_ZONE_CHANGE_OK);
     case MsgType::S2C_ZONE_CHANGE_FAIL:   return sizeof(MSG_S2C_ZONE_CHANGE_FAIL);
@@ -273,6 +275,8 @@ void DummyClient::ProcessPackets(StatsLocal& stats, const MMOStressConfig& confi
             }
             break;
         case MsgType::S2C_SECTOR_UPDATES:      HandleSectorUpdates(packet);     break;
+        case MsgType::S2C_CREATE_PLAYER_BATCH:                                  break;  // 읽고 버림 (더미는 타인 미추적 — HandleCreateOtherPlayer와 동일)
+        case MsgType::S2C_DELETE_PLAYER_BATCH:                                  break;  // 읽고 버림
         case MsgType::S2C_ZONE_CHANGE_OK:      HandleZoneChangeOk(packet);      break;
         case MsgType::S2C_ZONE_CHANGE_FAIL:
             HandleZoneChangeFail(packet);

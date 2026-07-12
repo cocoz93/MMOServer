@@ -32,6 +32,8 @@ public:
     void OnChat(const MSG_S2C_CHAT* msg);
     void OnSyncPosition(const MSG_S2C_SYNC_POSITION* msg);
     void OnSectorUpdates(const MSG_S2C_SECTOR_UPDATES* msg);  // 섹터 묶음(USE_SECTOR_AGGREGATION): 엔트리별 이동 이벤트로 분해
+    void OnCreatePlayerBatch(const MSG_S2C_CREATE_PLAYER_BATCH* msg);  // 멤버십 인바운드 묶음: 엔트리별 기존 CREATE 이벤트로 분해
+    void OnDeletePlayerBatch(const MSG_S2C_DELETE_PLAYER_BATCH* msg);  // 멤버십 인바운드 묶음: 엔트리별 기존 DELETE 이벤트로 분해
     void OnZoneChangeOk(const MSG_S2C_ZONE_CHANGE_OK* msg);
     void OnZoneChangeFail(const MSG_S2C_ZONE_CHANGE_FAIL* msg);
     void OnError(const MSG_S2C_ERROR* msg);

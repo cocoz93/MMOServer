@@ -339,6 +339,17 @@ void CClientNetwork::DispatchPacket(const char* data, uint16_t size)
             _gameInstance->OnSectorUpdates(reinterpret_cast<const MSG_S2C_SECTOR_UPDATES*>(data));
         break;
 
+    case MsgType::S2C_CREATE_PLAYER_BATCH:
+        // 가변 길이: 최소 크기 = header + count — 엔트리 수는 핸들러가 header.size로 역산
+        if (size >= offsetof(MSG_S2C_CREATE_PLAYER_BATCH, entries))
+            _gameInstance->OnCreatePlayerBatch(reinterpret_cast<const MSG_S2C_CREATE_PLAYER_BATCH*>(data));
+        break;
+
+    case MsgType::S2C_DELETE_PLAYER_BATCH:
+        if (size >= offsetof(MSG_S2C_DELETE_PLAYER_BATCH, entries))
+            _gameInstance->OnDeletePlayerBatch(reinterpret_cast<const MSG_S2C_DELETE_PLAYER_BATCH*>(data));
+        break;
+
     default:
         LOG_ERROR_STREAM("Unknown message type: " << static_cast<int>(header->type));
         break;
