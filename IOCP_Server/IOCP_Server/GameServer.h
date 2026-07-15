@@ -119,7 +119,7 @@ private:
     // raw 바이트 1덩어리로 연접 후 주민당 RequestSendRaw 1회. 같은 섹터 주민은 수신 집합이 동일해 공유 가능.
     void RegisterSectorItem(CZone* zone, int32_t zoneId, int32_t sectorX, int32_t sectorY,
                             CSerialBuffer* pMsg);   // 보류 등록 (버퍼 소유권 1을 digest 배포 후 회수)
-    void FlushSectorDigests();                      // 틱 끝: 번들 빌드 → 수신섹터 연접 → 배포 → 일괄 해제
+    void FlushSectorSends();                        // 틱 끝: 번들 빌드 → 수신섹터 연접 → 배포 → 일괄 해제
 #endif
 
 #if USE_MEMBERSHIP_FANOUT_DEDUP
@@ -216,8 +216,8 @@ private:
     std::unordered_map<int32_t, ZonePending> _pendingByZone;
     std::vector<std::pair<int32_t, int32_t>> _touchedSectors;   // (zoneId, flatIdx) — 보류물 있는 소스 섹터
     std::vector<std::pair<int32_t, int32_t>> _receiverSectors;  // (zoneId, flatIdx) — 이번 틱 수신 후보 (재사용)
-    std::vector<char> _digestBuf;                               // 수신섹터별 연접 버퍼 (재사용)
-    uint64_t _digestEpoch = 0;                                  // 64비트 — wrap 없음 (0 = 미마킹 초기값과 충돌 방지)
+    std::vector<char> _concatBuf;                               // 수신섹터별 연접 버퍼 (재사용)
+    uint64_t _flushEpoch = 0;                                   // 64비트 — wrap 없음 (0 = 미마킹 초기값과 충돌 방지)
 #endif
 
 #if USE_MEMBERSHIP_INBOUND_BUNDLE

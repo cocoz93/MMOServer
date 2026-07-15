@@ -592,7 +592,7 @@ void CGameServer::GameLoopThread()
 
 #if USE_BROADCAST_DIGEST
         // [digest] 이번 틱 보류물(이동 번들+채팅)을 수신섹터 기준 연접으로 배포 (아래 flush가 묶어 보냄)
-        FlushSectorDigests();
+        FlushSectorSends();
 #elif USE_SECTOR_AGGREGATION
         // [묶음] 이번 틱 dirty를 섹터별 묶음으로 송신 (RequestSendMsg는 Deferred → 아래 flush가 묶어 보냄)
         FlushSectorUpdates();
@@ -1780,7 +1780,7 @@ void CGameServer::BroadcastSectorPacket(CZone* zone, int32_t sectorX, int32_t se
 //            와이어 바이트·논리 패킷 수·순서 의미 불변 (coalescing이 이미 틱 끝 연접 송신이라 클라 무변경).
 // ==========================================================================
 
-// 보류 등록 — (zoneId, 섹터)에 버퍼 적재. 버퍼 소유권 1은 FlushSectorDigests 4)에서 회수.
+// 보류 등록 — (zoneId, 섹터)에 버퍼 적재. 버퍼 소유권 1은 FlushSectorSends 4)에서 회수.
 // _broadcastCalls는 소스 아이템 단위로 집계 (기존 per-청크/per-채팅 호출 카운트와 동일 의미 → A/B 비교 가능).
 void CGameServer::RegisterSectorItem(CZone* zone, int32_t zoneId, int32_t sectorX, int32_t sectorY,
                                      CSerialBuffer* pMsg)
@@ -1801,7 +1801,7 @@ void CGameServer::RegisterSectorItem(CZone* zone, int32_t zoneId, int32_t sector
 }
 
 // 틱 끝: ① 이동 dirty → 섹터별 번들 빌드·보류 ② 수신섹터 후보 수집 ③ 연접·배포 ④ 일괄 해제.
-void CGameServer::FlushSectorDigests()
+void CGameServer::FlushSectorSends()
 {
     if (_dirtyMovers.empty() && _touchedSectors.empty())
         return;
@@ -1857,7 +1857,7 @@ void CGameServer::FlushSectorDigests()
     }
 
     // ── 2) 수신섹터 후보 = 소스(touched)의 3×3 합집합 (epoch 마킹으로 중복 제거, clear 불필요) ──
-    ++_digestEpoch;
+    ++_flushEpoch;
     _receiverSectors.clear();
     for (const auto& t : _touchedSectors)
     {
@@ -1871,9 +1871,9 @@ void CGameServer::FlushSectorDigests()
             for (int32_t nx = x0; nx <= x1; ++nx)
             {
                 const int32_t ridx = ny * zp.countX + nx;
-                if (zp.recvEpoch[ridx] != _digestEpoch)
+                if (zp.recvEpoch[ridx] != _flushEpoch)
                 {
-                    zp.recvEpoch[ridx] = _digestEpoch;
+                    zp.recvEpoch[ridx] = _flushEpoch;
                     _receiverSectors.emplace_back(t.first, ridx);
                 }
             }
@@ -1882,7 +1882,7 @@ void CGameServer::FlushSectorDigests()
 
     // ── 3) 각 수신섹터: 이웃 9섹터 보류물 연접(digest) → 주민당 RequestSendRaw 1회 ──
     int64_t sentPkts = 0, sentBytes = 0, targets = 0;
-    _digestBuf.reserve(16384);   // 최초 1회만 실할당 (동접 5000 기준 digest ~5KB)
+    _concatBuf.reserve(16384);   // 최초 1회만 실할당 (동접 5000 기준 digest ~5KB)
     for (const auto& r : _receiverSectors)
     {
         CZone* zone = _mapManager.GetZone(r.first);
@@ -1896,7 +1896,7 @@ void CGameServer::FlushSectorDigests()
         if (residents.empty())
             continue;   // 주민 없으면 연접 비용도 생략
 
-        _digestBuf.clear();
+        _concatBuf.clear();
         int32_t itemCount = 0;
         const int32_t y0 = (std::max)(ry - 1, 0), y1 = (std::min)(ry + 1, zp.countY - 1);
         const int32_t x0 = (std::max)(rx - 1, 0), x1 = (std::min)(rx + 1, zp.countX - 1);
@@ -1907,7 +1907,7 @@ void CGameServer::FlushSectorDigests()
                 for (CSerialBuffer* buf : zp.items[ny * zp.countX + nx])
                 {
                     const char* p = buf->GetReadBufferPtr();
-                    _digestBuf.insert(_digestBuf.end(), p, p + buf->GetDataSize());
+                    _concatBuf.insert(_concatBuf.end(), p, p + buf->GetDataSize());
                     ++itemCount;
                 }
             }
@@ -1915,17 +1915,17 @@ void CGameServer::FlushSectorDigests()
         if (itemCount == 0)
             continue;
 
-        const int digestSize = static_cast<int>(_digestBuf.size());
+        const int concatSize = static_cast<int>(_concatBuf.size());
         // targets = (아이템 × 주민) 전달 쌍 수 — 기존 Σ(호출별 gather 인원)과 재배열만 다르고 총량 동일
         targets += static_cast<int64_t>(residents.size()) * itemCount;
         for (CPlayer* other : residents)
         {
             if (other->_sessionId == -1)
                 continue;
-            if (_network->RequestSendRaw(other->_sessionId, _digestBuf.data(), digestSize))
+            if (_network->RequestSendRaw(other->_sessionId, _concatBuf.data(), concatSize))
             {
                 sentPkts  += itemCount;     // 논리 패킷 수 보존 (digest = 기존 패킷 itemCount개의 연접)
-                sentBytes += digestSize;    // Σ아이템 크기와 동일 → avg_pkt_bytes 통제지표 불변
+                sentBytes += concatSize;    // Σ아이템 크기와 동일 → avg_pkt_bytes 통제지표 불변
             }
         }
     }

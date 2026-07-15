@@ -81,7 +81,7 @@
 //   같은 섹터 주민은 수신 집합이 동일(채팅 excludeSelf=false 본인 포함 정책)하므로 연접 결과 공유 가능.
 //   와이어 바이트·패킷 순서 의미·클라 파싱 완전 불변 (coalescing이 이미 틱 끝 1회 송신이라 연접 스트림 동일).
 //   채팅도 즉시 브로드캐스트 대신 틱 끝 digest에 합류 (실송신 시점은 기존과 동일 — Deferred flush가 원래 틱 끝).
-//   1: 틱 끝 FlushSectorDigests — 수신섹터 연접 배포 [실험]
+//   1: 틱 끝 FlushSectorSends — 수신섹터 연접 배포 [실험]
 //   0: 기존 — FlushSectorUpdates(소스 섹터 팬아웃) + 채팅 즉시 BroadcastAroundSector (baseline)
 #define USE_BROADCAST_DIGEST 1
 
