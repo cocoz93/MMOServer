@@ -1164,6 +1164,47 @@ bool CIOCPServer::RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg, [[maybe
     return true;
 }
 
+#if USE_BROADCAST_DIGEST
+// [digest] raw 바이트 송신 — 세션 핀/검증(3-step)은 RequestSendMsg와 동일, 차이는 두 가지뿐:
+//   ① CSerialBuffer가 아닌 raw 포인터를 받아 ref 소비가 없다 (digest는 호출자 소유의 연접 버퍼)
+//   ② 항상 Deferred (digest는 틱 끝에서만 호출 → 직후 FlushPendingSends가 묶어 송신)
+// 송신 메트릭(_sendPackets/_sendEnqueuedBytes)은 호출자가 집계 (RequestSendMsg와 동일 계약).
+bool CIOCPServer::RequestSendRaw(int64_t sessionId, const char* data, int size)
+{
+    // ── Session ABA 검증 (3-step) — RequestSendMsg와 동일 ──
+    auto session = FindSession(sessionId);
+    if (!session) return false;
+
+    if (!AcquireSession(session)) return false;
+
+    if (session->_sessionId != sessionId) { IOCountDecrement(session); return false; }
+
+    // 링버퍼 적재 — digest 전체가 못 들어가면 기존과 동일한 과부하 정책(끊기)
+    size_t enqueued = session->_sendQ.Enqueue(data, size);
+    if (enqueued != static_cast<size_t>(size))
+    {
+        LOG_ERROR_STREAM("[Error] Send buffer overflow (digest) - SessionId: " << sessionId
+            << ", Requested: " << size << ", Enqueued: " << enqueued);
+        InterlockedIncrement64(&_monitor._sendQueueOverflow);
+        RequestDisconnectSession(session);
+        IOCountDecrement(session);
+        return false;
+    }
+
+#if USE_SEND_COALESCING
+    if (!session->_sendDirty)   // 틱 끝 FlushPendingSends에서 묶어 송신
+    {
+        session->_sendDirty = true;
+        _dirtySessions.push_back(session);
+    }
+#else
+    PostSend(session);   // (도달 불가 — BuildConfig가 COALESCING=1을 강제하지만 방어적으로 유지)
+#endif
+    IOCountDecrement(session);
+    return true;
+}
+#endif // USE_BROADCAST_DIGEST
+
 // [coalescing] 게임 루프가 틱 끝에 1회 호출 — 이번 틱에 송신 데이터가 쌓인 세션을 한 번에 flush.
 // PostSend가 내부에서 AcquireSession/_disconnecting을 재검증하므로 dirty 등록 후 세션이 끊겨도 안전.
 void CIOCPServer::FlushPendingSends()

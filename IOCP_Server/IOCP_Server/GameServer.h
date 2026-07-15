@@ -23,6 +23,7 @@
 #include <vector>
 #include <queue>
 #include <unordered_set>
+#include <unordered_map>
 
 #include "IOCPServer.h"
 #include "MapManager.h"
@@ -112,6 +113,15 @@ private:
     // 섹터 좌표 기준 주변 9섹터에 묶음 패킷 전송 (BroadcastAroundSector의 소유권/계측 패턴 복제)
     void BroadcastSectorPacket(CZone* zone, int32_t sectorX, int32_t sectorY, CSerialBuffer* pMsg);
 
+#if USE_BROADCAST_DIGEST
+    // ── 수신섹터 digest 경로 (Phase 3) — FlushSectorUpdates를 대체 ──
+    // 소스 섹터별 보류물(이동 번들 + 채팅)을 수신 섹터 기준으로 뒤집어, 이웃 9섹터 내용을
+    // raw 바이트 1덩어리로 연접 후 주민당 RequestSendRaw 1회. 같은 섹터 주민은 수신 집합이 동일해 공유 가능.
+    void RegisterSectorItem(CZone* zone, int32_t zoneId, int32_t sectorX, int32_t sectorY,
+                            CSerialBuffer* pMsg);   // 보류 등록 (버퍼 소유권 1을 digest 배포 후 회수)
+    void FlushSectorDigests();                      // 틱 끝: 번들 빌드 → 수신섹터 연접 → 배포 → 일괄 해제
+#endif
+
 #if USE_MEMBERSHIP_FANOUT_DEDUP
     // 멤버십 아웃바운드 팬아웃 (Phase 1) — 미리 빌드한 버퍼 1개를 여러 섹터의 플레이어에게 배치 AddRef로 전송.
     // BroadcastSectorPacket의 소유권/계측 패턴을 (주변 9섹터가 아닌) 임의 섹터 배열 버전으로 확장. 버퍼 소유권 1을 소비.
@@ -193,6 +203,22 @@ private:
 
     // USE_SECTOR_AGGREGATION: 이번 틱 이동/sync로 상태가 바뀐 플레이어 (틱 끝에 섹터별 묶음 송신)
     std::vector<CPlayer*> _dirtyMovers;
+
+#if USE_BROADCAST_DIGEST
+    // USE_BROADCAST_DIGEST: 존별 섹터 그리드에 이번 틱 보류물(번들+채팅)을 모았다가 틱 끝 digest로 배포.
+    // zoneId 키로 보관 — 틱 중 존이 사라져도 해제 루프는 존 포인터 없이 안전 (기존 GetZone null 가드 패턴).
+    struct ZonePending
+    {
+        int32_t countX = 0, countY = 0;                  // 섹터 그리드 크기 (존 최초 등록 시 확정)
+        std::vector<std::vector<CSerialBuffer*>> items;  // flatIdx → 보류 버퍼들 (등록순)
+        std::vector<uint64_t> recvEpoch;                 // 수신섹터 중복 마킹 (틱당 epoch 증가로 clear 생략)
+    };
+    std::unordered_map<int32_t, ZonePending> _pendingByZone;
+    std::vector<std::pair<int32_t, int32_t>> _touchedSectors;   // (zoneId, flatIdx) — 보류물 있는 소스 섹터
+    std::vector<std::pair<int32_t, int32_t>> _receiverSectors;  // (zoneId, flatIdx) — 이번 틱 수신 후보 (재사용)
+    std::vector<char> _digestBuf;                               // 수신섹터별 연접 버퍼 (재사용)
+    uint64_t _digestEpoch = 0;                                  // 64비트 — wrap 없음 (0 = 미마킹 초기값과 충돌 방지)
+#endif
 
 #if USE_MEMBERSHIP_INBOUND_BUNDLE
     // USE_MEMBERSHIP_INBOUND_BUNDLE: 인바운드 멤버십 배치 수집 전용 (ProcessSectorChange 내 수집→직렬화→송신 완결, 이월 없음)

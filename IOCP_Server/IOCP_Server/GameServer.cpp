@@ -590,7 +590,10 @@ void CGameServer::GameLoopThread()
             });
         }
 
-#if USE_SECTOR_AGGREGATION
+#if USE_BROADCAST_DIGEST
+        // [digest] 이번 틱 보류물(이동 번들+채팅)을 수신섹터 기준 연접으로 배포 (아래 flush가 묶어 보냄)
+        FlushSectorDigests();
+#elif USE_SECTOR_AGGREGATION
         // [묶음] 이번 틱 dirty를 섹터별 묶음으로 송신 (RequestSendMsg는 Deferred → 아래 flush가 묶어 보냄)
         FlushSectorUpdates();
 #endif
@@ -1041,10 +1044,18 @@ void CGameServer::RecvChat(CPlayer* player, CSerialBuffer* pMsg)
         msgLen = CHAT_MSG_MAX_LEN - 1;
     recvMsg.message[msgLen] = L'\0';  // null 종단 보장
 
+#if USE_BROADCAST_DIGEST
+    // [digest] 즉시 브로드캐스트 대신 보류 등록 — 틱 끝 digest에 합류 (실송신 시점은 기존과 동일한 틱 끝 flush).
+    // 소스 섹터는 수신 시점 좌표로 고정 → 기존(즉시 배포)의 AOI 의미 보존.
+    RegisterSectorItem(zone, player->_zoneId, player->_sectorX, player->_sectorY,
+        MakeChat(player->_playerId, player->_displayChar, player->_colorIndex,
+            recvMsg.message, msgLen));
+#else
     // 본인 포함 브로드캐스트 (송신 함수가 소유권 소비)
     BroadcastAroundSector(zone, player,
         MakeChat(player->_playerId, player->_displayChar, player->_colorIndex,
             recvMsg.message, msgLen), false);
+#endif
 }
 
 // ==========================================================================
@@ -1757,4 +1768,189 @@ void CGameServer::BroadcastSectorPacket(CZone* zone, int32_t sectorX, int32_t se
     }
     pMsg->SubRef();   // 빌더가 넘긴 소유권 1 회수 (타겟 0명이어도 안전 회수)
 }
+
+#if USE_BROADCAST_DIGEST
+// ==========================================================================
+// 수신섹터 digest (USE_BROADCAST_DIGEST, Phase 3)
+//
+// 기존(OFF): 소스 아이템(번들 청크·채팅)마다 주변 3×3 주민에게 개별 RequestSendMsg
+//            → (아이템 × 수신자)회의 세션 핀(원자연산)+링 뮤텍스+복사 반복이 broadcast_copy의 지배분.
+// digest(ON): 같은 섹터 주민은 수신 집합이 완전히 동일(본인 포함 정책)하다는 성질을 이용,
+//            수신 섹터별로 이웃 9섹터 보류물을 raw 바이트 1덩어리로 연접 → 주민당 1회 RequestSendRaw.
+//            와이어 바이트·논리 패킷 수·순서 의미 불변 (coalescing이 이미 틱 끝 연접 송신이라 클라 무변경).
+// ==========================================================================
+
+// 보류 등록 — (zoneId, 섹터)에 버퍼 적재. 버퍼 소유권 1은 FlushSectorDigests 4)에서 회수.
+// _broadcastCalls는 소스 아이템 단위로 집계 (기존 per-청크/per-채팅 호출 카운트와 동일 의미 → A/B 비교 가능).
+void CGameServer::RegisterSectorItem(CZone* zone, int32_t zoneId, int32_t sectorX, int32_t sectorY,
+                                     CSerialBuffer* pMsg)
+{
+    ZonePending& zp = _pendingByZone[zoneId];
+    if (zp.items.empty())   // 존 최초 등록 — 그리드 크기 확정 (맵 크기는 부팅 후 불변)
+    {
+        zp.countX = zone->GetSectorManager().GetSectorCountX();
+        zp.countY = zone->GetSectorManager().GetSectorCountY();
+        zp.items.resize(static_cast<size_t>(zp.countX) * zp.countY);
+        zp.recvEpoch.assign(static_cast<size_t>(zp.countX) * zp.countY, 0);
+    }
+    const int32_t idx = sectorY * zp.countX + sectorX;
+    if (zp.items[idx].empty())
+        _touchedSectors.emplace_back(zoneId, idx);
+    zp.items[idx].push_back(pMsg);
+    InterlockedIncrement64(&_monitor._gameLoop._broadcastCalls);
+}
+
+// 틱 끝: ① 이동 dirty → 섹터별 번들 빌드·보류 ② 수신섹터 후보 수집 ③ 연접·배포 ④ 일괄 해제.
+void CGameServer::FlushSectorDigests()
+{
+    if (_dirtyMovers.empty() && _touchedSectors.empty())
+        return;
+
+    // [계측] 빌드+연접+배포 전체를 enqueue 축에 합산 — OFF의 FlushSectorUpdates·채팅 enqueue와
+    //   같은 비용종류이므로 broadcast_copy_ms_per_tick으로 A/B 직접 비교 가능.
+    auto measT0 = std::chrono::steady_clock::now();
+
+    // ── 1) 이동 번들 빌드 → 보류 등록 (FlushSectorUpdates의 빌드 로직 그대로, 송신만 보류로 대체) ──
+    if (!_dirtyMovers.empty())
+    {
+        std::sort(_dirtyMovers.begin(), _dirtyMovers.end(),
+            [](CPlayer* a, CPlayer* b)
+            {
+                if (a->_zoneId != b->_zoneId)   return a->_zoneId < b->_zoneId;
+                if (a->_sectorY != b->_sectorY) return a->_sectorY < b->_sectorY;
+                return a->_sectorX < b->_sectorX;
+            });
+
+        const size_t total = _dirtyMovers.size();
+        size_t i = 0;
+        while (i < total)
+        {
+            CPlayer* head = _dirtyMovers[i];
+            const int32_t zoneId = head->_zoneId;
+            const int32_t sx = head->_sectorX;
+            const int32_t sy = head->_sectorY;
+
+            size_t j = i;
+            while (j < total &&
+                _dirtyMovers[j]->_zoneId == zoneId &&
+                _dirtyMovers[j]->_sectorX == sx &&
+                _dirtyMovers[j]->_sectorY == sy)
+                ++j;
+
+            CZone* zone = _mapManager.GetZone(zoneId);
+            if (zone != nullptr)
+            {
+                size_t k = i;
+                while (k < j)
+                {
+                    int chunk = static_cast<int>((std::min)(j - k, static_cast<size_t>(SECTOR_UPDATE_MAX_ENTRIES)));
+                    RegisterSectorItem(zone, zoneId, sx, sy, MakeSectorUpdates(&_dirtyMovers[k], chunk));
+                    k += chunk;
+                }
+            }
+            i = j;
+        }
+
+        for (CPlayer* p : _dirtyMovers)
+            p->_moveDirty = false;
+        _dirtyMovers.clear();
+    }
+
+    // ── 2) 수신섹터 후보 = 소스(touched)의 3×3 합집합 (epoch 마킹으로 중복 제거, clear 불필요) ──
+    ++_digestEpoch;
+    _receiverSectors.clear();
+    for (const auto& t : _touchedSectors)
+    {
+        ZonePending& zp = _pendingByZone[t.first];
+        const int32_t sy = t.second / zp.countX;
+        const int32_t sx = t.second % zp.countX;
+        const int32_t y0 = (std::max)(sy - 1, 0), y1 = (std::min)(sy + 1, zp.countY - 1);
+        const int32_t x0 = (std::max)(sx - 1, 0), x1 = (std::min)(sx + 1, zp.countX - 1);
+        for (int32_t ny = y0; ny <= y1; ++ny)
+        {
+            for (int32_t nx = x0; nx <= x1; ++nx)
+            {
+                const int32_t ridx = ny * zp.countX + nx;
+                if (zp.recvEpoch[ridx] != _digestEpoch)
+                {
+                    zp.recvEpoch[ridx] = _digestEpoch;
+                    _receiverSectors.emplace_back(t.first, ridx);
+                }
+            }
+        }
+    }
+
+    // ── 3) 각 수신섹터: 이웃 9섹터 보류물 연접(digest) → 주민당 RequestSendRaw 1회 ──
+    int64_t sentPkts = 0, sentBytes = 0, targets = 0;
+    _digestBuf.reserve(16384);   // 최초 1회만 실할당 (동접 5000 기준 digest ~5KB)
+    for (const auto& r : _receiverSectors)
+    {
+        CZone* zone = _mapManager.GetZone(r.first);
+        if (zone == nullptr)
+            continue;   // 틱 중 존 소멸 — 보류물 해제는 4)가 책임
+        ZonePending& zp = _pendingByZone[r.first];
+        const int32_t ry = r.second / zp.countX;
+        const int32_t rx = r.second % zp.countX;
+
+        const std::vector<CPlayer*>& residents = zone->GetSectorManager().GetSectorPlayers(rx, ry);
+        if (residents.empty())
+            continue;   // 주민 없으면 연접 비용도 생략
+
+        _digestBuf.clear();
+        int32_t itemCount = 0;
+        const int32_t y0 = (std::max)(ry - 1, 0), y1 = (std::min)(ry + 1, zp.countY - 1);
+        const int32_t x0 = (std::max)(rx - 1, 0), x1 = (std::min)(rx + 1, zp.countX - 1);
+        for (int32_t ny = y0; ny <= y1; ++ny)
+        {
+            for (int32_t nx = x0; nx <= x1; ++nx)
+            {
+                for (CSerialBuffer* buf : zp.items[ny * zp.countX + nx])
+                {
+                    const char* p = buf->GetReadBufferPtr();
+                    _digestBuf.insert(_digestBuf.end(), p, p + buf->GetDataSize());
+                    ++itemCount;
+                }
+            }
+        }
+        if (itemCount == 0)
+            continue;
+
+        const int digestSize = static_cast<int>(_digestBuf.size());
+        // targets = (아이템 × 주민) 전달 쌍 수 — 기존 Σ(호출별 gather 인원)과 재배열만 다르고 총량 동일
+        targets += static_cast<int64_t>(residents.size()) * itemCount;
+        for (CPlayer* other : residents)
+        {
+            if (other->_sessionId == -1)
+                continue;
+            if (_network->RequestSendRaw(other->_sessionId, _digestBuf.data(), digestSize))
+            {
+                sentPkts  += itemCount;     // 논리 패킷 수 보존 (digest = 기존 패킷 itemCount개의 연접)
+                sentBytes += digestSize;    // Σ아이템 크기와 동일 → avg_pkt_bytes 통제지표 불변
+            }
+        }
+    }
+
+    // ── 4) 보류물 일괄 해제 — 존 소멸·주민 0이어도 무조건 회수 (빌더 소유권 1을 여기서 소비) ──
+    for (const auto& t : _touchedSectors)
+    {
+        ZonePending& zp = _pendingByZone[t.first];
+        for (CSerialBuffer* buf : zp.items[t.second])
+            buf->SubRef();
+        zp.items[t.second].clear();
+    }
+    _touchedSectors.clear();
+
+    // 송신 메트릭 배치 반영 (기존 BroadcastSectorPacket의 원자연산 N→1 패턴과 동일)
+    if (targets > 0)
+        InterlockedExchangeAdd64(&_monitor._gameLoop._broadcastTargets, targets);
+    if (sentPkts > 0)
+    {
+        InterlockedExchangeAdd64(&_monitor._sendPackets, sentPkts);
+        InterlockedExchangeAdd64(&_monitor._sendEnqueuedBytes, sentBytes);
+    }
+
+    auto measT1 = std::chrono::steady_clock::now();
+    _tickBroadcastEnqueueUs += std::chrono::duration_cast<std::chrono::microseconds>(measT1 - measT0).count();
+}
+#endif // USE_BROADCAST_DIGEST
 #endif // USE_SECTOR_AGGREGATION

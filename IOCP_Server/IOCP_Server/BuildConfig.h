@@ -74,6 +74,26 @@
 	#error "USE_MEMBERSHIP_INBOUND_BUNDLE requires USE_MEMBERSHIP_FANOUT_DEDUP=1 (P1 위에 얹는 증분)"
 #endif
 
+// 브로드캐스트 수신섹터 digest 실험 — Phase 3.
+// 지금은 소스 섹터마다 "번들 1개 → 주변 3×3 주민 개별 RequestSendMsg"라 수신자×아이템만큼
+// 세션 핀(원자연산 2개)+링 뮤텍스+복사를 반복한다 (동접 5000 실측 ~27만회/틱 = broadcast_copy 27.5ms 지배분).
+// → 뒤집어서 "수신 섹터별로 이웃 9섹터 번들+채팅을 raw 바이트 1덩어리(digest)로 연접 → 주민당 1회 송신".
+//   같은 섹터 주민은 수신 집합이 동일(채팅 excludeSelf=false 본인 포함 정책)하므로 연접 결과 공유 가능.
+//   와이어 바이트·패킷 순서 의미·클라 파싱 완전 불변 (coalescing이 이미 틱 끝 1회 송신이라 연접 스트림 동일).
+//   채팅도 즉시 브로드캐스트 대신 틱 끝 digest에 합류 (실송신 시점은 기존과 동일 — Deferred flush가 원래 틱 끝).
+//   1: 틱 끝 FlushSectorDigests — 수신섹터 연접 배포 [실험]
+//   0: 기존 — FlushSectorUpdates(소스 섹터 팬아웃) + 채팅 즉시 BroadcastAroundSector (baseline)
+#define USE_BROADCAST_DIGEST 1
+
+//   의존: 이동 번들(SECTOR_AGGREGATION)과 틱 끝 flush(SEND_COALESCING) 위에서만 성립.
+#if USE_BROADCAST_DIGEST && (!USE_SECTOR_AGGREGATION || !USE_SEND_COALESCING)
+	#error "USE_BROADCAST_DIGEST requires USE_SECTOR_AGGREGATION=1 && USE_SEND_COALESCING=1"
+#endif
+//   배타: digest는 raw 바이트를 링버퍼에 직접 적재 — 포인터 큐(LockFree SendQ)와 양립 불가.
+#if USE_BROADCAST_DIGEST && USE_LOCKFREE_SENDQ
+	#error "USE_BROADCAST_DIGEST requires USE_LOCKFREE_SENDQ=0 (RingBuffer 경로 전용)"
+#endif
+
 // DB 저장 파이프라인 실험 — dirty flag 기반 비동기 위치 저장 (존 서버 관점)
 //   서버 메모리 = 진실, DB = 저장소. 바뀐 플레이어만 주기적으로 전용 워커 스레드가 MySQL에 UPSERT.
 //   목적: 전량 저장 부담을 dirty flag로 줄이고, 저장 I/O를 게임 틱 임계경로에서 떼어낸다.

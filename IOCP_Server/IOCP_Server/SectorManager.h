@@ -58,6 +58,10 @@ public:
 
     int32_t GetSectorSize() const { return _sectorSize; }
 
+    // 그리드 크기 (USE_BROADCAST_DIGEST: 수신섹터 순회용)
+    int32_t GetSectorCountX() const { return _sectorCountX; }
+    int32_t GetSectorCountY() const { return _sectorCountY; }
+
     static constexpr int32_t MAX_AROUND_SECTORS = 9;
 
 private:
