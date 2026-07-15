@@ -53,6 +53,7 @@ public:
     float _lastSyncY;
 
     int32_t _listIndex = -1;  // Zone::_playerList 내 인덱스 (O(1) 삭제용)
+    int32_t _sectorIndex = -1;  // 현재 소속 섹터 벡터 내 인덱스 (O(1) 삭제용 — _listIndex와 동일 패턴)
 
     // USE_SECTOR_AGGREGATION: 이번 틱 섹터 묶음 dirty 등록 여부 (중복 방지, 틱 끝 리셋)
     bool _moveDirty = false;

@@ -55,7 +55,9 @@ void CSectorManager::AddPlayer(CPlayer* player, int32_t sectorX, int32_t sectorY
     if (!IsValidSector(sectorX, sectorY))
         return;
 
-    SectorAt(sectorY, sectorX).push_back(player);
+    auto& players = SectorAt(sectorY, sectorX);
+    player->_sectorIndex = static_cast<int32_t>(players.size());  // push 직전 크기 = 새 슬롯 인덱스
+    players.push_back(player);
 }
 
 void CSectorManager::RemovePlayer(CPlayer* player, int32_t sectorX, int32_t sectorY)
@@ -63,14 +65,17 @@ void CSectorManager::RemovePlayer(CPlayer* player, int32_t sectorX, int32_t sect
     if (!IsValidSector(sectorX, sectorY))
         return;
 
+    // 순서 보존 불필요 → 캐시 인덱스로 O(1) swap-and-pop (Zone::_listIndex와 동일 패턴)
     auto& players = SectorAt(sectorY, sectorX);
-    auto it = std::find(players.begin(), players.end(), player);
-    if (it != players.end())
-    {
-        // 순서 보존 불필요 → O(1) 삭제
-        *it = players.back();
-        players.pop_back();
-    }
+    int32_t idx = player->_sectorIndex;
+    if (idx < 0 || idx >= static_cast<int32_t>(players.size()) || players[idx] != player)
+        return;   // 미등록/불일치 방어 (기존 std::find 실패 = no-op 과 동일)
+
+    CPlayer* back = players.back();
+    players[idx] = back;
+    back->_sectorIndex = idx;   // 당겨온 원소의 인덱스 갱신 (LeaveZone의 back->_listIndex=idx 와 동일)
+    players.pop_back();
+    player->_sectorIndex = -1;
 }
 
 const std::vector<CPlayer*>& CSectorManager::GetSectorPlayers(int32_t sectorX, int32_t sectorY) const
