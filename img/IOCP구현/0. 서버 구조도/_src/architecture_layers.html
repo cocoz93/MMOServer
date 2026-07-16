@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --red-bg:#fdeef0;
+    --blue:#3a78b8; --blue-ink:#2b6aa8; --blue-bg:#e7f0fa;
+    --grn:#2f9e6b; --grn-ink:#1f7d52; --grn-bg:#e4f4ec;
+    --slate:#566072; --line:#cdd7e4;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1680px;height:864px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;
+    font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1632px;height:816px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;
+    box-shadow:0 1px 3px rgba(30,40,70,.05),0 16px 48px rgba(30,40,70,.075);overflow:hidden}
+
+  .title{position:absolute;left:56px;top:36px;font-size:41px;font-weight:800;color:var(--ink);letter-spacing:-1px;line-height:1.05}
+  .title .r{color:var(--red)}
+  .uline{position:absolute;left:58px;top:96px;width:78px;height:6px;border-radius:3px;background:var(--red)}
+  .sub{position:absolute;left:58px;top:114px;font-size:19px;font-weight:500;color:var(--muted);letter-spacing:-.3px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  svg.wire{position:absolute;inset:0;width:1632px;height:816px;pointer-events:none;z-index:2}
+
+  /* zone columns */
+  .zone{position:absolute;top:190px;height:500px;border-radius:26px;z-index:1}
+  .zone.net{background:#eff5fb;border:1.5px solid #dbe7f5}
+  .zone.game{background:#fdf1f3;border:1.5px solid #f6d9df}
+  .zone.store{background:#edf7f1;border:1.5px solid #d3ecdf}
+  .ztab{position:absolute;top:15px;left:22px;display:flex;align-items:center;gap:10px;z-index:3}
+  .znum{width:27px;height:27px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:15px;font-weight:800;color:#fff}
+  .net .znum{background:var(--blue)} .game .znum{background:var(--red)} .store .znum{background:var(--grn)}
+  .zname{font-size:18px;font-weight:800;letter-spacing:-.3px}
+  .net .zname{color:var(--blue-ink)} .game .zname{color:var(--deep)} .store .zname{color:var(--grn-ink)}
+  .zname .zx{font-weight:650;color:#9aa6b5;font-size:15px}
+
+  /* cards */
+  .node{position:absolute;z-index:2;background:#fff;border:1.5px solid #e7ebf1;border-radius:16px;
+    box-shadow:0 6px 16px rgba(30,40,70,.06);display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:6px;overflow:hidden;text-align:center}
+  .node::before{content:"";position:absolute;top:0;left:0;right:0;height:5px}
+  .node.b::before{background:var(--blue)} .node.g::before{background:var(--grn)}
+  .tag{font-size:14px;font-weight:800;padding:3px 14px;border-radius:999px;letter-spacing:-.2px}
+  .b .tag{background:var(--blue-bg);color:var(--blue-ink)}
+  .g .tag{background:var(--grn-bg);color:var(--grn-ink)}
+  .nt{font-size:24px;font-weight:800;color:var(--ink);letter-spacing:-.5px}
+  .nt .k{color:var(--blue-ink)} .g .nt .k{color:var(--grn-ink)}
+  .ns{font-size:14.5px;color:#8a93a5;font-weight:600;letter-spacing:-.3px;line-height:1.4}
+  .ns b{color:#5a6270;font-weight:800}
+  .pool{box-shadow:0 6px 16px rgba(30,40,70,.06),
+        0 9px 0 -1px #fff, 9px 9px 0 -1px #fff, 9px 9px 0 0 #e6ebf1, 18px 18px 0 -1px #fff, 18px 18px 0 0 #edf0f5}
+
+  .clients{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:#f4f6fa;
+    border:1.5px solid #e3e7ee;border-radius:18px;box-shadow:0 5px 14px rgba(30,40,70,.05)}
+  .clients .ci{font-size:36px}
+  .clients .ct{font-size:19px;font-weight:800;color:var(--slate);letter-spacing:-.4px;text-align:center;line-height:1.25}
+
+  /* game loop hero (big) */
+  .hero{position:absolute;z-index:2;background:linear-gradient(180deg,#fff,#fffafb);
+    border:1.5px solid #f1c9d1;border-radius:22px;
+    box-shadow:0 16px 38px rgba(215,38,61,.14),0 2px 6px rgba(30,40,70,.05);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;overflow:hidden;text-align:center;padding:0 22px}
+  .hero::before{content:"";position:absolute;top:0;left:0;right:0;height:7px;background:linear-gradient(90deg,#e23f53,var(--red))}
+  .hero .p{font-size:15.5px;font-weight:800;padding:5px 17px;border-radius:999px;background:var(--red-bg);color:var(--red)}
+  .hero .hname{font-size:38px;font-weight:800;color:var(--ink);letter-spacing:-1px}
+  .hero .hfps{font-size:15.5px;font-weight:800;color:var(--slate)}
+  .hero .hdiv{width:56px;height:2px;background:#f0d3d8;border-radius:2px}
+  .hero .hduty{font-size:15.5px;font-weight:650;color:#6b7688;letter-spacing:-.3px;line-height:1.5}
+  .hero .hduty b{color:var(--deep);font-weight:800}
+
+  .db{position:absolute;z-index:2;display:flex;flex-direction:column;align-items:center;gap:9px}
+  .cyl{width:88px;height:74px;border-radius:50%/17px;background:linear-gradient(180deg,#3fae79,#2c8f63);
+    border:1.5px solid #268257;position:relative;box-shadow:0 6px 16px rgba(47,158,107,.22)}
+  .cyl::before{content:"";position:absolute;left:0;right:0;top:0;height:21px;border-radius:50%;background:#54c08d;border:1.5px solid #268257}
+  .cyl .cw{position:absolute;left:0;right:0;top:11px;text-align:center;font-size:19px;font-weight:800;color:#fff;z-index:2}
+  .dbcap{font-size:15px;font-weight:800;color:var(--grn-ink);letter-spacing:-.3px}
+
+  .chip2{position:absolute;z-index:3;transform:translate(-50%,-50%);background:#fff;border:1.5px solid #dbe4f0;
+    border-radius:13px;padding:8px 15px;text-align:center;box-shadow:0 4px 12px rgba(30,40,70,.09);white-space:nowrap}
+  .chip2 .c1{font-size:16.5px;font-weight:800;letter-spacing:-.3px}
+  .chip2 .c2{font-size:12.5px;font-weight:700;color:#8a93a5;margin-top:2px;letter-spacing:-.2px}
+  .chip2.blue{border-color:#cfe0f2} .chip2.blue .c1{color:var(--blue-ink)}
+  .chip2.grn{border-color:#cfe9db} .chip2.grn .c1{color:var(--grn-ink)}
+
+  .elbl{position:absolute;z-index:3;font-size:14px;font-weight:800;letter-spacing:-.3px;white-space:nowrap}
+  .elbl.red{color:var(--red)}
+
+  .foot{position:absolute;left:56px;right:56px;bottom:22px;padding-top:14px;border-top:1px solid #eef0f3;
+    display:flex;align-items:center;gap:12px;font-size:15px;color:#9aa3b2;font-weight:550;letter-spacing:-.3px}
+  .foot b{color:#6b7484;font-weight:700}
+  .foot .fc{background:#f3f5f9;border-radius:8px;padding:5px 13px}
+  .foot .sp{margin-left:auto}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">게임 로직은 <span class="r">단일 스레드</span>, 네트워크·DB만 역할별로 분리</div>
+    <div class="uline"></div>
+    <div class="sub">부하가 <b>실제로 몰리는 경로만</b> 스레드·워커로 나눈 <b>3계층</b> 구조</div>
+
+    <!-- ===== zones ===== -->
+    <div class="zone net"   style="left:240px;width:380px">
+      <div class="ztab"><span class="znum">1</span><span class="zname">네트워크 계층 <span class="zx">· I/O 스레드</span></span></div>
+    </div>
+    <div class="zone game"  style="left:792px;width:328px">
+      <div class="ztab"><span class="znum">2</span><span class="zname">게임 계층 <span class="zx">· 단일 스레드</span></span></div>
+    </div>
+    <div class="zone store" style="left:1252px;width:348px">
+      <div class="ztab"><span class="znum">3</span><span class="zname">저장 계층 <span class="zx">· 비동기</span></span></div>
+    </div>
+
+    <!-- ===== connectors ===== -->
+    <svg class="wire" viewBox="0 0 1632 816">
+      <defs><style>
+        .lb{stroke:#7fa6cf;stroke-width:3.8;fill:none;stroke-linecap:round}
+        .lr{stroke:#e79aa6;stroke-width:3.8;fill:none;stroke-linecap:round}
+        .lg{stroke:#8fd0af;stroke-width:3.8;fill:none;stroke-linecap:round}
+        .hb{fill:#7fa6cf} .hr{fill:#e79aa6} .hg{fill:#8fd0af}
+      </style></defs>
+
+      <!-- clients <-> network -->
+      <path class="lb" d="M208 440 H236"/>
+      <polygon class="hb" points="216,433 216,447 207,440"/>
+      <polygon class="hb" points="228,433 228,447 237,440"/>
+
+      <!-- IOCP -> game (recv via SwapQ) -->
+      <path class="lb" d="M594 440 Q702 431 808 421"/>
+      <polygon class="hb" points="800,414 800,428 810,421"/>
+
+      <!-- game -> Send (send, back-left down) -->
+      <path class="lr" d="M810 489 Q700 522 596 578"/>
+      <polygon class="hr" points="605,572 597,585 590,571"/>
+
+      <!-- game -> DB (save, right) -->
+      <path class="lg" d="M1102 449 Q1190 445 1278 440"/>
+      <polygon class="hg" points="1270,433 1270,447 1279,440"/>
+
+      <!-- DB -> MySQL -->
+      <path class="lg" d="M1494 440 H1510"/>
+      <polygon class="hg" points="1502,433 1502,447 1511,440"/>
+    </svg>
+
+    <!-- clients -->
+    <div class="node clients" style="left:44px;top:367px;width:162px;height:146px">
+      <div class="ci">👥</div><div class="ct">클라이언트<br>다수</div>
+    </div>
+
+    <!-- tier 1: network -->
+    <div class="node b" style="left:268px;top:231px;width:324px;height:132px">
+      <div class="tag">전용 스레드 · 1</div>
+      <div class="nt">Accept</div>
+      <div class="ns">신규 연결 수립 (AcceptEx 미사용)</div>
+    </div>
+    <div class="node b pool" style="left:268px;top:374px;width:324px;height:132px">
+      <div class="tag">IOCP 워커 · ×N</div>
+      <div class="nt">IOCP Worker <span class="k">×N</span></div>
+      <div class="ns"><b>RECV / SEND 완료</b> 처리 · 패킷 파싱</div>
+    </div>
+    <div class="node b pool" style="left:268px;top:517px;width:324px;height:132px">
+      <div class="tag">송신 워커 · ×K</div>
+      <div class="nt">Send Worker <span class="k">×K</span></div>
+      <div class="ns"><b>sessionId % K</b> 분배 · WSASend → 클라</div>
+    </div>
+
+    <!-- SwapQ chip -->
+    <div class="chip2 blue" style="left:701px;top:429px">
+      <div class="c1">SwapQ</div>
+      <div class="c2">프레임당 통째 swap 1회</div>
+    </div>
+    <div class="elbl red" style="left:632px;top:556px">송신 dirty · 틱 끝</div>
+
+    <!-- tier 2: game loop hero -->
+    <div class="hero" style="left:810px;top:270px;width:292px;height:340px">
+      <div class="p">단일 스레드 · 1</div>
+      <div class="hname">게임 루프</div>
+      <div class="hfps">25fps 고정 틱 · 40ms</div>
+      <div class="hdiv"></div>
+      <div class="hduty">SwapQ 소비 → 로직 디스패치<br><b>이동/섹터</b> 갱신 · 틱 끝 <b>송신 flush</b></div>
+    </div>
+
+    <!-- snapshot chip -->
+    <div class="chip2 grn" style="left:1190px;top:444px">
+      <div class="c1">위치 스냅샷</div>
+      <div class="c2">fire-and-forget · 틱 안 막음</div>
+    </div>
+
+    <!-- tier 3: DB -->
+    <div class="node g pool" style="left:1280px;top:348px;width:214px;height:184px">
+      <div class="tag">DB 워커 · ×K</div>
+      <div class="nt">DB Worker <span class="k">×K</span></div>
+      <div class="ns"><b>accountId % K</b> 분배<br>UPSERT</div>
+    </div>
+    <div class="db" style="left:1512px;top:390px;width:82px;height:120px">
+      <div class="cyl"><div class="cw">DB</div></div>
+      <div class="dbcap">MySQL</div>
+    </div>
+
+    <!-- footer -->
+    <div class="foot">
+      <span class="fc">WSASend <b>완료</b>는 IOCP 워커가 처리 — Send 워커는 <b>제출만</b></span>
+      <span class="fc">모든 큐 핸드오프 = <b>배치 swap</b> (건당 락 회피)</span>
+      <span class="sp">단일 프로세스 · 동접 목표 3–4천</span>
+    </div>
+  </div>
+</body>
+</html>

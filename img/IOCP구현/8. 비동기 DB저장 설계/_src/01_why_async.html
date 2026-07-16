@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --gray-fill:#e2e6ec; --slate:#566072; --track:#eef1f5;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:640px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:592px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:36px 56px 0}
+
+  .title{font-size:37px;font-weight:800;color:var(--ink);letter-spacing:-.8px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:62px;height:5px;border-radius:3px;background:var(--red);margin-top:15px}
+  .sub{margin-top:14px;font-size:19px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .chart{position:relative;margin:52px 168px 0 132px}
+  .row{position:relative;height:60px;margin-bottom:30px}
+  .lbl{position:absolute;left:-132px;width:120px;top:50%;transform:translateY(-50%);text-align:right;
+    font-size:21px;font-weight:800;color:var(--ink);letter-spacing:-.4px;line-height:1.12}
+  .lbl .s{display:block;font-size:14px;font-weight:600;color:var(--muted);margin-top:3px}
+  .val{position:absolute;right:-168px;width:156px;top:50%;transform:translateY(-50%);
+    font-size:22px;font-weight:800;letter-spacing:-.4px;line-height:1.1}
+  .val .s{display:block;font-size:14.5px;font-weight:700;margin-top:3px}
+  .val.bad{color:var(--red)} .val.ok{color:var(--slate)}
+  .val.bad .s{color:var(--deep)} .val.ok .s{color:#8089a0}
+
+  .track{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);height:50px;
+    background:var(--track);border-radius:12px;overflow:hidden;display:flex}
+  .seg{height:100%;display:flex;align-items:center;justify-content:center;
+    font-size:15.5px;font-weight:800;letter-spacing:-.3px;white-space:nowrap}
+  .seg.game{background:linear-gradient(180deg,#e7ebf1,#dbe0e8);color:#5a6478}
+  .seg.db{background:linear-gradient(180deg,#e23f53,var(--deep));color:#fff}
+  .seg.push{background:linear-gradient(180deg,#e23f53,var(--deep));color:#fff;font-size:13px}
+  .track.over{overflow:visible}
+  .track.over .db{border-radius:0 12px 12px 0;box-shadow:0 0 0 4px rgba(215,38,61,.16)}
+
+  /* budget line */
+  .budget{position:absolute;left:70%;top:-40px;bottom:-6px;border-left:2.5px dashed #b7bfce}
+  .budgetcap{position:absolute;left:70%;top:-40px;transform:translateX(-50%);
+    font-size:15px;font-weight:800;color:#6b7484;white-space:nowrap;background:var(--card);padding:0 8px}
+  .budgetcap b{color:var(--ink)}
+
+  .legend{display:flex;gap:28px;align-items:center;margin-top:34px}
+  .lg{display:flex;align-items:center;gap:9px;font-size:16px;font-weight:700;color:#5a6478}
+  .sw{width:16px;height:16px;border-radius:5px}
+  .sw.g{background:#dbe0e8} .sw.r{background:var(--red)}
+
+  .callout{margin-top:18px;background:#fdeef0;border:1px solid #f6cdd4;
+    border-radius:16px;padding:15px 22px;font-size:17.5px;font-weight:500;color:#3a4254;letter-spacing:-.3px;line-height:1.4}
+  .callout b{color:var(--deep);font-weight:800}
+
+  .foot{position:absolute;left:56px;right:56px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
+    font-size:15.5px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">게임 루프를 <span class="r">막지 않는</span> 저장</div>
+    <div class="uline"></div>
+    <div class="sub">틱은 <b>40ms</b> 예산 · MySQL 저장은 <b>수 ms</b> — 틱 안에서 저장하면 예산이 깨진다</div>
+
+    <div class="chart">
+      <div class="budget"></div>
+      <div class="budgetcap">틱 예산 <b>40ms</b></div>
+
+      <!-- 동기 -->
+      <div class="row">
+        <div class="lbl">동기 저장<span class="s">틱 안에서</span></div>
+        <div class="track over">
+          <div class="seg game" style="width:36%">게임 로직</div>
+          <div class="seg db" style="width:56%">DB 저장 · 수 ms</div>
+        </div>
+        <div class="val bad">예산 초과<span class="s">틱이 DB에 막힘 ✕</span></div>
+      </div>
+
+      <!-- 비동기 -->
+      <div class="row">
+        <div class="lbl">비동기 저장<span class="s">큐에 push만</span></div>
+        <div class="track">
+          <div class="seg game" style="width:36%">게임 로직</div>
+          <div class="seg push" style="width:7%">push</div>
+        </div>
+        <div class="val ok">예산 내<span class="s">여유 있음 ✓</span></div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <div class="lg"><span class="sw g"></span>게임 로직</div>
+      <div class="lg"><span class="sw r"></span>DB 저장 · 큐 push</div>
+    </div>
+
+    <div class="callout">게임은 <b>'무엇을 저장할지'만</b> 큐에 push(수µs). 실제 저장(수 ms)은 <b>워커가 틱 밖에서</b> 처리 — 틱은 절대 DB에 막히지 않는다.</div>
+
+    <div class="foot">게임 루프 <b>25틱/초</b> · 틱당 <b>40ms</b> · 송신 워커의 생산자–소비자 패턴 재사용</div>
+  </div>
+</body>
+</html>

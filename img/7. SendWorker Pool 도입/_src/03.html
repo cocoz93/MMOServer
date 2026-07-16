@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --blue:#3a78b8; --blue-ink:#2b6aa8; --slate:#566072;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1240px;height:582px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1192px;height:534px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:36px 52px 0}
+
+  .title{font-size:38px;font-weight:800;color:var(--ink);letter-spacing:-.7px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:74px;height:6px;border-radius:3px;background:var(--red);margin-top:14px}
+  .sub{margin-top:14px;font-size:20px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .band{margin-top:32px;display:grid;grid-template-columns:296px 428px 296px;justify-content:center;align-items:center;column-gap:12px}
+  .endbox{height:178px;border-radius:22px;border:1.5px solid #e7ebf1;background:#fff;position:relative;overflow:hidden;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;box-shadow:0 7px 20px rgba(30,40,70,.07)}
+  .endbox::before{content:"";position:absolute;top:0;left:0;right:0;height:7px}
+  .endbox.send::before{background:var(--red)}
+  .endbox.game::before{background:var(--blue)}
+  .endbox .cap{font-size:16px;font-weight:800;padding:5px 17px;border-radius:999px}
+  .endbox.send .cap{background:#fde7ea;color:var(--red)}
+  .endbox.game .cap{background:#e7f0fa;color:var(--blue-ink)}
+  .endbox .nm{font-size:32px;font-weight:800;color:var(--ink);letter-spacing:-.6px}
+  .endbox .ds{font-size:16px;font-weight:600;color:#8a93a5}
+
+  .mid{position:relative;height:178px}
+  .mid .top{position:absolute;top:36px;left:0;right:0;text-align:center;font-size:19px;font-weight:800;color:var(--ink);letter-spacing:-.3px}
+  .mid .track{position:absolute;top:86px;left:8px;right:34px;height:14px;border-radius:8px;
+    background:linear-gradient(90deg,#d7263d 0%,#b3122a 10%,#8a4a7a 52%,#3a78b8 100%);box-shadow:0 3px 12px rgba(90,90,120,.16)}
+  .mid .dot{position:absolute;top:81px;left:0;width:24px;height:24px;border-radius:50%;background:var(--red);box-shadow:0 2px 8px rgba(215,38,61,.32)}
+  .mid .head{position:absolute;top:75px;right:0;width:0;height:0;border-top:18px solid transparent;border-bottom:18px solid transparent;border-left:32px solid var(--blue)}
+  .mid .ticks{position:absolute;top:118px;left:8px;right:34px;display:flex;justify-content:space-between}
+  .mid .ticks span{font-size:18px;font-weight:800;color:var(--slate);letter-spacing:-.2px}
+
+  .anchor{margin-top:40px;text-align:center}
+  .anchor .n{font-size:45px;font-weight:800;color:var(--red);letter-spacing:-1.5px;line-height:1}
+  .anchor .l{margin-top:9px;font-size:18px;font-weight:700;color:var(--slate);letter-spacing:-.3px}
+  .anchor .l b{color:var(--ink);font-weight:800}
+
+  .foot{position:absolute;left:52px;right:52px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
+    font-size:15px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">동접 증가 후 <span class="r">병목 구간 변화</span> — 송신 → 게임 스레드</div>
+    <div class="uline"></div>
+    <div class="sub">송신 워커를 늘려도 <b>전달량은 그대로</b> · 진짜 상한은 게임 스레드 단일코어</div>
+
+    <div class="band">
+      <div class="endbox send">
+        <div class="cap">초기 병목 · 2500</div>
+        <div class="nm">송신 스레드</div>
+        <div class="ds">2개로 해소</div>
+      </div>
+      <div class="mid">
+        <div class="top">동접 ↑</div>
+        <div class="dot"></div>
+        <div class="track"></div>
+        <div class="head"></div>
+        <div class="ticks"><span>2500</span><span>3000</span><span>4000</span></div>
+      </div>
+      <div class="endbox game">
+        <div class="cap">최종 상한 · 4000</div>
+        <div class="nm">게임 스레드</div>
+        <div class="ds">단일코어 0.9~1.0</div>
+      </div>
+    </div>
+
+    <div class="anchor">
+      <div class="n">약 870만 패킷/s</div>
+      <div class="l">전달량 천장 — <b>송신 워커를 몇 개로 늘려도 동일</b></div>
+    </div>
+
+    <div class="foot">동접별 송신 스레드 수 스윕(1·2·4·8) · 2500 : 송신 1개→2개로 천장 해소 · 4000 : 전달량 ≈ 870만 패킷/s는 송신 워커 수와 무관 · DB 저장 off</div>
+  </div>
+</body>
+</html>

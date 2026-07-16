@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --gray-fill:#e2e6ec; --slate:#566072; --track:#eef1f5;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:640px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:592px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:36px 56px 0}
+
+  .title{font-size:37px;font-weight:800;color:var(--ink);letter-spacing:-.8px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:62px;height:5px;border-radius:3px;background:var(--red);margin-top:15px}
+  .sub{margin-top:14px;font-size:19px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .stage{margin-top:22px;display:grid;grid-template-columns:236px 1fr;column-gap:40px;align-items:center}
+
+  .donutwrap{position:relative;width:216px;height:216px;justify-self:center}
+  .donut{position:absolute;inset:0;border-radius:50%;
+    background:conic-gradient(from -2deg,#e8455a,var(--deep) 333deg,var(--gray-fill) 333deg 360deg);
+    -webkit-mask:radial-gradient(circle at center,transparent 58%,#000 59%);
+            mask:radial-gradient(circle at center,transparent 58%,#000 59%);
+    filter:drop-shadow(0 8px 20px rgba(215,38,61,.18))}
+  .dlbl{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
+  .dlbl .n{font-size:40px;font-weight:800;color:var(--red);letter-spacing:-1.5px}
+  .dlbl .u{font-size:16px;font-weight:700;color:var(--slate);margin-top:8px}
+  .dcap{position:absolute;left:0;right:0;bottom:-30px;text-align:center;font-size:13.5px;font-weight:700;color:#9aa3b2}
+
+  .legend{display:flex;flex-direction:column;gap:26px;padding-right:4px}
+  .row .rt{display:flex;align-items:center;gap:10px}
+  .dot{width:14px;height:14px;border-radius:50%;flex:0 0 auto}
+  .dot.r{background:var(--red)} .dot.g{background:#c4cbd6}
+  .name{font-size:21px;font-weight:800;color:var(--ink);letter-spacing:-.4px}
+  .val{margin-top:7px;font-size:17px;font-weight:800;letter-spacing:-.3px}
+  .val.r{color:var(--red)} .val.g{color:#6b7484}
+  .bar{margin-top:9px;height:12px;border-radius:6px;background:var(--track);overflow:hidden}
+  .fill{height:100%;border-radius:6px}
+  .fill.r{background:linear-gradient(90deg,#e23f53,var(--red))}
+  .fill.g{background:#cfd6e0}
+
+  .life{position:absolute;left:56px;right:56px;bottom:66px;display:flex;gap:24px;align-items:center;
+    background:#fdeef0;border:1px solid #f6cdd4;border-radius:16px;padding:17px 24px}
+  .life .txt{flex:1;font-size:17px;font-weight:500;color:#3a4254;letter-spacing:-.3px;line-height:1.42}
+  .life .txt b{color:var(--deep);font-weight:800}
+  .life .rule{display:flex;flex-direction:column;align-items:center;gap:7px;flex:0 0 auto;padding-left:22px;border-left:1.5px solid #f3ccd2}
+  .life .rlbl{font-size:13px;font-weight:800;color:var(--deep);letter-spacing:-.2px}
+  .steps{display:flex;align-items:center;gap:9px}
+  .step{background:#fff;border:1.5px solid #f0c4ca;border-radius:11px;padding:8px 13px;font-size:14.5px;font-weight:800;color:var(--deep);letter-spacing:-.3px}
+  .step .no{color:#e17886;margin-right:5px}
+  .ar{color:var(--deep);font-weight:900;font-size:17px}
+
+  .foot{position:absolute;left:56px;right:56px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
+    font-size:15.5px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">prepared statement, <span class="r">진짜 값어치는 생명주기</span></div>
+    <div class="uline"></div>
+    <div class="sub">위치 저장의 병목은 <b>fsync</b> — 파싱 절감(수µs)은 티가 안 난다. 채택 이유는 성능이 아니다.</div>
+
+    <div class="stage">
+      <div class="donutwrap">
+        <div class="donut"></div>
+        <div class="dlbl"><span class="n">fsync</span><span class="u">커밋 시간 지배</span></div>
+        <div class="dcap">커밋 1회 소요 · 크기 개념도</div>
+      </div>
+
+      <div class="legend">
+        <div class="row">
+          <div class="rt"><span class="dot r"></span><span class="name">fsync — 디스크 강제 기록</span></div>
+          <div class="val r">수백 µs ~ ms · 커밋 시간의 대부분 ← 진짜 병목</div>
+          <div class="bar"><div class="fill r" style="width:93%"></div></div>
+        </div>
+        <div class="row">
+          <div class="rt"><span class="dot g"></span><span class="name">SQL 파싱</span></div>
+          <div class="val g">수 µs · prepared statement가 아끼는 부분 (티끌)</div>
+          <div class="bar"><div class="fill g" style="width:7%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="life">
+      <div class="txt">그래서 도입 이유는 성능이 아니라 <b>생명주기 관리</b>. stmt 핸들은 <b>특정 커넥션 위에서</b> 만들어져, 커넥션이 죽으면 함께 무효 — 재연결·종료·유실 모든 국면에서 짝맞춰 관리한다.</div>
+      <div class="rule">
+        <div class="rlbl">닫는 순서 — 항상</div>
+        <div class="steps"><span class="step"><span class="no">①</span>stmt</span><span class="ar">→</span><span class="step"><span class="no">②</span>커넥션</span></div>
+      </div>
+    </div>
+
+    <div class="foot">값·문법 분리로 <b>SQL 인젝션 차단</b>(부수 이득) · fsync 횟수↓ = <b>배치 커밋</b>(다음 단계)</div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --blue:#3a78b8; --blue-ink:#2b6aa8; --slate:#566072;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:640px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:592px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:36px 56px 0}
+
+  .title{font-size:37px;font-weight:800;color:var(--ink);letter-spacing:-.8px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:62px;height:5px;border-radius:3px;background:var(--red);margin-top:15px}
+  .sub{margin-top:14px;font-size:19px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .flow{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:58px}
+
+  .node{border-radius:18px;padding:19px 18px 17px;text-align:center;position:relative;background:#fff;
+    border:1px solid #edf0f4;box-shadow:0 8px 22px rgba(30,40,70,.06);flex:0 0 auto}
+  .node .cap{position:absolute;left:24px;right:24px;top:0;height:5px;border-radius:0 0 4px 4px}
+  .node .nm{font-size:20px;font-weight:800;color:var(--ink);letter-spacing:-.4px;line-height:1.1}
+  .node .ds{font-size:13.5px;font-weight:600;color:var(--muted);margin-top:6px;line-height:1.3}
+  .cap.b{background:var(--blue)} .cap.k{background:var(--ink)} .cap.r{background:var(--red)}
+
+  .game{width:150px} .router{width:172px}
+  .router .code{color:var(--ink);font-weight:800}
+
+  .pool{width:300px;padding-bottom:15px}
+  .lane{display:flex;align-items:center;gap:9px;margin-top:9px;background:#f7f8fb;border:1px solid #eef1f5;border-radius:11px;padding:8px 12px}
+  .lane .wn{font-size:14.5px;font-weight:800;color:var(--red);width:64px;text-align:left;letter-spacing:-.3px}
+  .jobs{display:flex;gap:5px}
+  .job{width:16px;height:16px;border-radius:4px;background:linear-gradient(180deg,#e23f53,#cf1d34)}
+  .job.e{background:#e5e9f0}
+  .lane .up{margin-left:auto;font-size:12.5px;font-weight:700;color:#8089a0}
+
+  .cyl{position:relative;width:118px;height:112px;flex:0 0 auto}
+  .cyl .body{position:absolute;top:11px;left:0;right:0;bottom:0;
+    background:linear-gradient(180deg,#4c88c6,#31659c);
+    border-radius:0 0 59px 59px / 0 0 20px 20px;
+    display:flex;align-items:flex-end;justify-content:center;padding-bottom:16px;
+    box-shadow:0 10px 24px rgba(49,101,156,.28)}
+  .cyl .body span{font-size:19px;font-weight:800;color:#fff;letter-spacing:-.3px}
+  .cyl .top{position:absolute;top:0;left:0;right:0;height:23px;background:#5a97d1;border-radius:50%}
+  .cyl .ring{position:absolute;top:9px;left:0;right:0;height:20px;border:2px solid rgba(255,255,255,.35);border-top:none;border-radius:0 0 59px 59px / 0 0 14px 14px}
+
+  .arrow{position:relative;width:60px;height:6px;background:#cbd3de;border-radius:3px;flex:0 0 auto}
+  .arrow::after{content:"";position:absolute;right:-3px;top:50%;transform:translateY(-50%);
+    border-left:14px solid #cbd3de;border-top:9px solid transparent;border-bottom:9px solid transparent}
+  .arrow.r{background:var(--red)} .arrow.r::after{border-left-color:var(--red)}
+  .arrlbl{position:absolute;left:50%;transform:translateX(-50%);bottom:15px;white-space:nowrap;
+    font-size:14px;font-weight:800;color:#6f7889;letter-spacing:-.3px}
+
+  .notes{display:flex;gap:15px;margin-top:44px}
+  .note{flex:1;background:#f6f8fb;border:1px solid #eef1f5;border-radius:15px;padding:15px 18px}
+  .note .k{display:flex;align-items:center;gap:8px;font-size:15.5px;font-weight:800;color:var(--ink);letter-spacing:-.3px}
+  .note .k .d{width:11px;height:11px;border-radius:50%;flex:0 0 auto}
+  .d.b{background:var(--blue)} .d.k{background:var(--ink)} .d.r{background:var(--red)}
+  .note .v{font-size:15px;font-weight:600;color:#5a6478;margin-top:7px;line-height:1.36}
+  .note .v b{color:var(--red);font-weight:800}
+  .note .v i{font-style:normal;color:var(--blue-ink);font-weight:800}
+
+  .foot{position:absolute;left:56px;right:56px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
+    font-size:15.5px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">게임은 <span class="r">넣기만</span>, 워커가 저장한다</div>
+    <div class="uline"></div>
+    <div class="sub">바뀐 유저만 <b>값 스냅샷</b>으로 큐에 → <b>accountId % K</b>로 나눠 → 워커가 통째로 꺼내 <b>UPSERT</b></div>
+
+    <div class="flow">
+      <div class="node game"><div class="cap b"></div><div class="nm">게임 스레드</div><div class="ds">생산자<br>push만 하고 다음 일</div></div>
+
+      <div class="arrow"><span class="arrlbl">스냅샷 배치</span></div>
+
+      <div class="node router"><div class="cap k"></div><div class="nm">분배</div><div class="ds"><span class="code">accountId % K</span></div></div>
+
+      <div class="arrow"></div>
+
+      <div class="node pool"><div class="cap r"></div><div class="nm">DB 워커 풀 <span style="color:var(--red)">×K</span></div>
+        <div class="lane"><span class="wn">워커 0</span><span class="jobs"><span class="job"></span><span class="job"></span><span class="job"></span><span class="job e"></span></span><span class="up">소비자</span></div>
+        <div class="lane"><span class="wn">워커 1</span><span class="jobs"><span class="job"></span><span class="job"></span><span class="job e"></span><span class="job e"></span></span><span class="up">소비자</span></div>
+      </div>
+
+      <div class="arrow r"><span class="arrlbl" style="color:var(--deep)">UPSERT</span></div>
+
+      <div class="cyl"><div class="body"><span>MySQL</span></div><div class="top"></div><div class="ring"></div></div>
+    </div>
+
+    <div class="notes">
+      <div class="note"><div class="k"><span class="d b"></span>dirty만 선별</div><div class="v">바뀐 유저만 담는다 — <b>값 스냅샷</b>(계정·좌표·맵). 안 바뀐 유저 재저장은 낭비</div></div>
+      <div class="note"><div class="k"><span class="d k"></span>순서 보장</div><div class="v">같은 유저는 늘 <i>같은 워커</i>로 — <b>순서 역전 방지</b>. K는 실측으로 결정</div></div>
+      <div class="note"><div class="k"><span class="d r"></span>배치 핸드오프</div><div class="v">모아서 넘겨 <b>lock·깨우기 1회</b>. 워커는 큐를 통째로 꺼내 UPSERT</div></div>
+    </div>
+
+    <div class="foot"><b>UPSERT</b> = INSERT … ON DUPLICATE KEY UPDATE · 송신 워커의 <b>생산자–소비자</b> 패턴 재사용</div>
+  </div>
+</body>
+</html>

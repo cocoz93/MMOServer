@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --blue:#3a78b8; --blue-ink:#2b6aa8; --slate:#566072;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1240px;height:652px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1192px;height:604px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:36px 52px 0}
+
+  .title{font-size:38px;font-weight:800;color:var(--ink);letter-spacing:-.7px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:74px;height:6px;border-radius:3px;background:var(--red);margin-top:14px}
+  .sub{margin-top:14px;font-size:20px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .flow{margin-top:40px;display:flex;align-items:center;justify-content:center;gap:4px}
+  .gnode{width:250px;height:168px;border-radius:20px;border:1.5px solid #e7ebf1;background:#fff;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+    box-shadow:0 6px 18px rgba(30,40,70,.06);position:relative;overflow:hidden;flex:0 0 auto}
+  .gnode::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;background:var(--blue)}
+  .gnode .tag{font-size:15px;font-weight:800;padding:4px 15px;border-radius:999px;background:#e7f0fa;color:var(--blue-ink)}
+  .gnode .t{font-size:28px;font-weight:800;color:var(--ink);letter-spacing:-.6px}
+  .gnode .s{font-size:16px;color:#8a93a5;font-weight:600}
+
+  .fan{flex:0 0 auto;width:210px;height:210px;position:relative}
+  .fan .fl{position:absolute;top:8px;left:0;right:0;text-align:center;font-size:20px;font-weight:800;color:var(--red);letter-spacing:-.3px}
+  .fan .fs{position:absolute;bottom:8px;left:0;right:0;text-align:center;font-size:15px;font-weight:700;color:#9aa3b2}
+
+  .wcol{flex:0 0 auto;display:flex;flex-direction:column;gap:16px}
+  .poolhdr{font-size:16px;font-weight:800;color:var(--red);letter-spacing:-.2px;margin-left:4px}
+  .wk{width:360px;height:76px;border-radius:16px;border:1.5px solid #f3d0d6;background:#fff;position:relative;overflow:hidden;
+    display:flex;align-items:center;padding-left:26px;gap:16px;box-shadow:0 6px 16px rgba(215,38,61,.09)}
+  .wk::before{content:"";position:absolute;top:0;left:0;bottom:0;width:6px;background:var(--red)}
+  .wk .wn{font-size:24px;font-weight:800;color:var(--ink);letter-spacing:-.4px}
+  .wk .wd{font-size:16px;font-weight:700;color:#b05563}
+  .more{margin-left:4px;font-size:16px;font-weight:700;color:#9aa3b2;letter-spacing:-.2px}
+
+  .note{margin-top:34px;text-align:center;font-size:19px;font-weight:600;color:var(--slate);letter-spacing:-.3px}
+  .note b{color:var(--ink);font-weight:800}
+  .badge{margin-top:14px;text-align:center}
+  .badge span{display:inline-block;font-size:17px;font-weight:800;color:#fff;background:var(--red);padding:9px 22px;border-radius:999px;letter-spacing:-.2px}
+
+  .foot{position:absolute;left:52px;right:52px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
+    font-size:15px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">병목(송신)만 <span class="r">K개로</span> 쪼갰다</div>
+    <div class="uline"></div>
+    <div class="sub">게임 스레드가 <b>sessionId % K</b> 로 고정 분배 — 한 세션은 항상 같은 워커</div>
+
+    <div class="flow">
+      <div class="gnode">
+        <div class="tag">생산자 · 1</div>
+        <div class="t">게임 스레드</div>
+        <div class="s">dirty 세션 배치</div>
+      </div>
+
+      <div class="fan">
+        <div class="fl">sessionId % K</div>
+        <svg width="210" height="210" viewBox="0 0 210 210">
+          <defs><marker id="ah" markerUnits="userSpaceOnUse" markerWidth="26" markerHeight="26" refX="4.5" refY="13" orient="auto">
+            <path d="M2,2 L22,13 L2,24 Z" fill="#d7263d"/></marker></defs>
+          <circle cx="15" cy="105" r="9" fill="#d7263d"/>
+          <path d="M15 105 C 84 105, 104 56, 184 56" stroke="#d7263d" stroke-width="8" fill="none" marker-end="url(#ah)"/>
+          <path d="M15 105 C 84 105, 104 154, 184 154" stroke="#d7263d" stroke-width="8" fill="none" marker-end="url(#ah)"/>
+        </svg>
+        <div class="fs">고정 분배</div>
+      </div>
+
+      <div class="wcol">
+        <div class="poolhdr">송신 풀 · ×K</div>
+        <div class="wk"><span class="wn">송신 워커 #0</span><span class="wd">→ WSASend</span></div>
+        <div class="wk"><span class="wn">송신 워커 #1</span><span class="wd">→ WSASend</span></div>
+        <div class="more">… 세션 수만큼 K로 나눠 전담</div>
+      </div>
+    </div>
+
+    <div class="note">완료 처리는 <b>기존 IOCP 워커 그대로</b> · 세션 고정이라 <b>순서 보장(FIFO)</b></div>
+    <div class="badge"><span>송신 본체 0줄 변경 · INI SendWorkers=K 로 조절</span></div>
+
+    <div class="foot">경로 : 게임 스레드 → <b>sessionId % K</b> → 송신 풀 ×K(유저공간 큐 → WSASend) → 완료는 기존 IOCP 워커 · 세션당 진행 중 송신 1개 직렬화(_sending CAS)</div>
+  </div>
+</body>
+</html>

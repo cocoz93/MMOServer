@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';src:url('fonts/PretendardVariable.woff2') format('woff2');font-weight:100 900;font-display:block}
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{--bg:#eef1f5;--bg2:#e5e9f0;--card:#fff;--ink:#1a1e2a;--ink2:#3a4254;--muted:#7c8597;--faint:#9aa3b2;--slate:#566072;
+    --blue:#2b6cb0;--blue-d:#1f5286;--blue-line:#cbdcef;
+    --red:#be2d46;--deep:#951f38;--red-line:#f0cdd5;--red-bg:#fdeef1;
+    --green:#1f8a5f;--green-d:#146b49;--green-line:#bfe4d3;
+    --line:#e6eaf0;--line2:#eef0f3;--arw:#aab2c0;
+    --mono:"SF Mono",ui-monospace,"Cascadia Mono","Consolas",monospace;
+    --sh-node:0 1px 3px rgba(30,40,70,.045),0 14px 30px -18px rgba(30,40,70,.18)}
+  html,body{width:900px;color:var(--ink);
+    background:radial-gradient(680px 480px at 15% -3%,#fff,rgba(255,255,255,0) 55%),linear-gradient(178deg,var(--bg),var(--bg2));
+    font-family:'Pretendard',"Malgun Gothic",sans-serif;word-break:keep-all;overflow-wrap:break-word;
+    font-feature-settings:"tnum" 1,"kern" 1,"calt" 1;-webkit-font-smoothing:antialiased;text-rendering:geometricPrecision}
+  .wrap{width:900px;padding:48px 46px 30px;display:flex;flex-direction:column;align-items:center}
+
+  /* header */
+  .head{align-self:stretch;margin-bottom:26px}
+  .eyebrow{display:inline-flex;align-items:center;gap:10px;font-size:15px;font-weight:800;letter-spacing:2.8px;color:var(--muted);text-transform:uppercase;font-family:var(--mono)}
+  .eyebrow .d{width:9px;height:9px;border-radius:50%;background:var(--red);box-shadow:0 0 0 4px var(--red-bg)}
+  .title{margin-top:12px;font-size:46px;font-weight:800;color:var(--ink);letter-spacing:-1.5px;line-height:1.04}.title .r{color:var(--red)}
+  .uline{margin-top:14px;width:92px;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--red),#dd6d82);box-shadow:0 6px 14px -5px rgba(190,45,70,.5)}
+  .sub{margin-top:16px;font-size:19px;font-weight:500;color:var(--muted);letter-spacing:-.3px}.sub b{color:var(--ink2);font-weight:700}
+
+  /* clients */
+  .clients{width:236px;background:#fff;border:1.5px solid var(--line);border-top:3.5px solid var(--faint);border-radius:18px;
+    box-shadow:var(--sh-node);display:flex;flex-direction:column;align-items:center;gap:9px;padding:22px}
+  .clients .ibox{width:60px;height:60px;border-radius:14px;background:#fff;border:1.6px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--slate)}
+  .clients .ibox svg{width:34px;height:34px}
+  .clients .cn{font-size:22px;font-weight:800;color:var(--ink)}
+  .clients .cs{font-size:13px;font-weight:700;color:var(--faint);font-family:var(--mono)}
+
+  /* flow gap + arrows */
+  .gap{display:flex;align-items:flex-start;justify-content:center;gap:30px;padding:14px 0}
+  .ar{display:flex;flex-direction:column;align-items:center;gap:8px}
+  .ar .ln{position:relative;width:3px;height:40px;background:var(--arw);border-radius:2px}
+  .ar.dn .ln::after{content:"";position:absolute;bottom:-3px;left:50%;transform:translateX(-50%);border-left:7px solid transparent;border-right:7px solid transparent;border-top:10px solid var(--arw)}
+  .ar.up .ln::before{content:"";position:absolute;top:-3px;left:50%;transform:translateX(-50%);border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:10px solid var(--arw)}
+  .ar .lab{font-size:15px;font-weight:800;font-family:var(--mono);color:var(--slate);letter-spacing:.2px}
+  .ar .lab.r{color:var(--deep)}.ar .lab.g{color:var(--green-d)}.ar .lab.b{color:var(--blue-d)}
+  .ar .sub2{font-size:12px;font-weight:600;color:var(--faint);letter-spacing:-.2px;margin-top:-4px}
+
+  /* layer card */
+  .layer{width:100%;background:#fff;border:1px solid var(--line);border-radius:22px;
+    box-shadow:0 1px 0 rgba(255,255,255,.9) inset,0 30px 60px -34px rgba(30,40,70,.18),0 12px 26px -18px rgba(30,40,70,.08);
+    padding:22px 26px 26px;position:relative;overflow:hidden}
+  .layer::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px}
+  .layer.net::before{background:var(--blue)}.layer.game::before{background:var(--red)}.layer.store::before{background:var(--green)}
+  .grp{display:flex;align-items:center;gap:11px;font-size:21px;font-weight:800;letter-spacing:-.4px;margin-bottom:18px}
+  .grp .gi{width:27px;height:27px;border-radius:8px;background:#fff;border:1.9px solid;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;font-family:var(--mono)}
+  .grp .tag{margin-left:auto;font-size:13px;font-weight:700;color:var(--faint);font-family:var(--mono);letter-spacing:0}
+  .layer.net .grp{color:var(--blue-d)}.layer.net .gi{border-color:var(--blue);color:var(--blue)}
+  .layer.game .grp{color:var(--deep)}.layer.game .gi{border-color:var(--red);color:var(--red)}
+  .layer.store .grp{color:var(--green-d)}.layer.store .gi{border-color:var(--green);color:var(--green)}
+  .stack{display:flex;flex-direction:column;gap:13px}
+
+  /* node (icon-left) */
+  .node{display:flex;align-items:center;gap:16px;background:#fff;border:1.5px solid var(--line);border-radius:15px;padding:15px 20px;box-shadow:var(--sh-node)}
+  .node .ibox{width:52px;height:52px;flex:0 0 auto;border-radius:13px;background:#fff;border:1.6px solid var(--line);display:flex;align-items:center;justify-content:center}
+  .node .ibox svg{width:29px;height:29px}
+  .node .tx{display:flex;flex-direction:column;gap:4px}
+  .node .nm{font-size:22px;font-weight:800;color:var(--ink);letter-spacing:-.5px;display:flex;align-items:center;gap:9px}
+  .node .nm .k{font-size:14px;font-weight:800;font-family:var(--mono);border:1.4px solid;border-radius:7px;padding:1px 7px}
+  .node .ds{font-size:14px;font-weight:600;color:var(--muted)}
+  .node .ds .m{font-family:var(--mono);font-weight:700;color:var(--slate)}
+  .ic{fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+  .node.n .ibox{border-color:var(--blue-line);color:var(--blue)}.node.n .nm .k{color:var(--blue-d);border-color:var(--blue-line)}
+  .node.s .ibox{border-color:var(--green-line);color:var(--green-d)}.node.s .nm .k{color:var(--green-d);border-color:var(--green-line)}
+
+  /* hero (game loop) */
+  .hero{display:flex;align-items:center;gap:24px;background:#fff;border:3px solid var(--red);border-radius:20px;padding:24px 28px;
+    box-shadow:0 1px 3px rgba(30,40,70,.05),0 24px 48px -26px rgba(190,45,70,.34);color:var(--red)}
+  .hero .hbox{width:80px;height:80px;flex:0 0 auto;border-radius:19px;background:#fff;border:2px solid var(--red);display:flex;align-items:center;justify-content:center}
+  .hero .hbox svg{width:46px;height:46px;stroke-width:1.85}
+  .hero .htx{display:flex;flex-direction:column;gap:9px;align-items:flex-start}
+  .hero .hk{font-size:14px;font-weight:800;padding:4px 15px;border-radius:999px;background:#fff;border:1.6px solid var(--red);color:var(--red);letter-spacing:.4px;font-family:var(--mono)}
+  .hero .hn{font-size:40px;font-weight:800;letter-spacing:-1.4px;line-height:1}
+  .hero .hd{font-size:16px;font-weight:700;color:var(--muted)}.hero .hd .m{font-family:var(--mono);color:var(--slate)}
+
+  /* store row */
+  .srow{display:flex;align-items:center;gap:16px}
+  .srow .node{flex:1}
+  .toMy{display:flex;align-items:center;gap:14px;flex:0 0 auto}
+  .toMy .a{width:32px;height:3px;background:var(--arw);border-radius:2px;position:relative}
+  .toMy .a::after{content:"";position:absolute;right:-3px;top:50%;transform:translateY(-50%);border-top:6px solid transparent;border-bottom:6px solid transparent;border-left:9px solid var(--arw)}
+  .dbn{display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--green-d)}
+  .dbn svg{width:56px;height:56px}
+  .dbn .dc{font-size:16px;font-weight:800;font-family:var(--mono)}
+
+  /* footer */
+  .foot{align-self:stretch;margin-top:28px;padding-top:16px;border-top:1px solid var(--line2);
+    display:flex;align-items:center;gap:18px;font-size:14px;color:var(--faint);font-weight:600;letter-spacing:-.2px;flex-wrap:wrap}
+  .foot .lg{display:flex;align-items:center;gap:8px}
+  .foot .dot{width:11px;height:11px;border-radius:50%}
+  .foot .dot.n{background:var(--blue)}.foot .dot.g{background:var(--red)}.foot .dot.s{background:var(--green)}
+  .foot .note{color:var(--muted)}.foot .note b{color:var(--ink2);font-weight:700}
+  .foot .right{margin-left:auto;font-family:var(--mono);color:var(--slate);font-weight:700;letter-spacing:.4px}
+</style></head><body>
+<svg width="0" height="0" style="position:absolute"><defs>
+  <symbol id="ic-users" viewBox="0 0 24 24"><circle class="ic" cx="9" cy="8" r="3.3"/><path class="ic" d="M3.6 19.4c0-3.2 2.4-5.4 5.4-5.4s5.4 2.2 5.4 5.4"/><circle class="ic" cx="17" cy="9.2" r="2.5"/><path class="ic" d="M15.6 14.3c2.5.25 4.7 2.3 4.7 5.1"/></symbol>
+  <symbol id="ic-accept" viewBox="0 0 24 24"><path class="ic" d="M13 3.8h4.2A2.5 2.5 0 0 1 19.7 6.3v11.4a2.5 2.5 0 0 1-2.5 2.5H13"/><path class="ic" d="M3.7 12h9.6"/><path class="ic" d="M10 8.3 13.8 12 10 15.7"/></symbol>
+  <symbol id="ic-cpu" viewBox="0 0 24 24"><rect class="ic" x="6.6" y="6.6" width="10.8" height="10.8" rx="1.7"/><rect class="ic" x="9.9" y="9.9" width="4.2" height="4.2" rx=".8"/><path class="ic" d="M9.3 3.2v3.4M14.7 3.2v3.4M9.3 17.4v3.4M14.7 17.4v3.4M3.2 9.3h3.4M3.2 14.7h3.4M17.4 9.3h3.4M17.4 14.7h3.4"/></symbol>
+  <symbol id="ic-send" viewBox="0 0 24 24"><path class="ic" d="M12 15.4V4.2"/><path class="ic" d="M7.7 8.5 12 4.2l4.3 4.3"/><path class="ic" d="M4.6 14v4.4A1.5 1.5 0 0 0 6.1 19.9h11.8a1.5 1.5 0 0 0 1.5-1.5V14"/></symbol>
+  <symbol id="ic-loop" viewBox="0 0 24 24"><path class="ic" d="M19.8 12a7.8 7.8 0 0 1-13 5.8"/><path class="ic" d="M4.2 12A7.8 7.8 0 0 1 17 6.2"/><path class="ic" d="M17.2 2.6v3.7h-3.7"/><path class="ic" d="M6.8 21.4v-3.7h3.7"/></symbol>
+  <symbol id="ic-save" viewBox="0 0 24 24"><path class="ic" d="M5.6 4.2h10.4L19.8 8v10.3a1.5 1.5 0 0 1-1.5 1.5H5.7a1.5 1.5 0 0 1-1.5-1.5V5.7a1.5 1.5 0 0 1 1.4-1.5Z"/><path class="ic" d="M8 4.2v4.8h7.3V4.4"/><rect class="ic" x="8" y="12.4" width="8" height="6.4" rx=".6"/></symbol>
+  <symbol id="ic-db" viewBox="0 0 24 24"><ellipse class="ic" cx="12" cy="5.8" rx="7" ry="2.8"/><path class="ic" d="M5 5.8v12.4c0 1.55 3.13 2.8 7 2.8s7-1.25 7-2.8V5.8"/><path class="ic" d="M5 12c0 1.55 3.13 2.8 7 2.8s7-1.25 7-2.8"/></symbol>
+</defs></svg>
+
+<div class="wrap">
+  <div class="head">
+    <div class="eyebrow"><span class="d"></span>MMO SERVER · ARCHITECTURE</div>
+    <div class="title">요청이 서버를 <span class="r">한 바퀴</span> 도는 길</div>
+    <div class="uline"></div>
+    <div class="sub">위 → 아래 한 방향 흐름 · 게임 로직은 <b>단일 스레드</b>, I/O·DB만 워커로 확장</div>
+  </div>
+
+  <div class="clients">
+    <div class="ibox"><svg viewBox="0 0 24 24"><use href="#ic-users"/></svg></div>
+    <div class="cn">클라이언트</div><div class="cs">connect · I/O</div>
+  </div>
+
+  <div class="gap">
+    <div class="ar dn"><div class="ln"></div><span class="lab">recv</span><span class="sub2">요청 수신</span></div>
+    <div class="ar up"><div class="ln"></div><span class="lab">send</span><span class="sub2">응답 송신</span></div>
+  </div>
+
+  <div class="layer net">
+    <div class="grp"><span class="gi">1</span>네트워크 계층<span class="tag">IOCP</span></div>
+    <div class="stack">
+      <div class="node n"><div class="ibox"><svg viewBox="0 0 24 24"><use href="#ic-accept"/></svg></div>
+        <div class="tx"><div class="nm">Accept <span class="k">×1</span></div><div class="ds">신규 연결 수립 · 세션 등록</div></div></div>
+      <div class="node n"><div class="ibox"><svg viewBox="0 0 24 24"><use href="#ic-cpu"/></svg></div>
+        <div class="tx"><div class="nm">IOCP Worker <span class="k">×N</span></div><div class="ds"><span class="m">RECV·SEND</span> 완료 처리 · 패킷 파싱</div></div></div>
+      <div class="node n"><div class="ibox"><svg viewBox="0 0 24 24"><use href="#ic-send"/></svg></div>
+        <div class="tx"><div class="nm">Send Worker <span class="k">×K</span></div><div class="ds"><span class="m">WSASend</span> 제출 · sessionId%K 고정 분배</div></div></div>
+    </div>
+  </div>
+
+  <div class="gap">
+    <div class="ar dn"><div class="ln"></div><span class="lab r">SwapQ</span><span class="sub2">프레임당 통째 swap</span></div>
+    <div class="ar up"><div class="ln"></div><span class="lab r">dirty</span><span class="sub2">변경분만 송신</span></div>
+  </div>
+
+  <div class="layer game">
+    <div class="grp"><span class="gi">2</span>게임 계층<span class="tag">SINGLE PROCESS</span></div>
+    <div class="hero">
+      <div class="hbox"><svg viewBox="0 0 24 24"><use href="#ic-loop"/></svg></div>
+      <div class="htx"><span class="hk">SINGLE THREAD · ×1</span><span class="hn">게임 루프</span><span class="hd"><span class="m">25fps</span> 고정 틱 · 이동·시야·전투 시뮬레이션</span></div>
+    </div>
+  </div>
+
+  <div class="gap">
+    <div class="ar dn"><div class="ln"></div><span class="lab g">snapshot</span><span class="sub2">위치 스냅샷</span></div>
+  </div>
+
+  <div class="layer store">
+    <div class="grp"><span class="gi">3</span>저장 계층<span class="tag">fire-and-forget</span></div>
+    <div class="srow">
+      <div class="node s"><div class="ibox"><svg viewBox="0 0 24 24"><use href="#ic-save"/></svg></div>
+        <div class="tx"><div class="nm">DB Worker <span class="k">×K</span></div><div class="ds"><span class="m">accountId%K</span> · UPSERT · prepared stmt</div></div></div>
+      <div class="toMy"><div class="a"></div><div class="dbn"><svg viewBox="0 0 24 24"><use href="#ic-db"/></svg><div class="dc">MySQL</div></div></div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span class="lg"><span class="dot n"></span>네트워크</span>
+    <span class="lg"><span class="dot g"></span>게임</span>
+    <span class="lg"><span class="dot s"></span>저장</span>
+    <span class="note">큐 = <b>배치 swap</b> · 송신 완료는 IOCP 워커가 처리 · DB는 <b>fire-and-forget</b></span>
+    <span class="right">~4K CCU</span>
+  </div>
+</div>
+</body></html>

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';src:url('fonts/PretendardVariable.woff2') format('woff2');font-weight:100 900;font-display:block}
+  :root{--bg:#eef1f5;--ink:#1f2330;--muted:#7c8597;--red:#d7263d;--deep:#b3122a;--red-bg:#fdeef0;
+    --blue:#3a78b8;--blue-ink:#2b6aa8;--blue-bg:#e7f0fa;--grn:#2f9e6b;--grn-ink:#1f7d52;--grn-bg:#e4f4ec;--slate:#566072}
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1500px;height:764px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1452px;height:716px;background:#fff;border:1px solid #eef0f3;border-radius:28px;box-shadow:0 16px 44px rgba(30,40,70,.07);overflow:hidden}
+  .title{position:absolute;left:50px;top:30px;font-size:34px;font-weight:800;color:var(--ink);letter-spacing:-.8px}.title .r{color:var(--red)}
+  .uline{position:absolute;left:52px;top:78px;width:70px;height:5px;border-radius:3px;background:var(--red)}
+  .sub{position:absolute;left:52px;top:94px;font-size:17px;font-weight:500;color:var(--muted)}.sub b{color:#3a4254;font-weight:700}
+  svg.wire{position:absolute;inset:0;width:1452px;height:716px;pointer-events:none;z-index:2}
+  .zone{position:absolute;border-radius:22px;z-index:1}
+  .zone.net{background:#eff5fb;border:1.5px solid #dbe7f5}.zone.game{background:#fdf1f3;border:1.5px solid #f6d9df}.zone.store{background:#edf7f1;border:1.5px solid #d3ecdf}
+  .ztab{position:absolute;top:13px;left:20px;font-size:16.5px;font-weight:800;z-index:3}
+  .net .ztab{color:var(--blue-ink)}.game .ztab{color:var(--deep)}.store .ztab{color:var(--grn-ink)}
+  .node{position:absolute;z-index:3;background:#fff;border:1.5px solid #e7ebf1;border-radius:14px;box-shadow:0 5px 14px rgba(30,40,70,.06);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-align:center;padding:0 10px}
+  .node .nn{font-size:20px;font-weight:800;color:var(--ink);letter-spacing:-.4px}
+  .node .nn .k{font-size:15px;font-weight:800;padding:1px 8px;border-radius:999px;margin-left:5px;vertical-align:2px}
+  .node.b .nn .k{background:var(--blue-bg);color:var(--blue-ink)}.node.g .nn .k{background:var(--grn-bg);color:var(--grn-ink)}
+  .node .ns{font-size:13px;color:#8a93a5;font-weight:650}
+  .clients{background:#f4f6fa;border:1.5px solid #e3e7ee}.clients .ni{font-size:30px}.clients .nn{font-size:18px;color:var(--slate)}
+  .hero{position:absolute;z-index:3;background:linear-gradient(180deg,#fff,#fffafb);border:1.6px solid #f1c9d1;border-radius:16px;box-shadow:0 12px 28px rgba(215,38,61,.12);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center;padding:0 12px}
+  .hero::before{content:"";position:absolute;top:0;left:0;right:0;height:5px;background:linear-gradient(90deg,#e23f53,var(--red))}
+  .hero .p{font-size:13px;font-weight:800;padding:3px 12px;border-radius:999px;background:var(--red-bg);color:var(--red)}
+  .hero .nn{font-size:25px;font-weight:800;color:var(--ink);letter-spacing:-.6px}.hero .ns{font-size:13.5px;color:#6b7688;font-weight:700}
+  .db{position:absolute;z-index:3;display:flex;flex-direction:column;align-items:center;gap:5px}
+  .cyl{width:74px;height:60px;border-radius:50%/15px;background:linear-gradient(180deg,#3fae79,#2c8f63);border:1.5px solid #268257;position:relative}
+  .cyl::before{content:"";position:absolute;left:0;right:0;top:0;height:17px;border-radius:50%;background:#54c08d;border:1.5px solid #268257}
+  .cyl .cw{position:absolute;left:0;right:0;top:8px;text-align:center;font-size:15px;font-weight:800;color:#fff;z-index:2}
+  .dbcap{font-size:13.5px;font-weight:800;color:var(--grn-ink)}
+  .al{position:absolute;z-index:4;font-size:13px;font-weight:750;white-space:nowrap;background:rgba(255,255,255,.85);padding:1px 5px;border-radius:5px}
+  .al.b{color:var(--blue-ink)}.al.r{color:var(--red)}.al.g{color:var(--grn-ink)}.al.m{color:#9aa3b2}
+  .foot{position:absolute;left:52px;right:52px;bottom:20px;padding-top:11px;border-top:1px solid #eef0f3;font-size:14px;color:#9aa3b2;font-weight:550}.foot b{color:#6b7484;font-weight:700}
+</style></head><body>
+<div class="card">
+  <div class="title">MMO 서버 구조 — 게임 로직은 <span class="r">단일 스레드</span></div>
+  <div class="uline"></div>
+  <div class="sub">요청이 서버를 <b>한 바퀴</b> 도는 경로 · <b>요청 ▲ / 응답 ▼</b></div>
+  <div class="zone net" style="left:222px;top:148px;width:402px;height:456px"><div class="ztab">⚡ 네트워크 계층</div></div>
+  <div class="zone game" style="left:686px;top:250px;width:300px;height:308px"><div class="ztab">🎮 게임 계층</div></div>
+  <div class="zone store" style="left:1048px;top:300px;width:372px;height:228px"><div class="ztab">🗄️ 저장 계층</div></div>
+  <svg class="wire" viewBox="0 0 1452 716"><defs><style>
+    .lb{stroke:#7fa6cf;stroke-width:3.4;fill:none;stroke-linecap:round}.lr{stroke:#e79aa6;stroke-width:3.4;fill:none;stroke-linecap:round}
+    .lg{stroke:#8fd0af;stroke-width:3.4;fill:none;stroke-linecap:round}.lm{stroke:#c2ccd9;stroke-width:3.4;fill:none;stroke-linecap:round}
+    .hb{fill:#7fa6cf}.hr{fill:#e79aa6}.hg{fill:#8fd0af}.hm{fill:#c2ccd9}</style></defs>
+    <path class="lm" d="M190 356 Q220 250 250 242"/><polygon class="hm" points="242,235 256,238 247,249"/>
+    <path class="lb" d="M190 396 H246"/><polygon class="hb" points="238,389 238,403 248,396"/>
+    <path class="lr" d="M248 521 Q214 470 190 434"/><polygon class="hr" points="198,440 188,430 200,427"/>
+    <path class="lb" d="M598 372 Q660 380 708 392"/><polygon class="hb" points="700,386 710,396 712,383"/>
+    <path class="lr" d="M708 478 Q650 500 600 516"/><polygon class="hr" points="609,510 599,520 597,507"/>
+    <path class="lg" d="M962 414 H1068"/><polygon class="hg" points="1060,407 1060,421 1070,414"/>
+    <path class="lg" d="M1300 414 H1324"/><polygon class="hg" points="1316,407 1316,421 1326,414"/>
+  </svg>
+  <div class="node clients" style="left:44px;top:320px;width:146px;height:152px"><div class="ni">👥</div><div class="nn">클라이언트</div></div>
+  <div class="node b" style="left:250px;top:196px;width:346px;height:88px"><div class="nn">🔌 Accept <span class="k">×1</span></div><div class="ns">신규 연결 수립 (AcceptEx 미사용)</div></div>
+  <div class="node b" style="left:250px;top:314px;width:346px;height:100px"><div class="nn">⚙️ IOCP Worker <span class="k">×N</span></div><div class="ns">RECV·SEND 완료 처리 · 패킷 파싱</div></div>
+  <div class="node b" style="left:250px;top:470px;width:346px;height:100px"><div class="nn">📤 Send Worker <span class="k">×K</span></div><div class="ns">WSASend 제출 · sessionId%K</div></div>
+  <div class="hero" style="left:712px;top:314px;width:248px;height:180px"><div class="p">단일 스레드 · ×1</div><div class="nn">🧠 게임 루프</div><div class="ns">25fps 고정 틱 · 40ms</div><div class="ns">로직 · 이동/섹터 · 송신 flush</div></div>
+  <div class="node g" style="left:1074px;top:356px;width:224px;height:116px"><div class="nn">💾 DB Worker <span class="k">×K</span></div><div class="ns">accountId%K · UPSERT</div></div>
+  <div class="db" style="left:1322px;top:360px;width:80px;height:104px"><div class="cyl"><div class="cw">DB</div></div><div class="dbcap">MySQL</div></div>
+  <div class="al m" style="left:120px;top:270px">신규 연결</div>
+  <div class="al b" style="left:150px;top:372px">recv</div>
+  <div class="al r" style="left:120px;top:470px">WSASend</div>
+  <div class="al b" style="left:612px;top:356px">SwapQ · 통째 swap</div>
+  <div class="al r" style="left:612px;top:496px">dirty 송신</div>
+  <div class="al g" style="left:988px;top:392px">위치 스냅샷</div>
+  <div class="foot">송신 <b>완료</b>는 IOCP 워커가 처리 · 큐 핸드오프는 <b>배치 swap</b> · DB는 fire-and-forget · 단일 프로세스 · 동접 목표 3–4천</div>
+</div></body></html>

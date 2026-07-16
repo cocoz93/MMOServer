@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --blue:#3a78b8; --blue-ink:#2b6aa8;
+    --teal:#3c8a8f; --slate:#566072; --track:#eaeef3;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1000px;height:640px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:952px;height:592px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:36px 48px 0}
+
+  .title{font-size:37px;font-weight:800;color:var(--ink);letter-spacing:-.8px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:74px;height:6px;border-radius:3px;background:var(--red);margin-top:14px}
+  .sub{margin-top:14px;font-size:19px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .limit{margin-top:22px;text-align:right;font-size:15.5px;font-weight:700;color:#9aa3b2;letter-spacing:-.2px;padding-right:180px}
+  .limit b{color:#6b7484}
+
+  .meters{margin-top:10px;display:flex;flex-direction:column;gap:26px}
+  .mrow{display:grid;grid-template-columns:218px 1fr 172px;align-items:center;column-gap:22px}
+  .mhead .nm{font-size:23px;font-weight:800;color:var(--ink);letter-spacing:-.5px}
+  .mhead .ds{margin-top:3px;font-size:15px;font-weight:600;color:var(--muted);letter-spacing:-.3px}
+
+  .track{position:relative;height:58px;border-radius:15px;background:var(--track);
+    border-right:3px dashed #c3ccd8;overflow:hidden}
+  .fill{position:absolute;left:0;top:0;height:100%;border-radius:15px;display:flex;align-items:center;justify-content:flex-end}
+  .fill.r{background:linear-gradient(180deg,#e6394f,var(--red));box-shadow:0 3px 16px rgba(215,38,61,.30)}
+  .fill.b{background:linear-gradient(180deg,#4a86c4,#356ba8);box-shadow:0 3px 14px rgba(58,120,184,.22)}
+  .fill.t{background:linear-gradient(180deg,#4a9ba0,#357f84);box-shadow:0 3px 14px rgba(60,138,143,.20)}
+
+  .mval{display:flex;flex-direction:column;align-items:flex-start;gap:7px}
+  .num{font-size:35px;font-weight:800;color:var(--ink);letter-spacing:-1.2px;line-height:1}
+  .num.r{color:var(--red)}
+  .pill{font-size:15px;font-weight:800;padding:5px 15px;border-radius:999px;letter-spacing:-.2px}
+  .pill.sat{background:var(--red);color:#fff}
+  .pill.ok{background:#eaf0f6;color:var(--slate)}
+
+  .foot{position:absolute;left:48px;right:48px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
+    font-size:15px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">병목은 <span class="r">송신 스레드</span> 하나 — 혼자 CPU 포화</div>
+    <div class="uline"></div>
+    <div class="sub">동접 2500에서 천장 · 세 스레드 중 <b>송신만 코어를 다 씀</b>, 나머지는 절반도 못 씀</div>
+
+    <div class="limit">트랙 끝 = 코어 1개 (<b>CPU 1.0 = 꽉 참</b>)</div>
+
+    <div class="meters">
+      <div class="mrow">
+        <div class="mhead"><div class="nm">송신 워커</div><div class="ds">송신 요청 · WSASend</div></div>
+        <div class="track"><div class="fill r" style="width:100%"></div></div>
+        <div class="mval"><div class="num r">1.00</div><div class="pill sat">포화</div></div>
+      </div>
+      <div class="mrow">
+        <div class="mhead"><div class="nm">게임 스레드</div><div class="ds">좌표 계산 · 로직</div></div>
+        <div class="track"><div class="fill b" style="width:31%"></div></div>
+        <div class="mval"><div class="num">0.31</div><div class="pill ok">여유</div></div>
+      </div>
+      <div class="mrow">
+        <div class="mhead"><div class="nm">IO 워커</div><div class="ds">IOCP 완료 처리</div></div>
+        <div class="track"><div class="fill t" style="width:21%"></div></div>
+        <div class="mval"><div class="num">0.21</div><div class="pill ok">여유</div></div>
+      </div>
+    </div>
+
+    <div class="foot">동접 2500 · WSASend <b>5.5만 call/s</b>로 송신 CPU 1.00 포화 · 호출당 고정비 <b>20.8µs</b> 지배 · 부분송신 · 큐 오버플로 전 구간 0</div>
+  </div>
+</body>
+</html>

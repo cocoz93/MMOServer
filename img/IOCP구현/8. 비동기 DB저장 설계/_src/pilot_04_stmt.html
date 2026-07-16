@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --slate:#566072; --gray-fill:#dfe3ea;
+    --mono:"SF Mono",ui-monospace,"Consolas",monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:640px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:592px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:36px 56px 0}
+
+  .title{font-size:40px;font-weight:800;color:var(--ink);letter-spacing:-.8px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:78px;height:6px;border-radius:3px;background:var(--red);margin-top:14px}
+  .sub{margin-top:14px;font-size:20px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+  .sub .mono{font-family:var(--mono);font-weight:800;color:var(--deep);font-size:18px}
+
+  .chart{margin-top:34px}
+  .toptag{text-align:right;font-size:16px;font-weight:800;color:var(--slate);letter-spacing:-.2px;line-height:1.35;margin-bottom:13px}
+  .toptag b{color:#8089a0;font-weight:700}
+  .bar{height:84px;border-radius:16px;overflow:hidden;display:flex;
+    box-shadow:0 8px 22px -8px rgba(215,38,61,.28)}
+  .seg{height:100%;display:flex;flex-direction:column;justify-content:center}
+  .seg.fsync{flex:0 0 91%;background:linear-gradient(180deg,#e6394f,var(--red));padding-left:34px;gap:3px}
+  .seg.fsync .n{font-size:25px;font-weight:800;color:#fff;letter-spacing:-.5px}
+  .seg.fsync .v{font-size:16px;font-weight:700;color:#ffdfe4;letter-spacing:-.2px}
+  .seg.parse{flex:1;background:var(--gray-fill);align-items:center}
+  .seg.parse .p{font-size:19px;font-weight:800;color:#7a8493}
+  .barcap{margin-top:12px;display:flex;justify-content:space-between;font-size:15.5px;font-weight:700;color:#9aa3b2;letter-spacing:-.2px}
+  .barcap .r{color:var(--red)}
+
+  .life{margin-top:32px;display:flex;align-items:center;gap:26px;
+    background:#fdeef0;border:1.5px solid #f6cdd4;border-radius:16px;padding:20px 28px}
+  .life .txt{flex:1;font-size:18px;font-weight:600;color:#8a4550;line-height:1.5;letter-spacing:-.3px}
+  .life .txt b{color:var(--deep);font-weight:800}
+  .life .txt .ink{color:var(--ink);font-weight:800}
+  .life .rule{display:flex;flex-direction:column;align-items:center;gap:9px;flex:0 0 auto;padding-left:26px;border-left:1.5px solid #f3ccd2}
+  .life .rlbl{font-size:13.5px;font-weight:800;color:var(--deep);letter-spacing:-.2px}
+  .steps{display:flex;align-items:center;gap:10px}
+  .step{background:#fff;border:1.5px solid #f0c4ca;border-radius:11px;padding:9px 15px;font-size:15px;font-weight:800;color:var(--deep);letter-spacing:-.3px}
+  .step .no{color:#e17886;margin-right:5px}
+  .ar{color:var(--deep);font-weight:900;font-size:18px}
+
+  .foot{position:absolute;left:56px;right:56px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
+    font-size:15.5px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">prepared statement, <span class="r">진짜 값어치는 생명주기</span></div>
+    <div class="uline"></div>
+    <div class="sub">위치 저장의 병목은 <b>fsync</b> — 파싱 절감(수µs)은 티가 안 난다. 채택 이유는 성능이 아니다.</div>
+
+    <div class="chart">
+      <div class="toptag">SQL 파싱 ~9% ↓<br><b>prepared stmt가 아끼는 부분 (티끌)</b></div>
+      <div class="bar">
+        <div class="seg fsync">
+          <div class="n">fsync — 디스크 강제 기록</div>
+          <div class="v">수백 µs ~ ms · 커밋 시간의 대부분 ← 진짜 병목</div>
+        </div>
+        <div class="seg parse"></div>
+      </div>
+      <div class="barcap"><span>커밋 1회 소요 시간 · 크기 개념도</span></div>
+    </div>
+
+    <div class="life">
+      <div class="txt">그래서 도입 이유는 성능이 아니라 <b>생명주기 관리</b>. stmt 핸들은 <b>특정 커넥션 위에서</b> 만들어져, 커넥션이 죽으면 함께 무효 — <span class="ink">재연결·종료·유실 모든 국면에서 짝맞춰 관리한다.</span></div>
+      <div class="rule">
+        <div class="rlbl">닫는 순서 — 항상</div>
+        <div class="steps"><span class="step"><span class="no">①</span>stmt</span><span class="ar">→</span><span class="step"><span class="no">②</span>커넥션</span></div>
+      </div>
+    </div>
+
+    <div class="foot">값·문법 분리로 <b>SQL 인젝션 차단</b>(부수 이득) · fsync 횟수↓ = <b>배치 커밋</b>(다음 단계)</div>
+  </div>
+</body>
+</html>

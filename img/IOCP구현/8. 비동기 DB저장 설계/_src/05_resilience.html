@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --blue:#3a78b8; --blue-ink:#2b6aa8; --slate:#566072;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:640px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:592px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:36px 56px 0}
+
+  .title{font-size:37px;font-weight:800;color:var(--ink);letter-spacing:-.8px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:62px;height:5px;border-radius:3px;background:var(--red);margin-top:15px}
+  .sub{margin-top:14px;font-size:19px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .panels{display:flex;gap:24px;margin-top:24px}
+  .panel{flex:1;border-radius:20px;padding:20px 26px 18px;border:1.5px solid;position:relative}
+  .panel.strict{background:#f5f6f9;border-color:#dfe3ea}
+  .panel.heal{background:#f1f6fc;border-color:#cddff0}
+
+  .ptag{display:inline-flex;align-items:center;gap:8px;font-size:16.5px;font-weight:800;padding:8px 18px;border-radius:999px;letter-spacing:-.3px}
+  .ptag.strict{background:var(--ink);color:#fff}
+  .ptag.heal{background:var(--blue);color:#fff}
+
+  .cap2{margin-top:15px;font-size:15.5px;font-weight:700;color:#6f7889;letter-spacing:-.3px}
+
+  .conns{display:flex;gap:11px;margin-top:13px}
+  .conn{display:flex;flex-direction:column;align-items:center;gap:7px}
+  .conn .box{width:52px;height:46px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#fff}
+  .conn .box.ok{background:linear-gradient(180deg,#4a86c4,#356ba8)}
+  .conn .box.no{background:linear-gradient(180deg,#e23f53,#cf1d34);box-shadow:0 0 0 4px rgba(215,38,61,.16)}
+  .conn .cl{font-size:12px;font-weight:800;color:#8089a0}
+
+  .healrow{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:20px}
+  .hn{width:122px;border-radius:14px;padding:14px 10px;text-align:center;background:#fff;border:1px solid #e6ebf2;box-shadow:0 6px 16px rgba(30,40,70,.05)}
+  .hn .t{font-size:17px;font-weight:800;color:var(--ink);letter-spacing:-.3px}
+  .hn .s{font-size:12.5px;font-weight:700;margin-top:5px}
+  .hn.up .s{color:var(--blue-ink)} .hn.down{opacity:.72} .hn.down .s{color:var(--red)}
+  .hdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;transform:translateY(-1px)}
+  .hdot.g{background:#3aa06a} .hdot.r{background:var(--red)}
+  .reconn{display:flex;flex-direction:column;align-items:center;gap:3px}
+  .reconn .cyc{font-size:32px;font-weight:900;color:var(--blue);line-height:1}
+  .reconn .rl{font-size:12.5px;font-weight:800;color:var(--blue-ink);white-space:nowrap}
+
+  .verdict{margin-top:17px;display:flex;align-items:baseline;gap:12px}
+  .verdict .big{font-size:31px;font-weight:800;letter-spacing:-1px;line-height:1}
+  .verdict .sm{font-size:16px;font-weight:700;color:#8089a0}
+  .strict .verdict .big{color:var(--ink)}
+  .heal .verdict .big{color:var(--blue-ink)}
+  .vmark{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;font-size:18px;font-weight:900;color:#fff;transform:translateY(4px)}
+  .vmark.no{background:var(--red)} .vmark.keep{background:var(--blue)}
+
+  .reason{margin-top:12px;font-size:16px;font-weight:600;color:#5a6478;letter-spacing:-.3px;line-height:1.4}
+  .reason b{color:var(--ink);font-weight:800}
+
+  .band{position:absolute;left:56px;right:56px;bottom:62px;background:#f6f8fb;border:1px solid #e7ebf2;
+    border-radius:16px;padding:14px 24px;font-size:18px;font-weight:500;color:#3a4254;letter-spacing:-.3px;text-align:center}
+  .band b{font-weight:800;color:var(--ink)}
+
+  .foot{position:absolute;left:56px;right:56px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
+    font-size:15.5px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px;text-align:center}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">부팅은 <span class="r">엄격</span>, 운영 중엔 <span class="r">관대</span></div>
+    <div class="uline"></div>
+    <div class="sub">시작 땐 커넥션 하나만 실패해도 <b>미기동</b> · 운영 중엔 DB가 죽어도 <b>서버는 산다</b></div>
+
+    <div class="panels">
+      <!-- 부팅 -->
+      <div class="panel strict">
+        <div class="ptag strict">부팅 · fail-fast</div>
+        <div class="cap2">K개 커넥션을 모두 준비 — 하나라도 실패하면</div>
+        <div class="conns">
+          <div class="conn"><span class="box ok">✓</span><span class="cl">커넥션 0</span></div>
+          <div class="conn"><span class="box ok">✓</span><span class="cl">커넥션 1</span></div>
+          <div class="conn"><span class="box no">✕</span><span class="cl">커넥션 2</span></div>
+          <div class="conn"><span class="box ok">✓</span><span class="cl">커넥션 3</span></div>
+        </div>
+        <div class="verdict"><span class="vmark no">✕</span><span class="big">서버 미기동</span><span class="sm">아예 안 뜬다</span></div>
+        <div class="reason">설정·DB 오류를 <b>시작 시점에</b> 조기 발견</div>
+      </div>
+
+      <!-- 운영 중 -->
+      <div class="panel heal">
+        <div class="ptag heal">운영 중 · self-heal</div>
+        <div class="cap2">DB가 죽어도 서버는 멈추지 않고</div>
+        <div class="healrow">
+          <div class="hn up"><div class="t">서버</div><div class="s"><span class="hdot g"></span>정상 실행</div></div>
+          <div class="reconn"><span class="cyc">↻</span><span class="rl">재연결 · 주기마다</span></div>
+          <div class="hn down"><div class="t">MySQL</div><div class="s"><span class="hdot r"></span>다운</div></div>
+        </div>
+        <div class="verdict"><span class="vmark keep">✓</span><span class="big">서버 유지</span><span class="sm">안 멈춘다</span></div>
+        <div class="reason">게임은 <b>메모리로 정상</b> · 타임아웃으로 무한대기 방지</div>
+      </div>
+    </div>
+
+    <div class="band">방향이 정반대 — <b>부팅은 엄격</b>(오류를 못 넘어가게), <b>운영은 관대</b>(장애에도 서비스 지속)</div>
+
+    <div class="foot">종료 시엔 dirty 무관 <b>전원 저장</b> — 유실 방지 우선</div>
+  </div>
+</body>
+</html>

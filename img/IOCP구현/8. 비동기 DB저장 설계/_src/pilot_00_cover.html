@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --blue:#3a78b8; --blue-ink:#2b6aa8; --slate:#566072;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:640px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:592px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:44px 60px 0}
+
+  .title{font-size:52px;font-weight:800;color:var(--ink);letter-spacing:-1.4px;line-height:1.05}
+  .title .r{color:var(--red)}
+  .uline{width:84px;height:6px;border-radius:3px;background:var(--red);margin-top:18px}
+  .sub{margin-top:17px;font-size:21px;font-weight:500;color:var(--muted);letter-spacing:-.3px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .principle{margin-top:44px;display:flex;align-items:stretch;justify-content:center}
+  .pbox{width:404px;border-radius:22px;padding:32px 40px;text-align:center;border:1.5px solid;
+    display:flex;flex-direction:column;justify-content:center;gap:10px}
+  .pbox.mem{background:#fdf3f4;border-color:#f2c9cf}
+  .pbox.db{background:#f1f6fc;border-color:#cddff0}
+  .pbox .lab{font-size:19px;font-weight:800;color:var(--slate);letter-spacing:-.3px}
+  .pbox .eq{font-size:52px;font-weight:800;letter-spacing:-1.6px;line-height:1}
+  .pbox.mem .eq{color:var(--red)} .pbox.db .eq{color:var(--blue-ink)}
+  .pbox .d{font-size:16px;font-weight:600;color:var(--muted);letter-spacing:-.2px}
+
+  .parrow{width:184px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:11px;flex:0 0 auto}
+  .parrow .l{font-size:16.5px;font-weight:800;color:var(--deep);white-space:nowrap}
+
+  .foot{position:absolute;left:60px;right:60px;bottom:20px;padding-top:14px;border-top:1px solid #eef0f3;
+    font-size:16.5px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">메모리가 <span class="r">진실</span>, DB는 사본</div>
+    <div class="uline"></div>
+    <div class="sub">게임 루프(40ms)를 <b>막지 않고</b>, 바뀐 유저만 워커가 <b>따로 저장</b>한다 — 비동기 DB 저장 설계</div>
+
+    <div class="principle">
+      <div class="pbox mem">
+        <div class="lab">서버 메모리</div>
+        <div class="eq">= 진실</div>
+        <div class="d">게임 상태의 원본 · source of truth</div>
+      </div>
+      <div class="parrow">
+        <div class="l">비동기 저장</div>
+        <svg width="120" height="30" viewBox="0 0 120 30"><line x1="6" y1="15" x2="98" y2="15" stroke="#d7263d" stroke-width="7" stroke-linecap="round"/><path d="M92 4 L114 15 L92 26 Z" fill="#d7263d"/></svg>
+      </div>
+      <div class="pbox db">
+        <div class="lab">MySQL · DB</div>
+        <div class="eq">= 저장소</div>
+        <div class="d">메모리의 사본 · 영속화</div>
+      </div>
+    </div>
+
+    <div class="foot">선별 저장 · 순서 보장 · 백프레셔 · 자동 복구 — 모두 <b>'메모리가 진실'</b> 한 원칙에서 나온다</div>
+  </div>
+</body>
+</html>

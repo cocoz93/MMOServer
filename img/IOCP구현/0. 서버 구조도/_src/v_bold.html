@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';src:url('fonts/PretendardVariable.woff2') format('woff2');font-weight:100 900;font-display:block}
+  :root{--bg:#eef1f5;--card:#fff;--ink:#1f2330;--ink2:#3a4254;--muted:#7c8597;--faint:#aab2be;
+    --red:#be2d46;--deep:#951f38;--line:#dde2ea;--slate:#566072}
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1600px;height:820px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1552px;height:772px;background:var(--card);border:1px solid #eef0f3;border-radius:30px;
+    box-shadow:0 1px 3px rgba(30,40,70,.05),0 18px 50px rgba(30,40,70,.08);overflow:hidden}
+  .title{position:absolute;left:56px;top:40px;font-size:42px;font-weight:800;color:var(--ink);letter-spacing:-1.2px}.title .r{color:var(--red)}
+  .uline{position:absolute;left:58px;top:100px;width:84px;height:7px;border-radius:4px;background:var(--red)}
+  .sub{position:absolute;left:58px;top:120px;font-size:19px;font-weight:500;color:var(--muted);letter-spacing:-.3px}.sub b{color:var(--ink2);font-weight:700}
+
+  /* group labels */
+  .grp{position:absolute;z-index:4;display:flex;align-items:center;gap:9px;font-size:19px;font-weight:800;color:var(--slate);letter-spacing:-.4px}
+  .grp .gi{width:24px;height:24px;border-radius:6px;background:var(--red);color:#fff;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center}
+
+  .ic{fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+
+  /* nodes */
+  .node{position:absolute;z-index:3;background:#fff;border:1.7px solid var(--line);border-radius:16px;
+    box-shadow:0 6px 18px rgba(30,40,70,.06);display:flex;align-items:center;gap:18px;padding:0 22px}
+  .node .ibox{width:56px;height:56px;flex:0 0 auto;border-radius:14px;background:#f2f4f8;color:var(--ink);display:flex;align-items:center;justify-content:center}
+  .node .ibox svg{width:32px;height:32px}
+  .node .tx{display:flex;flex-direction:column;gap:4px}
+  .node .nm{font-size:24px;font-weight:800;color:var(--ink);letter-spacing:-.5px;display:flex;align-items:center;gap:10px;white-space:nowrap}
+  .node .nm .k{font-size:17px;font-weight:800;color:var(--red)}
+  .node .ds{font-size:15px;font-weight:600;color:var(--muted);letter-spacing:-.2px}
+  .clients{flex-direction:column;gap:10px;justify-content:center;padding:0}
+  .clients .ibox{width:60px;height:60px}.clients .ibox svg{width:34px;height:34px}
+  .clients .cn{font-size:20px;font-weight:800;color:var(--ink)}
+
+  /* game loop = solid red anchor */
+  .hero{position:absolute;z-index:3;background:linear-gradient(160deg,#be2d46,#8f1f37);border:none;border-radius:22px;
+    box-shadow:0 16px 38px rgba(140,28,55,.22);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;color:#fff}
+  .hero .hbox{width:76px;height:76px;border-radius:20px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center}
+  .hero .hbox svg{width:44px;height:44px;color:#fff}
+  .hero .hk{font-size:15px;font-weight:800;padding:5px 16px;border-radius:999px;background:rgba(255,255,255,.18);color:#fff;letter-spacing:.3px}
+  .hero .hn{font-size:34px;font-weight:800;letter-spacing:-1px}
+  .hero .hd{font-size:16px;font-weight:700;color:rgba(255,255,255,.9)}
+
+  /* mysql cylinder icon */
+  .dbn{position:absolute;z-index:3;display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--ink)}
+  .dbn svg{width:66px;height:66px}
+  .dbn .dc{font-size:17px;font-weight:800;color:var(--ink)}
+
+  /* edge labels */
+  .el{position:absolute;z-index:4;font-size:15px;font-weight:700;color:var(--muted);letter-spacing:-.2px;background:#fff;padding:2px 8px;border-radius:6px}
+  .el.hot{color:var(--deep);font-weight:800}
+
+  .foot{position:absolute;left:58px;right:58px;bottom:22px;padding-top:14px;border-top:1px solid #eef0f3;font-size:15px;color:var(--faint);font-weight:600}.foot b{color:var(--muted);font-weight:700}
+</style></head><body>
+<svg width="0" height="0" style="position:absolute"><defs>
+  <symbol id="ic-users" viewBox="0 0 24 24"><circle class="ic" cx="9" cy="8" r="3.3"/><path class="ic" d="M3.6 19.4c0-3.2 2.4-5.4 5.4-5.4s5.4 2.2 5.4 5.4"/><circle class="ic" cx="17" cy="9.2" r="2.5"/><path class="ic" d="M15.6 14.3c2.5.25 4.7 2.3 4.7 5.1"/></symbol>
+  <symbol id="ic-accept" viewBox="0 0 24 24"><path class="ic" d="M13 3.8h4.2A2.5 2.5 0 0 1 19.7 6.3v11.4a2.5 2.5 0 0 1-2.5 2.5H13"/><path class="ic" d="M3.7 12h9.6"/><path class="ic" d="M10 8.3 13.8 12 10 15.7"/></symbol>
+  <symbol id="ic-cpu" viewBox="0 0 24 24"><rect class="ic" x="6.6" y="6.6" width="10.8" height="10.8" rx="1.7"/><rect class="ic" x="9.9" y="9.9" width="4.2" height="4.2" rx=".8"/><path class="ic" d="M9.3 3.2v3.4M14.7 3.2v3.4M9.3 17.4v3.4M14.7 17.4v3.4M3.2 9.3h3.4M3.2 14.7h3.4M17.4 9.3h3.4M17.4 14.7h3.4"/></symbol>
+  <symbol id="ic-send" viewBox="0 0 24 24"><path class="ic" d="M12 15.4V4.2"/><path class="ic" d="M7.7 8.5 12 4.2l4.3 4.3"/><path class="ic" d="M4.6 14v4.4A1.5 1.5 0 0 0 6.1 19.9h11.8a1.5 1.5 0 0 0 1.5-1.5V14"/></symbol>
+  <symbol id="ic-loop" viewBox="0 0 24 24"><path class="ic" d="M19.8 12a7.8 7.8 0 0 1-13 5.8"/><path class="ic" d="M4.2 12A7.8 7.8 0 0 1 17 6.2"/><path class="ic" d="M17.2 2.6v3.7h-3.7"/><path class="ic" d="M6.8 21.4v-3.7h3.7"/></symbol>
+  <symbol id="ic-save" viewBox="0 0 24 24"><path class="ic" d="M5.6 4.2h10.4L19.8 8v10.3a1.5 1.5 0 0 1-1.5 1.5H5.7a1.5 1.5 0 0 1-1.5-1.5V5.7a1.5 1.5 0 0 1 1.4-1.5Z"/><path class="ic" d="M8 4.2v4.8h7.3V4.4"/><rect class="ic" x="8" y="12.4" width="8" height="6.4" rx=".6"/></symbol>
+  <symbol id="ic-db" viewBox="0 0 24 24"><ellipse class="ic" cx="12" cy="5.8" rx="7" ry="2.8"/><path class="ic" d="M5 5.8v12.4c0 1.55 3.13 2.8 7 2.8s7-1.25 7-2.8V5.8"/><path class="ic" d="M5 12c0 1.55 3.13 2.8 7 2.8s7-1.25 7-2.8"/></symbol>
+</defs></svg>
+
+<div class="card">
+  <div class="title">게임 로직은 <span class="r">단일 스레드</span></div>
+  <div class="uline"></div>
+  <div class="sub">요청이 서버를 <b>한 바퀴</b> 도는 경로 · I/O·DB만 워커로 확장, <b>게임 코어는 1개</b></div>
+
+  <!-- group labels -->
+  <div class="grp" style="left:322px;top:196px"><span class="gi">1</span>네트워크 계층</div>
+  <div class="grp" style="left:806px;top:196px"><span class="gi">2</span>게임 계층</div>
+  <div class="grp" style="left:1170px;top:196px"><span class="gi">3</span>저장 계층</div>
+
+  <!-- wires -->
+  <svg viewBox="0 0 1552 772" style="position:absolute;inset:0;width:1552px;height:772px;pointer-events:none;z-index:2"><defs><style>
+    .fl{stroke:#9aa3b2;stroke-width:3.4;fill:none;stroke-linecap:round}
+    .fd{stroke:#c6cdd8;stroke-width:3;fill:none;stroke-linecap:round;stroke-dasharray:3 7}
+    .hf{fill:#9aa3b2}.hd{fill:#c6cdd8}
+    .pt{fill:#9aa3b2}</style></defs>
+    <!-- accept (setup dashed) -->
+    <path class="fd" d="M212 430 Q262 316 300 300"/><polygon class="hd" points="292,294 306,296 298,308"/>
+    <!-- recv -->
+    <path class="fl" d="M212 460 Q250 440 300 424"/><polygon class="hf" points="292,417 302,428 302,414"/>
+    <!-- send return -->
+    <path class="fl" d="M300 590 Q236 540 212 496"/><polygon class="hf" points="221,500 210,491 223,487"/>
+    <!-- swapq -->
+    <path class="fl" d="M652 402 Q690 408 716 418"/><polygon class="hf" points="709,412 719,422 719,409"/>
+    <!-- dirty -->
+    <path class="fl" d="M716 486 Q680 520 654 566"/><polygon class="hf" points="662,560 651,570 649,557"/>
+    <!-- snapshot -->
+    <path class="fl" d="M1028 424 H1050"/><polygon class="hf" points="1050,417 1050,431 1062,424"/>
+    <!-- db->mysql -->
+    <path class="fl" d="M1364 424 H1406"/><polygon class="hf" points="1406,417 1406,431 1418,424"/>
+    <!-- port dots -->
+    <circle class="pt" cx="212" cy="460" r="4"/><circle class="pt" cx="300" cy="424" r="4"/>
+    <circle class="pt" cx="300" cy="590" r="4"/><circle class="pt" cx="212" cy="496" r="4"/>
+    <circle class="pt" cx="652" cy="402" r="4"/><circle class="pt" cx="716" cy="418" r="4"/>
+    <circle class="pt" cx="716" cy="486" r="4"/><circle class="pt" cx="654" cy="566" r="4"/>
+    <circle class="pt" cx="1028" cy="424" r="4"/><circle class="pt" cx="1064" cy="424" r="4"/><circle class="pt" cx="1364" cy="424" r="4"/>
+  </svg>
+
+  <!-- nodes -->
+  <div class="node clients" style="left:52px;top:388px;width:160px;height:150px">
+    <div class="ibox"><svg viewBox="0 0 24 24"><use href="#ic-users"/></svg></div><div class="cn">클라이언트</div>
+  </div>
+
+  <div class="node" style="left:300px;top:250px;width:352px;height:104px">
+    <div class="ibox"><svg viewBox="0 0 24 24"><use href="#ic-accept"/></svg></div>
+    <div class="tx"><div class="nm">Accept <span class="k">×1</span></div><div class="ds">신규 연결 수립</div></div>
+  </div>
+  <div class="node" style="left:300px;top:372px;width:352px;height:104px">
+    <div class="ibox"><svg viewBox="0 0 24 24"><use href="#ic-cpu"/></svg></div>
+    <div class="tx"><div class="nm">IOCP Worker <span class="k">×N</span></div><div class="ds">RECV·SEND 완료 · 패킷 파싱</div></div>
+  </div>
+  <div class="node" style="left:300px;top:538px;width:352px;height:104px">
+    <div class="ibox"><svg viewBox="0 0 24 24"><use href="#ic-send"/></svg></div>
+    <div class="tx"><div class="nm">Send Worker <span class="k">×K</span></div><div class="ds">WSASend 제출 · sessionId%K</div></div>
+  </div>
+
+  <div class="hero" style="left:716px;top:320px;width:312px;height:208px">
+    <div class="hbox"><svg viewBox="0 0 24 24"><use href="#ic-loop"/></svg></div>
+    <div class="hk">단일 스레드 · ×1</div>
+    <div class="hn">게임 루프</div>
+    <div class="hd">25fps 고정 틱</div>
+  </div>
+
+  <div class="node" style="left:1064px;top:372px;width:300px;height:104px">
+    <div class="ibox"><svg viewBox="0 0 24 24"><use href="#ic-save"/></svg></div>
+    <div class="tx"><div class="nm">DB Worker <span class="k">×K</span></div><div class="ds">accountId%K · UPSERT</div></div>
+  </div>
+  <div class="dbn" style="left:1400px;top:388px;width:96px;height:96px">
+    <svg viewBox="0 0 24 24"><use href="#ic-db"/></svg><div class="dc">MySQL</div>
+  </div>
+
+  <!-- edge labels -->
+  <div class="el" style="left:150px;top:398px">신규 연결</div>
+  <div class="el hot" style="left:158px;top:440px">recv</div>
+  <div class="el" style="left:120px;top:512px">WSASend</div>
+  <div class="el hot" style="left:662px;top:384px">SwapQ</div>
+  <div class="el" style="left:648px;top:556px">dirty 송신</div>
+  <div class="el" style="left:1030px;top:398px">위치 스냅샷</div>
+
+  <div class="foot">송신 <b>완료</b>는 IOCP 워커가 처리(Send는 제출만) · 큐 핸드오프 = <b>배치 swap</b> · DB는 fire-and-forget · 단일 프로세스 · 동접 목표 3–4천</div>
+</div></body></html>

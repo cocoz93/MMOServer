@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#fff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --blue:#3a78b8; --blue-ink:#2b6aa8; --slate:#566072;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:640px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:592px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:36px 56px 0}
+
+  .title{font-size:40px;font-weight:800;color:var(--ink);letter-spacing:-.8px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:78px;height:6px;border-radius:3px;background:var(--red);margin-top:14px}
+  .sub{margin-top:14px;font-size:20px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+  .sub .mono{font-family:"SF Mono",ui-monospace,"Consolas",monospace;font-weight:800;color:var(--deep);font-size:18px}
+
+  .pipe{margin-top:42px;display:flex;align-items:center;justify-content:space-between}
+  .node{width:198px;height:144px;border-radius:18px;border:1.5px solid #e7ebf1;background:#fff;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;
+    box-shadow:0 5px 16px rgba(30,40,70,.05);position:relative;overflow:hidden}
+  .node::before{content:"";position:absolute;top:0;left:0;right:0;height:5px}
+  .node.b::before{background:var(--blue)}
+  .node.r::before{background:var(--red)}
+  .node .tag{font-size:14px;font-weight:800;padding:3px 13px;border-radius:999px;letter-spacing:-.2px}
+  .node.b .tag{background:#e7f0fa;color:var(--blue-ink)}
+  .node.r .tag{background:#fde7ea;color:var(--red)}
+  .node .t{font-size:24px;font-weight:800;color:var(--ink);letter-spacing:-.5px}
+  .node .s{font-size:15px;color:#8a93a5;font-weight:600;letter-spacing:-.2px}
+
+  .qcard{width:240px;height:144px;border-radius:18px;border:1.6px dashed #c2d0e2;background:#f6f9fc;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+  .qcard .qt{font-size:18px;font-weight:800;color:#2b4a72;letter-spacing:-.3px}
+  .qcard .qcode{font-family:"SF Mono",ui-monospace,"Consolas",monospace;font-size:19px;font-weight:800;color:var(--deep);
+    background:#fff;border:1px solid #f4c4cc;border-radius:10px;padding:7px 16px;letter-spacing:-.5px}
+  .qcard .qc{font-size:14.5px;font-weight:700;color:#8089a0;letter-spacing:-.2px}
+
+  .arr{display:flex;flex-direction:column;align-items:center;width:64px;flex:0 0 auto}
+  .arr .al{font-size:14.5px;font-weight:800;margin-bottom:5px;letter-spacing:-.2px;white-space:nowrap}
+  .arr.b .al{color:var(--blue-ink)} .arr.r .al{color:var(--red)} .arr.g .al{color:#9aa3b2}
+
+  .db{width:116px;height:138px;position:relative;flex:0 0 auto;filter:drop-shadow(0 9px 18px rgba(43,106,168,.26))}
+  .db .tube{position:absolute;top:18px;left:0;width:116px;height:100px;background:linear-gradient(90deg,#2b6299,#4a86c4 48%,#356ba8)}
+  .db .tube::after{content:"";position:absolute;bottom:-16px;left:0;width:116px;height:32px;border-radius:50%;background:#255f97}
+  .db .cap{position:absolute;top:0;left:0;width:116px;height:32px;border-radius:50%;background:#5a95cc;z-index:2}
+  .db .lbl{position:absolute;top:52px;left:0;right:0;text-align:center;color:#fff;font-weight:800;font-size:18px;letter-spacing:-.3px;z-index:3}
+
+  .props{margin-top:46px;display:flex;justify-content:center;gap:16px}
+  .prop{background:#f6f8fb;border:1px solid #eef1f5;border-radius:14px;padding:15px 24px;display:flex;align-items:center;gap:12px}
+  .prop .pd{width:11px;height:11px;border-radius:50%;flex:0 0 auto}
+  .prop .pd.b{background:var(--blue-ink)} .prop .pd.k{background:#49546a} .prop .pd.r{background:var(--deep)}
+  .prop .tx{font-size:17px;font-weight:600;color:#46506a;letter-spacing:-.3px}
+  .prop .tx b{font-weight:800;color:var(--ink)}
+
+  .foot{position:absolute;left:56px;right:56px;bottom:17px;padding-top:12px;border-top:1px solid #eef0f3;
+    font-size:15.5px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">게임은 <span class="r">넣기만</span>, 워커가 저장한다</div>
+    <div class="uline"></div>
+    <div class="sub">바뀐 유저만 <b>값 스냅샷</b>으로 큐에 push → <span class="mono">accountId % K</span> 분배 → 워커가 통째로 꺼내 <b>UPSERT</b></div>
+
+    <div class="pipe">
+      <div class="node b">
+        <div class="tag">생산자 · 1</div>
+        <div class="t">게임 스레드</div>
+        <div class="s">push만 · µs</div>
+      </div>
+
+      <div class="arr b">
+        <div class="al">넣기</div>
+        <svg width="58" height="22"><path d="M2 11 H40" stroke="#2b6aa8" stroke-width="4.5" stroke-linecap="round" fill="none"/><path d="M38 4 L52 11 L38 18 Z" fill="#2b6aa8"/></svg>
+      </div>
+
+      <div class="qcard">
+        <div class="qt">분배</div>
+        <div class="qcode">accountId % K</div>
+        <div class="qc">같은 유저 → 같은 워커</div>
+      </div>
+
+      <div class="arr r">
+        <div class="al">꺼내기</div>
+        <svg width="58" height="22"><path d="M2 11 H40" stroke="#d7263d" stroke-width="4.5" stroke-linecap="round" fill="none"/><path d="M38 4 L52 11 L38 18 Z" fill="#d7263d"/></svg>
+      </div>
+
+      <div class="node r">
+        <div class="tag">소비자 · ×K</div>
+        <div class="t">DB 워커 풀</div>
+        <div class="s">통째로 꺼내 UPSERT</div>
+      </div>
+
+      <div class="arr g">
+        <div class="al">저장</div>
+        <svg width="58" height="22"><path d="M2 11 H40" stroke="#9aa3b2" stroke-width="4.5" stroke-linecap="round" fill="none"/><path d="M38 4 L52 11 L38 18 Z" fill="#9aa3b2"/></svg>
+      </div>
+
+      <div class="db">
+        <div class="tube"></div>
+        <div class="cap"></div>
+        <div class="lbl">MySQL</div>
+      </div>
+    </div>
+
+    <div class="props">
+      <div class="prop"><span class="pd b"></span><span class="tx"><b>dirty만 선별</b> · 바뀐 유저만</span></div>
+      <div class="prop"><span class="pd k"></span><span class="tx"><b>순서 보장</b> · 같은 유저 = 같은 워커</span></div>
+      <div class="prop"><span class="pd r"></span><span class="tx"><b>배치 핸드오프</b> · lock·깨우기 1회</span></div>
+    </div>
+
+    <div class="foot">바뀐 유저만 값 스냅샷으로 큐에 push · <b>생산자–소비자</b> 패턴 재사용(송신 워커와 동형)</div>
+  </div>
+</body>
+</html>

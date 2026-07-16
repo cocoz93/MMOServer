@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --blue:#3a78b8; --blue-ink:#2b6aa8;
+    --amber:#c98a1e; --slate:#566072;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1140px;height:706px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1092px;height:658px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:36px 50px 0}
+
+  .title{font-size:38px;font-weight:800;color:var(--ink);letter-spacing:-.7px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:74px;height:6px;border-radius:3px;background:var(--red);margin-top:14px}
+  .sub{margin-top:14px;font-size:20px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .mx{margin-top:26px;display:grid;grid-template-columns:104px 1fr 1fr;grid-template-rows:auto 1fr 1fr;column-gap:16px;row-gap:16px}
+  .colh{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:4px}
+  .colh .k{font-size:15px;font-weight:700;color:var(--muted);letter-spacing:-.2px}
+  .colh .v{font-size:28px;font-weight:800;color:var(--ink);letter-spacing:-.5px}
+  .rowh{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;padding-right:8px;text-align:right}
+  .rowh .k{font-size:14px;font-weight:700;color:var(--muted);letter-spacing:-.2px}
+  .rowh .v{font-size:28px;font-weight:800;color:var(--ink);letter-spacing:-.5px}
+
+  .cell{border-radius:20px;border:2px solid #eceff4;background:#fafbfd;padding:22px 26px;position:relative;display:flex;flex-direction:column;justify-content:center;min-height:150px}
+  .cell .top{display:flex;align-items:baseline;gap:7px}
+  .cell .n{font-size:56px;font-weight:800;color:var(--ink);letter-spacing:-2px;line-height:1}
+  .cell .u{font-size:23px;font-weight:800;color:var(--slate)}
+  .cell .st{margin-top:12px;font-size:19px;font-weight:800;letter-spacing:-.3px}
+
+  .cell.cool{background:#f0f5fb} .cell.cool .st{color:var(--blue-ink)}
+  .cell.warm{background:#fdf5ee;border-color:#f2e2cf} .cell.warm .st{color:#a9741a}
+  .cell.best{background:#eaf3fc;border-color:#8ebce3} .cell.best .n{color:var(--blue-ink)} .cell.best .st{color:var(--blue-ink)}
+  .cell.bad{background:#fbe4e8;border-color:#e79aa6} .cell.bad .n{color:var(--deep)} .cell.bad .u{color:var(--red)} .cell.bad .st{color:var(--red)}
+
+  .note{margin-top:24px;text-align:center;font-size:20px;font-weight:600;color:var(--slate);letter-spacing:-.3px}
+  .note b{color:var(--red);font-weight:800}
+  .note .ink{color:var(--ink);font-weight:800}
+
+  .foot{position:absolute;left:50px;right:50px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
+    font-size:15px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">많이 ≠ 빠름 — <span class="r">균형</span>이 정답</div>
+    <div class="uline"></div>
+    <div class="sub">동접 4000 · <b>왕복 지연 p99 (ms)</b> · 워커 × 송신 · 낮을수록 좋음</div>
+
+    <div class="mx">
+      <div></div>
+      <div class="colh"><span class="k">송신 워커</span><span class="v">2</span></div>
+      <div class="colh"><span class="k">송신 워커</span><span class="v">4</span></div>
+
+      <div class="rowh"><span class="k">IOCP 워커</span><span class="v">12</span></div>
+      <div class="cell warm">
+        <div class="top"><span class="n">143</span><span class="u">ms</span></div>
+        <div class="st">기존 · 회차마다 튐</div>
+      </div>
+      <div class="cell cool">
+        <div class="top"><span class="n">112</span><span class="u">ms</span></div>
+        <div class="st">안정</div>
+      </div>
+
+      <div class="rowh"><span class="k">IOCP 워커</span><span class="v">4</span></div>
+      <div class="cell best">
+        <div class="top"><span class="n">102</span><span class="u">ms</span></div>
+        <div class="st">✅ 전 지표 최고</div>
+      </div>
+      <div class="cell bad">
+        <div class="top"><span class="n">688</span><span class="u">ms</span></div>
+        <div class="st">❌ 파국 · 금지 조합</div>
+      </div>
+    </div>
+
+    <div class="note">송신을 늘리면 <span class="ink">받을 워커도 같이</span> 늘려야 한다 — <b>4×4는 완료 연쇄로 붕괴</b></div>
+
+    <div class="foot">동접 4000 · 워커{12,4} × 송신{2,4} × 각 3회 · DB 저장 off · 4×4 계측 : 송신 경합 0→9천/s · IO 워커 4/4 포화 · 락 아님(핸드오프 0.08ms 고정)</div>
+  </div>
+</body>
+</html>

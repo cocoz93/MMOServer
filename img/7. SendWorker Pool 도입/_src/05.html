@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --blue:#3a78b8; --blue-ink:#2b6aa8; --slate:#566072; --pill-gray:#e9edf3;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:552px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:504px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:36px 52px 0}
+
+  .title{font-size:38px;font-weight:800;color:var(--ink);letter-spacing:-.7px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:74px;height:6px;border-radius:3px;background:var(--red);margin-top:14px}
+  .sub{margin-top:14px;font-size:20px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .ba{margin-top:30px;display:grid;grid-template-columns:1fr 220px 1fr;align-items:center;column-gap:8px}
+  .side{border-radius:20px;padding:26px 30px;text-align:center;position:relative}
+  .side.before{background:#f7f8fb;border:1.5px solid #e7ebf1}
+  .side.after{background:#eef5fc;border:2px solid #8ebce3;box-shadow:0 8px 26px rgba(43,106,168,.10)}
+  .plabel{display:inline-block;font-size:16.5px;font-weight:800;padding:7px 17px;border-radius:999px;letter-spacing:-.3px}
+  .side.before .plabel{background:var(--pill-gray);color:var(--slate)}
+  .side.after .plabel{background:var(--blue);color:#fff}
+  .big{margin-top:12px;display:flex;align-items:baseline;justify-content:center;gap:7px}
+  .big .n{font-size:54px;font-weight:800;letter-spacing:-2.4px;line-height:.9}
+  .big .u{font-size:21px;font-weight:800}
+  .side.before .big .n{color:#8894a6} .side.before .big .u{color:#9aa3b2}
+  .side.after .big .n{color:var(--blue-ink)} .side.after .big .u{color:#5a7fa5}
+  .blbl{margin-top:7px;font-size:15px;font-weight:700;color:var(--muted);letter-spacing:-.2px}
+
+  .arrowcol{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px}
+  .arrowcol .pct{font-size:42px;font-weight:800;color:var(--blue-ink);letter-spacing:-2px;line-height:.9}
+  .arrowcol .al{font-size:15px;font-weight:800;color:var(--slate);letter-spacing:-.3px}
+  .arrowcol svg{margin-top:4px}
+
+  .final{margin-top:24px;background:#f4f6f9;border:1.5px solid #e5eaf1;border-radius:16px;padding:18px 26px 18px 32px;
+    display:flex;align-items:center;justify-content:center;gap:16px;position:relative;overflow:hidden;box-shadow:0 5px 16px rgba(30,40,70,.05)}
+  .final::before{content:"";position:absolute;left:0;top:0;bottom:0;width:10px;background:linear-gradient(180deg,#4a86c4,#2f6db0)}
+  .final .ck{font-size:18px;font-weight:800;color:var(--blue-ink);letter-spacing:-.3px}
+  .final .code{font-size:21px;font-weight:800;color:var(--ink);letter-spacing:-.2px}
+  .final .code b{color:var(--red)}
+
+  .foot{position:absolute;left:52px;right:52px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
+    font-size:15px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">노는 워커도 <span class="r">공짜가 아니다</span> — 워커 12 → 4</div>
+    <div class="uline"></div>
+    <div class="sub">송신 2 고정 · IOCP 워커만 줄였는데 <b>왕복 지연이 −28%</b> (게임 로직은 그대로)</div>
+
+    <div class="ba">
+      <div class="side before">
+        <span class="plabel">워커 12 × 송신 2</span>
+        <div class="big"><span class="n">143</span><span class="u">ms</span></div>
+        <div class="blbl">왕복 최악 (RTT p99)</div>
+      </div>
+
+      <div class="arrowcol">
+        <div class="pct">−28%</div>
+        <div class="al">왕복 최악</div>
+        <svg width="128" height="30" viewBox="0 0 128 30"><defs><marker id="ah" markerWidth="8" markerHeight="8" refX="5.5" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#2b6aa8"/></marker></defs><line x1="6" y1="15" x2="108" y2="15" stroke="#2b6aa8" stroke-width="7" stroke-linecap="round" marker-end="url(#ah)"/></svg>
+      </div>
+
+      <div class="side after">
+        <span class="plabel">✅ 워커 4 × 송신 2</span>
+        <div class="big"><span class="n">102</span><span class="u">ms</span></div>
+        <div class="blbl">왕복 최악 (RTT p99)</div>
+      </div>
+    </div>
+
+    <div class="final">
+      <span class="ck">운영 세트 · 게임 스레드 1개당</span>
+      <span class="code">SendWorkers = <b>2</b> &nbsp;·&nbsp; WorkerThreads = <b>4</b></span>
+    </div>
+
+    <div class="foot">왕복 143→102(−28%) · 틱 주기 평균 40.3→35.1(−13%, 예산 40ms 안으로) · 주기 p99 66.4→54.5(−18%) · 3회 편차 0.2ms(재현성) · 노이즈를 걷어낸 값</div>
+  </div>
+</body>
+</html>

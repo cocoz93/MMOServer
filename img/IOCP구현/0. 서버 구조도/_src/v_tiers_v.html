@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';src:url('fonts/PretendardVariable.woff2') format('woff2');font-weight:100 900;font-display:block}
+  :root{--bg:#eef1f5;--ink:#1f2330;--muted:#7c8597;--red:#d7263d;--deep:#b3122a;--red-bg:#fdeef0;
+    --blue:#3a78b8;--blue-ink:#2b6aa8;--blue-bg:#e7f0fa;--grn:#2f9e6b;--grn-ink:#1f7d52;--grn-bg:#e4f4ec;--slate:#566072}
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1000px;height:1180px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:952px;height:1132px;background:#fff;border:1px solid #eef0f3;border-radius:30px;box-shadow:0 16px 44px rgba(30,40,70,.07);overflow:hidden}
+  .title{position:absolute;left:48px;top:36px;font-size:36px;font-weight:800;color:var(--ink);letter-spacing:-.9px}.title .r{color:var(--red)}
+  .uline{position:absolute;left:50px;top:90px;width:74px;height:6px;border-radius:3px;background:var(--red)}
+  .sub{position:absolute;left:50px;top:108px;font-size:18px;font-weight:500;color:var(--muted)}.sub b{color:#3a4254;font-weight:700}
+  svg.wire{position:absolute;inset:0;width:952px;height:1132px;pointer-events:none;z-index:2}
+  .zone{position:absolute;border-radius:24px;z-index:1}
+  .zone.net{background:#eff5fb;border:1.5px solid #dbe7f5}.zone.game{background:#fdf1f3;border:1.5px solid #f6d9df}.zone.store{background:#edf7f1;border:1.5px solid #d3ecdf}
+  .ztab{position:absolute;top:14px;left:22px;font-size:17px;font-weight:800;z-index:3}
+  .net .ztab{color:var(--blue-ink)}.game .ztab{color:var(--deep)}.store .ztab{color:var(--grn-ink)}
+  .node{position:absolute;z-index:3;background:#fff;border:1.5px solid #e7ebf1;border-radius:14px;box-shadow:0 5px 14px rgba(30,40,70,.06);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-align:center;padding:0 8px}
+  .node .nn{font-size:19px;font-weight:800;color:var(--ink);letter-spacing:-.4px}
+  .node .nn .k{font-size:14px;font-weight:800;padding:1px 7px;border-radius:999px;margin-left:4px;vertical-align:2px}
+  .node.b .nn .k{background:var(--blue-bg);color:var(--blue-ink)}.node.g .nn .k{background:var(--grn-bg);color:var(--grn-ink)}
+  .node .ns{font-size:12.5px;color:#8a93a5;font-weight:650;line-height:1.3}
+  .clients{background:#f4f6fa;border:1.5px solid #e3e7ee;flex-direction:row;gap:11px}.clients .ni{font-size:28px}.clients .nn{font-size:19px;color:var(--slate)}
+  .hero{position:absolute;z-index:3;background:linear-gradient(180deg,#fff,#fffafb);border:1.6px solid #f1c9d1;border-radius:16px;box-shadow:0 12px 28px rgba(215,38,61,.12);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;text-align:center}
+  .hero::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,#e23f53,var(--red))}
+  .hero .p{font-size:13px;font-weight:800;padding:3px 13px;border-radius:999px;background:var(--red-bg);color:var(--red)}
+  .hero .nn{font-size:27px;font-weight:800;color:var(--ink);letter-spacing:-.7px}.hero .ns{font-size:14px;color:#6b7688;font-weight:700}
+  .db{position:absolute;z-index:3;display:flex;flex-direction:column;align-items:center;gap:6px}
+  .cyl{width:78px;height:64px;border-radius:50%/16px;background:linear-gradient(180deg,#3fae79,#2c8f63);border:1.5px solid #268257;position:relative}
+  .cyl::before{content:"";position:absolute;left:0;right:0;top:0;height:18px;border-radius:50%;background:#54c08d;border:1.5px solid #268257}
+  .cyl .cw{position:absolute;left:0;right:0;top:9px;text-align:center;font-size:16px;font-weight:800;color:#fff;z-index:2}
+  .dbcap{font-size:14px;font-weight:800;color:var(--grn-ink)}
+  .chip{position:absolute;z-index:4;transform:translate(-50%,-50%);background:#fff;border:1.5px solid #dbe4f0;border-radius:12px;padding:6px 14px;text-align:center;box-shadow:0 4px 11px rgba(30,40,70,.08);white-space:nowrap}
+  .chip .c1{font-size:15px;font-weight:800;color:var(--blue-ink)}.chip.g .c1{color:var(--grn-ink)}.chip .c2{font-size:12px;font-weight:700;color:#8a93a5;margin-top:1px}
+  .al{position:absolute;z-index:4;font-size:13px;font-weight:800;white-space:nowrap}.al.r{color:var(--red)}.al.m{color:#9aa3b2}
+  .foot{position:absolute;left:50px;right:50px;bottom:22px;padding-top:12px;border-top:1px solid #eef0f3;font-size:13.5px;color:#9aa3b2;font-weight:550;text-align:center}.foot b{color:#6b7484;font-weight:700}
+</style></head><body>
+<div class="card">
+  <div class="title">서버 구조 — 게임 로직은 <span class="r">단일 스레드</span></div>
+  <div class="uline"></div>
+  <div class="sub">부하 경로만 스레드·워커로 나눈 <b>3계층</b> · 위 → 아래 흐름</div>
+
+  <div class="node clients" style="left:326px;top:158px;width:300px;height:66px"><div class="ni">👥</div><div class="nn">클라이언트 다수</div></div>
+
+  <div class="zone net" style="left:40px;top:258px;width:872px;height:196px"><div class="ztab">⚡ 네트워크 계층 · I/O 스레드</div></div>
+  <div class="zone game" style="left:40px;top:512px;width:872px;height:188px"><div class="ztab">🎮 게임 계층 · 단일 스레드</div></div>
+  <div class="zone store" style="left:40px;top:758px;width:872px;height:196px"><div class="ztab">🗄️ 저장 계층 · 비동기</div></div>
+
+  <svg class="wire" viewBox="0 0 952 1132"><defs><style>
+    .lb{stroke:#7fa6cf;stroke-width:3.6;fill:none;stroke-linecap:round}.lr{stroke:#e79aa6;stroke-width:3.6;fill:none;stroke-linecap:round}
+    .lg{stroke:#8fd0af;stroke-width:3.6;fill:none;stroke-linecap:round}.hb{fill:#7fa6cf}.hr{fill:#e79aa6}.hg{fill:#8fd0af}</style></defs>
+    <path class="lb" d="M476 224 V254"/><polygon class="hb" points="469,252 483,252 476,262"/>
+    <path class="lb" d="M400 454 V520"/><polygon class="hb" points="393,518 407,518 400,528"/>
+    <path class="lr" d="M556 520 V456"/><polygon class="hr" points="549,458 563,458 556,448"/>
+    <path class="lg" d="M476 700 V764"/><polygon class="hg" points="469,762 483,762 476,772"/>
+    <path class="lg" d="M600 856 H660"/><polygon class="hg" points="652,849 652,863 662,856"/>
+  </svg>
+
+  <div class="node b" style="left:76px;top:322px;width:242px;height:104px"><div class="nn">🔌 Accept <span class="k">×1</span></div><div class="ns">신규 연결 수립</div></div>
+  <div class="node b" style="left:356px;top:322px;width:242px;height:104px"><div class="nn">⚙️ IOCP Worker <span class="k">×N</span></div><div class="ns">RECV·SEND 완료 · 파싱</div></div>
+  <div class="node b" style="left:636px;top:322px;width:242px;height:104px"><div class="nn">📤 Send Worker <span class="k">×K</span></div><div class="ns">WSASend · sessionId%K</div></div>
+
+  <div class="hero" style="left:296px;top:548px;width:360px;height:120px"><div class="p">단일 스레드 · ×1</div><div class="nn">🧠 게임 루프</div><div class="ns">25fps 고정 틱 · 로직 · 이동/섹터 · 송신 flush</div></div>
+
+  <div class="node g" style="left:296px;top:800px;width:304px;height:110px"><div class="nn">💾 DB Worker <span class="k">×K</span></div><div class="ns">accountId%K · UPSERT</div></div>
+  <div class="db" style="left:662px;top:806px;width:90px;height:112px"><div class="cyl"><div class="cw">DB</div></div><div class="dbcap">MySQL</div></div>
+
+  <div class="chip" style="left:400px;top:487px"><div class="c1">SwapQ</div><div class="c2">프레임당 통째 swap</div></div>
+  <div class="chip g" style="left:476px;top:732px"><div class="c1">위치 스냅샷</div><div class="c2">fire-and-forget</div></div>
+  <div class="al r" style="left:566px;top:478px">dirty 송신 ↑</div>
+  <div class="al m" style="left:352px;top:236px">요청 recv ↓ · 응답 send ↑</div>
+
+  <div class="foot">송신 <b>완료</b>는 IOCP 워커가 처리(Send는 제출만) · 큐 핸드오프는 모두 <b>배치 swap</b> · 단일 프로세스 · 동접 목표 3–4천</div>
+</div></body></html>

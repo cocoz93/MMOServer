@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';src:url('fonts/PretendardVariable.woff2') format('woff2');font-weight:100 900;font-display:block}
+  :root{--bg:#eef1f5;--ink:#1f2330;--muted:#7c8597;--red:#d7263d;--deep:#b3122a;--red-bg:#fdeef0;
+    --blue:#3a78b8;--blue-ink:#2b6aa8;--blue-bg:#e7f0fa;--grn:#2f9e6b;--grn-ink:#1f7d52;--grn-bg:#e4f4ec;--slate:#566072}
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1240px;height:860px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1192px;height:812px;background:#fff;border:1px solid #eef0f3;border-radius:30px;box-shadow:0 16px 44px rgba(30,40,70,.07);overflow:hidden}
+  .title{position:absolute;left:50px;top:34px;font-size:35px;font-weight:800;color:var(--ink);letter-spacing:-.9px}.title .r{color:var(--red)}
+  .uline{position:absolute;left:52px;top:86px;width:74px;height:6px;border-radius:3px;background:var(--red)}
+  .sub{position:absolute;left:52px;top:103px;font-size:18px;font-weight:500;color:var(--muted)}.sub b{color:#3a4254;font-weight:700}
+  svg.wire{position:absolute;inset:0;width:1192px;height:812px;pointer-events:none;z-index:2}
+  .node{position:absolute;z-index:3;background:#fff;border:1.5px solid #e7ebf1;border-radius:15px;box-shadow:0 6px 16px rgba(30,40,70,.07);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;text-align:center;padding:0 10px}
+  .node .nn{font-size:19px;font-weight:800;color:var(--ink);letter-spacing:-.4px}
+  .node .nn .k{font-size:14px;font-weight:800;padding:1px 7px;border-radius:999px;margin-left:4px;vertical-align:2px}
+  .node.b .nn .k{background:var(--blue-bg);color:var(--blue-ink)}.node.g .nn .k{background:var(--grn-bg);color:var(--grn-ink)}
+  .node .ns{font-size:12.5px;color:#8a93a5;font-weight:650}
+  .node.b{border-top:4px solid var(--blue)}.node.g{border-top:4px solid var(--grn)}
+  .clients{background:#f4f6fa;border:1.5px solid #e3e7ee;border-top:1.5px solid #e3e7ee}.clients .ni{font-size:30px}.clients .nn{font-size:18px;color:var(--slate)}
+  /* central hub */
+  .hub{position:absolute;z-index:3;width:246px;height:246px;border-radius:50%;background:radial-gradient(circle at 50% 38%,#fff,#fff5f7);
+    border:6px solid var(--red);box-shadow:0 20px 50px rgba(215,38,61,.22),inset 0 2px 10px rgba(255,255,255,.8);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center}
+  .hub .hi{font-size:34px;line-height:1}
+  .hub .p{font-size:13px;font-weight:800;padding:3px 12px;border-radius:999px;background:var(--red);color:#fff;letter-spacing:-.2px}
+  .hub .hn{font-size:30px;font-weight:800;color:var(--ink);letter-spacing:-.8px}
+  .hub .hs{font-size:13.5px;font-weight:700;color:var(--deep)}
+  .db{position:absolute;z-index:3;display:flex;flex-direction:column;align-items:center;gap:6px}
+  .cyl{width:80px;height:66px;border-radius:50%/16px;background:linear-gradient(180deg,#3fae79,#2c8f63);border:1.5px solid #268257;position:relative}
+  .cyl::before{content:"";position:absolute;left:0;right:0;top:0;height:18px;border-radius:50%;background:#54c08d;border:1.5px solid #268257}
+  .cyl .cw{position:absolute;left:0;right:0;top:9px;text-align:center;font-size:16px;font-weight:800;color:#fff;z-index:2}
+  .dbcap{font-size:14px;font-weight:800;color:var(--grn-ink)}
+  .al{position:absolute;z-index:4;font-size:13px;font-weight:800;white-space:nowrap;background:rgba(255,255,255,.9);padding:1px 6px;border-radius:5px}
+  .al.b{color:var(--blue-ink)}.al.r{color:var(--red)}.al.g{color:var(--grn-ink)}.al.m{color:#9aa3b2}
+  .foot{position:absolute;left:52px;right:52px;bottom:20px;padding-top:11px;border-top:1px solid #eef0f3;font-size:14px;color:#9aa3b2;font-weight:550}.foot b{color:#6b7484;font-weight:700}
+</style></head><body>
+<div class="card">
+  <div class="title">게임 루프가 <span class="r">중심</span> — I/O·저장은 워커로 확장</div>
+  <div class="uline"></div>
+  <div class="sub">모든 흐름은 <b>단일 게임 스레드</b>를 통과한다 · 주변은 코어 수만큼 병렬</div>
+
+  <svg class="wire" viewBox="0 0 1192 812"><defs><style>
+    .lb{stroke:#7fa6cf;stroke-width:3.6;fill:none;stroke-linecap:round}.lr{stroke:#e79aa6;stroke-width:3.6;fill:none;stroke-linecap:round}
+    .lg{stroke:#8fd0af;stroke-width:3.6;fill:none;stroke-linecap:round}.lm{stroke:#c2ccd9;stroke-width:3.4;fill:none;stroke-linecap:round}
+    .hb{fill:#7fa6cf}.hr{fill:#e79aa6}.hg{fill:#8fd0af}.hm{fill:#c2ccd9}</style></defs>
+    <path class="lm" d="M186 388 Q220 300 252 262"/><polygon class="hm" points="244,256 258,258 250,269"/>
+    <path class="lb" d="M186 428 Q220 430 250 424"/><polygon class="hb" points="242,418 252,428 242,432"/>
+    <path class="lb" d="M474 420 Q500 424 522 432"/><polygon class="hb" points="514,426 524,436 526,423"/>
+    <path class="lr" d="M540 542 Q500 570 476 580"/><polygon class="hr" points="485,576 474,584 472,571"/>
+    <path class="lr" d="M250 580 Q210 500 186 452"/><polygon class="hr" points="194,458 184,448 196,445"/>
+    <path class="lg" d="M718 430 Q750 428 772 424"/><polygon class="hg" points="764,418 774,422 766,432"/>
+    <path class="lg" d="M978 420 H1030"/><polygon class="hg" points="1022,413 1022,427 1032,420"/>
+  </svg>
+
+  <div class="node clients" style="left:48px;top:360px;width:140px;height:120px"><div class="ni">👥</div><div class="nn">클라이언트</div></div>
+
+  <div class="node b" style="left:252px;top:188px;width:228px;height:86px"><div class="nn">🔌 Accept <span class="k">×1</span></div><div class="ns">신규 연결 수립</div></div>
+  <div class="node b" style="left:252px;top:372px;width:228px;height:96px"><div class="nn">⚙️ IOCP Worker <span class="k">×N</span></div><div class="ns">RECV·SEND 완료 · 파싱</div></div>
+  <div class="node b" style="left:252px;top:540px;width:228px;height:96px"><div class="nn">📤 Send Worker <span class="k">×K</span></div><div class="ns">WSASend · sessionId%K</div></div>
+
+  <div class="hub" style="left:477px;top:298px"><div class="hi">🧠</div><div class="p">단일 스레드 · ×1</div><div class="hn">게임 루프</div><div class="hs">25fps 고정 틱</div></div>
+
+  <div class="node g" style="left:772px;top:372px;width:206px;height:96px"><div class="nn">💾 DB Worker <span class="k">×K</span></div><div class="ns">accountId%K · UPSERT</div></div>
+  <div class="db" style="left:1030px;top:378px;width:84px;height:110px"><div class="cyl"><div class="cw">DB</div></div><div class="dbcap">MySQL</div></div>
+
+  <div class="al m" style="left:150px;top:300px">신규 연결</div>
+  <div class="al b" style="left:150px;top:398px">recv</div>
+  <div class="al b" style="left:474px;top:452px">SwapQ</div>
+  <div class="al r" style="left:486px;top:556px">dirty 송신</div>
+  <div class="al r" style="left:150px;top:492px">WSASend</div>
+  <div class="al g" style="left:706px;top:452px">위치 스냅샷</div>
+
+  <div class="foot">클라 → IOCP → <b>게임 루프</b> → Send → 클라 (한 바퀴) · 게임 루프 → DB → MySQL · 큐 핸드오프는 <b>배치 swap</b> · 단일 프로세스</div>
+</div></body></html>

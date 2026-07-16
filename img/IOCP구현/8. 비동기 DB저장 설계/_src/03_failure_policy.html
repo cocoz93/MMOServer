@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --blue:#3a78b8; --blue-ink:#2b6aa8; --slate:#566072;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:640px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:592px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:36px 56px 0}
+
+  .title{font-size:37px;font-weight:800;color:var(--ink);letter-spacing:-.8px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:62px;height:5px;border-radius:3px;background:var(--red);margin-top:15px}
+  .sub{margin-top:14px;font-size:19px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .panels{display:flex;gap:24px;margin-top:28px}
+  .panel{flex:1;border-radius:20px;padding:22px 26px 24px;border:1.5px solid;position:relative}
+  .panel.sev{background:#fdf3f4;border-color:#f2c9cf}
+  .panel.tol{background:#f1f6fc;border-color:#cddff0}
+
+  .ptag{display:inline-flex;align-items:center;gap:8px;font-size:16.5px;font-weight:800;padding:8px 18px;border-radius:999px;letter-spacing:-.3px}
+  .ptag.sev{background:var(--red);color:#fff}
+  .ptag.tol{background:var(--blue);color:#fff}
+
+  .qrow{display:flex;align-items:center;gap:12px;margin-top:22px;height:46px}
+  .qcap{display:flex;align-items:center;gap:5px;padding:7px 9px;border:2px dashed #b7bfce;border-radius:12px}
+  .qb{width:19px;height:26px;border-radius:5px}
+  .qb.rf{background:linear-gradient(180deg,#e23f53,#cf1d34)} .qb.bf{background:linear-gradient(180deg,#4a86c4,#356ba8)}
+  .qover{display:flex;gap:5px}
+  .qb.over{opacity:.9}
+  .qb.drop{background:#d3d9e2;opacity:.75}
+  .qx{font-size:24px;font-weight:900;color:#aeb6c3}
+  .qx.sev{color:var(--red)} .qx.tol{color:var(--blue)}
+  .caplbl{font-size:13px;font-weight:800;color:#8089a0;margin-left:2px}
+
+  .arw{font-size:22px;font-weight:900}
+  .arw.sev{color:var(--red)} .arw.tol{color:var(--blue)}
+
+  .verdict{margin-top:20px;display:flex;align-items:baseline;gap:12px}
+  .verdict .big{font-size:33px;font-weight:800;letter-spacing:-1px;line-height:1}
+  .verdict .sm{font-size:16.5px;font-weight:700}
+  .sev .verdict .big{color:var(--red)} .sev .verdict .sm{color:var(--deep)}
+  .tol .verdict .big{color:var(--blue-ink)} .tol .verdict .sm{color:#3f6fa0}
+
+  .mark{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;
+    font-size:19px;font-weight:900;color:#fff;transform:translateY(4px)}
+  .mark.sev{background:var(--red)} .mark.tol{background:var(--blue)}
+
+  .reason{margin-top:16px;font-size:16.5px;font-weight:600;color:#5a6478;letter-spacing:-.3px;line-height:1.4}
+  .reason b{color:var(--ink);font-weight:800}
+
+  .callout{position:absolute;left:56px;right:56px;bottom:66px;background:#f6f8fb;border:1px solid #e7ebf2;
+    border-radius:16px;padding:16px 24px;font-size:18px;font-weight:500;color:#3a4254;letter-spacing:-.3px;line-height:1.4;text-align:center}
+  .callout b{font-weight:800}
+  .callout .r{color:var(--deep)} .callout .b{color:var(--blue-ink)} .callout .k{color:var(--ink)}
+
+  .foot{position:absolute;left:56px;right:56px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
+    font-size:15.5px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px;text-align:center}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">메모리가 진실이라 <span class="r">실패 정책이 갈린다</span></div>
+    <div class="uline"></div>
+    <div class="sub">큐가 가득 차면? 전달 큐는 <b>세션을 끊고</b>, DB 큐는 <b>잡만 버린다</b> — 같은 '드롭'이 아니다</div>
+
+    <div class="panels">
+      <!-- 전달 큐 -->
+      <div class="panel sev">
+        <div class="ptag sev">수신 · 송신 (네트워크)</div>
+        <div class="qrow">
+          <div class="qcap"><span class="qb rf"></span><span class="qb rf"></span><span class="qb rf"></span><span class="qb rf"></span><span class="caplbl">가득</span></div>
+          <span class="arw sev">→</span>
+          <div class="qover"><span class="qb rf over"></span><span class="qb rf over"></span></div>
+          <span class="qx sev">✕</span>
+        </div>
+        <div class="verdict"><span class="mark sev">✕</span><span class="big">세션 종료</span><span class="sm">연결을 끊는다</span></div>
+        <div class="reason">유실·순서 꼬임 = <b>상태 불일치</b> · 되돌릴 수 없다</div>
+      </div>
+
+      <!-- DB 저장 큐 -->
+      <div class="panel tol">
+        <div class="ptag tol">DB 저장</div>
+        <div class="qrow">
+          <div class="qcap"><span class="qb bf"></span><span class="qb bf"></span><span class="qb bf"></span><span class="qb bf"></span><span class="caplbl">가득</span></div>
+          <span class="arw tol">→</span>
+          <div class="qover"><span class="qb drop"></span><span class="qb drop"></span></div>
+          <span class="qx tol">↓</span>
+        </div>
+        <div class="verdict"><span class="mark tol">✓</span><span class="big">잡만 드롭</span><span class="sm">세션은 유지</span></div>
+        <div class="reason">최신화가 늦어질 뿐 · <b>게임은 메모리로 정상</b></div>
+      </div>
+    </div>
+
+    <div class="callout">'드롭'의 대상이 다르다 — 전달 큐는 <b class="r">세션을 끊고</b>, DB 큐는 <b class="b">잡만 버린다</b>. 모두 <b class="k">'메모리가 진실'</b> 한 원칙에서 나온 차이다.</div>
+
+    <div class="foot">백프레셔(큐 상한) — 초과분 드롭은 <b>위치 데이터라 허용</b> (다음 주기·종료가 커버)</div>
+  </div>
+</body>
+</html>

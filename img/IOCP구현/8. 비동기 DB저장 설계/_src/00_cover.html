@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --blue:#3a78b8; --blue-ink:#2b6aa8; --slate:#566072;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:640px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:592px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:42px 60px 0;overflow:hidden}
+  .card::before{content:"";position:absolute;right:-140px;top:-140px;width:360px;height:360px;border-radius:50%;
+    background:radial-gradient(circle at center,rgba(215,38,61,.06),rgba(215,38,61,0) 70%)}
+
+  .eyebrow{display:flex;align-items:center;gap:11px;font-size:15px;font-weight:800;color:var(--red);letter-spacing:1.5px}
+  .eyebrow .bar{width:28px;height:4px;border-radius:2px;background:var(--red)}
+  .title{font-size:53px;font-weight:800;color:var(--ink);letter-spacing:-1.4px;line-height:1.04;margin-top:12px}
+  .title .r{color:var(--red)}
+  .uline{width:70px;height:6px;border-radius:3px;background:var(--red);margin-top:16px}
+  .sub{margin-top:15px;font-size:20px;font-weight:500;color:var(--muted);letter-spacing:-.3px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .principle{display:flex;align-items:center;justify-content:center;margin-top:32px}
+  .pblock{width:394px;border-radius:20px;padding:22px 30px;border:1.5px solid;text-align:center}
+  .pblock.mem{background:#fdf3f4;border-color:#f2c9cf}
+  .pblock.db{background:#f1f6fc;border-color:#cddff0}
+  .pblock .lab{font-size:16px;font-weight:800;color:var(--slate);letter-spacing:-.2px}
+  .pblock .eq{font-size:34px;font-weight:800;margin-top:8px;letter-spacing:-1px;line-height:1}
+  .pblock.mem .eq{color:var(--red)} .pblock.db .eq{color:var(--blue-ink)}
+  .pblock .d{font-size:14px;font-weight:600;color:var(--muted);margin-top:11px;letter-spacing:-.2px}
+
+  .parrow{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;width:156px;flex:0 0 auto}
+  .parrow .l{font-size:14.5px;font-weight:800;color:var(--deep);white-space:nowrap}
+  .parrow .a{position:relative;width:86px;height:7px;background:var(--red);border-radius:4px}
+  .parrow .a::after{content:"";position:absolute;right:-3px;top:50%;transform:translateY(-50%);
+    border-left:16px solid var(--red);border-top:11px solid transparent;border-bottom:11px solid transparent}
+
+  .pillars{display:flex;gap:16px;margin-top:30px}
+  .pill{flex:1;background:#f6f8fb;border:1px solid #eef1f5;border-radius:16px;padding:16px 17px 15px}
+  .pill .h{display:flex;align-items:center;gap:10px}
+  .pill .no{width:28px;height:28px;border-radius:50%;background:var(--red);color:#fff;font-weight:800;font-size:15px;
+    display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .pill .t{font-size:17.5px;font-weight:800;color:var(--ink);letter-spacing:-.4px}
+  .pill .s{font-size:13.5px;font-weight:600;color:#6f7889;margin-top:10px;line-height:1.36;letter-spacing:-.2px}
+  .pill .s b{color:var(--red);font-weight:800}
+
+  .foot{position:absolute;left:60px;right:60px;bottom:18px;padding-top:13px;border-top:1px solid #eef0f3;
+    font-size:15.5px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="eyebrow"><span class="bar"></span>MMO 서버 구현 · 데이터 영속화</div>
+    <div class="title"><span class="r">비동기</span> DB 저장 설계</div>
+    <div class="uline"></div>
+    <div class="sub">게임 루프(40ms)를 <b>막지 않고</b>, 바뀐 유저만 워커가 <b>따로 저장</b>한다</div>
+
+    <div class="principle">
+      <div class="pblock mem">
+        <div class="lab">서버 메모리</div>
+        <div class="eq">= 진실</div>
+        <div class="d">게임 상태의 원본 · source of truth</div>
+      </div>
+      <div class="parrow">
+        <div class="l">비동기 저장</div>
+        <div class="a"></div>
+      </div>
+      <div class="pblock db">
+        <div class="lab">MySQL · DB</div>
+        <div class="eq">= 저장소</div>
+        <div class="d">메모리의 사본 · 영속화</div>
+      </div>
+    </div>
+
+    <div class="pillars">
+      <div class="pill"><div class="h"><span class="no">1</span><span class="t">틱을 안 막는다</span></div><div class="s">워커가 <b>따로 저장</b> · 게임은 push만(µs)</div></div>
+      <div class="pill"><div class="h"><span class="no">2</span><span class="t">선별 저장</span></div><div class="s"><b>dirty</b>=바뀐 유저만 · 재저장 낭비 X</div></div>
+      <div class="pill"><div class="h"><span class="no">3</span><span class="t">순서 보장</span></div><div class="s">같은 유저=같은 워커 · <b>accountId%K</b></div></div>
+      <div class="pill"><div class="h"><span class="no">4</span><span class="t">장애에 강함</span></div><div class="s">DB 죽어도 <b>서버는 유지</b> · 자동 재연결</div></div>
+    </div>
+
+    <div class="foot">선별 저장 · 순서 보장 · 과부하 제어(백프레셔) · 자동 복구 — 모두 <b>'메모리가 진실'</b> 한 원칙에서 나온다</div>
+  </div>
+</body>
+</html>
