@@ -590,7 +590,7 @@ void CGameServer::GameLoopThread()
             });
         }
 
-#if USE_BROADCAST_DIGEST
+#if USE_BROADCAST_BUNDLE
         // [digest] 이번 틱 보류물(이동 번들+채팅)을 수신섹터 기준 연접으로 배포 (아래 flush가 묶어 보냄)
         FlushSectorSends();
 #elif USE_SECTOR_AGGREGATION
@@ -1044,7 +1044,7 @@ void CGameServer::RecvChat(CPlayer* player, CSerialBuffer* pMsg)
         msgLen = CHAT_MSG_MAX_LEN - 1;
     recvMsg.message[msgLen] = L'\0';  // null 종단 보장
 
-#if USE_BROADCAST_DIGEST
+#if USE_BROADCAST_BUNDLE
     // [digest] 즉시 브로드캐스트 대신 보류 등록 — 틱 끝 digest에 합류 (실송신 시점은 기존과 동일한 틱 끝 flush).
     // 소스 섹터는 수신 시점 좌표로 고정 → 기존(즉시 배포)의 AOI 의미 보존.
     RegisterSectorItem(zone, player->_zoneId, player->_sectorX, player->_sectorY,
@@ -1769,9 +1769,9 @@ void CGameServer::BroadcastSectorPacket(CZone* zone, int32_t sectorX, int32_t se
     pMsg->SubRef();   // 빌더가 넘긴 소유권 1 회수 (타겟 0명이어도 안전 회수)
 }
 
-#if USE_BROADCAST_DIGEST
+#if USE_BROADCAST_BUNDLE
 // ==========================================================================
-// 수신섹터 digest (USE_BROADCAST_DIGEST, Phase 3)
+// 수신섹터 digest (USE_BROADCAST_BUNDLE, Phase 3)
 //
 // 기존(OFF): 소스 아이템(번들 청크·채팅)마다 주변 3×3 주민에게 개별 RequestSendMsg
 //            → (아이템 × 수신자)회의 세션 핀(원자연산)+링 뮤텍스+복사 반복이 broadcast_copy의 지배분.
@@ -1952,5 +1952,5 @@ void CGameServer::FlushSectorSends()
     auto measT1 = std::chrono::steady_clock::now();
     _tickBroadcastEnqueueUs += std::chrono::duration_cast<std::chrono::microseconds>(measT1 - measT0).count();
 }
-#endif // USE_BROADCAST_DIGEST
+#endif // USE_BROADCAST_BUNDLE
 #endif // USE_SECTOR_AGGREGATION

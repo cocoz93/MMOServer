@@ -83,15 +83,15 @@
 //   채팅도 즉시 브로드캐스트 대신 틱 끝 digest에 합류 (실송신 시점은 기존과 동일 — Deferred flush가 원래 틱 끝).
 //   1: 틱 끝 FlushSectorSends — 수신섹터 연접 배포 [실험]
 //   0: 기존 — FlushSectorUpdates(소스 섹터 팬아웃) + 채팅 즉시 BroadcastAroundSector (baseline)
-#define USE_BROADCAST_DIGEST 1
+#define USE_BROADCAST_BUNDLE 1
 
 //   의존: 이동 번들(SECTOR_AGGREGATION)과 틱 끝 flush(SEND_COALESCING) 위에서만 성립.
-#if USE_BROADCAST_DIGEST && (!USE_SECTOR_AGGREGATION || !USE_SEND_COALESCING)
-	#error "USE_BROADCAST_DIGEST requires USE_SECTOR_AGGREGATION=1 && USE_SEND_COALESCING=1"
+#if USE_BROADCAST_BUNDLE && (!USE_SECTOR_AGGREGATION || !USE_SEND_COALESCING)
+	#error "USE_BROADCAST_BUNDLE requires USE_SECTOR_AGGREGATION=1 && USE_SEND_COALESCING=1"
 #endif
 //   배타: digest는 raw 바이트를 링버퍼에 직접 적재 — 포인터 큐(LockFree SendQ)와 양립 불가.
-#if USE_BROADCAST_DIGEST && USE_LOCKFREE_SENDQ
-	#error "USE_BROADCAST_DIGEST requires USE_LOCKFREE_SENDQ=0 (RingBuffer 경로 전용)"
+#if USE_BROADCAST_BUNDLE && USE_LOCKFREE_SENDQ
+	#error "USE_BROADCAST_BUNDLE requires USE_LOCKFREE_SENDQ=0 (RingBuffer 경로 전용)"
 #endif
 
 // DB 저장 파이프라인 실험 — dirty flag 기반 비동기 위치 저장 (존 서버 관점)

@@ -260,7 +260,7 @@ public:
     // 반환: enqueue 성공 true / 실패(세션무효·ABA·큐오버플로) false — 송신 메트릭은 호출자가 집계 (broadcast 배치)
     bool RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg, SendFlush flush = SendFlush::Immediate);
 
-#if USE_BROADCAST_DIGEST
+#if USE_BROADCAST_BUNDLE
     // [digest] raw 바이트 송신 — RequestSendMsg의 링버퍼 경로에서 버퍼 소유권(ref 소비)만 뺀 변형.
     // digest(패킷 여러 개를 연접한 바이트열)를 세션당 "핀 1회 + 링 적재 1회"로 넣는다.
     // 소유권 없음: 링이 즉시 복사하므로 data는 호출 동안만 유효하면 됨. 송신은 Deferred(틱 끝 flush) 고정.

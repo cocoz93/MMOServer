@@ -1164,7 +1164,7 @@ bool CIOCPServer::RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg, [[maybe
     return true;
 }
 
-#if USE_BROADCAST_DIGEST
+#if USE_BROADCAST_BUNDLE
 // [digest] raw 바이트 송신 — 세션 핀/검증(3-step)은 RequestSendMsg와 동일, 차이는 두 가지뿐:
 //   ① CSerialBuffer가 아닌 raw 포인터를 받아 ref 소비가 없다 (digest는 호출자 소유의 연접 버퍼)
 //   ② 항상 Deferred (digest는 틱 끝에서만 호출 → 직후 FlushPendingSends가 묶어 송신)
@@ -1203,7 +1203,7 @@ bool CIOCPServer::RequestSendRaw(int64_t sessionId, const char* data, int size)
     IOCountDecrement(session);
     return true;
 }
-#endif // USE_BROADCAST_DIGEST
+#endif // USE_BROADCAST_BUNDLE
 
 // [coalescing] 게임 루프가 틱 끝에 1회 호출 — 이번 틱에 송신 데이터가 쌓인 세션을 한 번에 flush.
 // PostSend가 내부에서 AcquireSession/_disconnecting을 재검증하므로 dirty 등록 후 세션이 끊겨도 안전.

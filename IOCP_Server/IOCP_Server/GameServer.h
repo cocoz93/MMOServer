@@ -113,7 +113,7 @@ private:
     // 섹터 좌표 기준 주변 9섹터에 묶음 패킷 전송 (BroadcastAroundSector의 소유권/계측 패턴 복제)
     void BroadcastSectorPacket(CZone* zone, int32_t sectorX, int32_t sectorY, CSerialBuffer* pMsg);
 
-#if USE_BROADCAST_DIGEST
+#if USE_BROADCAST_BUNDLE
     // ── 수신섹터 digest 경로 (Phase 3) — FlushSectorUpdates를 대체 ──
     // 소스 섹터별 보류물(이동 번들 + 채팅)을 수신 섹터 기준으로 뒤집어, 이웃 9섹터 내용을
     // raw 바이트 1덩어리로 연접 후 주민당 RequestSendRaw 1회. 같은 섹터 주민은 수신 집합이 동일해 공유 가능.
@@ -204,8 +204,8 @@ private:
     // USE_SECTOR_AGGREGATION: 이번 틱 이동/sync로 상태가 바뀐 플레이어 (틱 끝에 섹터별 묶음 송신)
     std::vector<CPlayer*> _dirtyMovers;
 
-#if USE_BROADCAST_DIGEST
-    // USE_BROADCAST_DIGEST: 존별 섹터 그리드에 이번 틱 보류물(번들+채팅)을 모았다가 틱 끝 digest로 배포.
+#if USE_BROADCAST_BUNDLE
+    // USE_BROADCAST_BUNDLE: 존별 섹터 그리드에 이번 틱 보류물(번들+채팅)을 모았다가 틱 끝 digest로 배포.
     // zoneId 키로 보관 — 틱 중 존이 사라져도 해제 루프는 존 포인터 없이 안전 (기존 GetZone null 가드 패턴).
     struct ZonePending
     {
