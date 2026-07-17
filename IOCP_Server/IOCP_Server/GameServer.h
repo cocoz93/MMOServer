@@ -208,24 +208,30 @@ private:
     std::vector<SectorChangeInfo> _tickSectorChanges;
     std::vector<CPlayer*> _tickClampedPlayers;
 
-    // USE_SECTOR_AGGREGATION: 이번 틱 이동/sync로 상태가 바뀐 플레이어 (틱 끝에 섹터별 묶음 송신)
-    std::vector<CPlayer*> _dirtyMovers;
+    // ── 섹터 아웃박스 ── 틱-지연 배칭 상태를 한 덩어리로 응집.
+    //   생산(틱 중): MarkMoveDirty / RegisterSectorItem  →  배출(틱 끝): FlushSectorUpdates / FlushSectorSends
+    //   흩어져 있던 상태를 묶어 "위에서 모아 아래서 비운다"의 대상이 한눈에 보이게 함 (동작 불변).
+    struct SectorOutbox
+    {
+        // USE_SECTOR_AGGREGATION: 이번 틱 이동/sync로 상태가 바뀐 플레이어 (틱 끝에 섹터별 묶음 송신)
+        std::vector<CPlayer*> dirtyMovers;
 
 #if USE_BROADCAST_BUNDLE
-    // USE_BROADCAST_BUNDLE: 존별 섹터 그리드에 이번 틱 보류물(번들+채팅)을 모았다가 틱 끝 digest로 배포.
-    // zoneId 키로 보관 — 틱 중 존이 사라져도 해제 루프는 존 포인터 없이 안전 (기존 GetZone null 가드 패턴).
-    struct ZonePending
-    {
-        int32_t countX = 0, countY = 0;                  // 섹터 그리드 크기 (존 최초 등록 시 확정)
-        std::vector<std::vector<CSerialBuffer*>> items;  // flatIdx → 보류 버퍼들 (등록순)
-        std::vector<uint64_t> recvEpoch;                 // 수신섹터 중복 마킹 (틱당 epoch 증가로 clear 생략)
-    };
-    std::unordered_map<int32_t, ZonePending> _pendingByZone;
-    std::vector<std::pair<int32_t, int32_t>> _touchedSectors;   // (zoneId, flatIdx) — 보류물 있는 소스 섹터
-    std::vector<std::pair<int32_t, int32_t>> _receiverSectors;  // (zoneId, flatIdx) — 이번 틱 수신 후보 (재사용)
-    std::vector<char> _concatBuf;                               // 수신섹터별 연접 버퍼 (재사용)
-    uint64_t _flushEpoch = 0;                                   // 64비트 — wrap 없음 (0 = 미마킹 초기값과 충돌 방지)
+        // USE_BROADCAST_BUNDLE: 존별 섹터 그리드에 이번 틱 보류물(번들+채팅)을 모았다가 틱 끝 digest로 배포.
+        // zoneId 키로 보관 — 틱 중 존이 사라져도 해제 루프는 존 포인터 없이 안전 (기존 GetZone null 가드 패턴).
+        struct ZonePending
+        {
+            int32_t countX = 0, countY = 0;                  // 섹터 그리드 크기 (존 최초 등록 시 확정)
+            std::vector<std::vector<CSerialBuffer*>> items;  // flatIdx → 보류 버퍼들 (등록순)
+            std::vector<uint64_t> recvEpoch;                 // 수신섹터 중복 마킹 (틱당 epoch 증가로 clear 생략)
+        };
+        std::unordered_map<int32_t, ZonePending> pendingByZone;
+        std::vector<std::pair<int32_t, int32_t>> touchedSectors;   // (zoneId, flatIdx) — 보류물 있는 소스 섹터
+        std::vector<std::pair<int32_t, int32_t>> receiverSectors;  // (zoneId, flatIdx) — 이번 틱 수신 후보 (재사용)
+        std::vector<char> concatBuf;                               // 수신섹터별 연접 버퍼 (재사용)
+        uint64_t flushEpoch = 0;                                   // 64비트 — wrap 없음 (0 = 미마킹 초기값과 충돌 방지)
 #endif
+    } _sectorOutbox;
 
 #if USE_MEMBERSHIP_INBOUND_BUNDLE
     // USE_MEMBERSHIP_INBOUND_BUNDLE: 인바운드 멤버십 배치 수집 전용 (ProcessSectorChange 내 수집→직렬화→송신 완결, 이월 없음)

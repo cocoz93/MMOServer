@@ -315,7 +315,7 @@ bool CGameServer::Init(ServerMode mode, int port, int maxClients,
         _tickSectorChanges.reserve(maxPerChannel);     // 전체 서버 TickAll 결과
         _tickClampedPlayers.reserve(maxPerChannel);    // 전체 서버 TickAll 결과
         _sectorChangedSet.reserve(maxPerChannel);      // 전체 서버 dedup
-        _dirtyMovers.reserve(maxClients);              // 전체 서버 dirty (이동/sync 묶음 대상)
+        _sectorOutbox.dirtyMovers.reserve(maxClients);              // 전체 서버 dirty (이동/sync 묶음 대상)
     }
 
     return true;
@@ -1460,8 +1460,8 @@ void CGameServer::BroadcastLeaveZone(CZone* zone, CPlayer* player)
     if (player->_moveDirty)
     {
         player->_moveDirty = false;
-        _dirtyMovers.erase(std::remove(_dirtyMovers.begin(), _dirtyMovers.end(), player),
-            _dirtyMovers.end());
+        _sectorOutbox.dirtyMovers.erase(std::remove(_sectorOutbox.dirtyMovers.begin(), _sectorOutbox.dirtyMovers.end(), player),
+            _sectorOutbox.dirtyMovers.end());
     }
 #endif
 
@@ -1660,25 +1660,27 @@ void CGameServer::FanoutToSectors(CZone* zone,
 
 // 즉시 브로드캐스트 대신 dirty 등록 — 같은 플레이어는 틱당 1회만.
 // 묶음은 틱 끝 최종 상태를 읽으므로 여기선 등록만 (상태는 호출 직전에 이미 갱신됨).
+// → 배출: 틱 끝 FlushSectorUpdates(BUNDLE off) / FlushSectorSends(BUNDLE on)에서 _sectorOutbox.dirtyMovers 소비.
 void CGameServer::MarkMoveDirty(CPlayer* player)
 {
     if (player->_moveDirty)
         return;
     player->_moveDirty = true;
-    _dirtyMovers.push_back(player);
+    _sectorOutbox.dirtyMovers.push_back(player);
 }
 
 // 틱 끝: dirty 플레이어를 (zone, sector)별로 묶어 그 섹터 주변에 송신.
+// ← 생산: MarkMoveDirty (틱 중 _sectorOutbox.dirtyMovers 적재).
 void CGameServer::FlushSectorUpdates()
 {
-    if (_dirtyMovers.empty())
+    if (_sectorOutbox.dirtyMovers.empty())
         return;
 
     // [계측] 묶음 빌드+송신 전체를 enqueue 축에 합산 (baseline의 broadcast_enqueue와 같은 비용종류로 A/B 비교)
     auto measT0 = std::chrono::steady_clock::now();
 
     // (zoneId, sectorY, sectorX)로 정렬 → 같은 섹터가 연속 구간이 되어 그룹 단위로 처리
-    std::sort(_dirtyMovers.begin(), _dirtyMovers.end(),
+    std::sort(_sectorOutbox.dirtyMovers.begin(), _sectorOutbox.dirtyMovers.end(),
         [](CPlayer* a, CPlayer* b)
         {
             if (a->_zoneId != b->_zoneId)   return a->_zoneId < b->_zoneId;
@@ -1686,11 +1688,11 @@ void CGameServer::FlushSectorUpdates()
             return a->_sectorX < b->_sectorX;
         });
 
-    const size_t total = _dirtyMovers.size();
+    const size_t total = _sectorOutbox.dirtyMovers.size();
     size_t i = 0;
     while (i < total)
     {
-        CPlayer* head = _dirtyMovers[i];
+        CPlayer* head = _sectorOutbox.dirtyMovers[i];
         const int32_t zoneId = head->_zoneId;
         const int32_t sx = head->_sectorX;
         const int32_t sy = head->_sectorY;
@@ -1698,9 +1700,9 @@ void CGameServer::FlushSectorUpdates()
         // head와 같은 섹터가 이어지는 끝(j)을 찾는다 → [i, j)가 한 섹터 묶음
         size_t j = i;
         while (j < total &&  // 배열 끝을 넘지 않는 동안
-            _dirtyMovers[j]->_zoneId == zoneId &&  // j번째가 기준과 같은 zone이고
-            _dirtyMovers[j]->_sectorX == sx &&     // 같은 sectorX이고
-            _dirtyMovers[j]->_sectorY == sy)       // 같은 sectorY이면
+            _sectorOutbox.dirtyMovers[j]->_zoneId == zoneId &&  // j번째가 기준과 같은 zone이고
+            _sectorOutbox.dirtyMovers[j]->_sectorX == sx &&     // 같은 sectorX이고
+            _sectorOutbox.dirtyMovers[j]->_sectorY == sy)       // 같은 sectorY이면
             ++j;
 
         // [i, j) 묶음을 SECTOR_UPDATE_MAX_ENTRIES씩 잘라 패킷화 → 섹터(sx,sy) 주변에 broadcast
@@ -1712,7 +1714,7 @@ void CGameServer::FlushSectorUpdates()
             while (k < j)
             {
                 int chunk = static_cast<int>((std::min)(j - k, static_cast<size_t>(SECTOR_UPDATE_MAX_ENTRIES)));
-                CSerialBuffer* buf = MakeSectorUpdates(&_dirtyMovers[k], chunk);
+                CSerialBuffer* buf = MakeSectorUpdates(&_sectorOutbox.dirtyMovers[k], chunk);
                 BroadcastSectorPacket(zone, sx, sy, buf);
                 k += chunk;
             }
@@ -1721,9 +1723,9 @@ void CGameServer::FlushSectorUpdates()
     }
 
     // dirty 리셋 (다음 틱 이월 없음)
-    for (CPlayer* p : _dirtyMovers)
+    for (CPlayer* p : _sectorOutbox.dirtyMovers)
         p->_moveDirty = false;
-    _dirtyMovers.clear();
+    _sectorOutbox.dirtyMovers.clear();
 
     auto measT1 = std::chrono::steady_clock::now();
     _tickBroadcastEnqueueUs += std::chrono::duration_cast<std::chrono::microseconds>(measT1 - measT0).count();
@@ -1781,10 +1783,11 @@ void CGameServer::BroadcastSectorPacket(CZone* zone, int32_t sectorX, int32_t se
 
 // 보류 등록 — (zoneId, 섹터)에 버퍼 적재. 버퍼 소유권 1은 FlushSectorSends 4)에서 회수.
 // _broadcastCalls는 소스 아이템 단위로 집계 (기존 per-청크/per-채팅 호출 카운트와 동일 의미 → A/B 비교 가능).
+// → 배출: 틱 끝 FlushSectorSends에서 _sectorOutbox.pendingByZone을 수신섹터 digest로 연접·배포.
 void CGameServer::RegisterSectorItem(CZone* zone, int32_t zoneId, int32_t sectorX, int32_t sectorY,
                                      CSerialBuffer* pMsg)
 {
-    ZonePending& zp = _pendingByZone[zoneId];
+    auto& zp = _sectorOutbox.pendingByZone[zoneId];
     if (zp.items.empty())   // 존 최초 등록 — 그리드 크기 확정 (맵 크기는 부팅 후 불변)
     {
         zp.countX = zone->GetSectorManager().GetSectorCountX();
@@ -1794,15 +1797,16 @@ void CGameServer::RegisterSectorItem(CZone* zone, int32_t zoneId, int32_t sector
     }
     const int32_t idx = sectorY * zp.countX + sectorX;
     if (zp.items[idx].empty())
-        _touchedSectors.emplace_back(zoneId, idx);
+        _sectorOutbox.touchedSectors.emplace_back(zoneId, idx);
     zp.items[idx].push_back(pMsg);
     InterlockedIncrement64(&_monitor._gameLoop._broadcastCalls);
 }
 
 // 틱 끝: ① 이동 dirty → 섹터별 번들 빌드·보류 ② 수신섹터 후보 수집 ③ 연접·배포 ④ 일괄 해제.
+// ← 생산: MarkMoveDirty(_sectorOutbox.dirtyMovers) + RegisterSectorItem(_sectorOutbox.pendingByZone).
 void CGameServer::FlushSectorSends()
 {
-    if (_dirtyMovers.empty() && _touchedSectors.empty())
+    if (_sectorOutbox.dirtyMovers.empty() && _sectorOutbox.touchedSectors.empty())
         return;
 
     // [계측] 빌드+연접+배포 전체를 enqueue 축에 합산 — OFF의 FlushSectorUpdates·채팅 enqueue와
@@ -1810,9 +1814,9 @@ void CGameServer::FlushSectorSends()
     auto measT0 = std::chrono::steady_clock::now();
 
     // ── 1) 이동 번들 빌드 → 보류 등록 (FlushSectorUpdates의 빌드 로직 그대로, 송신만 보류로 대체) ──
-    if (!_dirtyMovers.empty())
+    if (!_sectorOutbox.dirtyMovers.empty())
     {
-        std::sort(_dirtyMovers.begin(), _dirtyMovers.end(),
+        std::sort(_sectorOutbox.dirtyMovers.begin(), _sectorOutbox.dirtyMovers.end(),
             [](CPlayer* a, CPlayer* b)
             {
                 if (a->_zoneId != b->_zoneId)   return a->_zoneId < b->_zoneId;
@@ -1820,20 +1824,20 @@ void CGameServer::FlushSectorSends()
                 return a->_sectorX < b->_sectorX;
             });
 
-        const size_t total = _dirtyMovers.size();
+        const size_t total = _sectorOutbox.dirtyMovers.size();
         size_t i = 0;
         while (i < total)
         {
-            CPlayer* head = _dirtyMovers[i];
+            CPlayer* head = _sectorOutbox.dirtyMovers[i];
             const int32_t zoneId = head->_zoneId;
             const int32_t sx = head->_sectorX;
             const int32_t sy = head->_sectorY;
 
             size_t j = i;
             while (j < total &&
-                _dirtyMovers[j]->_zoneId == zoneId &&
-                _dirtyMovers[j]->_sectorX == sx &&
-                _dirtyMovers[j]->_sectorY == sy)
+                _sectorOutbox.dirtyMovers[j]->_zoneId == zoneId &&
+                _sectorOutbox.dirtyMovers[j]->_sectorX == sx &&
+                _sectorOutbox.dirtyMovers[j]->_sectorY == sy)
                 ++j;
 
             CZone* zone = _mapManager.GetZone(zoneId);
@@ -1843,24 +1847,24 @@ void CGameServer::FlushSectorSends()
                 while (k < j)
                 {
                     int chunk = static_cast<int>((std::min)(j - k, static_cast<size_t>(SECTOR_UPDATE_MAX_ENTRIES)));
-                    RegisterSectorItem(zone, zoneId, sx, sy, MakeSectorUpdates(&_dirtyMovers[k], chunk));
+                    RegisterSectorItem(zone, zoneId, sx, sy, MakeSectorUpdates(&_sectorOutbox.dirtyMovers[k], chunk));
                     k += chunk;
                 }
             }
             i = j;
         }
 
-        for (CPlayer* p : _dirtyMovers)
+        for (CPlayer* p : _sectorOutbox.dirtyMovers)
             p->_moveDirty = false;
-        _dirtyMovers.clear();
+        _sectorOutbox.dirtyMovers.clear();
     }
 
     // ── 2) 수신섹터 후보 = 소스(touched)의 3×3 합집합 (epoch 마킹으로 중복 제거, clear 불필요) ──
-    ++_flushEpoch;
-    _receiverSectors.clear();
-    for (const auto& t : _touchedSectors)
+    ++_sectorOutbox.flushEpoch;
+    _sectorOutbox.receiverSectors.clear();
+    for (const auto& t : _sectorOutbox.touchedSectors)
     {
-        ZonePending& zp = _pendingByZone[t.first];
+        auto& zp = _sectorOutbox.pendingByZone[t.first];
         const int32_t sy = t.second / zp.countX;
         const int32_t sx = t.second % zp.countX;
         const int32_t y0 = (std::max)(sy - 1, 0), y1 = (std::min)(sy + 1, zp.countY - 1);
@@ -1870,10 +1874,10 @@ void CGameServer::FlushSectorSends()
             for (int32_t nx = x0; nx <= x1; ++nx)
             {
                 const int32_t ridx = ny * zp.countX + nx;
-                if (zp.recvEpoch[ridx] != _flushEpoch)
+                if (zp.recvEpoch[ridx] != _sectorOutbox.flushEpoch)
                 {
-                    zp.recvEpoch[ridx] = _flushEpoch;
-                    _receiverSectors.emplace_back(t.first, ridx);
+                    zp.recvEpoch[ridx] = _sectorOutbox.flushEpoch;
+                    _sectorOutbox.receiverSectors.emplace_back(t.first, ridx);
                 }
             }
         }
@@ -1881,13 +1885,13 @@ void CGameServer::FlushSectorSends()
 
     // ── 3) 각 수신섹터: 이웃 9섹터 보류물 연접(digest) → 주민당 RequestSendRaw 1회 ──
     int64_t sentPkts = 0, sentBytes = 0, targets = 0;
-    _concatBuf.reserve(16384);   // 최초 1회만 실할당 (동접 5000 기준 digest ~5KB)
-    for (const auto& r : _receiverSectors)
+    _sectorOutbox.concatBuf.reserve(16384);   // 최초 1회만 실할당 (동접 5000 기준 digest ~5KB)
+    for (const auto& r : _sectorOutbox.receiverSectors)
     {
         CZone* zone = _mapManager.GetZone(r.first);
         if (zone == nullptr)
             continue;   // 틱 중 존 소멸 — 보류물 해제는 4)가 책임
-        ZonePending& zp = _pendingByZone[r.first];
+        auto& zp = _sectorOutbox.pendingByZone[r.first];
         const int32_t ry = r.second / zp.countX;
         const int32_t rx = r.second % zp.countX;
 
@@ -1895,7 +1899,7 @@ void CGameServer::FlushSectorSends()
         if (residents.empty())
             continue;   // 주민 없으면 연접 비용도 생략
 
-        _concatBuf.clear();
+        _sectorOutbox.concatBuf.clear();
         int32_t itemCount = 0;
         const int32_t y0 = (std::max)(ry - 1, 0), y1 = (std::min)(ry + 1, zp.countY - 1);
         const int32_t x0 = (std::max)(rx - 1, 0), x1 = (std::min)(rx + 1, zp.countX - 1);
@@ -1906,7 +1910,7 @@ void CGameServer::FlushSectorSends()
                 for (CSerialBuffer* buf : zp.items[ny * zp.countX + nx])
                 {
                     const char* p = buf->GetReadBufferPtr();
-                    _concatBuf.insert(_concatBuf.end(), p, p + buf->GetDataSize());
+                    _sectorOutbox.concatBuf.insert(_sectorOutbox.concatBuf.end(), p, p + buf->GetDataSize());
                     ++itemCount;
                 }
             }
@@ -1914,14 +1918,14 @@ void CGameServer::FlushSectorSends()
         if (itemCount == 0)
             continue;
 
-        const int concatSize = static_cast<int>(_concatBuf.size());
+        const int concatSize = static_cast<int>(_sectorOutbox.concatBuf.size());
         // targets = (아이템 × 주민) 전달 쌍 수 — 기존 Σ(호출별 gather 인원)과 재배열만 다르고 총량 동일
         targets += static_cast<int64_t>(residents.size()) * itemCount;
         for (CPlayer* other : residents)
         {
             if (other->_sessionId == -1)
                 continue;
-            if (_network->RequestSendRaw(other->_sessionId, _concatBuf.data(), concatSize))
+            if (_network->RequestSendRaw(other->_sessionId, _sectorOutbox.concatBuf.data(), concatSize))
             {
                 sentPkts  += itemCount;     // 논리 패킷 수 보존 (digest = 기존 패킷 itemCount개의 연접)
                 sentBytes += concatSize;    // Σ아이템 크기와 동일 → avg_pkt_bytes 통제지표 불변
@@ -1930,14 +1934,14 @@ void CGameServer::FlushSectorSends()
     }
 
     // ── 4) 보류물 일괄 해제 — 존 소멸·주민 0이어도 무조건 회수 (빌더 소유권 1을 여기서 소비) ──
-    for (const auto& t : _touchedSectors)
+    for (const auto& t : _sectorOutbox.touchedSectors)
     {
-        ZonePending& zp = _pendingByZone[t.first];
+        auto& zp = _sectorOutbox.pendingByZone[t.first];
         for (CSerialBuffer* buf : zp.items[t.second])
             buf->SubRef();
         zp.items[t.second].clear();
     }
-    _touchedSectors.clear();
+    _sectorOutbox.touchedSectors.clear();
 
     // 송신 메트릭 배치 반영 (기존 BroadcastSectorPacket의 원자연산 N→1 패턴과 동일)
     if (targets > 0)
