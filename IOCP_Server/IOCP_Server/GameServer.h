@@ -107,6 +107,13 @@ private:
     // 주변 브로드캐스트 (CSerialBuffer — 빌더 RefCount=1 버퍼를 소비)
     void BroadcastAroundSector(CZone* zone, CPlayer* player, CSerialBuffer* pMsg, bool excludeSelf = true);
 
+    // ── 이동 알림 헬퍼 ──
+    // 이동 시작/정지/동기화 통보의 "묶음(dirty 마킹) ↔ 즉시 브로드캐스트" 분기를 한 곳에 흡수.
+    // 호출부는 의도만 표시, 실제 경로는 USE_SECTOR_AGGREGATION이 결정 (동작 불변).
+    void NotifyMoveStart(CZone* zone, CPlayer* player);
+    void NotifyMoveStop(CZone* zone, CPlayer* player, bool excludeSelf);
+    void NotifyMoveSync(CZone* zone, CPlayer* player);
+
     // ── 섹터 묶음 경로 (USE_SECTOR_AGGREGATION) ──
     void MarkMoveDirty(CPlayer* player);   // 즉시 브로드캐스트 대신 dirty 등록 (중복 방지)
     void FlushSectorUpdates();             // 틱 끝: dirty를 섹터별로 묶어 주변에 송신

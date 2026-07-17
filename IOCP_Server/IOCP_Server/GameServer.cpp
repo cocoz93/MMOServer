@@ -546,13 +546,7 @@ void CGameServer::GameLoopThread()
             CZone* zone = _mapManager.GetZone(player->_zoneId);
             if (zone != nullptr)
             {
-#if USE_SECTOR_AGGREGATION
-                MarkMoveDirty(player);
-#else
-                BroadcastAroundSector(zone, player,
-                    MakeMoveStop(player->_playerId, static_cast<uint8_t>(player->_direction),
-                        player->_x, player->_y), false);  // 본인 포함
-#endif
+                NotifyMoveStop(zone, player, false);  // 본인 포함
             }
         }
 
@@ -579,13 +573,7 @@ void CGameServer::GameLoopThread()
                     player->_lastSyncX = player->_x;
                     player->_lastSyncY = player->_y;
 
-#if USE_SECTOR_AGGREGATION
-                    MarkMoveDirty(player);
-#else
-                    BroadcastAroundSector(zone, player,
-                        MakeSyncPosition(player->_playerId, player->_x, player->_y),
-                        false);  // 본인 포함 (이동 중 클라-서버 좌표 드리프트 보정)
-#endif
+                    NotifyMoveSync(zone, player);  // 본인 포함 (이동 중 클라-서버 좌표 드리프트 보정)
                 }
             });
         }
@@ -877,13 +865,7 @@ void CGameServer::RecvMoveStart(CPlayer* player, CSerialBuffer* pMsg)
             player->_moveState = MoveState::IDLE;
             player->_direction = dir;
 
-#if USE_SECTOR_AGGREGATION
-            MarkMoveDirty(player);
-#else
-            BroadcastAroundSector(zone, player,
-                MakeMoveStop(player->_playerId, static_cast<uint8_t>(dir),
-                    player->_x, player->_y), false);  // 본인 포함
-#endif
+            NotifyMoveStop(zone, player, false);  // 본인 포함
             return;
         }
 
@@ -891,13 +873,7 @@ void CGameServer::RecvMoveStart(CPlayer* player, CSerialBuffer* pMsg)
         player->_lastSyncX = player->_x;
         player->_lastSyncY = player->_y;
 
-#if USE_SECTOR_AGGREGATION
-        MarkMoveDirty(player);
-#else
-        BroadcastAroundSector(zone, player,
-            MakeMoveStart(player->_playerId, static_cast<uint8_t>(dir),
-                player->_x, player->_y));
-#endif
+        NotifyMoveStart(zone, player);
         return;
     }
 
@@ -955,13 +931,7 @@ void CGameServer::RecvMoveStart(CPlayer* player, CSerialBuffer* pMsg)
     player->_lastSyncY = player->_y;
 
     // 주변에 MOVE_START 브로드캐스트 (묶음 모드: dirty 마킹만)
-#if USE_SECTOR_AGGREGATION
-    MarkMoveDirty(player);
-#else
-    BroadcastAroundSector(zone, player,
-        MakeMoveStart(player->_playerId, static_cast<uint8_t>(dir),
-            player->_x, player->_y));
-#endif
+    NotifyMoveStart(zone, player);
 }
 
 void CGameServer::RecvMoveStop(CPlayer* player, CSerialBuffer* pMsg)
@@ -1010,13 +980,7 @@ void CGameServer::RecvMoveStop(CPlayer* player, CSerialBuffer* pMsg)
     }
 
     // 주변에 MOVE_STOP 브로드캐스트 (묶음 모드: dirty 마킹만)
-#if USE_SECTOR_AGGREGATION
-    MarkMoveDirty(player);
-#else
-    BroadcastAroundSector(zone, player,
-        MakeMoveStop(player->_playerId, static_cast<uint8_t>(player->_direction),
-            player->_x, player->_y));
-#endif
+    NotifyMoveStop(zone, player, true);
 }
 
 void CGameServer::RecvChat(CPlayer* player, CSerialBuffer* pMsg)
@@ -1159,6 +1123,41 @@ void CGameServer::BroadcastAroundSector(CZone* zone, CPlayer* player, CSerialBuf
     auto _measEnqueueT1 = std::chrono::steady_clock::now();
     _tickBroadcastEnqueueUs += std::chrono::duration_cast<std::chrono::microseconds>(
         _measEnqueueT1 - _measGatherT1).count();
+}
+
+// ── 이동 알림 헬퍼 ──
+// 묶음 모드(USE_SECTOR_AGGREGATION)면 dirty 마킹만, 아니면 즉시 주변 브로드캐스트.
+// 호출부의 #if/#else 산재를 이 3개로 흡수 (OFF 경로 바이트·동작 불변).
+void CGameServer::NotifyMoveStart(CZone* zone, CPlayer* player)
+{
+#if USE_SECTOR_AGGREGATION
+    MarkMoveDirty(player);
+#else
+    BroadcastAroundSector(zone, player,
+        MakeMoveStart(player->_playerId, static_cast<uint8_t>(player->_direction),
+            player->_x, player->_y));
+#endif
+}
+
+void CGameServer::NotifyMoveStop(CZone* zone, CPlayer* player, bool excludeSelf)
+{
+#if USE_SECTOR_AGGREGATION
+    MarkMoveDirty(player);
+#else
+    BroadcastAroundSector(zone, player,
+        MakeMoveStop(player->_playerId, static_cast<uint8_t>(player->_direction),
+            player->_x, player->_y), excludeSelf);
+#endif
+}
+
+void CGameServer::NotifyMoveSync(CZone* zone, CPlayer* player)
+{
+#if USE_SECTOR_AGGREGATION
+    MarkMoveDirty(player);
+#else
+    BroadcastAroundSector(zone, player,
+        MakeSyncPosition(player->_playerId, player->_x, player->_y), false);
+#endif
 }
 
 void CGameServer::SendZoneInfo(CPlayer* target, CZone* zone)
