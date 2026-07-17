@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <deque>
 #include <string>
-#include "RingBuffer.h"
+#include "../../../Shared/RingBuffer.h"
 #include "../../../Shared/Protocol/Protocol.h"
 
 struct ThreadStats;
@@ -67,8 +67,8 @@ private:
     int         _pendingCount   = 0;   // 미응답 패킷 수
     std::deque<int64_t> _sendTimes;    // 송신 시각 큐 (RTT 측정용)
 
-    CRingBufferST  _recvBuf;
-    CRingBufferST  _sendBuf;
+    CRingBufferST  _recvBuf{65536};   // 통일 정본은 무인자=빈 → 명시 크기 (기존 기본값 65536 보존)
+    CRingBufferST  _sendBuf{65536};
 
     // DisconnectTest
     int64_t     _nextDisconMs       = 0;

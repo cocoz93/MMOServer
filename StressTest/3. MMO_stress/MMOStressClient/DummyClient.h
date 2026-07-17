@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <string>
 #include <random>
-#include "RingBuffer.h"
+#include "../../../Shared/RingBuffer.h"
 #include "../../../Shared/Protocol/Protocol.h"
 
 struct StatsLocal;

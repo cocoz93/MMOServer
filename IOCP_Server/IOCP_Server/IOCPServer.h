@@ -16,7 +16,7 @@
 #include <array>
 #include <atomic>
 
-#include "RingBuffer.h"
+#include "../../Shared/RingBuffer.h"
 #include "SerialBuffer.h"
 #include "../../Shared/Protocol/Protocol.h"
 #include "LockFree/LockFreeStack.h"
@@ -151,37 +151,6 @@ struct NetworkEvent
 
     NetworkEvent(Type t, int64_t id, CSerialBuffer* msg)
         : type(t), sessionId(id), pMsg(msg)
-    {
-    }
-};
-
-
-// 게임 로직에서 네트워크 레이어로 보낼 명령
-struct NetworkCommand
-{
-    enum class Type
-    {
-        SEND_MSG,
-        DISCONNECT_SESSION,
-    };
-
-    Type type;
-    int64_t sessionId;
-    std::vector<char> data;
-
-    NetworkCommand(Type t, int64_t id)
-        : type(t), sessionId(id)
-    {
-    }
-
-    NetworkCommand(Type t, int64_t id, const char* buffer, size_t length)
-        : type(t), sessionId(id), data(buffer, buffer + length)
-    {
-    }
-
-    // Broadcast용
-    NetworkCommand(Type t, const char* buffer, size_t length)
-        : type(t), sessionId(-1), data(buffer, buffer + length)
     {
     }
 };

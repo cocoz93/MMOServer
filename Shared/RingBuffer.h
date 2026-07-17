@@ -1,10 +1,10 @@
-//
+﻿//
 #pragma once
 #include <cstdint>
 #include <cstring>
 #include <mutex>
 #include <algorithm>
-
+#include <stdexcept>
 
 
 // 템플릿 기본 매개변수(Default Template Argument)
@@ -22,7 +22,7 @@ struct MutexLock
 };
 
 // __________________________________________________________________
-//
+// 
 // NoLock 싱글스레드 버전
 // 싱글스레드 환경에서 사용
 // __________________________________________________________________
@@ -30,21 +30,41 @@ template<typename LockPolicy = NoLock>
 class CRingBufferT
 {
 public:
-    explicit CRingBufferT(size_t capacity = 65536)
-        : _capacity(capacity)
+    explicit CRingBufferT()
+        : _capacity(0)
         , _readPos(0)
         , _writePos(0)
         , _buffer(nullptr)
     {
-        if (capacity == 0)
-            return;
+    }
 
-        _buffer = new (std::nothrow) char[_capacity];
+    // 즉시 할당 편의 생성자 — capacity>0면 Init로 버퍼 확보 (클라 등 풀링 불필요한 곳).
+    //   서버 세션 풀은 무인자 ctor(빈) + Init() 사용. 두 생성자는 오버로드라 무충돌.
+    explicit CRingBufferT(size_t capacity)
+        : _capacity(0)
+        , _readPos(0)
+        , _writePos(0)
+        , _buffer(nullptr)
+    {
+        Init(capacity);
     }
 
     ~CRingBufferT()
     {
         delete[] _buffer;
+    }
+
+    bool Init(size_t capacity = 65535)
+    {
+        if (capacity == 0)
+            return false;
+
+        _buffer = new (std::nothrow) char[capacity];
+        if (_buffer == nullptr)
+            return false;
+
+        _capacity = capacity;
+        return true;
     }
 
     bool IsValid() const
@@ -208,13 +228,13 @@ public:
     void Clear()
     {
         _lock.lock();
-
+        
         if (_buffer == nullptr)
         {
             _lock.unlock();
             return;
         }
-
+        
         _readPos = 0;
         _writePos = 0;
         _lock.unlock();
@@ -238,28 +258,67 @@ public:
 
     char* GetWritePtr()
     {
-        return _buffer + _writePos;
+        _lock.lock();
+        char* ptr = _buffer + _writePos;
+        _lock.unlock();
+        return ptr;
     }
 
     char* GetReadPtr()
     {
-        return _buffer + _readPos;
+        _lock.lock();
+        char* ptr = _buffer + _readPos;
+        _lock.unlock();
+        return ptr;
     }
 
     size_t GetDirectWriteSize() const
     {
+        _lock.lock();
+        size_t result;
         if (_writePos >= _readPos)
-            return (_readPos == 0) ? _capacity - _writePos - 1 : _capacity - _writePos;
+            result = (_readPos == 0) ? _capacity - _writePos - 1 : _capacity - _writePos;
         else
-            return _readPos - _writePos - 1;
+            result = _readPos - _writePos - 1;
+        _lock.unlock();
+        return result;
     }
 
     size_t GetDirectReadSize() const
     {
+        _lock.lock();
+        size_t result;
         if (_writePos >= _readPos)
-            return _writePos - _readPos;
+            result = _writePos - _readPos;
         else
-            return _capacity - _readPos;
+            result = _capacity - _readPos;
+        _lock.unlock();
+        return result;
+    }
+
+    // 모든 함수는 lock으로 보호되지만, 여러개의 함수를 호출했을때
+    // 일관성이 보장되지는 않는다. 따라서 새로운 구조체 추가
+    struct SendInfo
+    {
+        char* readPtr;
+        size_t dataSize;
+        size_t directReadSize;
+    };
+
+    SendInfo GetSendInfo()
+    {
+        _lock.lock();
+        SendInfo info;
+        info.readPtr = _buffer + _readPos;
+        info.dataSize = GetDataSize_Internal();
+
+        if (_writePos >= _readPos)
+            info.directReadSize = _writePos - _readPos;
+        else
+            info.directReadSize = _capacity - _readPos;
+
+        _lock.unlock();
+        return info;
     }
 
 public:
