@@ -313,7 +313,7 @@ private:
     std::vector<CSession*> _dirtySessions;
 
 #if USE_SEND_THREAD
-    // 송신 워커 풀 — 게임루프가 dirty 배치(sessionId)를 sessionId%K 워커에 넘기고 각 워커가 WSASend.
+    // 송신 워커 풀 — 게임루프가 dirty 배치(sessionId)를 uniqueId%K 워커에 넘기고 각 워커가 WSASend.
     //   한 세션은 항상 같은 워커(FIFO 보장). 완료(WSASend 결과)는 기존 IOCP 워커가 처리, 제출만 송신 워커 담당.
     struct alignas(64) SendWorker                      // alignas: 워커 간 false sharing 차단(측정 변수 제거용)
     {

@@ -233,7 +233,7 @@ bool CIOCPServer::Start()
     }
 
 #if USE_SEND_THREAD
-    // 전용 송신 워커 풀 생성 — K개 워커(sessionId%K 분배). 기본 1 = 기존 단일 스레드와 동등(회귀 기준선).
+    // 전용 송신 워커 풀 생성 — K개 워커(uniqueId%K 분배). 기본 1 = 기존 단일 스레드와 동등(회귀 기준선).
     //   워커 객체(mutex/cv 참조)를 먼저 전부 생성한 뒤 스레드 시작 → 스레드가 자기 워커 참조 시 존재 보장.
     const int sendCount = std::clamp((_configuredSendWorkers > 0) ? _configuredSendWorkers : 1,
                                      1, CMonitorManager::MAX_SEND_WORKERS);
@@ -244,7 +244,7 @@ bool CIOCPServer::Start()
         _sendWorkers.push_back(std::make_unique<SendWorker>());
     for (int i = 0; i < sendCount; ++i)
         _sendWorkers[i]->thread = std::thread(&CIOCPServer::SendWorkerThread, this, i);
-    SLOG_INFO("[Network] Send workers = {} (sessionId % K 분배)", sendCount);
+    SLOG_INFO("[Network] Send workers = {} (uniqueId % K 분배)", sendCount);
 #endif
 
     // Accept 스레드 생성
@@ -1210,7 +1210,7 @@ bool CIOCPServer::RequestSendRaw(int64_t sessionId, const char* data, int size)
 void CIOCPServer::FlushPendingSends()
 {
 #if USE_SEND_THREAD
-    // dirty 배치(sessionId)를 sessionId%K 워커에 핸드오프. 게임루프는 WSASend(PostSend)를 하지 않는다.
+    // dirty 배치(sessionId)를 uniqueId%K 워커에 핸드오프. 게임루프는 WSASend(PostSend)를 하지 않는다.
     //   한 세션은 항상 같은 워커 → FIFO 보장. push마다 락 대신 워커별로 묶어 1회 락(최대 K회).
     //   분류 버퍼는 게임 스레드 단독 접근이라 무락(thread_local 재사용으로 매틱 할당 회피).
     thread_local std::vector<std::vector<int64_t>> perWorker;
@@ -1227,7 +1227,10 @@ void CIOCPServer::FlushPendingSends()
         // 틱을 넘는 중복 방지(_queuedForSend): 이미 큐에 있으면(미처리) 다시 넣지 않는다.
         //   발산 시 같은 세션이 매 틱 쌓여 큐가 무한 증가하는 것을 막음(처리량 천장은 별개).
         if (InterlockedExchange(&session->_queuedForSend, TRUE) == FALSE)
-            perWorker[sessionId % _sendWorkerCount].push_back(sessionId);  // raw ptr 아닌 id
+            // [분배 수정] uniqueId(하위 48비트)로 분배 — raw sessionId%K는 K가 2의 거듭제곱이 아니면
+            //   상위 index 비트가 modulo에 새어든다. index는 스택 재사용으로 카운트다운·uniqueId는 카운트업이라
+            //   (index+uniqueId)가 상수가 돼 K3에서 한 워커로 ~90% 쏠림(실측·시뮬 확인). uniqueId만 쓰면 K 무관 균등·FIFO 보존.
+            perWorker[CSession::ExtractUniqueId(sessionId) % _sendWorkerCount].push_back(sessionId);  // raw ptr 아닌 id
     }
     _dirtySessions.clear();
 
