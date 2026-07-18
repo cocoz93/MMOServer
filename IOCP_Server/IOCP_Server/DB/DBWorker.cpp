@@ -6,6 +6,7 @@
 #include <mysql.h>
 #include <errmsg.h>     // CR_SERVER_GONE_ERROR / CR_SERVER_LOST (커넥션 유실 감지)
 #include <cstdio>
+#include <cstring>      // strlen (SaveKind.sql 길이)
 #include <chrono>
 
 #include "../MonitorManager.h"
@@ -214,28 +215,26 @@ void CDBWorker::WorkerThread(int idx)
     mysql_thread_end();
 }
 
-bool CDBWorker::PrepareStmt(DBWorkerSlot& slot)
+// ==========================================================================
+// 저장 "종류"(SaveKind) — 워커 몸통(스레드·큐·재연결·분배)과 "무엇을 저장하나"를 분리.
+//   지금은 위치(kPosition) 하나뿐. 새 종류(예: 스탯)가 필요해지면 여기에
+//   bind/copy 함수 + SaveKind 상수만 형제로 추가하면 되고 워커 코드는 무수정.
+//   ※ 손실 허용·무트랜잭션 데이터 전용 레인. 재화·거래 같은 트랜잭션/무손실
+//     데이터는 이 워커가 아니라 별도 레인(pending 상태머신)으로 가야 함.
+//   ※ 여러 종류를 잡마다 런타임에 고르는 분기는, DBSaveJob에 종류 태그가
+//     생기는 시점(둘째 종류 도입 시)에 추가 — 지금은 미리 만들지 않음(죽은 코드 방지).
+// ==========================================================================
+struct SaveKind
 {
-    MYSQL* m = static_cast<MYSQL*>(slot.mysql);
-    MYSQL_STMT* st = mysql_stmt_init(m);
-    if (st == nullptr)
-    {
-        SLOG_ERROR("[DB] stmt_init failed: {}", mysql_error(m));
-        return false;
-    }
+    const char* sql;                                              // 이 종류의 UPSERT 문
+    bool (*bindParams)(MYSQL_STMT* st, DBWorkerSlot& slot);       // 파라미터 버퍼 바인딩(prepare 시 1회)
+    void (*copyValues)(DBWorkerSlot& slot, const DBSaveJob& job); // 잡 값을 슬롯 버퍼에 복사(execute 직전)
+};
 
+// ── 위치 종류 ─────────────────────────────────────────────────────────────
+static bool BindPositionParams(MYSQL_STMT* st, DBWorkerSlot& slot)
+{
     // VALUES 4개 + ON DUPLICATE KEY UPDATE 3개 = ? 7개 (x·y·map_id는 양쪽이 같은 버퍼 참조)
-    static const char SQL[] =
-        "INSERT INTO characters (account_id,x,y,map_id) VALUES (?,?,?,?) "
-        "ON DUPLICATE KEY UPDATE x=?,y=?,map_id=?";
-    if (mysql_stmt_prepare(st, SQL, sizeof(SQL) - 1) != 0)
-    {
-        SLOG_ERROR("[DB] stmt_prepare failed: {}", mysql_stmt_error(st));
-        mysql_stmt_close(st);
-        return false;
-    }
-
-    // 파라미터 바인딩 — 버퍼는 슬롯 멤버(execute 직전 값만 갱신). MYSQL_TYPE_LONG=32bit, LONGLONG=64bit.
     MYSQL_BIND b[7] = {};
     b[0].buffer_type = MYSQL_TYPE_LONGLONG; b[0].buffer = &slot.bAccountId;
     b[1].buffer_type = MYSQL_TYPE_FLOAT;    b[1].buffer = &slot.bX;
@@ -244,7 +243,44 @@ bool CDBWorker::PrepareStmt(DBWorkerSlot& slot)
     b[4] = b[1];  // UPDATE x      = 같은 bX
     b[5] = b[2];  // UPDATE y      = 같은 bY
     b[6] = b[3];  // UPDATE map_id = 같은 bMapId
-    if (mysql_stmt_bind_param(st, b) != 0)
+    return mysql_stmt_bind_param(st, b) == 0;
+}
+
+static void CopyPositionValues(DBWorkerSlot& slot, const DBSaveJob& job)
+{
+    slot.bAccountId = job.accountId;
+    slot.bX         = job.x;
+    slot.bY         = job.y;
+    slot.bMapId     = job.mapId;
+}
+
+static const SaveKind kPosition = {
+    "INSERT INTO characters (account_id,x,y,map_id) VALUES (?,?,?,?) "
+    "ON DUPLICATE KEY UPDATE x=?,y=?,map_id=?",
+    BindPositionParams,
+    CopyPositionValues,
+};
+
+bool CDBWorker::PrepareStmt(DBWorkerSlot& slot)
+{
+    const SaveKind& kind = kPosition;   // 지금 유일한 종류
+
+    MYSQL* m = static_cast<MYSQL*>(slot.mysql);
+    MYSQL_STMT* st = mysql_stmt_init(m);
+    if (st == nullptr)
+    {
+        SLOG_ERROR("[DB] stmt_init failed: {}", mysql_error(m));
+        return false;
+    }
+
+    if (mysql_stmt_prepare(st, kind.sql, static_cast<unsigned long>(strlen(kind.sql))) != 0)
+    {
+        SLOG_ERROR("[DB] stmt_prepare failed: {}", mysql_stmt_error(st));
+        mysql_stmt_close(st);
+        return false;
+    }
+
+    if (!kind.bindParams(st, slot))   // 종류별 파라미터 바인딩(버퍼는 슬롯 멤버)
     {
         SLOG_ERROR("[DB] stmt_bind_param failed: {}", mysql_stmt_error(st));
         mysql_stmt_close(st);
@@ -261,10 +297,7 @@ bool CDBWorker::ExecSave(DBWorkerSlot& slot, const DBSaveJob& job)
         return false;   // 커넥션/stmt 없음(재연결 대기 중) — 즉시 실패, 무한 대기 없음
 
     // 바인딩 버퍼에 이번 잡 값 복사 (stmt는 이 버퍼 주소를 이미 가리킴 → execute만 하면 됨)
-    slot.bAccountId = job.accountId;
-    slot.bX         = job.x;
-    slot.bY         = job.y;
-    slot.bMapId     = job.mapId;
+    kPosition.copyValues(slot, job);   // 지금은 종류가 위치 하나 — 둘째 종류 도입 시 job의 종류 태그로 분기
 
     MYSQL_STMT* st = static_cast<MYSQL_STMT*>(slot.stmt);
     if (mysql_stmt_execute(st) == 0)
