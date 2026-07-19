@@ -35,6 +35,7 @@ public:
         , _readPos(0)
         , _writePos(0)
         , _buffer(nullptr)
+        , _ownsBuffer(true)
     {
     }
 
@@ -45,13 +46,15 @@ public:
         , _readPos(0)
         , _writePos(0)
         , _buffer(nullptr)
+        , _ownsBuffer(true)
     {
         Init(capacity);
     }
 
     ~CRingBufferT()
     {
-        delete[] _buffer;
+        if (_ownsBuffer)
+            delete[] _buffer;
     }
 
     bool Init(size_t capacity = 65535)
@@ -64,6 +67,20 @@ public:
             return false;
 
         _capacity = capacity;
+        _ownsBuffer = true;
+        return true;
+    }
+
+    // 외부 소유 버퍼로 초기화 — 비소유(소멸 시 delete 안 함). 1회 초기화 전용 (Init와 동일 계약).
+    //   RIO 등록 슬랩처럼 링버퍼보다 수명이 긴 메모리의 슬라이스를 링으로 쓸 때 사용.
+    bool InitExternal(char* buffer, size_t capacity)
+    {
+        if (buffer == nullptr || capacity == 0)
+            return false;
+
+        _buffer = buffer;
+        _capacity = capacity;
+        _ownsBuffer = false;
         return true;
     }
 
@@ -326,6 +343,7 @@ public:
     size_t _capacity;
     size_t _readPos;
     size_t _writePos;
+    bool _ownsBuffer;   // false = 외부 소유 버퍼(InitExternal) — 소멸 시 delete 금지
     mutable LockPolicy _lock;
 
 private:
