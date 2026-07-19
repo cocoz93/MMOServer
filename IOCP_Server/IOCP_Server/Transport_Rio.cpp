@@ -492,12 +492,7 @@ void CIOCPServer::RioWorkerThread(int workerIdx)
     const int monitorIndex = _monitor.RegisterWorkerThread();
     if (monitorIndex >= 0 && monitorIndex < CMonitorManager::MAX_WORKER_THREADS)
     {
-        HANDLE dup = nullptr;
-        if (DuplicateHandle(GetCurrentProcess(), GetCurrentThread(),
-                            GetCurrentProcess(), &dup, 0, FALSE, DUPLICATE_SAME_ACCESS))
-        {
-            _monitor._workerCounters[monitorIndex].threadHandle = dup;
-        }
+        _monitor._workerCounters[monitorIndex].threadHandle = Platform::CaptureCurrentThreadCpu();
     }
 
     std::vector<RioCmd> localCmds;

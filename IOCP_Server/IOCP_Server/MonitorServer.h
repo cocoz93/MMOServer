@@ -27,7 +27,9 @@
 #include <cstdio>
 #include <cstdint>
 #include <mutex>
+#include <chrono>
 
+#include "Platform/Platform.h"
 #include "ThirdParty/httplib.h"
 #include "MonitorManager.h"
 #include "../../Shared/Common/ErrorLog.h"
@@ -237,7 +239,7 @@ private:
 #if !USE_RIO_TRANSPORT
                 // RIO: 워커 스레드 핸들은 workerCounters에만 등록(CPU 이중계상 방지) —
                 // backlog는 카운트(_sendWorkerCount) 기반으로 노출하므로 핸들 가드를 건너뛴다.
-                if (_monitor._sendCounters[i].threadHandle == nullptr)
+                if (_monitor._sendCounters[i].threadHandle == Platform::kInvalidThreadCpuHandle)
                     continue;
 #endif
                 ss << "mmo_send_flush_backlog{sendworker=\"" << i << "\"} "
@@ -448,44 +450,36 @@ private:
     // HTTP 스레드(외부 관측자)가 각 스레드 핸들에 GetThreadTimes를 호출.
     // 두 스크레이프 사이의 ΔCPU시간 / Δ벽시계시간 = 그 구간 평균 점유율.
     // 게임루프가 드워커 루프에 갇혀도 외부에서 읽으니 동결되지 않음(진단정리 6 보강).
-    // GetThreadTimes/벽시계 모두 100ns 단위 → 무차원 비율.
+    // CPU 시간·벽시계 모두 ns 단위 → 무차원 비율. (측정은 Platform 뒤로 격리, 벽시계는 steady_clock)
     // ══════════════════════════════════════════════════════════════
     struct CpuSample
     {
-        uint64_t lastCpu100ns = 0;
-        uint64_t lastKernel100ns = 0;   // 직전 커널모드 CPU 누적 (syscall 실행분 격리용)
-        uint64_t lastWall100ns = 0;
+        uint64_t lastCpuNs = 0;
+        uint64_t lastKernelNs = 0;      // 직전 커널모드 CPU 누적 (syscall 실행분 격리용)
+        uint64_t lastWallNs = 0;
         bool primed = false;
     };
 
-    static uint64_t FileTimeToU64(const FILETIME& ft)
-    {
-        return (static_cast<uint64_t>(ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
-    }
-
     void SampleThreadCpu(std::ostringstream& ss, std::ostringstream& ssKernel, const char* label,
-                         HANDLE h, CpuSample& s, uint64_t wallNow)
+                         Platform::ThreadCpuHandle h, CpuSample& s, uint64_t wallNow)
     {
-        if (h == nullptr) return;   // 아직 미등록(예: 에코 모드엔 게임루프 없음)
+        if (h == Platform::kInvalidThreadCpuHandle) return;   // 아직 미등록(예: 에코 모드엔 게임루프 없음)
 
-        FILETIME ftCreate, ftExit, ftKernel, ftUser;
-        if (!GetThreadTimes(h, &ftCreate, &ftExit, &ftKernel, &ftUser))
+        uint64_t cpuNow = 0, kernelNow = 0;
+        if (!Platform::GetThreadCpuTimeNs(h, cpuNow, kernelNow))
             return;
-
-        uint64_t kernelNow = FileTimeToU64(ftKernel);          // 커널모드 CPU만 (syscall 실행분 격리)
-        uint64_t cpuNow = kernelNow + FileTimeToU64(ftUser);   // 총 CPU (user+kernel)
 
         double ratio = 0.0;
         double kernelRatio = 0.0;
-        if (s.primed && wallNow > s.lastWall100ns)
+        if (s.primed && wallNow > s.lastWallNs)
         {
-            uint64_t dWall = wallNow - s.lastWall100ns;
-            ratio       = static_cast<double>(cpuNow - s.lastCpu100ns)       / static_cast<double>(dWall);
-            kernelRatio = static_cast<double>(kernelNow - s.lastKernel100ns) / static_cast<double>(dWall);
+            uint64_t dWall = wallNow - s.lastWallNs;
+            ratio       = static_cast<double>(cpuNow - s.lastCpuNs)       / static_cast<double>(dWall);
+            kernelRatio = static_cast<double>(kernelNow - s.lastKernelNs) / static_cast<double>(dWall);
         }
-        s.lastCpu100ns = cpuNow;
-        s.lastKernel100ns = kernelNow;
-        s.lastWall100ns = wallNow;
+        s.lastCpuNs = cpuNow;
+        s.lastKernelNs = kernelNow;
+        s.lastWallNs = wallNow;
         s.primed = true;
 
         // 커널 라인은 ssKernel에 따로 모은다 — Prometheus 텍스트 포맷은 한 메트릭 패밀리의
@@ -496,9 +490,10 @@ private:
 
     void WriteThreadCpu(std::ostringstream& ss)
     {
-        FILETIME ftNow;
-        GetSystemTimeAsFileTime(&ftNow);   // 100ns 단위 벽시계 (GetThreadTimes와 동일 단위)
-        uint64_t wallNow = FileTimeToU64(ftNow);
+        // 벽시계는 monotonic steady_clock (ns) — CPU 시간과 동일 단위로 비율 계산
+        uint64_t wallNow = static_cast<uint64_t>(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(
+                std::chrono::steady_clock::now().time_since_epoch()).count());
 
         std::ostringstream ssKernel;   // 커널 비율 라인은 여기 모아 cpu 블록 뒤에 append (패밀리 연속성 유지)
 
