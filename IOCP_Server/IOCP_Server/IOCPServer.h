@@ -276,21 +276,27 @@ private:
     void PushNetworkEvent(NetworkEvent&& event);
 
     void AcceptThread();
+#if !USE_RIO_TRANSPORT
     void WorkerThread();
-#if USE_SEND_THREAD
+#endif
+#if USE_SEND_THREAD && !USE_RIO_TRANSPORT
     void SendWorkerThread(int workerIdx);   // 전용 송신 워커 — 자기 워커의 dirty 배치를 받아 WSASend 수행
 #endif
 
     bool CreateListenSocket();
     bool SetSocketOptions(SOCKET socket);
+#if !USE_RIO_TRANSPORT
     bool BindIOCP(SOCKET socket, ULONG_PTR completionKey);
+#endif
 
     void ProcessAccept(SOCKET clientSocket);
     void ProcessRecv(CSession* session, DWORD bytesTransferred);
     void ProcessSend(CSession* session, DWORD bytesTransferred);
 
+#if !USE_RIO_TRANSPORT
     void PostRecv(CSession* session, bool skipAcquire = false);
     void PostSend(CSession* session);
+#endif
     void ParsePackets(CSession* session);
 
     CSession* FindSession(int64_t sessionId);
@@ -321,7 +327,7 @@ private:
     // [coalescing] 틱 내 송신 대기 세션 목록 (게임 스레드 단독 접근 → 무락)
     std::vector<CSession*> _dirtySessions;
 
-#if USE_SEND_THREAD
+#if USE_SEND_THREAD && !USE_RIO_TRANSPORT
     // 송신 워커 풀 — 게임루프가 dirty 배치(sessionId)를 uniqueId%K 워커에 넘기고 각 워커가 WSASend.
     //   한 세션은 항상 같은 워커(FIFO 보장). 완료(WSASend 결과)는 기존 IOCP 워커가 처리, 제출만 송신 워커 담당.
     struct alignas(64) SendWorker                      // alignas: 워커 간 false sharing 차단(측정 변수 제거용)
