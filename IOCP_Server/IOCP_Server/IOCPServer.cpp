@@ -1,5 +1,6 @@
 ﻿#include "IOCPServer.h"
 #include "Crash/CrashDump.h"   // CRASH 매크로 (RIO CQ 오염 시 즉사+덤프)
+#include "Platform/Platform.h"   // 플랫폼 격리 경계 (타이머 해상도 등)
 #include "../../Shared/Common/ErrorLog.h"
 #include <iostream>
 #include <chrono>
@@ -7,8 +8,6 @@
 #include <cassert>   // 도달불가 불변식 검증 (릴리즈에서는 사라짐)
 
 #include "CoreAffinity.h"
-
-#pragma comment(lib, "winmm.lib")
 
 extern void SignalProcessShutdown(); // main 쪽에 정의된 종료 알림 함수
 
@@ -224,7 +223,7 @@ bool CIOCPServer::Start()
     InterlockedExchange(&_running, TRUE);
 
     // 시스템 타이머 해상도를 1ms로 설정 (Sleep, WaitForSingleObject 등 정밀도 향상)
-    timeBeginPeriod(1);
+    Platform::SetHighResolutionTimer(true);
 
     // 타이밍 휠 생성 및 시작
     _timingWheel = std::make_unique<CTimingWheel>();
@@ -371,7 +370,7 @@ void CIOCPServer::ShutdownServer()
     WSACleanup();
 
     // 타이머 해상도 복원
-    timeEndPeriod(1);
+    Platform::SetHighResolutionTimer(false);
 
     // 네트워크 종료 완료 → 프로세스 종료 알림
     SignalProcessShutdown();
