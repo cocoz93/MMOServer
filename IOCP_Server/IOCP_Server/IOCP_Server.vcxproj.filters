@@ -89,6 +89,9 @@
     <ClInclude Include="IOCPServer.h">
       <Filter>소스 파일\ServerLib</Filter>
     </ClInclude>
+    <ClInclude Include="RioApi.h">
+      <Filter>소스 파일\ServerLib</Filter>
+    </ClInclude>
     <ClInclude Include="Zone.h">
       <Filter>소스 파일\GameServer</Filter>
     </ClInclude>

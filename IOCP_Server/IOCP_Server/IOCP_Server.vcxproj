@@ -177,6 +177,7 @@
     <ClInclude Include="MonitorManager.h" />
     <ClInclude Include="MonitorServer.h" />
     <ClInclude Include="ServerConfig.h" />
+    <ClInclude Include="RioApi.h" />
     <ClInclude Include="DB\DBWorker.h" />
     <ClInclude Include="ThirdParty\httplib.h" />
   </ItemGroup>
