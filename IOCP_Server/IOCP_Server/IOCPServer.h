@@ -345,13 +345,13 @@ private:
     struct RioCmd
     {
         enum class Type { NewConn, FlushSend, Disconnect };
-        Type      type;
-        int64_t   sessionId;   // FlushSend: FindSession 재검증용 (못 찾으면 스킵 = 기존 SendWorker 동작)
-        SOCKET    socket;      // NewConn 전용 — accept 스레드가 넘긴 새 소켓
-        CSession* session;     // NewConn: Initialize 완료 세션 (IOCount=1이 pin 역할)
-                               // Disconnect: 요청 스레드가 pin(IOCount+1) 보유 채로 전달.
-                               //   FindSession은 _disconnecting 세션을 숨기므로 id 재조회로는
-                               //   워커가 세션을 못 찾아 closesocket 누락(좀비) — 그래서 포인터+pin.
+        Type      type = Type::FlushSend;
+        int64_t   sessionId = 0;                // FlushSend: FindSession 재검증용 (못 찾으면 스킵 = 기존 SendWorker 동작)
+        SOCKET    socket = INVALID_SOCKET;      // NewConn 전용 — accept 스레드가 넘긴 새 소켓
+        CSession* session = nullptr;            // NewConn: Initialize 완료 세션 (IOCount=1이 pin 역할)
+                                                // Disconnect: 요청 스레드가 pin(IOCount+1) 보유 채로 전달.
+                                                //   FindSession은 _disconnecting 세션을 숨기므로 id 재조회로는
+                                                //   워커가 세션을 못 찾아 closesocket 누락(좀비) — 그래서 포인터+pin.
     };
 
     struct alignas(64) RioWorker              // alignas: 워커 간 false sharing 차단 (SendWorker와 동일)
@@ -369,6 +369,9 @@ private:
     CRioSlab          _rioSlab;               // 전 세션 recv/send 링버퍼 슬랩 (등록 1회 = 물리 고정)
 
     void RioWorkerThread(int workerIdx);
+    void RioHandleCmd(RioWorker& worker, RioCmd& cmd);               // 명령 1건 처리 (소유 워커 위)
+    int  RioDrainCompletions(RioWorker& worker, int monitorIndex);   // CQ 한 배치 처리 (−1 = CQ 손상)
+    void RioCloseSocketOnOwner(CSession* session);                   // 소유 워커 전용 closesocket (CancelIoEx 대체)
     void RioPostRecv(CSession* session, bool skipAcquire = false);   // PostRecv의 RIO 판 — 직선 구간만 제출
     void RioPostSend(CSession* session);                             // PostSend의 RIO 판 — 1-pending 동일
     void RioEnqueueCmd(int ownerIdx, RioCmd&& cmd);                  // 명령 push + cmdEvent Set
