@@ -45,7 +45,8 @@ public:
 
     // 게임 서버 모드 초기화 (맵 설정 배열)
     bool Init(ServerMode mode, int port, int maxClients,
-              const MapConfig* maps, int32_t mapCount, int workerThreads = 0, int sendWorkers = 0);
+              const MapConfig* maps, int32_t mapCount, int workerThreads = 0, int sendWorkers = 0,
+              int rioWorkers = 0);
 
     // DB 저장 파이프라인 초기화 (USE_DB_WORKER=0이면 no-op). Start() 전에 호출.
     bool InitDB(const DBConfig& dbConfig, int savePeriodSec, int workerCount, int queueMax);

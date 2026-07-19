@@ -126,12 +126,13 @@ static int ResolveServerCoreCount()
 }
 
 CIOCPServer::CIOCPServer(int port, int maxClients, ServerMode mode,
-                         CMonitorManager& monitor, int workerThreads, int sendWorkers)
+                         CMonitorManager& monitor, int workerThreads, int sendWorkers, int rioWorkers)
     : _port(port)
     , _maxClients(maxClients)
     , _serverMode(mode)
     , _configuredWorkers(workerThreads)
     , _configuredSendWorkers(sendWorkers)
+    , _configuredRioWorkers(rioWorkers)
     , _monitor(monitor)
     , _running(FALSE)
     , _sessionIdCounter(1)  // 0은 사용하지 않음
@@ -264,7 +265,10 @@ bool CIOCPServer::Start()
 
         if (rioReady)
         {
-            _rioWorkerCount = 2;   // TODO(배선 커밋): INI RioWorkers로 — 우선 고정 2
+            // INI RioWorkers (0=자동 2) — 상한은 송신 카운터 슬롯 수(flushUs/backlog 노출용)
+            _rioWorkerCount = std::clamp((_configuredRioWorkers > 0) ? _configuredRioWorkers : 2,
+                                         1, CMonitorManager::MAX_SEND_WORKERS);
+            _monitor._sendWorkerCount = _rioWorkerCount;   // FlushSend 배치 계측 노출 루프 상한
             _rioStop.store(false);
             _rioWorkers.clear();
             _rioWorkers.reserve(_rioWorkerCount);
@@ -1701,8 +1705,27 @@ void CIOCPServer::RioWorkerThread(int workerIdx)
         if (!localCmds.empty())
         {
             didWork = true;
+
+            // [계측] FlushSend 배치 처리 시간·건수 — 기존 SendWorker의 flushUs/backlog 의미 승계.
+            //   슬롯당 단독 writer(이 워커). NewConn/Disconnect가 섞이면 근사치지만 지배 항목은 FlushSend.
+            LONG64 flushCount = 0;
+            for (const RioCmd& cmd : localCmds)
+            {
+                if (cmd.type == RioCmd::Type::FlushSend)
+                    ++flushCount;
+            }
+            const auto cmdT0 = std::chrono::steady_clock::now();
+
             for (RioCmd& cmd : localCmds)
                 RioHandleCmd(worker, cmd);
+
+            const auto cmdT1 = std::chrono::steady_clock::now();
+            if (workerIdx >= 0 && workerIdx < CMonitorManager::MAX_SEND_WORKERS)
+            {
+                _monitor._sendCounters[workerIdx].backlog = flushCount;
+                InterlockedExchangeAdd64(&_monitor._sendCounters[workerIdx].flushUs,
+                    std::chrono::duration_cast<std::chrono::microseconds>(cmdT1 - cmdT0).count());
+            }
             localCmds.clear();
         }
 

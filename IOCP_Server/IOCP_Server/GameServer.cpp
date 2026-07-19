@@ -284,11 +284,13 @@ bool CGameServer::Init(ServerMode mode, int port, int maxClients)
 }
 
 bool CGameServer::Init(ServerMode mode, int port, int maxClients,
-                        const MapConfig* maps, int32_t mapCount, int workerThreads, int sendWorkers)
+                        const MapConfig* maps, int32_t mapCount, int workerThreads, int sendWorkers,
+                        int rioWorkers)
 {
     _mode = mode;
 
-    _network = std::make_unique<CIOCPServer>(port, maxClients, _mode, _monitor, workerThreads, sendWorkers);
+    _network = std::make_unique<CIOCPServer>(port, maxClients, _mode, _monitor,
+                                             workerThreads, sendWorkers, rioWorkers);
 
     // 게임 서버 모드일 때만 맵 등록
     if (_mode == ServerMode::GameServer)

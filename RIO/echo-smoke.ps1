@@ -9,7 +9,11 @@
 #  T2c: graceful 종료 재검 (1000클라 드레인 직후 셧다운)
 #
 #  INI는 CP949(무BOM) 규칙 준수 — GetEncoding(949)로만 읽고 쓴다. 원본은 백업/복원.
+#
+#  -ExpectTransport RIO(기본)|IOCP : 현재 Run\bin 바이너리가 어느 팔(arm)인지 검증에 사용.
+#     (RIO\build-A-iocp.bat / build-B-rio.bat 로 팔을 바꾼 뒤 각각 실행)
 # ==========================================================================
+param([ValidateSet('RIO', 'IOCP')] [string]$ExpectTransport = 'RIO')
 $ErrorActionPreference = 'Stop'
 $bin     = 'C:\Users\USER\Desktop\MyGit\MMO\Run\bin'
 $srvExe  = Join-Path $bin 'IOCP_Server.exe'
@@ -153,8 +157,14 @@ try {
     Stop-ServerGraceful $srv 'T1c'
     $logNow = Read-LogText $logFile
     $logWin = $logNow.Substring([Math]::Min($logStart, $logNow.Length))
-    if ($logWin -match 'RIO workers=(\d+)') { Note-Pass "server ran with RIO transport (workers=$($Matches[1]))" }
-    else { Note-Fail 'RIO start log not found — IOCP binary? (toggle check)' }
+    if ($ExpectTransport -eq 'RIO') {
+        if ($logWin -match 'RIO workers=(\d+)') { Note-Pass "server ran with RIO transport (workers=$($Matches[1]))" }
+        else { Note-Fail 'RIO start log not found — IOCP binary? (arm mismatch)' }
+    } else {
+        if ($logWin -match 'IOCP concurrency=\d+') { Note-Pass 'server ran with IOCP transport (arm A)' }
+        elseif ($logWin -match 'RIO workers=') { Note-Fail 'expected IOCP arm but RIO log found (arm mismatch)' }
+        else { Note-Fail 'IOCP start log not found' }
+    }
     if ($logWin -match 'Server shutdown complete') { Note-Pass 'T1c shutdown log present' }
     else { Note-Fail 'T1c "Server shutdown complete" log missing' }
 
