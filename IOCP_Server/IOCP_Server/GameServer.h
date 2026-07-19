@@ -25,7 +25,7 @@
 #include <unordered_set>
 #include <unordered_map>
 
-#include "IOCPServer.h"
+#include "NetIoModel.h"   // 컴파일타임 I/O 모델 별칭 (IOCP/epoll) — IOCPServer.h를 여기서 흡수
 #include "MapManager.h"
 #include "Player.h"
 #include "MonitorManager.h"
@@ -161,7 +161,7 @@ private:
     ServerMode _mode;
 
     CMonitorManager& _monitor;
-    std::unique_ptr<CIOCPServer> _network;
+    std::unique_ptr<NetIoModel> _network;
     CMapManager _mapManager;
 
     std::thread _gameThread;

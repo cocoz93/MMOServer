@@ -8,6 +8,7 @@
 #include <mutex>
 
 #include "GameServer.h"
+#include "NetIoModel.h"   // kNetIoModelName — 활성 네트워크 I/O 모델 이름(부팅 로그용)
 #include "MapManager.h"
 #include "MonitorManager.h"
 #include "MonitorServer.h"
@@ -63,6 +64,7 @@ int main()
     }
 
     SLOG_INFO("=== IOCP MMO Server ===");
+    SLOG_INFO("Network I/O model: {}", kNetIoModelName);   // 이 빌드가 실제로 도는 모델 (IOCP/epoll/...)
     SLOG_INFO("Port: {}", config.port);
     SLOG_INFO("Max Clients: {}", config.maxClients);
 
