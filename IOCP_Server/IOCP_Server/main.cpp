@@ -13,6 +13,7 @@
 #include "MonitorManager.h"
 #include "MonitorServer.h"
 #include "ServerConfig.h"
+#include "Platform/Platform.h"   // affinity·종료 시그널 격리
 #include "../../Shared/Common/Logger.h"
 #include "../../Shared/Common/ErrorLog.h"
 
@@ -25,23 +26,6 @@ void SignalProcessShutdown()
 {
     running = false;
     cv.notify_one();
-}
-
-// Ctrl+C / 콘솔 종료 → graceful shutdown 트리거 (server.Stop에서 DB 최종저장·드레인 수행)
-BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType)
-{
-    switch (ctrlType)
-    {
-    case CTRL_C_EVENT:
-    case CTRL_BREAK_EVENT:
-    case CTRL_CLOSE_EVENT:
-    case CTRL_SHUTDOWN_EVENT:
-    case CTRL_LOGOFF_EVENT:
-        SignalProcessShutdown();
-        return TRUE;
-    default:
-        return FALSE;
-    }
 }
 
 int main()
@@ -57,10 +41,10 @@ int main()
     // worker/send/accept/gameloop 스레드가 전부 이 마스크를 상속한다.
     if (config.affinityMask != 0)
     {
-        if (SetProcessAffinityMask(GetCurrentProcess(), static_cast<DWORD_PTR>(config.affinityMask)))
+        if (Platform::SetProcessAffinity(config.affinityMask))
             SLOG_INFO("[Affinity] ProcessAffinityMask = 0x{:X}", config.affinityMask);
         else
-            SLOG_WARN("[Affinity] SetProcessAffinityMask failed: {}", GetLastError());
+            SLOG_WARN("[Affinity] SetProcessAffinity failed");
     }
 
     SLOG_INFO("=== IOCP MMO Server ===");
@@ -101,7 +85,7 @@ int main()
     }
 
     // Ctrl+C / 콘솔 종료 시 graceful shutdown (server.Stop이 DB 드레인 수행)
-    SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE);
+    Platform::InstallShutdownHandler(SignalProcessShutdown);
 
     if (!server.Start())
     {
