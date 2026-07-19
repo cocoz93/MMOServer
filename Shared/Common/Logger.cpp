@@ -2,7 +2,12 @@
 
 #ifdef USE_SPDLOG_LOGGER
 
+#ifdef _WIN32
 #include <Windows.h>
+#else
+#include <unistd.h>     // readlink (/proc/self/exe)
+#include <limits.h>     // PATH_MAX
+#endif
 
 namespace shared
 {
@@ -12,9 +17,16 @@ std::shared_ptr<spdlog::logger> Logger::_logger;
 // 실행 파일 이름에서 프로세스명 추출 (확장자 제외)
 static std::string GetProcessName()
 {
+#ifdef _WIN32
     char path[MAX_PATH];
     GetModuleFileNameA(NULL, path, MAX_PATH);
     std::string exePath(path);
+#else
+    char path[PATH_MAX] = {};
+    ssize_t n = readlink("/proc/self/exe", path, sizeof(path) - 1);
+    if (n > 0) path[n] = '\0';
+    std::string exePath(path);
+#endif
     auto pos = exePath.find_last_of("\\/");
     std::string fileName = (pos != std::string::npos) ? exePath.substr(pos + 1) : exePath;
     auto dotPos = fileName.find_last_of('.');
@@ -29,7 +41,11 @@ static std::string GetDateString()
     auto now = std::chrono::system_clock::now();
     auto time = std::chrono::system_clock::to_time_t(now);
     struct tm localTm;
+#ifdef _WIN32
     localtime_s(&localTm, &time);
+#else
+    localtime_r(&time, &localTm);
+#endif
     char buf[16];
     strftime(buf, sizeof(buf), "%y%m%d", &localTm);
     return buf;

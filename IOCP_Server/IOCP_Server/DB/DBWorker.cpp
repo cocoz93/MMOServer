@@ -2,7 +2,9 @@
 
 #if USE_DB_WORKER
 
+#ifdef _WIN32
 #include <winsock2.h>   // mysql.h 이전에 — 구버전 winsock 자동 include 충돌 차단
+#endif
 #include <mysql.h>
 #include <errmsg.h>     // CR_SERVER_GONE_ERROR / CR_SERVER_LOST (커넥션 유실 감지)
 #include <cstdio>
