@@ -2,6 +2,7 @@
 #include <iostream>
 #include <memory>
 #include <atomic>
+#include <cstdint>
 #include <thread>
 #include <chrono>
 #include <condition_variable>
@@ -14,6 +15,7 @@
 #include "MonitorServer.h"
 #include "ServerConfig.h"
 #include "CoreAffinity.h"       // 게임스레드 코어 격리 마스크 주입
+#include "Platform/Platform.h"   // affinity·종료 시그널 격리
 #include "../../Shared/Common/Logger.h"
 #include "../../Shared/Common/ErrorLog.h"
 
@@ -26,7 +28,7 @@ std::atomic<bool> shutdownComplete{false};
 
 // CTRL_CLOSE/LOGOFF/SHUTDOWN에서 정리를 기다릴 상한.
 //   이 이벤트들은 OS 유예(기본 5초) 후 프로세스를 강제 종료하므로 그보다 짧게 잡는다.
-constexpr ULONGLONG SHUTDOWN_WAIT_MAX_MS = 4500;
+constexpr uint32_t SHUTDOWN_WAIT_MAX_MS = 4500;
 
 // 프로세스 전체 종료 컨트롤러이므로 메인문에 빼둔다
 //   running 변경은 반드시 mtx 안에서 — 락 없이 바꾸면 main이 wait 술어를 평가한 직후
@@ -38,41 +40,6 @@ void SignalProcessShutdown()
         running = false;
     }
     cv.notify_one();
-}
-
-// Ctrl+C / 콘솔 종료 → graceful shutdown 트리거 (server.Stop에서 DB 최종저장·드레인 수행)
-BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType)
-{
-    switch (ctrlType)
-    {
-    case CTRL_C_EVENT:
-    case CTRL_BREAK_EVENT:
-        // 이 둘은 핸들러가 반환해도 프로세스가 계속 살아 있다 → main이 Stop()을 완주할 수 있다.
-        SignalProcessShutdown();
-        return TRUE;
-
-    case CTRL_CLOSE_EVENT:
-    case CTRL_SHUTDOWN_EVENT:
-    case CTRL_LOGOFF_EVENT:
-        // 이 셋은 핸들러가 반환하는 순간 OS가 프로세스를 종료한다.
-        //   그냥 반환하면 main의 server.Stop()(SaveAllPlayers + DB 드레인)이 시작도 못 하고 잘려
-        //   마지막 저장 주기 이후의 플레이어 위치가 통째로 유실된다.
-        //   → 정리가 끝날 때까지 여기서 버틴다. 유예를 넘기면 어차피 OS가 죽이므로 포기하고 반환.
-        SignalProcessShutdown();
-        {
-            const ULONGLONG deadline = GetTickCount64() + SHUTDOWN_WAIT_MAX_MS;
-            while (!shutdownComplete.load(std::memory_order_acquire))
-            {
-                if (GetTickCount64() >= deadline)
-                    break;
-                Sleep(20);
-            }
-        }
-        return TRUE;
-
-    default:
-        return FALSE;
-    }
 }
 
 int main()
@@ -88,10 +55,10 @@ int main()
     // worker/send/accept/gameloop 스레드가 전부 이 마스크를 상속한다.
     if (config.affinityMask != 0)
     {
-        if (SetProcessAffinityMask(GetCurrentProcess(), static_cast<DWORD_PTR>(config.affinityMask)))
+        if (Platform::SetProcessAffinity(config.affinityMask))
             SLOG_INFO("[Affinity] ProcessAffinityMask = 0x{:X}", config.affinityMask);
         else
-            SLOG_WARN("[Affinity] SetProcessAffinityMask failed: {}", GetLastError());
+            SLOG_WARN("[Affinity] SetProcessAffinity failed");
     }
 
     // 게임스레드 코어 격리 마스크 주입 — 프로세스 affinity 직후, 스레드 생성(Init/Start/monitor) 전에 1회.
@@ -140,7 +107,7 @@ int main()
     }
 
     // Ctrl+C / 콘솔 종료 시 graceful shutdown (server.Stop이 DB 드레인 수행)
-    SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE);
+    Platform::InstallShutdownHandler(SignalProcessShutdown, &shutdownComplete, SHUTDOWN_WAIT_MAX_MS);
 
     if (!server.Start())
     {

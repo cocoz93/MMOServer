@@ -14,6 +14,7 @@
 //     SetProcessAffinity     — 프로세스 CPU 코어 고정. Win=SetProcessAffinityMask / Linux=sched_setaffinity.
 //     GetAvailableCoreCount  — affinity 가용 코어 수(워커 자동 산정). Win=GetProcessAffinityMask / Linux=sched_getaffinity.
 //     InstallShutdownHandler — Ctrl+C/SIGTERM → 콜백. Win=SetConsoleCtrlHandler / Linux=sigaction+폴링.
+//                              창 닫기·로그오프는 정리 완료까지 핸들러가 버틴다(Windows 한정).
 //
 //   NOTE: 지금은 헤더 전용(inline). 입주자가 늘고 windows.h 격리가 중요해지면
 //         선언/구현을 Platform.cpp로 분리해 windows.h를 단일 TU에 가둔다.
@@ -22,6 +23,7 @@
 #include <string>
 #include <cstdint>
 #include <thread>
+#include <atomic>                        // 종료 플래그 (양쪽 공용)
 
 #ifdef _WIN32
     #include <Windows.h>
@@ -30,7 +32,6 @@
     #include <unistd.h>                  // readlink (/proc/self/exe)
     #include <sched.h>                   // sched_setaffinity / CPU_SET
     #include <csignal>                   // sigaction (종료 시그널)
-    #include <atomic>                    // 종료 플래그
     #include <chrono>                    // 폴링 슬립
 #endif
 
@@ -128,6 +129,8 @@ namespace Platform
     namespace detail
     {
         inline void (*g_shutdownCb)() = nullptr;
+        inline const std::atomic<bool>* g_shutdownComplete = nullptr;   // 정리 완료 신호 (nullptr=대기 안 함)
+        inline uint32_t g_shutdownWaitMaxMs = 0;
 #ifdef _WIN32
         inline BOOL WINAPI ConsoleCtrlProxy(DWORD ctrlType)
         {
@@ -135,11 +138,30 @@ namespace Platform
             {
             case CTRL_C_EVENT:
             case CTRL_BREAK_EVENT:
+                // 이 둘은 핸들러가 반환해도 프로세스가 계속 살아 있다 → main이 Stop()을 완주할 수 있다.
+                if (g_shutdownCb) g_shutdownCb();
+                return TRUE;
+
             case CTRL_CLOSE_EVENT:
             case CTRL_SHUTDOWN_EVENT:
             case CTRL_LOGOFF_EVENT:
+                // 이 셋은 핸들러가 반환하는 순간 OS가 프로세스를 종료한다.
+                //   그냥 반환하면 main의 server.Stop()(SaveAllPlayers + DB 드레인)이 시작도 못 하고 잘려
+                //   마지막 저장 주기 이후의 플레이어 위치가 통째로 유실된다.
+                //   → 정리가 끝날 때까지 여기서 버틴다. 유예를 넘기면 어차피 OS가 죽이므로 포기하고 반환.
                 if (g_shutdownCb) g_shutdownCb();
+                if (g_shutdownComplete)
+                {
+                    const ULONGLONG deadline = GetTickCount64() + g_shutdownWaitMaxMs;
+                    while (!g_shutdownComplete->load(std::memory_order_acquire))
+                    {
+                        if (GetTickCount64() >= deadline)
+                            break;
+                        Sleep(20);
+                    }
+                }
                 return TRUE;
+
             default:
                 return FALSE;
             }
@@ -150,9 +172,16 @@ namespace Platform
 #endif
     }
 
-    inline void InstallShutdownHandler(void (*cb)())
+    // completeFlag/waitMaxMs — 창 닫기·로그오프처럼 "핸들러가 반환하면 OS가 즉시 죽이는" 경로에서
+    //   정리 완료를 기다릴 대상과 상한(ms). Windows 전용이며 nullptr이면 대기하지 않는다.
+    //   Linux는 SIGINT/SIGTERM이 와도 프로세스가 바로 죽지 않아(main이 스스로 빠져나온다) 대기가 불필요.
+    inline void InstallShutdownHandler(void (*cb)(),
+                                       const std::atomic<bool>* completeFlag = nullptr,
+                                       uint32_t waitMaxMs = 0)
     {
         detail::g_shutdownCb = cb;
+        detail::g_shutdownComplete = completeFlag;
+        detail::g_shutdownWaitMaxMs = waitMaxMs;
 #ifdef _WIN32
         SetConsoleCtrlHandler(detail::ConsoleCtrlProxy, TRUE);
 #else
