@@ -15,6 +15,8 @@
 #include <Windows.h>
 #include <cstdint>
 
+#include "Platform/Platform.h"   // Platform::ThreadCpuHandle (스레드 CPU 측정 핸들)
+
 class CMonitorManager
 {
 public:
@@ -219,7 +221,7 @@ public:
     struct alignas(64) WorkerCounter
     {
         volatile LONG64 completionCount = 0;
-        volatile HANDLE threadHandle = nullptr;   // CPU 점유율 측정용 복제 핸들 (워커 시작 시 등록)
+        volatile Platform::ThreadCpuHandle threadHandle = Platform::kInvalidThreadCpuHandle;   // CPU 측정 핸들 (워커 시작 시 등록)
     };
 
     WorkerCounter _workerCounters[MAX_WORKER_THREADS] = {};
@@ -234,7 +236,7 @@ public:
     //        (GetCurrentThread() 의사핸들은 호출 스레드 기준이라 타 스레드에서 못 씀)
     // [수명] 프로세스 종료까지 유지 (단일 핸들, 명시적 Close 생략 — 진단용)
     // ══════════════════════════════════════════════════════════════
-    volatile HANDLE _gameLoopThreadHandle = nullptr;
+    volatile Platform::ThreadCpuHandle _gameLoopThreadHandle = Platform::kInvalidThreadCpuHandle;
 
     // [USE_SEND_THREAD] 전용 송신 워커별 카운터 — 워커 카운터(_workerCounters)와 동일 패턴.
     //   alignas(64)로 워커 간 false sharing 차단. 워커이 0개(토글 OFF)면 _sendWorkerCount=0 →
@@ -243,7 +245,7 @@ public:
 
     struct alignas(64) SendCounter
     {
-        volatile HANDLE threadHandle = nullptr;   // CPU 점유율 측정용 복제 핸들 (워커 시작 시 등록)
+        volatile Platform::ThreadCpuHandle threadHandle = Platform::kInvalidThreadCpuHandle;   // CPU 측정 핸들 (워커 시작 시 등록)
         volatile LONG64 backlog      = 0;         // 마지막 drain 시 인출한 세션 수 (1틱 dirty 초과 = 송신 못 따라감)
         volatile LONG64 flushUs      = 0;         // 이 워커의 WSASend 누적(us) — 게임루프 flush_send 이전분
     };

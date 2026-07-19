@@ -14,6 +14,8 @@
 //     SetProcessAffinity     — 프로세스 CPU 코어 고정. Win=SetProcessAffinityMask / Linux=sched_setaffinity.
 //     GetAvailableCoreCount  — affinity 가용 코어 수(워커 자동 산정). Win=GetProcessAffinityMask / Linux=sched_getaffinity.
 //     InstallShutdownHandler — Ctrl+C/SIGTERM → 콜백. Win=SetConsoleCtrlHandler / Linux=sigaction+폴링.
+//     ThreadCpuHandle / CaptureCurrentThreadCpu / GetThreadCpuTimeNs
+//                            — 스레드 CPU 시간(모니터링). Win=GetThreadTimes / Linux=clock_gettime(per-thread).
 //
 //   NOTE: 지금은 헤더 전용(inline). 입주자가 늘고 windows.h 격리가 중요해지면
 //         선언/구현을 Platform.cpp로 분리해 windows.h를 단일 TU에 가둔다.
@@ -32,6 +34,8 @@
     #include <csignal>                   // sigaction (종료 시그널)
     #include <atomic>                    // 종료 플래그
     #include <chrono>                    // 폴링 슬립
+    #include <pthread.h>                 // pthread_getcpuclockid (스레드 CPU clock)
+    #include <time.h>                    // clock_gettime / clockid_t
 #endif
 
 namespace Platform
@@ -169,6 +173,63 @@ namespace Platform
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             if (detail::g_shutdownCb) detail::g_shutdownCb();
         }).detach();
+#endif
+    }
+
+    // ── 스레드 CPU 시간 측정 (모니터링) ──
+    //   각 스레드가 시작 시 CaptureCurrentThreadCpu로 자기 핸들을 등록하고,
+    //   외부 관측 스레드가 GetThreadCpuTimeNs로 그 스레드의 누적 CPU 시간(ns)을 읽는다.
+    //   Windows: 스레드 실핸들(DuplicateHandle) + GetThreadTimes
+    //   Linux  : per-thread CPU clock(pthread_getcpuclockid) + clock_gettime
+#ifdef _WIN32
+    using ThreadCpuHandle = HANDLE;
+    inline constexpr ThreadCpuHandle kInvalidThreadCpuHandle = nullptr;
+#else
+    using ThreadCpuHandle = clockid_t;
+    inline constexpr ThreadCpuHandle kInvalidThreadCpuHandle = static_cast<clockid_t>(-1);
+#endif
+
+    // 호출 스레드의 CPU 시간 측정 핸들을 캡처. 실패 시 kInvalidThreadCpuHandle.
+    //   수명은 프로세스 종료까지 — Windows 복제 핸들은 명시적 Close 생략(진단용, 기존 동작 보존).
+    inline ThreadCpuHandle CaptureCurrentThreadCpu()
+    {
+#ifdef _WIN32
+        HANDLE dup = nullptr;
+        if (DuplicateHandle(GetCurrentProcess(), GetCurrentThread(),
+                            GetCurrentProcess(), &dup, 0, FALSE, DUPLICATE_SAME_ACCESS))
+            return dup;
+        return nullptr;
+#else
+        clockid_t cid;
+        if (pthread_getcpuclockid(pthread_self(), &cid) == 0)
+            return cid;
+        return static_cast<clockid_t>(-1);
+#endif
+    }
+
+    // 핸들이 가리키는 스레드의 누적 CPU 시간(ns, 커널+유저)을 out에 넣고 true. 실패/미등록이면 false.
+    inline bool GetThreadCpuTimeNs(ThreadCpuHandle h, uint64_t& outNs)
+    {
+#ifdef _WIN32
+        if (h == nullptr)
+            return false;
+        FILETIME ftCreate, ftExit, ftKernel, ftUser;
+        if (!GetThreadTimes(h, &ftCreate, &ftExit, &ftKernel, &ftUser))
+            return false;
+        auto u64 = [](const FILETIME& ft) {
+            return (static_cast<uint64_t>(ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
+        };
+        outNs = (u64(ftKernel) + u64(ftUser)) * 100;   // FILETIME 100ns 단위 → ns
+        return true;
+#else
+        if (h == static_cast<clockid_t>(-1))
+            return false;
+        struct timespec ts;
+        if (clock_gettime(h, &ts) != 0)
+            return false;
+        outNs = static_cast<uint64_t>(ts.tv_sec) * 1000000000ull
+              + static_cast<uint64_t>(ts.tv_nsec);
+        return true;
 #endif
     }
 }

@@ -505,12 +505,7 @@ void CIOCPServer::WorkerThread()
     // CPU 점유율 측정용: 자기 실핸들을 복제해 슬롯에 등록 (HTTP 스레드가 GetThreadTimes로 읽음)
     if (workerIndex >= 0 && workerIndex < CMonitorManager::MAX_WORKER_THREADS)
     {
-        HANDLE dup = nullptr;
-        if (DuplicateHandle(GetCurrentProcess(), GetCurrentThread(),
-                            GetCurrentProcess(), &dup, 0, FALSE, DUPLICATE_SAME_ACCESS))
-        {
-            _monitor._workerCounters[workerIndex].threadHandle = dup;
-        }
+        _monitor._workerCounters[workerIndex].threadHandle = Platform::CaptureCurrentThreadCpu();
     }
 
     while (true)
@@ -1248,12 +1243,7 @@ void CIOCPServer::SendWorkerThread(int workerIdx)
     // [계측] CPU 점유율 측정용 — 자기 실핸들을 복제해 모니터 슬롯에 등록 (게임루프/워커와 동일 패턴).
     //   GetCurrentThread()는 의사핸들(호출 스레드 기준)이라 HTTP 스레드에서 못 씀 → 실핸들로 복제.
     {
-        HANDLE dup = nullptr;
-        if (DuplicateHandle(GetCurrentProcess(), GetCurrentThread(),
-                            GetCurrentProcess(), &dup, 0, FALSE, DUPLICATE_SAME_ACCESS))
-        {
-            _monitor._sendCounters[workerIdx].threadHandle = dup;
-        }
+        _monitor._sendCounters[workerIdx].threadHandle = Platform::CaptureCurrentThreadCpu();
     }
 
     std::vector<int64_t> local;
