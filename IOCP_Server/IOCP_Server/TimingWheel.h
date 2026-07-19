@@ -5,7 +5,6 @@
 #include <atomic>
 #include <cstdint>
 #include <chrono>
-#include <Windows.h>
 
 #include "LockFree/LockFreeQueue.h"
 
@@ -204,7 +203,7 @@ private:
             nextTick += std::chrono::milliseconds(_tickIntervalMs);
             auto now = std::chrono::steady_clock::now();
             if (nextTick > now)
-                Sleep(static_cast<DWORD>(std::chrono::duration_cast<std::chrono::milliseconds>(nextTick - now).count()));
+                std::this_thread::sleep_for(nextTick - now);
 
             // 1. lock-free 큐에서 요청 처리 (drain)
             DrainRequests();

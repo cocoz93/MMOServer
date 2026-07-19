@@ -1,10 +1,9 @@
 ﻿#include "IOCPServer.h"
+#include "Platform/Platform.h"   // 플랫폼 격리 경계 (타이머 해상도 등)
 #include "../../Shared/Common/ErrorLog.h"
 #include <iostream>
 #include <chrono>
 #include <algorithm>
-
-#pragma comment(lib, "winmm.lib")
 
 extern void SignalProcessShutdown(); // main 쪽에 정의된 종료 알림 함수
 
@@ -86,23 +85,6 @@ void CSession::Close()
 }
 
 // CIOCPServer Implementation
-
-// affinity로 제한된 프로세스의 가용 논리코어 수를 센다 (마스크의 set 비트 수).
-// affinity 미적용이면 시스템 전체 논리코어 수로 폴백.
-// main에서 SetProcessAffinityMask 이후 Start()에서 호출되므로 정확한 값을 반환한다.
-static int ResolveServerCoreCount()
-{
-    DWORD_PTR procMask = 0, sysMask = 0;
-    if (GetProcessAffinityMask(GetCurrentProcess(), &procMask, &sysMask) && procMask != 0)
-    {
-        int count = 0;
-        for (DWORD_PTR m = procMask; m != 0; m &= (m - 1))
-            ++count;
-        if (count > 0)
-            return count;
-    }
-    return static_cast<int>(std::thread::hardware_concurrency());
-}
 
 CIOCPServer::CIOCPServer(int port, int maxClients, ServerMode mode,
                          CMonitorManager& monitor, int workerThreads, int sendWorkers)
@@ -191,7 +173,7 @@ bool CIOCPServer::Start()
 
     // 워커 수·IOCP concurrency 산정 — affinity로 제한된 가용 코어 수가 단일 기준.
     // (INI WorkerThreads>0이면 워커 수만 그 값으로 오버라이드, concurrency는 코어 수 유지)
-    const int coreCount = ResolveServerCoreCount();
+    const int coreCount = Platform::GetAvailableCoreCount();
     const int workerCount = (_configuredWorkers > 0) ? _configuredWorkers : coreCount;
 
     // IOCP 핸들 생성 — NumberOfConcurrentThreads = 가용 코어 수 (동시 실행 워커 상한)
@@ -214,7 +196,7 @@ bool CIOCPServer::Start()
     InterlockedExchange(&_running, TRUE);
 
     // 시스템 타이머 해상도를 1ms로 설정 (Sleep, WaitForSingleObject 등 정밀도 향상)
-    timeBeginPeriod(1);
+    Platform::SetHighResolutionTimer(true);
 
     // 타이밍 휠 생성 및 시작
     _timingWheel = std::make_unique<CTimingWheel>();
@@ -426,7 +408,7 @@ void CIOCPServer::ShutdownServer()
     WSACleanup();
 
     // 타이머 해상도 복원
-    timeEndPeriod(1);
+    Platform::SetHighResolutionTimer(false);
 
     // 네트워크 종료 완료 → 프로세스 종료 알림
     SignalProcessShutdown();
