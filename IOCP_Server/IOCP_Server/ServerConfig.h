@@ -28,9 +28,10 @@
 #include <string>
 #include <vector>
 #include <iostream>
-#include <cstdlib>      // wcstol (ServerCores 범위 파싱)
-#include <Windows.h>
+#include <cstdlib>      // strtol (ServerCores 범위 파싱)
 
+#include "IniFile.h"              // 플랫폼 독립 INI 리더 (GetPrivateProfile* 대체)
+#include "Platform/Platform.h"    // Platform::GetExecutableDir
 #include "Common.h"
 #include "MapManager.h"
 #include "../../Shared/Common/ErrorLog.h"
@@ -71,118 +72,97 @@ struct ServerConfig
     // 실행 파일 경로 기준으로 IOCP_ServerConfig.ini 로드
     bool Load()
     {
-        // 실행 파일 디렉토리에서 INI 경로 구성
-        wchar_t exePath[MAX_PATH];
-        GetModuleFileNameW(NULL, exePath, MAX_PATH);
+        // 실행 파일 디렉토리 기준 INI 경로 (플랫폼 독립)
+        std::string iniPath = Platform::GetExecutableDir() + "IOCP_ServerConfig.ini";
 
-        std::wstring iniPath(exePath);
-        size_t pos = iniPath.find_last_of(L"\\/");
-        iniPath = iniPath.substr(0, pos + 1) + L"IOCP_ServerConfig.ini";
-
-        // 파일 존재 확인
-        DWORD attr = GetFileAttributesW(iniPath.c_str());
-        if (attr == INVALID_FILE_ATTRIBUTES)
+        CIniFile ini;
+        if (!ini.Load(iniPath))
         {
             SLOG_INFO("[ServerConfig] IOCP_ServerConfig.ini not found. Using defaults.");
             SetDefaultMaps();
             return false;
         }
 
-        const wchar_t* path = iniPath.c_str();
-
         // [Server] 섹션
-        wchar_t buf[256];
-        GetPrivateProfileStringW(L"Server", L"Mode", L"GameServer", buf, 256, path);
-        mode = ParseServerMode(buf);
+        mode        = ParseServerMode(ini.GetString("Server", "Mode", "GameServer"));
+        port        = ini.GetInt("Server", "Port", 6000);
 
-        port        = GetPrivateProfileIntW(L"Server", L"Port", 6000, path);
-        // GetPrivateProfileIntW의 반환형은 UINT다. INI에 음수를 적으면 그대로 파싱되어
-        //   -1 → 0xFFFFFFFF → int로 받는 순간 -1이 된다(문서의 "음수면 0" 설명과 실제 동작이 다름).
+        // INI에 음수를 적으면 파서(strtol)가 그대로 음수로 넘긴다.
         //   이 값이 GameServer::Init의 vector::assign에 들어가면 size_t로 확대되어 length_error를
         //   던지고, catch가 없어 "Init failed" 로그 대신 크래시 덤프를 남기며 죽는다.
         //   Start()의 범위 검사는 Init보다 뒤라 여기서 막지 않으면 도달하지 못한다.
         constexpr int MAX_CLIENTS_LIMIT   = 65535;  // 세션 인덱스가 SessionID 상위 16bit
         constexpr int MAX_CLIENTS_DEFAULT = 1000;
 
-        maxClients  = GetPrivateProfileIntW(L"Server", L"MaxClients", MAX_CLIENTS_DEFAULT, path);
+        maxClients  = ini.GetInt("Server", "MaxClients", MAX_CLIENTS_DEFAULT);
         if (maxClients <= 0 || maxClients > MAX_CLIENTS_LIMIT)
         {
             SLOG_ERROR("[ServerConfig] MaxClients({}) out of range (1~{}). Using default {}.",
                        maxClients, MAX_CLIENTS_LIMIT, MAX_CLIENTS_DEFAULT);
             maxClients = MAX_CLIENTS_DEFAULT;
         }
-        monitorPort = GetPrivateProfileIntW(L"Server", L"MonitorPort", 9090, path);
-        monitorEnabled = (GetPrivateProfileIntW(L"Server", L"MonitorEnabled", 0, path) != 0);
+        monitorPort = ini.GetInt("Server", "MonitorPort", 9090);
+        monitorEnabled = (ini.GetInt("Server", "MonitorEnabled", 0) != 0);
 
         // ServerCores: 물리코어 범위("0-5")를 받아 논리코어 비트마스크로 변환
         // (HT 형제 자동 포함 — 한 물리코어를 서버/클라가 쪼개 쓰는 격리 깨짐을 방지)
-        wchar_t coresBuf[64];
-        GetPrivateProfileStringW(L"Server", L"ServerCores", L"", coresBuf, 64, path);
-        affinityMask = ParsePhysicalCoreMask(coresBuf);
+        affinityMask = ParsePhysicalCoreMask(ini.GetString("Server", "ServerCores", ""));
 
         // GameCore: 게임루프를 고정할 물리코어 (빈값=격리 off). ServerCores 안의 코어여야 하며,
         //   나머지 코어로 I/O 스레드를 몰아 게임스레드 L2 캐시 간섭을 차단한다. (마스크는 아래서 도출)
-        wchar_t gameCoreBuf[16];
-        GetPrivateProfileStringW(L"Server", L"GameCore", L"", gameCoreBuf, 16, path);
-        DeriveGameCoreIsolation(gameCoreBuf);
+        DeriveGameCoreIsolation(ini.GetString("Server", "GameCore", ""));
 
         // WorkerThreads: IOCP 워커 스레드 수 (0=서버 affinity 코어 수로 자동)
-        workerThreads = GetPrivateProfileIntW(L"Server", L"WorkerThreads", 0, path);
+        workerThreads = ini.GetInt("Server", "WorkerThreads", 0);
 
         // SendWorkers: 전용 송신 워커 수 (0/1=단일 스레드, 2+=sessionId%K 워커 풀)
-        sendWorkers = GetPrivateProfileIntW(L"Server", L"SendWorkers", 0, path);
+        sendWorkers = ini.GetInt("Server", "SendWorkers", 0);
 
         // RioWorkers: RIO 전송 워커 수 (USE_RIO_TRANSPORT=1 빌드에서만 사용, 0=자동 2)
-        rioWorkers = GetPrivateProfileIntW(L"Server", L"RioWorkers", 0, path);
+        rioWorkers = ini.GetInt("Server", "RioWorkers", 0);
 
         // CompletionBatch: 완료 수거 방식 A/B (IOCP 빌드 전용, 재빌드 없이 팔 전환)
         //   0 = GetQueuedCompletionStatus — 완료 1건마다 syscall 1회 (기존 동작, 기본값)
         //   N>0 = GetQueuedCompletionStatusEx — 한 번에 최대 N건 수거 (상한은 IOCPServer::Start에서 clamp)
-        completionBatch = GetPrivateProfileIntW(L"Server", L"CompletionBatch", 0, path);
+        completionBatch = ini.GetInt("Server", "CompletionBatch", 0);
 
         // SendDepth: 세션당 동시 송신 제출 상한 A/B (양팔 공통, 재빌드 없이 깊이 전환)
         //   1=기존 1-pending. 2의 거듭제곱만 유효하고(1/2/4/8) 그 외 값은 서버가 아래쪽으로 내린다.
-        sendDepth = GetPrivateProfileIntW(L"Server", L"SendDepth", 1, path);
+        sendDepth = ini.GetInt("Server", "SendDepth", 1);
 
-        // [DB] 섹션 — DB 저장 파이프라인 (문자열은 기존 WtoA로 std::string 변환)
-        wchar_t dbBuf[256];
-        GetPrivateProfileStringW(L"DB", L"Host", L"127.0.0.1", dbBuf, 256, path);
-        dbHost = WtoA(dbBuf);
-        dbPort = GetPrivateProfileIntW(L"DB", L"Port", 3306, path);
-        GetPrivateProfileStringW(L"DB", L"User", L"root", dbBuf, 256, path);
-        dbUser = WtoA(dbBuf);
-        GetPrivateProfileStringW(L"DB", L"Password", L"", dbBuf, 256, path);
-        dbPassword = WtoA(dbBuf);
-        GetPrivateProfileStringW(L"DB", L"Database", L"gamedb", dbBuf, 256, path);
-        dbDatabase = WtoA(dbBuf);
-        dbWorkers           = GetPrivateProfileIntW(L"DB", L"Workers", 1, path);
-        dbSavePeriodSec     = GetPrivateProfileIntW(L"DB", L"SavePeriodSec", 10, path);
-        dbConnectTimeoutSec = GetPrivateProfileIntW(L"DB", L"ConnectTimeoutSec", 3, path);
-        dbRwTimeoutSec      = GetPrivateProfileIntW(L"DB", L"RwTimeoutSec", 5, path);
-        dbQueueMax          = GetPrivateProfileIntW(L"DB", L"QueueMax", 20000, path);
+        // [DB] 섹션 — DB 저장 파이프라인 (값은 파서가 narrow std::string으로 반환)
+        dbHost              = ini.GetString("DB", "Host", "127.0.0.1");
+        dbPort              = ini.GetInt("DB", "Port", 3306);
+        dbUser              = ini.GetString("DB", "User", "root");
+        dbPassword          = ini.GetString("DB", "Password", "");
+        dbDatabase          = ini.GetString("DB", "Database", "gamedb");
+        dbWorkers           = ini.GetInt("DB", "Workers", 1);
+        dbSavePeriodSec     = ini.GetInt("DB", "SavePeriodSec", 10);
+        dbConnectTimeoutSec = ini.GetInt("DB", "ConnectTimeoutSec", 3);
+        dbRwTimeoutSec      = ini.GetInt("DB", "RwTimeoutSec", 5);
+        dbQueueMax          = ini.GetInt("DB", "QueueMax", 20000);
 
-        int mapCount = GetPrivateProfileIntW(L"Server", L"MapCount", 3, path);
+        int mapCount = ini.GetInt("Server", "MapCount", 3);
 
         // [MapDefault] 섹션 로드
         MapConfig defaultMap = {};
-        defaultMap.mapWidth            = GetPrivateProfileIntW(L"MapDefault", L"Width", 120, path);
-        defaultMap.mapHeight           = GetPrivateProfileIntW(L"MapDefault", L"Height", 120, path);
-        defaultMap.sectorSize          = GetPrivateProfileIntW(L"MapDefault", L"SectorSize", 20, path);
-        defaultMap.maxPlayersPerChannel = GetPrivateProfileIntW(L"MapDefault", L"MaxPlayersPerChannel", 100, path);
+        defaultMap.mapWidth             = ini.GetInt("MapDefault", "Width", 120);
+        defaultMap.mapHeight            = ini.GetInt("MapDefault", "Height", 120);
+        defaultMap.sectorSize           = ini.GetInt("MapDefault", "SectorSize", 20);
+        defaultMap.maxPlayersPerChannel = ini.GetInt("MapDefault", "MaxPlayersPerChannel", 100);
 
         // [Map0] ~ [MapN-1] 섹션 순회 (없으면 디폴트 적용)
         maps.clear();
         for (int i = 0; i < mapCount; ++i)
         {
-            wchar_t section[16];
-            swprintf_s(section, L"Map%d", i);
+            std::string section = "Map" + std::to_string(i);
 
             MapConfig mc;
-            mc.mapId               = i;
-            mc.mapWidth            = GetPrivateProfileIntW(section, L"Width", defaultMap.mapWidth, path);
-            mc.mapHeight           = GetPrivateProfileIntW(section, L"Height", defaultMap.mapHeight, path);
-            mc.sectorSize          = GetPrivateProfileIntW(section, L"SectorSize", defaultMap.sectorSize, path);
-            mc.maxPlayersPerChannel = GetPrivateProfileIntW(section, L"MaxPlayersPerChannel", defaultMap.maxPlayersPerChannel, path);
+            mc.mapId                = i;
+            mc.mapWidth             = ini.GetInt(section, "Width", defaultMap.mapWidth);
+            mc.mapHeight            = ini.GetInt(section, "Height", defaultMap.mapHeight);
+            mc.sectorSize           = ini.GetInt(section, "SectorSize", defaultMap.sectorSize);
+            mc.maxPlayersPerChannel = ini.GetInt(section, "MaxPlayersPerChannel", defaultMap.maxPlayersPerChannel);
             maps.push_back(mc);
         }
 
@@ -194,14 +174,14 @@ private:
     // "0-5" 또는 "3" 형태의 물리코어 범위 → 논리코어 비트마스크.
     // 가정: 물리코어 k = 논리코어 2k, 2k+1 (Intel HT 표준 매핑).
     // 빈 문자열·숫자 아님 → 0(미적용).
-    static unsigned long long ParsePhysicalCoreMask(const wchar_t* s)
+    static unsigned long long ParsePhysicalCoreMask(const std::string& str)
     {
-        if (!s) return 0;
-        wchar_t* end = nullptr;
-        long first = wcstol(s, &end, 10);
+        const char* s = str.c_str();
+        char* end = nullptr;
+        long first = std::strtol(s, &end, 10);
         if (end == s) return 0;                          // 숫자로 시작 안 함
         long last = first;
-        if (*end == L'-') last = wcstol(end + 1, &end, 10);
+        if (*end == '-') last = std::strtol(end + 1, &end, 10);
         if (first < 0 || last < first) return 0;
         if (last > 31) last = 31;                        // 64비트 마스크 상한 (물리코어 0~31)
         unsigned long long mask = 0;
@@ -212,17 +192,18 @@ private:
 
     // GameCore 문자열 → gameCore/gameCoreMask/ioCoreMask 도출. affinityMask(ServerCores)가 선행돼야 함.
     // 빈값·비숫자·범위밖·ServerCores밖·남는코어없음 중 하나라도면 격리 off(전부 0/-1)로 두고 WARN.
-    void DeriveGameCoreIsolation(const wchar_t* s)
+    void DeriveGameCoreIsolation(const std::string& str)
     {
         gameCore = -1; gameCoreMask = 0; ioCoreMask = 0;
-        if (!s || s[0] == L'\0')
+        if (str.empty())
             return;                                       // 빈값 = 격리 off (기본)
 
-        wchar_t* end = nullptr;
-        long core = wcstol(s, &end, 10);
+        const char* s = str.c_str();
+        char* end = nullptr;
+        long core = std::strtol(s, &end, 10);
         if (end == s || core < 0 || core > 31)
         {
-            SLOG_WARN("[ServerConfig] GameCore '{}' 무시 — 물리코어 숫자(0~31)가 아님", WtoA(s));
+            SLOG_WARN("[ServerConfig] GameCore '{}' 무시 — 물리코어 숫자(0~31)가 아님", str);
             return;
         }
         if (affinityMask == 0)
@@ -255,23 +236,14 @@ private:
         };
     }
 
-    static ServerMode ParseServerMode(const wchar_t* str)
+    static ServerMode ParseServerMode(const std::string& s)
     {
-        std::wstring s(str);
-        if (s == L"GameCodiEchoTest")    return ServerMode::GameCodiEchoTest;
-        if (s == L"NetWorkLib_EchoTest") return ServerMode::NetWorkLib_EchoTest;
-        if (s == L"GameServer")          return ServerMode::GameServer;
+        if (s == "GameCodiEchoTest")    return ServerMode::GameCodiEchoTest;
+        if (s == "NetWorkLib_EchoTest") return ServerMode::NetWorkLib_EchoTest;
+        if (s == "GameServer")          return ServerMode::GameServer;
 
-        SLOG_WARN("[ServerConfig] Unknown Mode '{}'. Defaulting to GameServer.", WtoA(str));
+        SLOG_WARN("[ServerConfig] Unknown Mode '{}'. Defaulting to GameServer.", s);
         return ServerMode::GameServer;
-    }
-
-    static std::string WtoA(const wchar_t* wstr)
-    {
-        int len = WideCharToMultiByte(CP_ACP, 0, wstr, -1, nullptr, 0, nullptr, nullptr);
-        std::string result(len - 1, '\0');
-        WideCharToMultiByte(CP_ACP, 0, wstr, -1, &result[0], len, nullptr, nullptr);
-        return result;
     }
 
     void PrintConfig() const
