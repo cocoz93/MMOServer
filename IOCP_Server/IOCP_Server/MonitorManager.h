@@ -14,8 +14,29 @@
 #include <WinSock2.h>
 #include <Windows.h>
 #include <cstdint>
+#include <atomic>
 
 #include "Platform/Platform.h"   // Platform::ThreadCpuHandle (스레드 CPU 측정 핸들)
+
+// ── 원자 카운터 (통계/게이지) ──
+//   순서 의존 없는 지표라 relaxed 고정 (Interlocked→std::atomic 포팅 + 캡슐화).
+//   비복사(atomic 멤버). 읽기는 암시적 변환(operator int64_t)으로 표시 코드 불변.
+//   operator= 미제공 → 평문 대입이 컴파일 에러로 잡혀 누락 방지(명시적 Store 강제).
+struct Counter
+{
+    std::atomic<int64_t> v{ 0 };
+
+    Counter() = default;
+    Counter(const Counter&) = delete;
+    Counter& operator=(const Counter&) = delete;
+
+    void    Inc()               { v.fetch_add(1, std::memory_order_relaxed); }
+    void    Add(int64_t n)      { v.fetch_add(n, std::memory_order_relaxed); }
+    void    Store(int64_t n)    { v.store(n, std::memory_order_relaxed); }
+    int64_t FetchAdd(int64_t n) { return v.fetch_add(n, std::memory_order_relaxed); }  // 반환값 필요 시(슬롯 index)
+    int64_t Load() const        { return v.load(std::memory_order_relaxed); }
+    operator int64_t() const    { return v.load(std::memory_order_relaxed); }
+};
 
 class CMonitorManager
 {
@@ -34,41 +55,41 @@ public:
     // ══════════════════════════════════════════════════════════════
 
     // ── Recv 핫 카운터 (ProcessRecv 경로, 모든 워커 스레드) ──
-    alignas(64) volatile LONG64 _recvPackets = 0;   // 수신 패킷 누적
-    volatile LONG64 _recvBytes = 0;                  // 수신 바이트 누적
-    volatile LONG64 _wsaRecvCalls = 0;               // WSARecv 시스템 콜 횟수
+    alignas(64) Counter _recvPackets;   // 수신 패킷 누적
+    Counter _recvBytes;                 // 수신 바이트 누적
+    Counter _wsaRecvCalls;              // WSARecv 시스템 콜 횟수
 
     // ── Send 핫 카운터 (ProcessSend/PostSend/RequestSendMsg 경로, 모든 워커 스레드) ──
-    alignas(64) volatile LONG64 _sendPackets = 0;    // 논리적 송신 패킷 누적 (RequestSendMsg에서 Enqueue 성공 시)
-    volatile LONG64 _sendBytes = 0;                  // 송신 바이트 누적
-    volatile LONG64 _wsaSendCalls = 0;               // WSASend 시스템 콜 횟수
-    volatile LONG64 _wsaSendCompletions = 0;         // WSASend 완료 횟수 (ProcessSend IOCP 콜백)
-    volatile LONG64 _sendEnqueuedBytes = 0;          // SendQ Enqueue 바이트 누적 (_sendBytes와의 차이 = 체류량)
-    volatile LONG64 _sendContention = 0;             // PostSend 경합 (이미 송신 중이라 건너뛴 횟수)
+    alignas(64) Counter _sendPackets;    // 논리적 송신 패킷 누적 (RequestSendMsg에서 Enqueue 성공 시)
+    Counter _sendBytes;                  // 송신 바이트 누적
+    Counter _wsaSendCalls;               // WSASend 시스템 콜 횟수
+    Counter _wsaSendCompletions;         // WSASend 완료 횟수 (ProcessSend IOCP 콜백)
+    Counter _sendEnqueuedBytes;          // SendQ Enqueue 바이트 누적 (_sendBytes와의 차이 = 체류량)
+    Counter _sendContention;             // PostSend 경합 (이미 송신 중이라 건너뛴 횟수)
 
     // ── 세션/에러 카운터 (per-session 또는 rare, 낮은 빈도) ──
-    alignas(64) volatile LONG64 _sessionCreated = 0;    // 세션 생성 누적
-    volatile LONG64 _sessionDestroyed = 0;               // 세션 소멸 누적
-    volatile LONG64 _acceptFailed = 0;                   // Accept 거부 (인덱스 부족)
-    volatile LONG64 _sessionTimedOut = 0;                // 타이밍 휠 타임아웃 킥
-    volatile LONG64 _packetErrors = 0;                   // 패킷 에러 (크기 검증 실패, 알 수 없는 타입)
-    volatile LONG64 _sendQueueOverflow = 0;              // SendQ 오버플로 (Enqueue 실패)
-    volatile LONG64 _partialSend = 0;                    // 진짜 partial send (WSASend 성공이나 일부만 전송) → disconnect 횟수
-    volatile LONG64 _recvBufferOverflow = 0;             // RecvQ 오버플로 (수신 버퍼 가득 참)
-    volatile LONG64 _sendDiscardedBytes = 0;             // Disconnect 시 SendQ 잔여 바이트 (체류량 보정용)
+    alignas(64) Counter _sessionCreated;    // 세션 생성 누적
+    Counter _sessionDestroyed;               // 세션 소멸 누적
+    Counter _acceptFailed;                   // Accept 거부 (인덱스 부족)
+    Counter _sessionTimedOut;                // 타이밍 휠 타임아웃 킥
+    Counter _packetErrors;                   // 패킷 에러 (크기 검증 실패, 알 수 없는 타입)
+    Counter _sendQueueOverflow;              // SendQ 오버플로 (Enqueue 실패)
+    Counter _partialSend;                    // 진짜 partial send (WSASend 성공이나 일부만 전송) → disconnect 횟수
+    Counter _recvBufferOverflow;             // RecvQ 오버플로 (수신 버퍼 가득 참)
+    Counter _sendDiscardedBytes;             // Disconnect 시 SendQ 잔여 바이트 (체류량 보정용)
 
     // ── DB 저장 파이프라인 (USE_DB_WORKER) — dirty flag 비동기 저장 ──
-    alignas(64) volatile LONG64 _dbSavedJobs = 0;    // UPSERT 성공 누적
-    volatile LONG64 _dbFailedJobs = 0;               // UPSERT 실패 누적
-    volatile LONG64 _dbDroppedJobs = 0;              // 백프레셔 드롭 누적 (슬롯 큐 상한 초과)
+    alignas(64) Counter _dbSavedJobs;    // UPSERT 성공 누적
+    Counter _dbFailedJobs;               // UPSERT 실패 누적
+    Counter _dbDroppedJobs;              // 백프레셔 드롭 누적 (슬롯 큐 상한 초과)
     static constexpr int MAX_DB_WORKERS = 16;
-    volatile LONG64 _dbQueueDepth[MAX_DB_WORKERS] = {};  // 워커별 게이지: 마지막 배치 인출량
-    volatile LONG _dbWorkerCount = 0;                    // 노출 루프 상한 (CDBWorker::Start에서 설정)
+    Counter _dbQueueDepth[MAX_DB_WORKERS];               // 워커별 게이지: 마지막 배치 인출량
+    Counter _dbWorkerCount;                              // 노출 루프 상한 (CDBWorker::Start에서 설정)
 
     // ══════════════════════════════════════════════════════════════
     // 게이지 (up/down)
     // ══════════════════════════════════════════════════════════════
-    alignas(64) volatile LONG _sessionCount = 0;    // 현재 동접 수
+    alignas(64) Counter _sessionCount;    // 현재 동접 수
     // 이벤트 큐 크기는 ThreadSafeQueue::GetSize()로 직접 조회
 
     // ══════════════════════════════════════════════════════════════
@@ -78,34 +99,34 @@ public:
     // ══════════════════════════════════════════════════════════════
     struct alignas(64) GameLoopCounters
     {
-        volatile LONG64 _zoneChangeCount = 0;   // 존 이동 횟수
-        volatile LONG64 _cheatDetected = 0;     // 이동 검증 실패 (치트 감지) — 미구현, 향후 서버 권위 좌표 검증 시 사용 예정
+        Counter _zoneChangeCount;   // 존 이동 횟수
+        Counter _cheatDetected;     // 이동 검증 실패 (치트 감지) — 미구현, 향후 서버 권위 좌표 검증 시 사용 예정
 
         // 구간별 시간 (마이크로초 누적, counter)
         // Prometheus에서 rate(phase_sum) / rate(tick_count) → 틱당 평균 소비 시간
-        volatile LONG64 _phaseNetworkUs = 0;        // ProcessNetworkEvents 소비 시간
-        volatile LONG64 _phaseGameLogicUs = 0;      // TickAll + 섹터 변경 + 클램핑 브로드캐스트
-        volatile LONG64 _phaseBroadcastSyncUs = 0;  // 주기적 위치 동기화 브로드캐스트
+        Counter _phaseNetworkUs;        // ProcessNetworkEvents 소비 시간
+        Counter _phaseGameLogicUs;      // TickAll + 섹터 변경 + 클램핑 브로드캐스트
+        Counter _phaseBroadcastSyncUs;  // 주기적 위치 동기화 브로드캐스트
 
         // 이벤트 큐 크기 (게이지, 게임 루프 스레드에서만 갱신)
         // ProcessNetworkEvents() 진입 전 스냅샷 → 소비 못 따라가면 누적되는 걸 감지
-        volatile LONG _eventQueueSize = 0;
+        Counter _eventQueueSize;
 
         // 브로드캐스트 비용 (counter)
         // 평균 대상 수 = rate(targets) / rate(calls)
-        volatile LONG64 _broadcastCalls = 0;        // 브로드캐스트 호출 횟수
-        volatile LONG64 _broadcastTargets = 0;      // 브로드캐스트 대상 수 누적
+        Counter _broadcastCalls;        // 브로드캐스트 호출 횟수
+        Counter _broadcastTargets;      // 브로드캐스트 대상 수 누적
 
         // 멤버십 변경 복사량 — BroadcastAroundSector(gather/enqueue 계측 대상) 밖의 송신(복사) 횟수.
         //   ProcessSectorChange·BroadcastEnterZone·BroadcastLeaveZone 전용인
         //   SendCreateOtherPlayer/SendDeletePlayer 호출 수. _broadcastTargets(계측 대상 복사)와
         //   비교해 비계측 복사의 비중을 가늠 → 정밀 측정(choke-point) 필요 여부 판단용.
-        volatile LONG64 _membershipSends = 0;
+        Counter _membershipSends;
 
         // 멤버십 변경 송신(복사) 시간 — ProcessSectorChange 구간 전용(섹터이동분).
         //   game_logic 페이즈(_phaseGameLogicUs)에 섞여 있던 멤버십 복사를 분리 측정 → 묶음 최적화 ROI 판단용.
         //   접속/퇴장(BroadcastEnter/LeaveZone)은 네트워크 페이즈라 1차 제외.
-        volatile LONG64 _membershipCostUs = 0;
+        Counter _membershipCostUs;
 
         // 비용종류별 계측 (counter, 마이크로초 누적) — 1단계: BroadcastAroundSector hot path 전용
         //
@@ -115,9 +136,9 @@ public:
         //   주의(1단계 범위): BroadcastAroundSector(move/stop/chat/sync/clamp)만 계측.
         //         BroadcastEnter/LeaveZone·ProcessSectorChange(접속/해제/존이동·섹터변경)의
         //         GetAroundPlayers·복사는 미포함 → 필요 시 2단계(RequestSendMsg choke point)로 확장.
-        volatile LONG64 _broadcastGatherUs = 0;     // GetAroundPlayers 주변 모으기 (수신자 수 비례)
-        volatile LONG64 _broadcastEnqueueUs = 0;    // 수신자별 처리(precount+배치AddRef+RequestSendMsg 복사)
-        volatile LONG64 _flushSendUs = 0;           // FlushPendingSends 실제 송신(WSASend) — 틱 끝 1회
+        Counter _broadcastGatherUs;     // GetAroundPlayers 주변 모으기 (수신자 수 비례)
+        Counter _broadcastEnqueueUs;    // 수신자별 처리(precount+배치AddRef+RequestSendMsg 복사)
+        Counter _flushSendUs;           // FlushPendingSends 실제 송신(WSASend) — 틱 끝 1회
 
         // Tick 히스토그램
         //
@@ -129,28 +150,28 @@ public:
             1.0, 5.0, 10.0, 20.0, 40.0, 60.0, 80.0, 100.0, 200.0
         };
 
-        volatile LONG64 _tickBuckets[TICK_BUCKET_COUNT] = {};
-        volatile LONG64 _tickSumUs = 0;   // 합계 (마이크로초)
-        volatile LONG64 _tickCount = 0;   // 총 tick 수
+        Counter _tickBuckets[TICK_BUCKET_COUNT];
+        Counter _tickSumUs;   // 합계 (마이크로초)
+        Counter _tickCount;   // 총 tick 수
 
         // Tick 시간 기록 (밀리초 단위)
         void RecordTickTime(double ms)
         {
-            LONG64 us = static_cast<LONG64>(ms * 1000.0);
-            InterlockedExchangeAdd64(&_tickSumUs, us);
-            InterlockedIncrement64(&_tickCount);
+            int64_t us = static_cast<int64_t>(ms * 1000.0);
+            _tickSumUs.Add(us);
+            _tickCount.Inc();
 
             // 해당 버킷에 1 증가
             for (int i = 0; i < TICK_BUCKET_COUNT - 1; ++i)
             {
                 if (ms <= TICK_BUCKET_BOUNDS[i])
                 {
-                    InterlockedIncrement64(&_tickBuckets[i]);
+                    _tickBuckets[i].Inc();
                     return;
                 }
             }
             // 모든 경계 초과 → +Inf 버킷
-            InterlockedIncrement64(&_tickBuckets[TICK_BUCKET_COUNT - 1]);
+            _tickBuckets[TICK_BUCKET_COUNT - 1].Inc();
         }
 
         // Handle-latency 히스토그램
@@ -163,20 +184,20 @@ public:
             1.0, 5.0, 10.0, 20.0, 40.0, 60.0, 80.0, 100.0, 200.0
         };
 
-        volatile LONG64 _handleBuckets[HANDLE_BUCKET_COUNT] = {};
-        volatile LONG64 _handleSumUs = 0;   // 합계 (마이크로초)
-        volatile LONG64 _handleCount = 0;   // 총 처리 이벤트 수
+        Counter _handleBuckets[HANDLE_BUCKET_COUNT];
+        Counter _handleSumUs;   // 합계 (마이크로초)
+        Counter _handleCount;   // 총 처리 이벤트 수
 
         // [계측 오버헤드 절감] 게임 스레드 전용 틱-로컬 누적기 (비원자 — 게임 루프만 접근).
         //   패킷마다 누적 → 틱 끝 FlushHandleLatency()가 전역에 1회 반영 (원자연산 패킷당 3 → 틱당 최대 12).
-        LONG64 _tickHandleBuckets[HANDLE_BUCKET_COUNT] = {};
-        LONG64 _tickHandleSumUs = 0;
-        LONG64 _tickHandleCount = 0;
+        int64_t _tickHandleBuckets[HANDLE_BUCKET_COUNT] = {};
+        int64_t _tickHandleSumUs = 0;
+        int64_t _tickHandleCount = 0;
 
         // Handle-latency 기록 (밀리초) — 게임 스레드 전용 지역 누적. 전역 반영은 FlushHandleLatency().
         void RecordHandleLatencyLocal(double ms)
         {
-            _tickHandleSumUs += static_cast<LONG64>(ms * 1000.0);
+            _tickHandleSumUs += static_cast<int64_t>(ms * 1000.0);
             _tickHandleCount += 1;
 
             for (int i = 0; i < HANDLE_BUCKET_COUNT - 1; ++i)
@@ -196,13 +217,13 @@ public:
             if (_tickHandleCount == 0)
                 return;   // 이번 틱 수신 처리 없음 → 원자연산 생략
 
-            InterlockedExchangeAdd64(&_handleSumUs, _tickHandleSumUs);
-            InterlockedExchangeAdd64(&_handleCount, _tickHandleCount);
+            _handleSumUs.Add(_tickHandleSumUs);
+            _handleCount.Add(_tickHandleCount);
             for (int i = 0; i < HANDLE_BUCKET_COUNT; ++i)
             {
                 if (_tickHandleBuckets[i] != 0)
                 {
-                    InterlockedExchangeAdd64(&_handleBuckets[i], _tickHandleBuckets[i]);
+                    _handleBuckets[i].Add(_tickHandleBuckets[i]);
                     _tickHandleBuckets[i] = 0;
                 }
             }
@@ -220,12 +241,12 @@ public:
 
     struct alignas(64) WorkerCounter
     {
-        volatile LONG64 completionCount = 0;
+        Counter completionCount;
         volatile Platform::ThreadCpuHandle threadHandle = Platform::kInvalidThreadCpuHandle;   // CPU 측정 핸들 (워커 시작 시 등록)
     };
 
     WorkerCounter _workerCounters[MAX_WORKER_THREADS] = {};
-    volatile LONG _workerThreadCount = 0;
+    Counter _workerThreadCount;
 
     // ══════════════════════════════════════════════════════════════
     // 스레드 CPU 점유율 측정용 핸들
@@ -246,20 +267,20 @@ public:
     struct alignas(64) SendCounter
     {
         volatile Platform::ThreadCpuHandle threadHandle = Platform::kInvalidThreadCpuHandle;   // CPU 측정 핸들 (워커 시작 시 등록)
-        volatile LONG64 backlog      = 0;         // 마지막 drain 시 인출한 세션 수 (1틱 dirty 초과 = 송신 못 따라감)
-        volatile LONG64 flushUs      = 0;         // 이 워커의 WSASend 누적(us) — 게임루프 flush_send 이전분
+        Counter backlog;         // 마지막 drain 시 인출한 세션 수 (1틱 dirty 초과 = 송신 못 따라감)
+        Counter flushUs;         // 이 워커의 WSASend 누적(us) — 게임루프 flush_send 이전분
     };
 
     SendCounter   _sendCounters[MAX_SEND_WORKERS] = {};
-    volatile LONG _sendWorkerCount = 0;           // 노출 루프 상한 (Start에서 워커 수로 설정)
+    Counter _sendWorkerCount;           // 노출 루프 상한 (Start에서 워커 수로 설정)
 
     // 워커 스레드 시작 시 호출 → 슬롯 인덱스 반환 (-1: 슬롯 초과)
     int RegisterWorkerThread()
     {
-        LONG index = InterlockedIncrement(&_workerThreadCount) - 1;
+        int64_t index = _workerThreadCount.FetchAdd(1);   // 반환=이전 값 = 슬롯 인덱스
         if (index >= MAX_WORKER_THREADS)
         {
-            InterlockedDecrement(&_workerThreadCount);
+            _workerThreadCount.Add(-1);
             return -1;
         }
         return static_cast<int>(index);

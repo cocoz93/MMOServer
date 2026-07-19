@@ -220,7 +220,7 @@ bool CIOCPServer::Start()
     const int sendCount = std::clamp((_configuredSendWorkers > 0) ? _configuredSendWorkers : 1,
                                      1, CMonitorManager::MAX_SEND_WORKERS);
     _sendWorkerCount = sendCount;
-    _monitor._sendWorkerCount = sendCount;            // 노출 루프 상한
+    _monitor._sendWorkerCount.Store(sendCount);            // 노출 루프 상한
     _sendWorkers.reserve(sendCount);
     for (int i = 0; i < sendCount; ++i)
         _sendWorkers.push_back(std::make_unique<SendWorker>());
@@ -450,7 +450,7 @@ void CIOCPServer::ProcessAccept(SOCKET clientSocket)
     if (!_availableIndices.Pop(&index))
     {
         LOG_ERROR_STREAM("[Error] No free session index available");
-        InterlockedIncrement64(&_monitor._acceptFailed);
+        _monitor._acceptFailed.Inc();
         closesocket(clientSocket);
         return;
     }
@@ -487,8 +487,8 @@ void CIOCPServer::ProcessAccept(SOCKET clientSocket)
     }
 
     // 세션 지표 기록
-    InterlockedIncrement64(&_monitor._sessionCreated);
-    InterlockedIncrement(&_monitor._sessionCount);
+    _monitor._sessionCreated.Inc();
+    _monitor._sessionCount.Inc();
 
     // 타이밍 휠에 세션 등록 (타임아웃 카운트 시작)
     _timingWheel->RequestRegister(CSession::ExtractIndex(sessionId), sessionId);
@@ -560,7 +560,7 @@ void CIOCPServer::WorkerThread()
 
         // 워커 스레드별 완료 통지 카운트
         if (workerIndex >= 0 && workerIndex < CMonitorManager::MAX_WORKER_THREADS)
-            InterlockedIncrement64(&_monitor._workerCounters[workerIndex].completionCount);
+            _monitor._workerCounters[workerIndex].completionCount.Inc();
     }
 }
 
@@ -576,7 +576,7 @@ void CIOCPServer::ProcessRecv(CSession* session, DWORD bytesTransferred)
     }
 
     // 수신 바이트 지표 기록
-    InterlockedExchangeAdd64(&_monitor._recvBytes, static_cast<LONG64>(bytesTransferred));
+    _monitor._recvBytes.Add(static_cast<LONG64>(bytesTransferred));
 
     // 타이밍 휠 수명 갱신 (데이터 수신 = 세션 활성 상태)
     _timingWheel->RequestRefresh(CSession::ExtractIndex(session->_sessionId), session->_sessionId);
@@ -585,7 +585,7 @@ void CIOCPServer::ProcessRecv(CSession* session, DWORD bytesTransferred)
     size_t movedSize = session->_recvQ.MoveWritePtr(bytesTransferred);
     if (movedSize != bytesTransferred)
     {
-        InterlockedIncrement64(&_monitor._recvBufferOverflow);
+        _monitor._recvBufferOverflow.Inc();
         LOG_ERROR_STREAM("[Error] Recv buffer overflow - SessionId: " << session->_sessionId
             << ", Expected: " << bytesTransferred << ", Moved: " << movedSize);
         RequestDisconnectSession(session);
@@ -644,7 +644,7 @@ void CIOCPServer::PostRecv(CSession* session, bool skipAcquire)
 
     if (bufCount == 0)
     {
-        InterlockedIncrement64(&_monitor._recvBufferOverflow);
+        _monitor._recvBufferOverflow.Inc();
         LOG_ERROR_STREAM("[Error] Recv buffer full - SessionId: " << sessionId);
         RequestDisconnectSession(session);
         IOCountDecrement(session);
@@ -669,7 +669,7 @@ void CIOCPServer::PostRecv(CSession* session, bool skipAcquire)
     DWORD flags = 0;
     DWORD recvBytes = 0;
 
-    InterlockedIncrement64(&_monitor._wsaRecvCalls);
+    _monitor._wsaRecvCalls.Inc();
     int result = WSARecv(socket, wsaBuf, bufCount, &recvBytes, &flags,
         &ex->overlapped, NULL);
 
@@ -735,9 +735,9 @@ void CIOCPServer::ParsePackets(CSession* session)
         {
             LOG_ERROR_STREAM("[Error] Invalid packet size: " << totalPacketSize
                 << " - SessionId: " << session->_sessionId);
-            InterlockedIncrement64(&_monitor._packetErrors);
+            _monitor._packetErrors.Inc();
             if (parsedPackets != 0)
-                InterlockedExchangeAdd64(&_monitor._recvPackets, parsedPackets);
+                _monitor._recvPackets.Add(parsedPackets);
             RequestDisconnectSession(session);
             return;
         }
@@ -756,7 +756,7 @@ void CIOCPServer::ParsePackets(CSession* session)
             LOG_ERROR_STREAM("[Error] Packet dequeue failed - SessionId: " << session->_sessionId);
             pMsg->SubRef();
             if (parsedPackets != 0)
-                InterlockedExchangeAdd64(&_monitor._recvPackets, parsedPackets);
+                _monitor._recvPackets.Add(parsedPackets);
             RequestDisconnectSession(session);
             return;
         }
@@ -790,7 +790,7 @@ void CIOCPServer::ParsePackets(CSession* session)
 
     // 파싱한 패킷 수 1회 반영
     if (parsedPackets != 0)
-        InterlockedExchangeAdd64(&_monitor._recvPackets, parsedPackets);
+        _monitor._recvPackets.Add(parsedPackets);
 }
 
 // Send 완료 통지 처리
@@ -800,8 +800,8 @@ void CIOCPServer::ProcessSend(CSession* session, DWORD bytesTransferred)
         return;
 
     // 송신 지표 기록
-    InterlockedExchangeAdd64(&_monitor._sendBytes, static_cast<LONG64>(bytesTransferred));
-    InterlockedIncrement64(&_monitor._wsaSendCompletions);
+    _monitor._sendBytes.Add(static_cast<LONG64>(bytesTransferred));
+    _monitor._wsaSendCompletions.Inc();
 
 #if USE_LOCKFREE_SENDQ
     if (static_cast<int>(bytesTransferred) == session->_pendingSendBytes)
@@ -812,7 +812,7 @@ void CIOCPServer::ProcessSend(CSession* session, DWORD bytesTransferred)
     else
     {
         // Partial send → 비정상 완료로 간주, 세션 종료
-        InterlockedIncrement64(&_monitor._partialSend);
+        _monitor._partialSend.Inc();
         LOG_ERROR_STREAM("[Error] Partial send - SessionId: " << session->_sessionId
             << ", Expected: " << session->_pendingSendBytes
             << ", Transferred: " << bytesTransferred);
@@ -864,7 +864,7 @@ void CIOCPServer::PostSend(CSession* session)
 
     if (InterlockedExchange(&session->_sending, TRUE) == TRUE)
     {
-        InterlockedIncrement64(&_monitor._sendContention);
+        _monitor._sendContention.Inc();
         IOCountDecrement(session);
         return;
     }
@@ -916,7 +916,7 @@ void CIOCPServer::PostSend(CSession* session)
     ex->operation = IOOperation::SEND;
 
     DWORD sendBytes = 0;
-    InterlockedIncrement64(&_monitor._wsaSendCalls);
+    _monitor._wsaSendCalls.Inc();
     int result = WSASend(socket, wsaBuf, bufCount, &sendBytes, 0,
         &ex->overlapped, NULL);
 
@@ -957,7 +957,7 @@ void CIOCPServer::PostSend(CSession* session)
 
     if (InterlockedExchange(&session->_sending, TRUE) == TRUE)
     {
-        InterlockedIncrement64(&_monitor._sendContention);
+        _monitor._sendContention.Inc();
         IOCountDecrement(session);
         return;
     }
@@ -1020,7 +1020,7 @@ void CIOCPServer::PostSend(CSession* session)
     ex->operation = IOOperation::SEND;
 
     DWORD sendBytes = 0;
-    InterlockedIncrement64(&_monitor._wsaSendCalls);
+    _monitor._wsaSendCalls.Inc();
     int result = WSASend(socket, wsaBuf, bufCount, &sendBytes, 0,
         &ex->overlapped, NULL);
 
@@ -1056,8 +1056,8 @@ void CIOCPServer::EchoTestSend(CSession* session, CSerialBuffer* pMsg)
     const int dataSize = pMsg->GetDataSize();
     if (RequestSendMsg(session->_sessionId, pMsg))
     {
-        InterlockedIncrement64(&_monitor._sendPackets);
-        InterlockedExchangeAdd64(&_monitor._sendEnqueuedBytes, static_cast<LONG64>(dataSize));
+        _monitor._sendPackets.Inc();
+        _monitor._sendEnqueuedBytes.Add(static_cast<LONG64>(dataSize));
     }
 }
 
@@ -1089,7 +1089,7 @@ bool CIOCPServer::RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg, [[maybe
     {
         LOG_ERROR_STREAM("[Error] SendQ depth limit reached - SessionId: " << sessionId
             << ", Depth: " << session->_sendQ.GetApproxSize());
-        InterlockedIncrement64(&_monitor._sendQueueOverflow);
+        _monitor._sendQueueOverflow.Inc();
         pMsg->SubRef();
         RequestDisconnectSession(session);
         IOCountDecrement(session);
@@ -1100,7 +1100,7 @@ bool CIOCPServer::RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg, [[maybe
     if (!session->_sendQ.Enqueue(pMsg))
     {
         LOG_ERROR_STREAM("[Error] Send queue enqueue failed - SessionId: " << sessionId);
-        InterlockedIncrement64(&_monitor._sendQueueOverflow);
+        _monitor._sendQueueOverflow.Inc();
         pMsg->SubRef();
         RequestDisconnectSession(session);
         IOCountDecrement(session);
@@ -1113,7 +1113,7 @@ bool CIOCPServer::RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg, [[maybe
     {
         LOG_ERROR_STREAM("[Error] Send buffer overflow - SessionId: " << sessionId
             << ", Requested: " << dataSize << ", Enqueued: " << enqueued);
-        InterlockedIncrement64(&_monitor._sendQueueOverflow);
+        _monitor._sendQueueOverflow.Inc();
         pMsg->SubRef();
         RequestDisconnectSession(session);
         IOCountDecrement(session);
@@ -1162,7 +1162,7 @@ bool CIOCPServer::RequestSendRaw(int64_t sessionId, const char* data, int size)
     {
         LOG_ERROR_STREAM("[Error] Send buffer overflow (digest) - SessionId: " << sessionId
             << ", Requested: " << size << ", Enqueued: " << enqueued);
-        InterlockedIncrement64(&_monitor._sendQueueOverflow);
+        _monitor._sendQueueOverflow.Inc();
         RequestDisconnectSession(session);
         IOCountDecrement(session);
         return false;
@@ -1258,7 +1258,7 @@ void CIOCPServer::SendWorkerThread(int workerIdx)
         }
 
         // [계측] 핸드오프 백로그 — 이번 drain에서 인출한 세션 수 (1틱 dirty 수 초과 = 이 워커이 못 따라감)
-        _monitor._sendCounters[workerIdx].backlog = static_cast<LONG64>(local.size());
+        _monitor._sendCounters[workerIdx].backlog.Store(static_cast<int64_t>(local.size()));
 
         // [계측] 이 워커의 실제 WSASend 시간 — 슬롯당 단독 writer(워커 자신)라 원자 누적.
         const auto sendT0 = std::chrono::steady_clock::now();
@@ -1274,8 +1274,7 @@ void CIOCPServer::SendWorkerThread(int workerIdx)
             }
         }
         const auto sendT1 = std::chrono::steady_clock::now();
-        InterlockedExchangeAdd64(&_monitor._sendCounters[workerIdx].flushUs,
-            std::chrono::duration_cast<std::chrono::microseconds>(sendT1 - sendT0).count());
+        _monitor._sendCounters[workerIdx].flushUs.Add(std::chrono::duration_cast<std::chrono::microseconds>(sendT1 - sendT0).count());
 
         local.clear();
     }
@@ -1420,11 +1419,11 @@ void CIOCPServer::ReleaseSession(CSession* session)
     residual += session->_pendingSendBytes;  // WSASend 미완료 버퍼도 discard 집계
     session->ReleasePendingSendBufs();
     if (residual > 0)
-        InterlockedExchangeAdd64(&_monitor._sendDiscardedBytes, static_cast<LONG64>(residual));
+        _monitor._sendDiscardedBytes.Add(static_cast<LONG64>(residual));
 #else
     size_t residual = session->_sendQ.GetDataSize();
     if (residual > 0)
-        InterlockedExchangeAdd64(&_monitor._sendDiscardedBytes, static_cast<LONG64>(residual));
+        _monitor._sendDiscardedBytes.Add(static_cast<LONG64>(residual));
 #endif
 
     session->Close();
@@ -1432,8 +1431,8 @@ void CIOCPServer::ReleaseSession(CSession* session)
     if (sessionId != 0)
     {
         // 세션 지표 기록
-        InterlockedIncrement64(&_monitor._sessionDestroyed);
-        InterlockedDecrement(&_monitor._sessionCount);
+        _monitor._sessionDestroyed.Inc();
+        _monitor._sessionCount.Add(-1);
 
         _availableIndices.Push(CSession::ExtractIndex(sessionId));
     }
@@ -1468,7 +1467,7 @@ bool CIOCPServer::RequestDisconnectSession(int64_t sessionId)
 void CIOCPServer::OnSessionTimeout(void* context, int64_t sessionId)
 {
     auto* server = static_cast<CIOCPServer*>(context);
-    InterlockedIncrement64(&server->_monitor._sessionTimedOut);
+    server->_monitor._sessionTimedOut.Inc();
     server->RequestDisconnectSession(sessionId);
 }
 

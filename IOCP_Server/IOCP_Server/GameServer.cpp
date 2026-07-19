@@ -494,7 +494,7 @@ void CGameServer::GameLoopThread()
         prevTime = frameStart;
 
         // 1) 네트워크 이벤트 전부 소비
-        _monitor._gameLoop._eventQueueSize = static_cast<LONG>(_network->GetEventQueueSize());
+        _monitor._gameLoop._eventQueueSize.Store(static_cast<int64_t>(_network->GetEventQueueSize()));
         auto phaseT1 = Clock::now();
         ProcessNetworkEvents();
         auto phaseT2 = Clock::now();
@@ -590,20 +590,16 @@ void CGameServer::GameLoopThread()
         auto phaseT4 = Clock::now();
 
         // 구간별 시간 기록 (마이크로초 누적)
-        InterlockedExchangeAdd64(&_monitor._gameLoop._phaseNetworkUs,
-            std::chrono::duration_cast<std::chrono::microseconds>(phaseT2 - phaseT1).count());
-        InterlockedExchangeAdd64(&_monitor._gameLoop._phaseGameLogicUs,
-            std::chrono::duration_cast<std::chrono::microseconds>(phaseT3 - phaseT2).count());
-        InterlockedExchangeAdd64(&_monitor._gameLoop._phaseBroadcastSyncUs,
-            std::chrono::duration_cast<std::chrono::microseconds>(phaseT4 - phaseT3).count());
+        _monitor._gameLoop._phaseNetworkUs.Add(std::chrono::duration_cast<std::chrono::microseconds>(phaseT2 - phaseT1).count());
+        _monitor._gameLoop._phaseGameLogicUs.Add(std::chrono::duration_cast<std::chrono::microseconds>(phaseT3 - phaseT2).count());
+        _monitor._gameLoop._phaseBroadcastSyncUs.Add(std::chrono::duration_cast<std::chrono::microseconds>(phaseT4 - phaseT3).count());
 
         // [계측] 비용종류별 — 틱 내 누적분을 1회씩 원자 반영 후 리셋 (송신은 flush 구간 직접 측정)
-        InterlockedExchangeAdd64(&_monitor._gameLoop._broadcastGatherUs, _tickBroadcastGatherUs);
-        InterlockedExchangeAdd64(&_monitor._gameLoop._broadcastEnqueueUs, _tickBroadcastEnqueueUs);
-        InterlockedExchangeAdd64(&_monitor._gameLoop._flushSendUs,
-            std::chrono::duration_cast<std::chrono::microseconds>(flushT1 - flushT0).count());
-        InterlockedExchangeAdd64(&_monitor._gameLoop._membershipSends, _tickMembershipSends);  // 멤버십 변경 복사량(횟수)
-        InterlockedExchangeAdd64(&_monitor._gameLoop._membershipCostUs, _tickMembershipUs);    // 멤버십 변경 송신 시간
+        _monitor._gameLoop._broadcastGatherUs.Add(_tickBroadcastGatherUs);
+        _monitor._gameLoop._broadcastEnqueueUs.Add(_tickBroadcastEnqueueUs);
+        _monitor._gameLoop._flushSendUs.Add(std::chrono::duration_cast<std::chrono::microseconds>(flushT1 - flushT0).count());
+        _monitor._gameLoop._membershipSends.Add(_tickMembershipSends);  // 멤버십 변경 복사량(횟수)
+        _monitor._gameLoop._membershipCostUs.Add(_tickMembershipUs);    // 멤버십 변경 송신 시간
         _tickBroadcastGatherUs = 0;
         _tickBroadcastEnqueueUs = 0;
         _tickMembershipSends = 0;
@@ -769,7 +765,7 @@ void CGameServer::OnReceived(int64_t sessionId, CSerialBuffer* pMsg)
     uint16_t expectedSize = GetExpectedSize(header.type);
     if (expectedSize == 0 || header.size < expectedSize)
     {
-        InterlockedIncrement64(&_monitor._packetErrors);
+        _monitor._packetErrors.Inc();
         pMsg->SubRef();
         return;
     }
@@ -1056,8 +1052,8 @@ void CGameServer::SendPacket(CPlayer* target, CSerialBuffer* pMsg)
         const int dataSize = pMsg->GetDataSize();
         if (_network->RequestSendMsg(target->_sessionId, pMsg, SendFlush::Deferred))
         {
-            InterlockedIncrement64(&_monitor._sendPackets);
-            InterlockedExchangeAdd64(&_monitor._sendEnqueuedBytes, static_cast<LONG64>(dataSize));
+            _monitor._sendPackets.Inc();
+            _monitor._sendEnqueuedBytes.Add(static_cast<LONG64>(dataSize));
         }
     }
     pMsg->SubRef();       // 빌더가 넘긴 소유권 1 회수 (세션 무효여도 안전 회수)
@@ -1079,9 +1075,8 @@ void CGameServer::BroadcastAroundSector(CZone* zone, CPlayer* player, CSerialBuf
     _tickBroadcastGatherUs += std::chrono::duration_cast<std::chrono::microseconds>(
         _measGatherT1 - _measGatherT0).count();
 
-    InterlockedIncrement64(&_monitor._gameLoop._broadcastCalls);
-    InterlockedExchangeAdd64(&_monitor._gameLoop._broadcastTargets,
-        static_cast<LONG64>(_broadcastBuffer.size()));
+    _monitor._gameLoop._broadcastCalls.Inc();
+    _monitor._gameLoop._broadcastTargets.Add(static_cast<LONG64>(_broadcastBuffer.size()));
 
     // 유효 타겟(세션 보유) 수 선카운트 → 타겟별 AddRef를 1회 배치 AddRef로 압축 (원자연산 N→1)
     // 단일 게임루프 스레드 내 호출이라 두 패스 사이 _sessionId 변동 없음 → 카운트 정합 보장
@@ -1107,9 +1102,8 @@ void CGameServer::BroadcastAroundSector(CZone* zone, CPlayer* player, CSerialBuf
     }
     if (sentPkts > 0)
     {
-        InterlockedExchangeAdd64(&_monitor._sendPackets, static_cast<LONG64>(sentPkts));
-        InterlockedExchangeAdd64(&_monitor._sendEnqueuedBytes,
-            static_cast<LONG64>(sentPkts) * dataSize);
+        _monitor._sendPackets.Add(static_cast<LONG64>(sentPkts));
+        _monitor._sendEnqueuedBytes.Add(static_cast<LONG64>(sentPkts) * dataSize);
     }
     pMsg->SubRef();   // 빌더가 넘긴 소유권 1 회수 (타겟 0명이어도 안전 회수)
 
@@ -1311,7 +1305,7 @@ void CGameServer::RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg)
         return;
     }
 
-    InterlockedIncrement64(&_monitor._gameLoop._zoneChangeCount);
+    _monitor._gameLoop._zoneChangeCount.Inc();
 
 #if USE_DB_WORKER
     player->_dbDirty = true;   // 존/맵 이동 → 위치·map_id 변경, 저장 대상
@@ -1639,9 +1633,8 @@ void CGameServer::FanoutToSectors(CZone* zone,
 
     if (sentPkts > 0)
     {
-        InterlockedExchangeAdd64(&_monitor._sendPackets, static_cast<LONG64>(sentPkts));
-        InterlockedExchangeAdd64(&_monitor._sendEnqueuedBytes,
-            static_cast<LONG64>(sentPkts) * dataSize);
+        _monitor._sendPackets.Add(static_cast<LONG64>(sentPkts));
+        _monitor._sendEnqueuedBytes.Add(static_cast<LONG64>(sentPkts) * dataSize);
     }
 
     pMsg->SubRef();   // 빌더가 넘긴 소유권 1 회수 (타겟 0명이어도 안전)
@@ -1733,9 +1726,8 @@ void CGameServer::BroadcastSectorPacket(CZone* zone, int32_t sectorX, int32_t se
     _broadcastBuffer.clear();
     zone->GetSectorManager().GetAroundPlayers(sectorX, sectorY, _broadcastBuffer, nullptr);
 
-    InterlockedIncrement64(&_monitor._gameLoop._broadcastCalls);
-    InterlockedExchangeAdd64(&_monitor._gameLoop._broadcastTargets,
-        static_cast<LONG64>(_broadcastBuffer.size()));
+    _monitor._gameLoop._broadcastCalls.Inc();
+    _monitor._gameLoop._broadcastTargets.Add(static_cast<LONG64>(_broadcastBuffer.size()));
 
     // 유효 타겟(세션 보유) 선카운트 → 배치 AddRef (원자연산 N→1)
     size_t validCount = 0;
@@ -1758,9 +1750,8 @@ void CGameServer::BroadcastSectorPacket(CZone* zone, int32_t sectorX, int32_t se
     }
     if (sentPkts > 0)
     {
-        InterlockedExchangeAdd64(&_monitor._sendPackets, static_cast<LONG64>(sentPkts));
-        InterlockedExchangeAdd64(&_monitor._sendEnqueuedBytes,
-            static_cast<LONG64>(sentPkts) * dataSize);
+        _monitor._sendPackets.Add(static_cast<LONG64>(sentPkts));
+        _monitor._sendEnqueuedBytes.Add(static_cast<LONG64>(sentPkts) * dataSize);
     }
     pMsg->SubRef();   // 빌더가 넘긴 소유권 1 회수 (타겟 0명이어도 안전 회수)
 }
@@ -1794,7 +1785,7 @@ void CGameServer::RegisterSectorItem(CZone* zone, int32_t zoneId, int32_t sector
     if (zp.items[idx].empty())
         _sectorOutbox.touchedSectors.emplace_back(zoneId, idx);
     zp.items[idx].push_back(pMsg);
-    InterlockedIncrement64(&_monitor._gameLoop._broadcastCalls);
+    _monitor._gameLoop._broadcastCalls.Inc();
 }
 
 // 틱 끝: ① 이동 dirty → 섹터별 번들 빌드·보류 ② 수신섹터 후보 수집 ③ 연접·배포 ④ 일괄 해제.
@@ -1940,11 +1931,11 @@ void CGameServer::FlushSectorSends()
 
     // 송신 메트릭 배치 반영 (기존 BroadcastSectorPacket의 원자연산 N→1 패턴과 동일)
     if (targets > 0)
-        InterlockedExchangeAdd64(&_monitor._gameLoop._broadcastTargets, targets);
+        _monitor._gameLoop._broadcastTargets.Add(targets);
     if (sentPkts > 0)
     {
-        InterlockedExchangeAdd64(&_monitor._sendPackets, sentPkts);
-        InterlockedExchangeAdd64(&_monitor._sendEnqueuedBytes, sentBytes);
+        _monitor._sendPackets.Add(sentPkts);
+        _monitor._sendEnqueuedBytes.Add(sentBytes);
     }
 
     auto measT1 = std::chrono::steady_clock::now();

@@ -67,7 +67,7 @@ bool CDBWorker::Start(const DBConfig& config, int workerCount, int queueMax)
     }
 
     _perWorker.assign(_workerCount, {});
-    _monitor._dbWorkerCount = static_cast<LONG>(_workerCount);   // 지표 노출 상한
+    _monitor._dbWorkerCount.Store(_workerCount);   // 지표 노출 상한
 
     // 커넥션 확보 후 워커 스레드 시작 (각 슬롯 커넥션은 해당 워커만 단독 사용)
     _stop.store(false);
@@ -133,7 +133,7 @@ void CDBWorker::PushToSlot(DBWorkerSlot& slot, const DBSaveJob* jobs, size_t cou
     const size_t dropped = count - take;
     if (dropped > 0)
     {
-        InterlockedExchangeAdd64(&_monitor._dbDroppedJobs, static_cast<LONG64>(dropped));
+        _monitor._dbDroppedJobs.Add(static_cast<LONG64>(dropped));
         SLOG_ERROR("[DB] backpressure drop — worker={} dropped={} (queue full, max={})",
                    slot.index, dropped, _queueMax);
     }
@@ -202,14 +202,14 @@ void CDBWorker::WorkerThread(int idx)
             // 실패하면 이번 배치는 전부 실패 처리되고, 다음 배치에서 다시 시도
         }
 
-        _monitor._dbQueueDepth[idx] = static_cast<LONG64>(local.size());  // 워커별 게이지
+        _monitor._dbQueueDepth[idx].Store(static_cast<int64_t>(local.size()));  // 워커별 게이지
 
         for (const DBSaveJob& job : local)
         {
             if (ExecSave(slot, job))   // 유실 시 ExecSave가 stmt/mysql을 null로 만듦
-                InterlockedIncrement64(&_monitor._dbSavedJobs);
+                _monitor._dbSavedJobs.Inc();
             else
-                InterlockedIncrement64(&_monitor._dbFailedJobs);
+                _monitor._dbFailedJobs.Inc();
         }
         local.clear();
     }
