@@ -24,6 +24,14 @@ bld/
 [Ll]ogs/
 
 # ======================
+# CMake
+# ======================
+build/
+build_*/
+cmake-build-*/
+CMakeUserPresets.json
+
+# ======================
 # Compiler / Linker Output
 # ======================
 *.obj
