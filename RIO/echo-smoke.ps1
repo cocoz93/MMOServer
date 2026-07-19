@@ -1,0 +1,213 @@
+﻿# ==========================================================================
+# RIO 에코 런타임 스모크 — USE_RIO_TRANSPORT=1 빌드 검증 드라이버
+#
+#  T1: GameCodiEchoTest 모드 — 손제작 TcpClient 왕복 (4B/200B/1400B 바이트 정합)
+#  T1b: 1400B x 50 왕복 (한 커넥션 70KB → 64KB 링버퍼 랩 구간 통과 검증)
+#  T1c: graceful 종료 — CTRL_C 이벤트 → "Server shutdown complete" 로그 + exit 0
+#  T2: NetWorkLib_EchoTest 모드 — EchoStressClient 1000클라 25초 자동 회귀
+#      (DisconnectTest=1 → 접속폭풍 포함), Results 파일 판정
+#  T2c: graceful 종료 재검 (1000클라 드레인 직후 셧다운)
+#
+#  INI는 CP949(무BOM) 규칙 준수 — GetEncoding(949)로만 읽고 쓴다. 원본은 백업/복원.
+# ==========================================================================
+$ErrorActionPreference = 'Stop'
+$bin     = 'C:\Users\USER\Desktop\MyGit\MMO\Run\bin'
+$srvExe  = Join-Path $bin 'IOCP_Server.exe'
+$srvIni  = Join-Path $bin 'IOCP_ServerConfig.ini'
+$echoIni = Join-Path $bin 'EchoStressConfig.ini'
+$logFile = Join-Path $bin ('logs\' + (Get-Date -Format 'yyMMdd') + '_IOCP_Server.log')
+$enc949  = [Text.Encoding]::GetEncoding(949)
+
+$script:failures = @()
+function Note-Fail([string]$msg) { $script:failures += $msg; Write-Host "  [FAIL] $msg" -ForegroundColor Red }
+function Note-Pass([string]$msg) { Write-Host "  [PASS] $msg" -ForegroundColor Green }
+
+# ── CTRL_C 송신 헬퍼: 별도 powershell 프로세스가 서버 콘솔에 붙어 이벤트 발생 ──
+# (내 콘솔에서 직접 GenerateConsoleCtrlEvent 하면 이 스크립트도 맞는다)
+function Send-CtrlC([int]$targetPid) {
+    $helper = @"
+Add-Type -Namespace W -Name K -MemberDefinition '
+[DllImport("kernel32.dll", SetLastError=true)] public static extern bool AttachConsole(uint pid);
+[DllImport("kernel32.dll")] public static extern bool FreeConsole();
+[DllImport("kernel32.dll")] public static extern bool SetConsoleCtrlHandler(IntPtr h, bool add);
+[DllImport("kernel32.dll", SetLastError=true)] public static extern bool GenerateConsoleCtrlEvent(uint e, uint g);'
+[W.K]::FreeConsole() | Out-Null
+if (-not [W.K]::AttachConsole($targetPid)) { exit 2 }
+[W.K]::SetConsoleCtrlHandler([IntPtr]::Zero, `$true) | Out-Null
+[W.K]::GenerateConsoleCtrlEvent(0, 0) | Out-Null
+exit 0
+"@
+    # ($targetPid는 위 here-string에서 즉시 보간됨)
+    $tmp = Join-Path $env:TEMP 'rio_sendctrlc.ps1'
+    [IO.File]::WriteAllText($tmp, $helper, [Text.Encoding]::UTF8)
+    $hp = Start-Process powershell -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File', $tmp -PassThru -WindowStyle Hidden
+    $hp.WaitForExit(5000) | Out-Null
+    return $hp.ExitCode
+}
+
+# 서버가 로그 파일을 쓰기 오픈 중이어도 읽기 — FileShare.ReadWrite (기본 ReadAllText는 충돌)
+function Read-LogText([string]$path) {
+    if (-not (Test-Path $path)) { return '' }
+    $fs = [IO.File]::Open($path, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
+    try {
+        $sr = New-Object IO.StreamReader($fs, [Text.Encoding]::UTF8)
+        return $sr.ReadToEnd()
+    }
+    finally { $fs.Close() }
+}
+
+function Set-IniKey([string]$path, [string]$key, [string]$val) {
+    $lines = [IO.File]::ReadAllLines($path, $enc949)
+    $found = $false
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        if ($lines[$i] -match ('^' + [regex]::Escape($key) + '=')) { $lines[$i] = "$key=$val"; $found = $true }
+    }
+    if (-not $found) { throw "INI key not found: $key in $path" }
+    [IO.File]::WriteAllLines($path, $lines, $enc949)
+}
+
+function Start-Server {
+    $p = Start-Process -FilePath $srvExe -WorkingDirectory $bin -PassThru -WindowStyle Minimized
+    $deadline = (Get-Date).AddSeconds(30)
+    while ((Get-Date) -lt $deadline) {
+        if ($p.HasExited) { throw "server exited early (code $($p.ExitCode))" }
+        $listening = netstat -an | Select-String ':6000\s+.*LISTENING'
+        if ($listening) { Start-Sleep -Milliseconds 300; return $p }
+        Start-Sleep -Milliseconds 500
+    }
+    throw 'server did not listen on :6000 within 30s'
+}
+
+function Stop-ServerGraceful([System.Diagnostics.Process]$p, [string]$tag) {
+    $rc = Send-CtrlC $p.Id
+    if ($rc -ne 0) { Note-Fail "$tag : CTRL_C helper failed (rc=$rc)"; cmd /c "taskkill /F /PID $($p.Id) >nul 2>nul"; return }
+    if (-not $p.WaitForExit(20000)) {
+        Note-Fail "$tag : graceful shutdown timeout 20s (forced kill)"
+        cmd /c "taskkill /F /PID $($p.Id) >nul 2>nul"
+        return
+    }
+    if ($p.ExitCode -eq 0) { Note-Pass "$tag : graceful exit code 0" }
+    else { Note-Fail "$tag : exit code $($p.ExitCode)" }
+}
+
+function Test-GameCodiEcho([System.Net.Sockets.TcpClient]$c, [System.IO.Stream]$s, [int]$payloadLen, [Random]$rng) {
+    $payload = New-Object byte[] $payloadLen
+    $rng.NextBytes($payload)
+    $pkt = [BitConverter]::GetBytes([uint16]$payloadLen) + $payload
+    $s.Write($pkt, 0, $pkt.Length)
+    $buf = New-Object byte[] $pkt.Length
+    $got = 0
+    while ($got -lt $pkt.Length) {
+        $r = $s.Read($buf, $got, $pkt.Length - $got)
+        if ($r -le 0) { throw "connection closed during echo (len=$payloadLen)" }
+        $got += $r
+    }
+    if ([Convert]::ToBase64String($buf) -ne [Convert]::ToBase64String($pkt)) { throw "echo mismatch (len=$payloadLen)" }
+}
+
+# ── 사전 정리 + INI 백업 (taskkill stderr는 cmd 안에서 삼킴 — EAP=Stop 승격 방지) ──
+cmd /c "taskkill /F /IM IOCP_Server.exe >nul 2>nul"
+cmd /c "taskkill /F /IM EchoStressClient.exe >nul 2>nul"
+Start-Sleep -Milliseconds 500
+$srvIniBak  = [IO.File]::ReadAllBytes($srvIni)
+$echoIniBak = [IO.File]::ReadAllBytes($echoIni)
+# 이번 스모크 구간의 로그 시작점 — "문자" 길이 기준 (파일 바이트 길이를 Substring에 쓰면
+# 멀티바이트 로그에서 오프셋이 어긋나 새 내용을 지나쳐 자른다)
+$logStart = (Read-LogText $logFile).Length
+
+try {
+    # ════ T1: GameCodi 손스모크 ════
+    Write-Host "`n=== T1: GameCodiEchoTest hand smoke ===" -ForegroundColor Cyan
+    Set-IniKey $srvIni 'Mode' 'GameCodiEchoTest'
+    Set-IniKey $srvIni 'MaxClients' '2000'          # RIO 슬랩 = 2000 x 128KB = 250MB (원본 10000은 1.25GB)
+    Set-IniKey $srvIni 'MonitorEnabled' '0'
+    $srv = Start-Server
+
+    # RIO 기동 확인은 T1c 종료 후 로그에서 수행 — 로거가 프로세스 종료 시점에 버퍼를
+    # 플러시하므로 살아있는 동안 파일을 읽으면 startup 라인이 아직 없다 (실측).
+
+    $c = New-Object System.Net.Sockets.TcpClient
+    $c.Connect('127.0.0.1', 6000)
+    $s = $c.GetStream()
+    $s.ReadTimeout = 5000
+    $rng = New-Object Random 42
+    foreach ($len in 4, 200, 1400) { Test-GameCodiEcho $c $s $len $rng }
+    Note-Pass 'T1 roundtrip 4/200/1400B byte-exact'
+
+    for ($i = 0; $i -lt 50; $i++) { Test-GameCodiEcho $c $s 1400 $rng }
+    Note-Pass 'T1b ring-wrap: 1400B x 50 (70KB > 64KB ring) byte-exact'
+    $c.Close()
+
+    # 멀티 커넥션 가벼운 확인 (10개 x 3왕복)
+    $conns = @()
+    for ($k = 0; $k -lt 10; $k++) {
+        $cc = New-Object System.Net.Sockets.TcpClient
+        $cc.Connect('127.0.0.1', 6000)
+        $ss = $cc.GetStream(); $ss.ReadTimeout = 5000
+        $conns += ,@($cc, $ss)
+    }
+    foreach ($pair in $conns) { foreach ($len in 16, 700, 1400) { Test-GameCodiEcho $pair[0] $pair[1] $len $rng } }
+    foreach ($pair in $conns) { $pair[0].Close() }
+    Note-Pass 'T1 multi-conn 10x3 roundtrips'
+
+    Stop-ServerGraceful $srv 'T1c'
+    $logNow = Read-LogText $logFile
+    $logWin = $logNow.Substring([Math]::Min($logStart, $logNow.Length))
+    if ($logWin -match 'RIO workers=(\d+)') { Note-Pass "server ran with RIO transport (workers=$($Matches[1]))" }
+    else { Note-Fail 'RIO start log not found — IOCP binary? (toggle check)' }
+    if ($logWin -match 'Server shutdown complete') { Note-Pass 'T1c shutdown log present' }
+    else { Note-Fail 'T1c "Server shutdown complete" log missing' }
+
+    # ════ T2: EchoStressClient 회귀 (1000클라, 25초, DisconnectTest=1) ════
+    Write-Host "`n=== T2: EchoStressClient regression ===" -ForegroundColor Cyan
+    Set-IniKey $srvIni 'Mode' 'NetWorkLib_EchoTest'
+    Set-IniKey $echoIni 'TestDurationSec' '25'
+    Set-IniKey $echoIni 'ClientCount' '1000'
+    $resultsDir = Join-Path $bin 'Results'
+    $beforeResults = @(Get-ChildItem $resultsDir -Filter 'EchoStress_*.txt' -ErrorAction SilentlyContinue | ForEach-Object { $_.Name })
+
+    $srv2 = Start-Server
+    $cli = Start-Process -FilePath (Join-Path $bin 'EchoStressClient.exe') -WorkingDirectory $bin -PassThru -WindowStyle Minimized
+    if (-not $cli.WaitForExit(90000)) { Note-Fail 'T2 stress client did not exit in 90s'; cmd /c "taskkill /F /PID $($cli.Id) >nul 2>nul" }
+
+    $newResult = Get-ChildItem $resultsDir -Filter 'EchoStress_*.txt' | Where-Object { $beforeResults -notcontains $_.Name } |
+                 Sort-Object LastWriteTime | Select-Object -Last 1
+    if ($null -eq $newResult) {
+        Note-Fail 'T2 no result file produced'
+    } else {
+        $rep = Get-Content $newResult.FullName -Raw   # ccs=UTF-8(BOM) — Get-Content가 BOM 자동 감지
+        Write-Host $rep
+        $vals = @{}
+        foreach ($k in 'Connect Total','Connect Fail','Recv Total','Echo Timeout','Packet Error','SendBuf Full') {
+            if ($rep -match ([regex]::Escape($k) + '\s*:\s*(-?\d+)')) { $vals[$k] = [int64]$Matches[1] } else { $vals[$k] = -1 }
+        }
+        if ($vals['Connect Total'] -ge 1000 -and $vals['Connect Fail'] -eq 0) { Note-Pass "T2 connects $($vals['Connect Total'])/fail 0" } else { Note-Fail "T2 connect total=$($vals['Connect Total']) fail=$($vals['Connect Fail'])" }
+        if ($vals['Recv Total'] -gt 0) { Note-Pass "T2 recv total $($vals['Recv Total'])" } else { Note-Fail 'T2 recv total 0' }
+        if ($vals['Packet Error'] -eq 0) { Note-Pass 'T2 packet error 0' } else { Note-Fail "T2 packet error $($vals['Packet Error'])" }
+        if ($vals['Echo Timeout'] -eq 0) { Note-Pass 'T2 echo timeout 0' } else { Note-Fail "T2 echo timeout $($vals['Echo Timeout'])" }
+    }
+
+    Stop-ServerGraceful $srv2 'T2c'
+
+    # ── 서버 로그 오류 패턴 검사 (이번 스모크 구간만) ──
+    $logAll = Read-LogText $logFile
+    $smokeLog = $logAll.Substring([Math]::Min($logStart, $logAll.Length))
+    $errHits = @()
+    foreach ($pat in 'IOCount underflow', 'RIO_CORRUPT', 'buffer overflow', 'Partial send', 'RIOCreateRequestQueue failed', 'RIOReceive failed', 'RIOSend failed', 'init failed') {
+        $cnt = ([regex]::Matches($smokeLog, [regex]::Escape($pat))).Count
+        if ($cnt -gt 0) { $errHits += "$pat x$cnt" }
+    }
+    if ($errHits.Count -eq 0) { Note-Pass 'server log: no error patterns in smoke window' }
+    else { Note-Fail ('server log errors: ' + ($errHits -join ', ')) }
+}
+finally {
+    cmd /c "taskkill /F /IM IOCP_Server.exe >nul 2>nul"
+    cmd /c "taskkill /F /IM EchoStressClient.exe >nul 2>nul"
+    [IO.File]::WriteAllBytes($srvIni, $srvIniBak)
+    [IO.File]::WriteAllBytes($echoIni, $echoIniBak)
+    Write-Host "`n(INI restored to original bytes)"
+}
+
+Write-Host "`n=== SMOKE RESULT ===" -ForegroundColor Cyan
+if ($script:failures.Count -eq 0) { Write-Host 'ALL PASS'; exit 0 }
+else { Write-Host ("FAILURES: " + $script:failures.Count); $script:failures | ForEach-Object { Write-Host " - $_" }; exit 2 }
