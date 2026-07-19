@@ -84,7 +84,7 @@ bool CIOCPServer::TransportPostListen()
         // INI RioWorkers (0=자동 2) — 상한은 송신 카운터 슬롯 수(flushUs/backlog 노출용)
         _rioWorkerCount = std::clamp((_configuredRioWorkers > 0) ? _configuredRioWorkers : 2,
                                      1, CMonitorManager::MAX_SEND_WORKERS);
-        _monitor._sendWorkerCount = _rioWorkerCount;   // FlushSend 배치 계측 노출 루프 상한
+        _monitor._sendWorkerCount.Store(_rioWorkerCount);   // FlushSend 배치 계측 노출 루프 상한
         _rioStop.store(false);
         _rioWorkers.clear();
         _rioWorkers.reserve(_rioWorkerCount);
@@ -527,9 +527,8 @@ void CIOCPServer::RioWorkerThread(int workerIdx)
             const auto cmdT1 = std::chrono::steady_clock::now();
             if (workerIdx >= 0 && workerIdx < CMonitorManager::MAX_SEND_WORKERS)
             {
-                _monitor._sendCounters[workerIdx].backlog = flushCount;
-                InterlockedExchangeAdd64(&_monitor._sendCounters[workerIdx].flushUs,
-                    std::chrono::duration_cast<std::chrono::microseconds>(cmdT1 - cmdT0).count());
+                _monitor._sendCounters[workerIdx].backlog.Store(flushCount);
+                _monitor._sendCounters[workerIdx].flushUs.Add(std::chrono::duration_cast<std::chrono::microseconds>(cmdT1 - cmdT0).count());
             }
             localCmds.clear();
         }
@@ -581,7 +580,7 @@ void CIOCPServer::PostRecv(CSession* session, bool skipAcquire)
     if (directWriteSize == 0)
     {
         // 직선 0 ⇔ 링 가득 (GetDirectWriteSize 정의상 동치) — 기존과 동일한 overflow 정책
-        InterlockedIncrement64(&_monitor._recvBufferOverflow);
+        _monitor._recvBufferOverflow.Inc();
         LOG_ERROR_STREAM("[Error] Recv buffer full - SessionId: " << sessionId);
         RequestDisconnectSession(session);
         IOCountDecrement(session);
@@ -607,7 +606,7 @@ void CIOCPServer::PostRecv(CSession* session, bool skipAcquire)
     buf.Offset = _rioSlab.OffsetOf(writePtr);
     buf.Length = static_cast<ULONG>(directWriteSize);
 
-    InterlockedIncrement64(&_monitor._wsaRecvCalls);
+    _monitor._wsaRecvCalls.Inc();
     if (!CRioApi::Rio().RIOReceive(session->_rq, &buf, 1, 0,
                                    reinterpret_cast<void*>(static_cast<uintptr_t>(RIO_CTX_RECV))))
     {
@@ -641,7 +640,7 @@ int CIOCPServer::TransportSubmitSegment(CSession* session, SOCKET socket,
     //   이 빈도가 낮으면 배치 제출(RIO_MSG_DEFER)을 넣을 값어치가 없다는 근거가 된다.
     //   (IOCP 팔은 랩을 WSABUF 2개로 한 번에 보내 이 왕복이 없으므로 세지 않는다)
     if (info.size > len)
-        InterlockedIncrement64(&_monitor._sendWrapSplits);
+        _monitor._sendWrapSplits.Inc();
 
     // 슬롯에 제출량을 심는다 — 완료가 부분 송신 판정에 읽고, 회수가 링 반환량으로 쓴다.
     //   제출 "전"에 심어야 한다(제출 직후 완료가 먼저 처리될 수 있다).
@@ -663,7 +662,7 @@ int CIOCPServer::TransportSubmitSegment(CSession* session, SOCKET socket,
     // RequestContext에 종류 + 슬롯 번호를 실어 보낸다 (완료가 자기 슬롯을 알아야 한다)
     const ULONGLONG ctx = RIO_CTX_SEND | (static_cast<ULONGLONG>(slot) << RIO_CTX_SLOT_SHIFT);
 
-    InterlockedIncrement64(&_monitor._wsaSendCalls);
+    _monitor._wsaSendCalls.Inc();
     if (!CRioApi::Rio().RIOSend(session->_rq, &buf, 1, 0,
                                 reinterpret_cast<void*>(static_cast<uintptr_t>(ctx))))
     {

@@ -414,7 +414,7 @@ void CIOCPServer::ProcessAccept(SOCKET clientSocket)
     if (!_availableIndices.Pop(&index))
     {
         LOG_ERROR_STREAM("[Error] No free session index available");
-        InterlockedIncrement64(&_monitor._acceptFailed);
+        _monitor._acceptFailed.Inc();
         closesocket(clientSocket);
         return;
     }
@@ -432,8 +432,8 @@ void CIOCPServer::ProcessAccept(SOCKET clientSocket)
     //   아래 BindIOCP(RIO 모드에서는 워커의 RQ 생성)가 실패하면 ReleaseSession 경로로 빠지는데,
     //   거기서는 sessionId만 보고 무조건 감소시킨다. 증가를 성공 경로에만 두면 실패 시
     //   감소만 일어나 동접 게이지가 음수 방향으로 영구히 밀린다.
-    InterlockedIncrement64(&_monitor._sessionCreated);
-    InterlockedIncrement(&_monitor._sessionCount);
+    _monitor._sessionCreated.Inc();
+    _monitor._sessionCount.Inc();
 
     // 완료 통지 연결 (팔별) — IOCP는 소켓을 완료 포트에 붙인다. RIO는 소유 워커가 RQ 생성 시 처리.
     if (!TransportAttachSession(_sessions[index].get(), clientSocket))
@@ -472,7 +472,7 @@ void CIOCPServer::ProcessRecv(CSession* session, DWORD bytesTransferred)
     assert(bytesTransferred != 0);
 
     // 수신 바이트 지표 기록
-    InterlockedExchangeAdd64(&_monitor._recvBytes, static_cast<LONG64>(bytesTransferred));
+    _monitor._recvBytes.Add(static_cast<LONG64>(bytesTransferred));
 
     // 타이밍 휠 수명 갱신 (데이터 수신 = 세션 활성 상태)
     _timingWheel->RequestRefresh(CSession::ExtractIndex(session->_sessionId), session->_sessionId);
@@ -533,9 +533,9 @@ void CIOCPServer::ParsePackets(CSession* session)
         {
             LOG_ERROR_STREAM("[Error] Invalid packet size: " << totalPacketSize
                 << " - SessionId: " << session->_sessionId);
-            InterlockedIncrement64(&_monitor._packetErrors);
+            _monitor._packetErrors.Inc();
             if (parsedPackets != 0)
-                InterlockedExchangeAdd64(&_monitor._recvPackets, parsedPackets);
+                _monitor._recvPackets.Add(parsedPackets);
             RequestDisconnectSession(session);
             return;
         }
@@ -593,7 +593,7 @@ void CIOCPServer::ParsePackets(CSession* session)
 
     // 파싱한 패킷 수 1회 반영
     if (parsedPackets != 0)
-        InterlockedExchangeAdd64(&_monitor._recvPackets, parsedPackets);
+        _monitor._recvPackets.Add(parsedPackets);
 }
 
 // Send 완료 통지 처리
@@ -603,8 +603,8 @@ void CIOCPServer::ProcessSend(CSession* session, DWORD bytesTransferred, int slo
         return;
 
     // 송신 지표 기록
-    InterlockedExchangeAdd64(&_monitor._sendBytes, static_cast<LONG64>(bytesTransferred));
-    InterlockedIncrement64(&_monitor._wsaSendCompletions);
+    _monitor._sendBytes.Add(static_cast<LONG64>(bytesTransferred));
+    _monitor._wsaSendCompletions.Inc();
 
 #if USE_LOCKFREE_SENDQ
     (void)slot;   // 락프리 큐 경로는 깊이를 쓰지 않는다 (슬롯 링 미사용)
@@ -616,7 +616,7 @@ void CIOCPServer::ProcessSend(CSession* session, DWORD bytesTransferred, int slo
     else
     {
         // Partial send → 비정상 완료로 간주, 세션 종료
-        InterlockedIncrement64(&_monitor._partialSend);
+        _monitor._partialSend.Inc();
         LOG_ERROR_STREAM("[Error] Partial send - SessionId: " << session->_sessionId
             << ", Expected: " << session->_pendingSendBytes
             << ", Transferred: " << bytesTransferred);
@@ -663,7 +663,7 @@ void CIOCPServer::ProcessSend(CSession* session, DWORD bytesTransferred, int slo
 
         // 깊이 2 이상이면 이 구간 뒤의 제출이 이미 와이어에 실렸을 수 있어 되돌릴 수 없다 —
         //   복구되는 척하며 스트림을 망치는 대신 끊는다.
-        InterlockedIncrement64(&_monitor._partialSend);
+        _monitor._partialSend.Inc();
         LOG_ERROR_STREAM("[Error] Partial send (depth>1, unrecoverable) - SessionId: " << session->_sessionId
             << ", Expected: " << expected << ", Transferred: " << bytesTransferred);
         RequestDisconnectSession(session);
@@ -680,7 +680,7 @@ void CIOCPServer::ProcessSend(CSession* session, DWORD bytesTransferred, int slo
     if (session->_sendQ.GetUnsubmittedSize() > 0)
     {
         // [계측] 완료 왕복이 끼어 "이어 보낸" 횟수 — 깊이를 올려 이 값이 줄면 깊이가 흡수한 것이다.
-        InterlockedIncrement64(&_monitor._sendFollowUp);
+        _monitor._sendFollowUp.Inc();
         PostSend(session);
     }
 #endif
@@ -750,7 +750,7 @@ void CIOCPServer::PostSend(CSession* session)
     //   못 봤다면 완료 시 double-check가 이어 보낸다 (옛 _sending 경합과 같은 성질).
     if (InterlockedExchange(&session->_sendSubmitBusy, TRUE) == TRUE)
     {
-        InterlockedIncrement64(&_monitor._sendContention);
+        _monitor._sendContention.Inc();
         IOCountDecrement(session);
         return;
     }
@@ -830,8 +830,8 @@ void CIOCPServer::EchoTestSend(CSession* session, CSerialBuffer* pMsg)
     const int dataSize = pMsg->GetDataSize();
     if (RequestSendMsg(session->_sessionId, pMsg))
     {
-        InterlockedIncrement64(&_monitor._sendPackets);
-        InterlockedExchangeAdd64(&_monitor._sendEnqueuedBytes, static_cast<LONG64>(dataSize));
+        _monitor._sendPackets.Inc();
+        _monitor._sendEnqueuedBytes.Add(static_cast<LONG64>(dataSize));
     }
 }
 
@@ -863,7 +863,7 @@ bool CIOCPServer::RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg, [[maybe
     {
         LOG_ERROR_STREAM("[Error] SendQ depth limit reached - SessionId: " << sessionId
             << ", Depth: " << session->_sendQ.GetApproxSize());
-        InterlockedIncrement64(&_monitor._sendQueueOverflow);
+        _monitor._sendQueueOverflow.Inc();
         pMsg->SubRef();
         RequestDisconnectSession(session);
         IOCountDecrement(session);
@@ -874,7 +874,7 @@ bool CIOCPServer::RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg, [[maybe
     if (!session->_sendQ.Enqueue(pMsg))
     {
         LOG_ERROR_STREAM("[Error] Send queue enqueue failed - SessionId: " << sessionId);
-        InterlockedIncrement64(&_monitor._sendQueueOverflow);
+        _monitor._sendQueueOverflow.Inc();
         pMsg->SubRef();
         RequestDisconnectSession(session);
         IOCountDecrement(session);
@@ -887,7 +887,7 @@ bool CIOCPServer::RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg, [[maybe
     {
         LOG_ERROR_STREAM("[Error] Send buffer overflow - SessionId: " << sessionId
             << ", Requested: " << dataSize << ", Enqueued: " << enqueued);
-        InterlockedIncrement64(&_monitor._sendQueueOverflow);
+        _monitor._sendQueueOverflow.Inc();
         pMsg->SubRef();
         RequestDisconnectSession(session);
         IOCountDecrement(session);
@@ -936,7 +936,7 @@ bool CIOCPServer::RequestSendRaw(int64_t sessionId, const char* data, int size)
     {
         LOG_ERROR_STREAM("[Error] Send buffer overflow (digest) - SessionId: " << sessionId
             << ", Requested: " << size << ", Enqueued: " << enqueued);
-        InterlockedIncrement64(&_monitor._sendQueueOverflow);
+        _monitor._sendQueueOverflow.Inc();
         RequestDisconnectSession(session);
         IOCountDecrement(session);
         return false;
@@ -1095,11 +1095,11 @@ void CIOCPServer::ReleaseSession(CSession* session)
     residual += session->_pendingSendBytes;  // WSASend 미완료 버퍼도 discard 집계
     session->ReleasePendingSendBufs();
     if (residual > 0)
-        InterlockedExchangeAdd64(&_monitor._sendDiscardedBytes, static_cast<LONG64>(residual));
+        _monitor._sendDiscardedBytes.Add(static_cast<LONG64>(residual));
 #else
     size_t residual = session->_sendQ.GetDataSize();
     if (residual > 0)
-        InterlockedExchangeAdd64(&_monitor._sendDiscardedBytes, static_cast<LONG64>(residual));
+        _monitor._sendDiscardedBytes.Add(static_cast<LONG64>(residual));
 #endif
 
     session->Close();
@@ -1107,8 +1107,8 @@ void CIOCPServer::ReleaseSession(CSession* session)
     if (sessionId != 0)
     {
         // 세션 지표 기록
-        InterlockedIncrement64(&_monitor._sessionDestroyed);
-        InterlockedDecrement(&_monitor._sessionCount);
+        _monitor._sessionDestroyed.Inc();
+        _monitor._sessionCount.Add(-1);
 
         _availableIndices.Push(CSession::ExtractIndex(sessionId));
     }
@@ -1143,7 +1143,7 @@ bool CIOCPServer::RequestDisconnectSession(int64_t sessionId)
 void CIOCPServer::OnSessionTimeout(void* context, int64_t sessionId)
 {
     auto* server = static_cast<CIOCPServer*>(context);
-    InterlockedIncrement64(&server->_monitor._sessionTimedOut);
+    server->_monitor._sessionTimedOut.Inc();
     server->RequestDisconnectSession(sessionId);
 }
 

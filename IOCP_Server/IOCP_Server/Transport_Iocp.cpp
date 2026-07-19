@@ -106,7 +106,7 @@ void CIOCPServer::TransportStartWorkers()
     const int sendCount = std::clamp((_configuredSendWorkers > 0) ? _configuredSendWorkers : 1,
                                      1, CMonitorManager::MAX_SEND_WORKERS);
     _sendWorkerCount = sendCount;
-    _monitor._sendWorkerCount = sendCount;            // 노출 루프 상한
+    _monitor._sendWorkerCount.Store(sendCount);       // 노출 루프 상한
     _sendWorkers.reserve(sendCount);
     for (int i = 0; i < sendCount; ++i)
         _sendWorkers.push_back(std::make_unique<SendWorker>());
@@ -475,7 +475,7 @@ void CIOCPServer::PostRecv(CSession* session, bool skipAcquire)
     DWORD flags = 0;
     DWORD recvBytes = 0;
 
-    InterlockedIncrement64(&_monitor._wsaRecvCalls);
+    _monitor._wsaRecvCalls.Inc();
     int result = WSARecv(socket, wsaBuf, bufCount, &recvBytes, &flags,
         &ex->overlapped, NULL);
 
@@ -517,7 +517,7 @@ void CIOCPServer::PostSend(CSession* session)
 
     if (InterlockedExchange(&session->_sendSubmitBusy, TRUE) == TRUE)
     {
-        InterlockedIncrement64(&_monitor._sendContention);
+        _monitor._sendContention.Inc();
         IOCountDecrement(session);
         return;
     }
@@ -570,7 +570,7 @@ void CIOCPServer::PostSend(CSession* session)
     ex->operation = IOOperation::SEND;
 
     DWORD sendBytes = 0;
-    InterlockedIncrement64(&_monitor._wsaSendCalls);
+    _monitor._wsaSendCalls.Inc();
     int result = WSASend(socket, wsaBuf, bufCount, &sendBytes, 0,
         &ex->overlapped, NULL);
 
@@ -640,7 +640,7 @@ int CIOCPServer::TransportSubmitSegment(CSession* session, SOCKET socket,
     ex->slot = slot;        // 완료 통지가 자기 슬롯을 알아내는 경로
 
     DWORD sendBytes = 0;
-    InterlockedIncrement64(&_monitor._wsaSendCalls);
+    _monitor._wsaSendCalls.Inc();
     int result = WSASend(socket, wsaBuf, bufCount, &sendBytes, 0, &ex->overlapped, NULL);
 
     if (result == SOCKET_ERROR)
@@ -696,7 +696,7 @@ void CIOCPServer::SendWorkerThread(int workerIdx)
         }
 
         // [계측] 핸드오프 백로그 — 이번 drain에서 인출한 세션 수 (1틱 dirty 수 초과 = 이 워커이 못 따라감)
-        _monitor._sendCounters[workerIdx].backlog = static_cast<LONG64>(local.size());
+        _monitor._sendCounters[workerIdx].backlog.Store(static_cast<int64_t>(local.size()));
 
         // [계측] 이 워커의 실제 WSASend 시간 — 슬롯당 단독 writer(워커 자신)라 원자 누적.
         const auto sendT0 = std::chrono::steady_clock::now();
@@ -712,8 +712,7 @@ void CIOCPServer::SendWorkerThread(int workerIdx)
             }
         }
         const auto sendT1 = std::chrono::steady_clock::now();
-        InterlockedExchangeAdd64(&_monitor._sendCounters[workerIdx].flushUs,
-            std::chrono::duration_cast<std::chrono::microseconds>(sendT1 - sendT0).count());
+        _monitor._sendCounters[workerIdx].flushUs.Add(std::chrono::duration_cast<std::chrono::microseconds>(sendT1 - sendT0).count());
 
         local.clear();
     }
