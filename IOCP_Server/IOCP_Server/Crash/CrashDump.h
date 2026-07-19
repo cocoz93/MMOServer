@@ -1,4 +1,8 @@
 ﻿#pragma once
+
+// 크래시 덤프 — Windows: SEH + MiniDump(원본 보존) / Linux: sigaction + backtrace(아래 #else)
+// 공개 표면 동일: 전역 CrashDump 인스턴스 + CRASH(reason) 매크로 + _CrashReason
+#ifdef _WIN32
 #pragma comment(lib, "DbgHelp")	//MiniDumpWriteDump
 
 #include <stdio.h>
@@ -294,3 +298,105 @@ inline CCrashDump CrashDump;
         CCrashDump::_CrashReason = L##reason;                   \
         __debugbreak();                                         \
     } while(0)
+
+#else  // ===================== Linux =====================
+
+#include <cstdlib>      // abort
+#include <csignal>      // sigaction, raise, signal
+#include <execinfo.h>   // backtrace, backtrace_symbols_fd
+#include <unistd.h>     // write, close, STDERR_FILENO
+#include <fcntl.h>      // open
+
+// 치명 시그널(SIGSEGV/ABRT/FPE/ILL/BUS)을 잡아 백트레이스를 stderr + crashdump.txt로 남기고
+// 기본 동작으로 재발생시켜 종료(코어덤프). backtrace_symbols_fd는 malloc을 안 해 핸들러에서 비교적 안전.
+//   NOTE: 리눅스 빌드 환경 전이라 미검증(best-effort). 심볼 이름은 링크 시 -rdynamic 필요.
+class CCrashDump
+{
+public:
+    inline static const wchar_t* _CrashReason = nullptr;
+
+    CCrashDump()
+    {
+        void* warm[4];
+        backtrace(warm, 4);   // libgcc 예열 → 핸들러 내 최초 malloc 회피
+
+        struct sigaction sa {};
+        sa.sa_sigaction = &CCrashDump::SignalHandler;
+        sigemptyset(&sa.sa_mask);
+        sa.sa_flags = SA_SIGINFO;
+
+        const int sigs[] = { SIGSEGV, SIGABRT, SIGFPE, SIGILL, SIGBUS };
+        for (int s : sigs)
+            sigaction(s, &sa, nullptr);
+    }
+
+    CCrashDump(const CCrashDump&) = delete;
+    CCrashDump& operator=(const CCrashDump&) = delete;
+
+    static void Crash(void) { ::abort(); }   // 의도적 크래시 → SIGABRT 핸들러 경유
+
+private:
+    static void SignalHandler(int sig, siginfo_t*, void*)
+    {
+        void* frames[64];
+        int n = backtrace(frames, 64);
+
+        WriteReport(STDERR_FILENO, sig, frames, n);
+
+        int fd = ::open("crashdump.txt", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+        if (fd >= 0)
+        {
+            WriteReport(fd, sig, frames, n);
+            ::close(fd);
+        }
+
+        ::signal(sig, SIG_DFL);   // 기본 동작으로 재발생 → 코어덤프/종료
+        ::raise(sig);
+    }
+
+    // async-signal-safe 범위(write / backtrace_symbols_fd / 수동 정수변환)만 사용
+    static void WriteReport(int fd, int sig, void* const* frames, int n)
+    {
+        ::write(fd, "\n!!! Crash: signal ", 19);
+        char num[16];
+        ::write(fd, num, IntToStr(sig, num));
+        ::write(fd, " !!!\n", 5);
+
+        if (_CrashReason)
+        {
+            char rbuf[256];
+            int i = 0;
+            for (; _CrashReason[i] && i < 255; ++i)
+                rbuf[i] = static_cast<char>(_CrashReason[i]);   // ASCII 사유 가정
+            ::write(fd, "Reason: ", 8);
+            ::write(fd, rbuf, i);
+            ::write(fd, "\n", 1);
+        }
+
+        backtrace_symbols_fd(frames, n, fd);
+    }
+
+    static int IntToStr(int v, char* out)
+    {
+        char tmp[16];
+        int t = 0;
+        unsigned u = (v < 0) ? static_cast<unsigned>(-v) : static_cast<unsigned>(v);
+        do { tmp[t++] = static_cast<char>('0' + u % 10); u /= 10; } while (u);
+        int o = 0;
+        if (v < 0) out[o++] = '-';
+        while (t > 0) out[o++] = tmp[--t];
+        return o;
+    }
+};
+
+// 전역 인스턴스 (생성자에서 시그널 핸들러 설치)
+inline CCrashDump CrashDump;
+
+// 의도적 크래시: 사유 기록 후 abort() → SIGABRT 핸들러가 덤프
+#define CRASH(reason)                                           \
+    do {                                                        \
+        CCrashDump::_CrashReason = L##reason;                   \
+        ::abort();                                              \
+    } while(0)
+
+#endif  // _WIN32
