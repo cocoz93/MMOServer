@@ -23,6 +23,9 @@
 #if USE_LOCKFREE_SENDQ
 #include "LockFree/LockFreeQueue.h"
 #endif
+#if USE_RIO_TRANSPORT
+#include "RioApi.h"      // RIO 함수 테이블 + 등록 슬랩 (전송 교체 경로 전용)
+#endif
 #include "TimingWheel.h"
 #include "MonitorManager.h"
 #include "Common.h"
@@ -126,6 +129,12 @@ public:
     // IOCount가 0이 되어 세션이 재사용되기 전까지 OVERLAPPED 주소는 유지된다.
     OverlappedEx _recvOverlapped;
     OverlappedEx _sendOverlapped;
+
+#if USE_RIO_TRANSPORT
+    // RIO 요청 큐 — 생성·제출·closesocket 전부 소유 워커 스레드에서만 접근 (불변식).
+    // 소켓 수명을 따르므로 별도 해제 API 없음. 세션 재사용 시 NewConn 처리에서 재생성.
+    RIO_RQ _rq = RIO_INVALID_RQ;
+#endif
 };
 
 
@@ -325,6 +334,48 @@ private:
     std::vector<std::unique_ptr<SendWorker>> _sendWorkers;   // mutex/cv 이동불가 → 힙 고정 + 포인터만 보관
     std::atomic<bool>                        _sendStop{ false };
     int                                      _sendWorkerCount = 1;  // 분배 모듈러(=워커 수)
+#endif
+
+#if USE_RIO_TRANSPORT
+    // ── RIO 전송 계층 (토글 ON 시 WT 풀·SendWorker 풀을 대체) ─────────────────
+    // 세션 소유 워커 = uniqueId % N 고정 (기존 SendWorker 분배와 동일 근거 — index 비트 누수 없음).
+    // 불변식: 한 세션의 RQ 조작(생성·RIOReceive/RIOSend 제출·closesocket)은 소유 워커
+    //         스레드에서만 수행한다 — CancelIoEx 부재를 이 직렬화가 대체한다.
+    // 워커 루프: 명령 드레인 → CQ 드레인(RIODequeueCompletion 배치) → 스핀 → RIONotify → 대기.
+    struct RioCmd
+    {
+        enum class Type { NewConn, FlushSend, Disconnect };
+        Type      type;
+        int64_t   sessionId;   // FlushSend: FindSession 재검증용 (못 찾으면 스킵 = 기존 SendWorker 동작)
+        SOCKET    socket;      // NewConn 전용 — accept 스레드가 넘긴 새 소켓
+        CSession* session;     // NewConn: Initialize 완료 세션 (IOCount=1이 pin 역할)
+                               // Disconnect: 요청 스레드가 pin(IOCount+1) 보유 채로 전달.
+                               //   FindSession은 _disconnecting 세션을 숨기므로 id 재조회로는
+                               //   워커가 세션을 못 찾아 closesocket 누락(좀비) — 그래서 포인터+pin.
+    };
+
+    struct alignas(64) RioWorker              // alignas: 워커 간 false sharing 차단 (SendWorker와 동일)
+    {
+        RIO_CQ              cq = RIO_INVALID_CQ;
+        HANDLE              cqEvent = nullptr;    // RIONotify 통지용 (CQ 생성 시 등록, auto-reset)
+        HANDLE              cmdEvent = nullptr;   // 명령 핸드오프 깨움 (auto-reset)
+        std::mutex          cmdMutex;
+        std::vector<RioCmd> cmdQueue;             // 외부 push(lock) / 워커 swap-out
+        std::thread         thread;
+    };
+    std::vector<std::unique_ptr<RioWorker>> _rioWorkers;   // mutex 이동불가 → 힙 고정 (SendWorker와 동일)
+    std::atomic<bool> _rioStop{ false };
+    int               _rioWorkerCount = 1;
+    CRioSlab          _rioSlab;               // 전 세션 recv/send 링버퍼 슬랩 (등록 1회 = 물리 고정)
+
+    void RioWorkerThread(int workerIdx);
+    void RioPostRecv(CSession* session, bool skipAcquire = false);   // PostRecv의 RIO 판 — 직선 구간만 제출
+    void RioPostSend(CSession* session);                             // PostSend의 RIO 판 — 1-pending 동일
+    void RioEnqueueCmd(int ownerIdx, RioCmd&& cmd);                  // 명령 push + cmdEvent Set
+    int  RioOwnerIndex(int64_t sessionId) const                      // uniqueId 분배 (48비트 마스크 → 음수 없음)
+    {
+        return static_cast<int>(CSession::ExtractUniqueId(sessionId) % _rioWorkerCount);
+    }
 #endif
 
     // 레이어 간 통신 큐 (QUEUE_BASED 모드용)

@@ -100,3 +100,24 @@
 //   1: DB 워커 활성 (MySQL 필요, 지표 mmo_db_*) [실험]
 //   0: DB 없이 기존 동작 그대로 (회귀 기준선) [기본]
 #define USE_DB_WORKER 1
+
+// RIO 전송 계층 실험 — WSARecv/WSASend/GQCS(IOCP)를 Registered I/O로 교체.
+//   전송 계층만 교체하고 상위(세션 수명·링버퍼·coalescing·digest·게임루프)는 불변.
+//   1: RIO 경로 — 버퍼 사전등록 슬랩·유저모드 완료큐·RioWorker N개가 WT/SendWorker 풀 대체 [실험]
+//   0: 기존 IOCP 경로 (baseline) [기본]
+//   주의: 1이면 WorkerThread/SendWorkerThread/IOCP 핸들/CancelIoEx 경로가 컴파일 제외되고
+//         INI의 WorkerThreads/SendWorkers 대신 RioWorkers를 쓴다.
+//         RIO 소켓은 RIO 전용 — 일반 WSASend/WSARecv가 거부된다(10038, Phase0 스모크 실측).
+//         전송 교체 구현 커밋 전 골격 단계에서는 1로 켜도 동작이 바뀌지 않는다.
+#define USE_RIO_TRANSPORT 0
+
+//   배타: LockFree SendQ는 CSerialBuffer 포인터를 WSABUF로 직접 송신하는데, 그 메모리는
+//         등록 슬랩 밖이라 RIO_BUF(BufferId+Offset)로 표현 불가 — 링버퍼 경로 전용.
+#if USE_RIO_TRANSPORT && USE_LOCKFREE_SENDQ
+	#error "USE_RIO_TRANSPORT requires USE_LOCKFREE_SENDQ=0 (링버퍼=등록슬랩 슬라이스 경로 전용)"
+#endif
+
+//   의존: 게임 송신이 dirty 배치 → 소유 워커 핸드오프로만 흐른다 (틱 끝 flush 필수).
+#if USE_RIO_TRANSPORT && !USE_SEND_COALESCING
+	#error "USE_RIO_TRANSPORT requires USE_SEND_COALESCING=1 (틱 끝 dirty 배치 핸드오프 의존)"
+#endif
