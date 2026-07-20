@@ -199,6 +199,48 @@ try {
 
     Stop-ServerGraceful $srv2 'T2c'
 
+    # ════ T3: 유휴 타임아웃 킥 + 트래픽 한창중 graceful 셧다운 ════
+    # 둘 다 "비소유 스레드발 Disconnect 핸드오프" 체인(RIO의 CancelIoEx 대체 기계장치)을 실증:
+    #  - 킥: 타이머 스레드 → 단건 핸드오프 (SESSION_TIMEOUT_SEC=60, recv 없으면 ~60초에 발화)
+    #  - 셧다운: 콘솔 스레드 → 활성 세션 대량 핸드오프 → IOCount 수렴 → 워커 join
+    Write-Host "`n=== T3: idle-timeout kick + mid-traffic graceful shutdown ===" -ForegroundColor Cyan
+    Set-IniKey $echoIni 'TestDurationSec' '90'
+    $srv3 = Start-Server
+    $idle = New-Object System.Net.Sockets.TcpClient
+    $idle.Connect('127.0.0.1', 6000)
+    $idleStream = $idle.GetStream()
+    $idleStream.ReadTimeout = 8000
+    $cli3 = Start-Process -FilePath (Join-Path $bin 'EchoStressClient.exe') -WorkingDirectory $bin -PassThru -WindowStyle Minimized
+    Write-Host '  (waiting 68s for idle-timeout kick, stress traffic running...)'
+    Start-Sleep -Seconds 68
+
+    $kicked = $false
+    $kickDetail = ''
+    try {
+        $b = $idleStream.Read((New-Object byte[] 4), 0, 4)
+        if ($b -le 0) { $kicked = $true; $kickDetail = 'FIN' }
+        else { $kickDetail = "unexpected $b bytes" }
+    } catch {
+        # PS의 Read 예외는 MethodInvocationException→IOException→SocketException 다층 래핑 — 체인을 걸어 찾는다
+        $ex = $_.Exception
+        $sock = $null
+        while ($null -ne $ex) {
+            if ($ex -is [System.Net.Sockets.SocketException]) { $sock = $ex; break }
+            $ex = $ex.InnerException
+        }
+        if ($null -ne $sock) {
+            if ($sock.SocketErrorCode -eq 'ConnectionReset') { $kicked = $true; $kickDetail = 'RST' }
+            else { $kickDetail = "socket err $($sock.SocketErrorCode)" }   # TimedOut = 킥 안 됨
+        } else { $kickDetail = $_.Exception.Message }
+    }
+    if ($kicked) { Note-Pass "T3 idle session kicked by timeout (~60s, non-owner handoff, $kickDetail)" }
+    else { Note-Fail "T3 idle session NOT kicked within 68s ($kickDetail)" }
+    $idle.Close()
+
+    # 트래픽 한창중(클라 90초 중 ~70초 지점, ~1000세션 활성) CTRL_C — 대량 드레인 셧다운
+    Stop-ServerGraceful $srv3 'T3c(mid-traffic)'
+    cmd /c "taskkill /F /PID $($cli3.Id) >nul 2>nul"   # 서버 사망 후 클라 리포트는 무의미 — 정리만
+
     # ── 서버 로그 오류 패턴 검사 (이번 스모크 구간만) ──
     $logAll = Read-LogText $logFile
     $smokeLog = $logAll.Substring([Math]::Min($logStart, $logAll.Length))

@@ -1,4 +1,5 @@
 ﻿#include "IOCPServer.h"
+#include "Crash/CrashDump.h"   // CRASH 매크로 (RIO CQ 오염 시 즉사+덤프)
 #include "../../Shared/Common/ErrorLog.h"
 #include <iostream>
 #include <chrono>
@@ -1613,6 +1614,17 @@ void CIOCPServer::RioHandleCmd(RioWorker& worker, RioCmd& cmd)
         CSession* session = FindSession(cmd.sessionId);   // id 일치·미종료 재검증 (기존 SendWorker와 동일)
         if (session)
         {
+            // [레이스 방어] NewConn보다 먼저 도착한 FlushSend — ProcessAccept의 CONNECTED push와
+            // NewConn 핸드오프 사이 µs 틈에 게임 틱 경계가 끼면, 생산자가 다르므로(게임 vs accept)
+            // 이 워커 큐에 FlushSend가 먼저 들어올 수 있다. RQ 미생성 상태를 치명으로 처리하면
+            // 신생 세션이 즉사하므로, 자기 큐 꼬리로 재투입해 NewConn 처리 뒤에 송신한다.
+            // (NewConn이 RQ 생성에 실패하면 _disconnecting → FindSession이 걸러 재투입 종료 보장)
+            if (session->_rq == RIO_INVALID_RQ)
+            {
+                RioCmd retry = cmd;
+                RioEnqueueCmd(t_rioWorkerIndex, std::move(retry));
+                break;
+            }
             // 잔류 표식 해제는 송신 처리 "전" — 처리 도중 도착한 데이터가 다시 큐에 들어가
             // 누락되지 않게 (기존 SendWorkerThread의 _queuedForSend 주석 로직 그대로).
             InterlockedExchange(&session->_queuedForSend, FALSE);
@@ -1637,8 +1649,11 @@ int CIOCPServer::RioDrainCompletions(RioWorker& worker, int monitorIndex)
     const ULONG n = CRioApi::Rio().RIODequeueCompletion(worker.cq, results, RIO_DEQUEUE_BATCH);
     if (n == RIO_CORRUPT_CQ)
     {
-        SLOG_ERROR("[RIO] RIODequeueCompletion returned RIO_CORRUPT_CQ — worker stops");
-        return -1;
+        // CQ 오염 = 메모리 오염 시그널. 워커만 죽이면 이 파티션 세션들의 IOCount가 영영 안 풀려
+        // 셧다운 무한 대기(조용한 좀비 서버)가 된다 — 오염 상태 지속보다 즉사+덤프가 낫다.
+        SLOG_ERROR("[RIO] RIODequeueCompletion returned RIO_CORRUPT_CQ — crashing for dump");
+        CRASH("RIO completion queue corrupted (RIO_CORRUPT_CQ)");
+        return -1;   // 도달 불가 (CRASH 미복귀) — 컴파일러용
     }
 
     for (ULONG i = 0; i < n; ++i)

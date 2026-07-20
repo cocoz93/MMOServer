@@ -13,6 +13,8 @@
 // ==========================================================================
 #pragma once
 
+#include "BuildConfig.h"   // USE_RIO_TRANSPORT 분기 (include 순서 의존 제거 — 반드시 직접 include)
+
 #include <WinSock2.h>
 #include <Windows.h>
 #include <thread>
@@ -179,8 +181,12 @@ private:
             const LONG sendCount = _monitor._sendWorkerCount;
             for (int i = 0; i < sendCount && i < CMonitorManager::MAX_SEND_WORKERS; ++i)
             {
+#if !USE_RIO_TRANSPORT
+                // RIO: 워커 스레드 핸들은 workerCounters에만 등록(CPU 이중계상 방지) —
+                // backlog는 카운트(_sendWorkerCount) 기반으로 노출하므로 핸들 가드를 건너뛴다.
                 if (_monitor._sendCounters[i].threadHandle == nullptr)
                     continue;
+#endif
                 ss << "mmo_send_flush_backlog{sendworker=\"" << i << "\"} "
                    << _monitor._sendCounters[i].backlog << "\n";
             }
