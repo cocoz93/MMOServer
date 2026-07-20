@@ -56,13 +56,13 @@ void CSerialBuffer::Free(CSerialBuffer* msg)
 // 참조 카운트만 증가. Seal()과 독립적으로 동작
 void CSerialBuffer::AddRef()
 {
-	InterlockedIncrement64(&_RefCount);
+	_RefCount.fetch_add(1);
 }
 
 // 배치 AddRef — 타겟별 AddRef를 호출당 1회로 압축 (BroadcastAroundSector)
-void CSerialBuffer::AddRef(LONG64 count)
+void CSerialBuffer::AddRef(int64_t count)
 {
-	InterlockedExchangeAdd64(&_RefCount, count);
+	_RefCount.fetch_add(count);
 }
 
 // Alloc() → operator<< → Seal() → AddRef(N) → WSASend × N → SubRef()
@@ -75,7 +75,7 @@ void CSerialBuffer::Seal()
 
 void CSerialBuffer::SubRef()
 {
-	if (0 == InterlockedDecrement64(&_RefCount))
+	if (_RefCount.fetch_sub(1) == 1)
 		Free(this);
 }
 

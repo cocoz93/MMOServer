@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <atomic>
 #include "LockFree/ExternalTlsFreeList.h"
 
 // 기본 직렬화 버퍼 크기 — 현재 프로토콜 최대 패킷(~1034B)을 수용할 수 있으면 충분
@@ -20,7 +21,7 @@ public:
 public:
 	static CSerialBuffer* Alloc();
 	void AddRef();
-	void AddRef(LONG64 count);   // 배치 AddRef — 브로드캐스트 타겟 수만큼 1회 (원자연산 N→1)
+	void AddRef(int64_t count);   // 배치 AddRef — 브로드캐스트 타겟 수만큼 1회 (원자연산 N→1)
 	void SubRef();
 
 private:
@@ -133,5 +134,5 @@ private:
 
 	// 여러 워커스레드에서 동시 Interlocked 접근 → 별도 캐시라인으로 격리하여 false sharing 방지
 public:
-	alignas(64) LONG64 _RefCount;
+	alignas(64) std::atomic<int64_t> _RefCount;
 };
