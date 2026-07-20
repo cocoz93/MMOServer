@@ -1595,6 +1595,19 @@ void CIOCPServer::RioHandleCmd(RioWorker& worker, RioCmd& cmd)
     {
         // Initialize 완료 세션 — IOCount=1(첫 Recv ref)이 수명을 보장한다.
         CSession* session = cmd.session;
+
+        // [레이스 방어] Disconnect가 NewConn을 추월한 경우 — CONNECTED push~NewConn 핸드오프
+        // 틈에 게임 틱이 끼면 OnConnected 킥(중복접속·채널고갈·존만원)이 Disconnect를 먼저
+        // enqueue할 수 있다. 소유 워커 직렬화로 이미 closesocket됐다면 cmd.socket은 stale
+        // 핸들이고, OS가 그 값을 재사용했다면 "남의 살아있는 소켓"에 유령 RQ를 만들게 된다
+        // (소켓당 RQ 1개 → 무고한 신규 접속의 정당한 RQ 생성까지 실패해 즉사).
+        // 같은 워커에서 직렬화되므로 이 검사에는 레이스가 없다.
+        if (session->_disconnecting == TRUE || session->_socket == INVALID_SOCKET)
+        {
+            IOCountDecrement(session);   // 첫 Recv ref 반환 → (Disconnect pin 소진 후) Release 수렴
+            break;
+        }
+
         session->_rq = CRioApi::Rio().RIOCreateRequestQueue(cmd.socket, 1, 1, 1, 1,
                                                             worker.cq, worker.cq, session);
         if (session->_rq == RIO_INVALID_RQ)
