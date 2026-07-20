@@ -15,8 +15,10 @@
 
 #include "BuildConfig.h"   // USE_RIO_TRANSPORT 분기 (include 순서 의존 제거 — 반드시 직접 include)
 
-#include <WinSock2.h>
+#ifdef _WIN32
+#include <WinSock2.h>   // httplib(Windows 소켓) — winsock2를 windows.h보다 먼저
 #include <Windows.h>
+#endif
 #include <thread>
 #include <string>
 #include <sstream>
@@ -193,7 +195,7 @@ private:
         {
             ss << "# HELP mmo_db_queue_depth Jobs pulled in last drain, per DB worker (sustained growth = worker falling behind)\n";
             ss << "# TYPE mmo_db_queue_depth gauge\n";
-            const LONG dbCount = _monitor._dbWorkerCount;
+            const int64_t dbCount = _monitor._dbWorkerCount;
             for (int i = 0; i < dbCount && i < CMonitorManager::MAX_DB_WORKERS; ++i)
                 ss << "mmo_db_queue_depth{dbworker=\"" << i << "\"} " << _monitor._dbQueueDepth[i] << "\n";
             ss << "\n";
@@ -233,7 +235,7 @@ private:
         {
             ss << "# HELP mmo_send_flush_backlog Sessions pulled per send-worker drain (sustained > 1-tick dirty count = that worker falling behind)\n";
             ss << "# TYPE mmo_send_flush_backlog gauge\n";
-            const LONG sendCount = _monitor._sendWorkerCount;
+            const int64_t sendCount = _monitor._sendWorkerCount;
             for (int i = 0; i < sendCount && i < CMonitorManager::MAX_SEND_WORKERS; ++i)
             {
 #if !USE_RIO_TRANSPORT
@@ -263,7 +265,7 @@ private:
 
     static void WriteCounter(std::ostringstream& ss,
                               const char* name, const char* help,
-                              volatile LONG64& value)
+                              int64_t value)
     {
         ss << "# HELP " << name << " " << help << "\n";
         ss << "# TYPE " << name << " counter\n";
@@ -318,7 +320,7 @@ private:
         ss << "# TYPE mmo_send_worker_flush_seconds_total counter\n";
         ss << std::fixed << std::setprecision(6);
         {
-            const LONG sendCount = _monitor._sendWorkerCount;
+            const int64_t sendCount = _monitor._sendWorkerCount;
             for (int i = 0; i < sendCount && i < CMonitorManager::MAX_SEND_WORKERS; ++i)
             {
                 ss << "mmo_send_worker_flush_seconds_total{sendworker=\"" << i << "\"} "
@@ -334,18 +336,18 @@ private:
         // 비누적 버킷 스냅샷
         using GLC = CMonitorManager::GameLoopCounters;
 
-        LONG64 raw[GLC::TICK_BUCKET_COUNT];
+        int64_t raw[GLC::TICK_BUCKET_COUNT];
         for (int i = 0; i < GLC::TICK_BUCKET_COUNT; ++i)
             raw[i] = _monitor._gameLoop._tickBuckets[i];
 
         // 누적 변환
-        LONG64 cum[GLC::TICK_BUCKET_COUNT];
+        int64_t cum[GLC::TICK_BUCKET_COUNT];
         cum[0] = raw[0];
         for (int i = 1; i < GLC::TICK_BUCKET_COUNT; ++i)
             cum[i] = cum[i - 1] + raw[i];
 
-        LONG64 tickCount = _monitor._gameLoop._tickCount;
-        LONG64 tickSumUs = _monitor._gameLoop._tickSumUs;
+        int64_t tickCount = _monitor._gameLoop._tickCount;
+        int64_t tickSumUs = _monitor._gameLoop._tickSumUs;
 
         // 버킷 경계 (밀리초 → 초)
         static const char* leBounds[] = {
@@ -378,17 +380,17 @@ private:
         // 클라 mmo_dummy_rtt(왕복)의 분해용 대조군. 비누적 버킷 스냅샷 → 누적 변환.
         using GLC = CMonitorManager::GameLoopCounters;
 
-        LONG64 raw[GLC::HANDLE_BUCKET_COUNT];
+        int64_t raw[GLC::HANDLE_BUCKET_COUNT];
         for (int i = 0; i < GLC::HANDLE_BUCKET_COUNT; ++i)
             raw[i] = _monitor._gameLoop._handleBuckets[i];
 
-        LONG64 cum[GLC::HANDLE_BUCKET_COUNT];
+        int64_t cum[GLC::HANDLE_BUCKET_COUNT];
         cum[0] = raw[0];
         for (int i = 1; i < GLC::HANDLE_BUCKET_COUNT; ++i)
             cum[i] = cum[i - 1] + raw[i];
 
-        LONG64 handleCount = _monitor._gameLoop._handleCount;
-        LONG64 handleSumUs = _monitor._gameLoop._handleSumUs;
+        int64_t handleCount = _monitor._gameLoop._handleCount;
+        int64_t handleSumUs = _monitor._gameLoop._handleSumUs;
 
         // 버킷 경계 (밀리초 → 초), HANDLE_BUCKET_BOUNDS와 일치
         static const char* leBounds[] = {
@@ -417,7 +419,7 @@ private:
 
     void WriteWorkerCounters(std::ostringstream& ss)
     {
-        LONG workerCount = _monitor._workerThreadCount;
+        int64_t workerCount = _monitor._workerThreadCount;
         if (workerCount <= 0) return;
 
         ss << "# HELP mmo_worker_completions_total IOCP completions per worker\n";
@@ -509,7 +511,7 @@ private:
                         _monitor._gameLoopThreadHandle, _cpuGameLoop, wallNow);
 
         // IOCP 워커 ("게임루프만 타고 워커는 노나" 대조용). RIO 워커도 같은 라벨(worker-i)로 등록됨.
-        LONG workerCount = _monitor._workerThreadCount;
+        int64_t workerCount = _monitor._workerThreadCount;
         for (int i = 0; i < workerCount && i < CMonitorManager::MAX_WORKER_THREADS; ++i)
         {
             char label[24];
@@ -521,7 +523,7 @@ private:
         // [USE_SEND_THREAD] 전용 송신 워커 (비용 이전 판정 — 게임루프 flush가 여기로 샜는지, 워커별 분산 확인).
         //   토글 OFF면 _sendWorkerCount=0이라 루프가 돌지 않음(라인 생략). 워커 노출과 동일 패턴.
         //   RIO 빌드는 송신 워커가 통합워커로 흡수돼 이 루프가 비어(sendworker-* 라인 0) 있음.
-        const LONG sendCount = _monitor._sendWorkerCount;
+        const int64_t sendCount = _monitor._sendWorkerCount;
         for (int i = 0; i < sendCount && i < CMonitorManager::MAX_SEND_WORKERS; ++i)
         {
             char label[24];
