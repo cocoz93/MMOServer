@@ -47,6 +47,11 @@ struct ServerConfig
     int         sendWorkers   = 0;         // 전용 송신 워커 수 (0/1=단일, 2+=sessionId%K 워커 풀; A/B 실험용)
     int         rioWorkers    = 0;         // RIO 전송 워커 수 (USE_RIO_TRANSPORT=1 빌드 전용, 0=자동 2)
 
+    // 게임스레드 코어 격리 (실험용) — GameCore INI에서 도출. 빈값/부적합이면 gameCore=-1, 마스크 0(=off).
+    int                gameCore     = -1;  // 게임루프 전용 물리코어 (-1=격리 off). ServerCores 안의 코어여야 함.
+    unsigned long long gameCoreMask = 0;   // 게임코어 HT 논리쌍 마스크
+    unsigned long long ioCoreMask   = 0;   // ServerCores에서 게임코어를 뺀 나머지(=I/O 스레드용)
+
     // [DB] 저장 파이프라인 설정 (값은 USE_DB_WORKER 토글과 무관하게 항상 로드)
     std::string dbHost              = "127.0.0.1";
     int         dbPort              = 3306;
@@ -98,6 +103,12 @@ struct ServerConfig
         wchar_t coresBuf[64];
         GetPrivateProfileStringW(L"Server", L"ServerCores", L"", coresBuf, 64, path);
         affinityMask = ParsePhysicalCoreMask(coresBuf);
+
+        // GameCore: 게임루프를 고정할 물리코어 (빈값=격리 off). ServerCores 안의 코어여야 하며,
+        //   나머지 코어로 I/O 스레드를 몰아 게임스레드 L2 캐시 간섭을 차단한다. (마스크는 아래서 도출)
+        wchar_t gameCoreBuf[16];
+        GetPrivateProfileStringW(L"Server", L"GameCore", L"", gameCoreBuf, 16, path);
+        DeriveGameCoreIsolation(gameCoreBuf);
 
         // WorkerThreads: IOCP 워커 스레드 수 (0=서버 affinity 코어 수로 자동)
         workerThreads = GetPrivateProfileIntW(L"Server", L"WorkerThreads", 0, path);
@@ -174,6 +185,43 @@ private:
         return mask;
     }
 
+    // GameCore 문자열 → gameCore/gameCoreMask/ioCoreMask 도출. affinityMask(ServerCores)가 선행돼야 함.
+    // 빈값·비숫자·범위밖·ServerCores밖·남는코어없음 중 하나라도면 격리 off(전부 0/-1)로 두고 WARN.
+    void DeriveGameCoreIsolation(const wchar_t* s)
+    {
+        gameCore = -1; gameCoreMask = 0; ioCoreMask = 0;
+        if (!s || s[0] == L'\0')
+            return;                                       // 빈값 = 격리 off (기본)
+
+        wchar_t* end = nullptr;
+        long core = wcstol(s, &end, 10);
+        if (end == s || core < 0 || core > 31)
+        {
+            SLOG_WARN("[ServerConfig] GameCore '{}' 무시 — 물리코어 숫자(0~31)가 아님", WtoA(s));
+            return;
+        }
+        if (affinityMask == 0)
+        {
+            SLOG_WARN("[ServerConfig] GameCore={} 무시 — ServerCores 미설정(프로세스 미고정이라 격리 불가)", core);
+            return;
+        }
+        const unsigned long long gm = (0x3ull << (2 * core));   // 게임코어 HT 논리쌍
+        if ((gm & affinityMask) != gm)
+        {
+            SLOG_WARN("[ServerConfig] GameCore={} 무시 — ServerCores(0x{:X}) 밖의 코어", core, affinityMask);
+            return;
+        }
+        const unsigned long long io = affinityMask & ~gm;       // 나머지 코어(=I/O)
+        if (io == 0)
+        {
+            SLOG_WARN("[ServerConfig] GameCore={} 무시 — I/O에 남는 코어 없음(ServerCores 물리코어 2개 이상 필요)", core);
+            return;
+        }
+        gameCore = static_cast<int>(core);
+        gameCoreMask = gm;
+        ioCoreMask   = io;
+    }
+
     void SetDefaultMaps()
     {
         maps = 
@@ -221,6 +269,10 @@ private:
         SLOG_INFO("  WorkerThr   : {} (0=auto)", workerThreads);
         SLOG_INFO("  SendWkr     : {} (0/1=single)", sendWorkers);
         SLOG_INFO("  RioWkr      : {} (0=auto 2, RIO build only)", rioWorkers);
+        if (gameCore >= 0)
+            SLOG_INFO("  CoreIso     : ON GameCore={} game=0x{:X} io=0x{:X}", gameCore, gameCoreMask, ioCoreMask);
+        else
+            SLOG_INFO("  CoreIso     : off (GameCore 미설정)");
         SLOG_INFO("  DB          : {}:{} db={} user={} workers={} save={}s qmax={}",
                   dbHost, dbPort, dbDatabase, dbUser, dbWorkers, dbSavePeriodSec, dbQueueMax);
         SLOG_INFO("  Maps        : {}", maps.size());

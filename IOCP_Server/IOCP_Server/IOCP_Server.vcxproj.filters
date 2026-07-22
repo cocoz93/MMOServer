@@ -48,6 +48,9 @@
     <ClCompile Include="main.cpp">
       <Filter>소스 파일\ServerLib</Filter>
     </ClCompile>
+    <ClCompile Include="CoreAffinity.cpp">
+      <Filter>소스 파일\ServerLib</Filter>
+    </ClCompile>
     <ClCompile Include="GameServer.cpp">
       <Filter>소스 파일\GameServer</Filter>
     </ClCompile>
@@ -87,6 +90,9 @@
       <Filter>소스 파일\TimingWheel</Filter>
     </ClInclude>
     <ClInclude Include="IOCPServer.h">
+      <Filter>소스 파일\ServerLib</Filter>
+    </ClInclude>
+    <ClInclude Include="CoreAffinity.h">
       <Filter>소스 파일\ServerLib</Filter>
     </ClInclude>
     <ClInclude Include="RioApi.h">

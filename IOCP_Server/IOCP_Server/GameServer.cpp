@@ -3,6 +3,7 @@
 #include "../../Shared/Protocol/Protocol.h"
 #include "SerialBuffer.h"
 #include "../../Shared/Common/ErrorLog.h"
+#include "CoreAffinity.h"
 #include <iostream>
 #include <chrono>
 #include <cmath>
@@ -478,6 +479,8 @@ bool CGameServer::InitDB(const DBConfig&, int, int, int) { return true; }   // �
 void CGameServer::GameLoopThread()
 {
     using Clock = std::chrono::steady_clock;
+
+    CoreAffinity::PinGameThread();   // 게임루프 전용 코어 고정 (격리 off면 no-op)
 
     // CPU 점유율 측정용: 자기 실핸들을 복제해 모니터에 등록 (진단정리 6 사각지대 보강)
     // GetCurrentThread()는 의사핸들(호출 스레드 기준)이라 HTTP 스레드에서 못 씀 → 실핸들로 복제

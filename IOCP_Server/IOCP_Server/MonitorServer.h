@@ -30,6 +30,7 @@
 #include "ThirdParty/httplib.h"
 #include "MonitorManager.h"
 #include "../../Shared/Common/ErrorLog.h"
+#include "CoreAffinity.h"
 
 class CMonitorServer
 {
@@ -66,6 +67,8 @@ public:
 private:
     void HttpThreadFunc()
     {
+        CoreAffinity::PinIoThread();   // 모니터 HTTP 스레드 → 게임코어 밖으로 (격리 off면 no-op)
+
         static const int RETRY_INTERVAL_SEC = 5;
 
         while (!_stopFlag)

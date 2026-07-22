@@ -12,6 +12,7 @@
 #include "MonitorManager.h"
 #include "MonitorServer.h"
 #include "ServerConfig.h"
+#include "CoreAffinity.h"       // 게임스레드 코어 격리 마스크 주입
 #include "../../Shared/Common/Logger.h"
 #include "../../Shared/Common/ErrorLog.h"
 
@@ -61,6 +62,13 @@ int main()
         else
             SLOG_WARN("[Affinity] SetProcessAffinityMask failed: {}", GetLastError());
     }
+
+    // 게임스레드 코어 격리 마스크 주입 — 프로세스 affinity 직후, 스레드 생성(Init/Start/monitor) 전에 1회.
+    //   config가 GameCore INI에서 도출한다(격리 off면 0,0). 이후 각 스레드가 진입부에서 자가-핀.
+    CoreAffinity::SetIsolationMasks(config.gameCoreMask, config.ioCoreMask);
+    if (config.gameCoreMask != 0)
+        SLOG_INFO("[Affinity] CoreIsolation ON — game=0x{:X} io=0x{:X}",
+                  config.gameCoreMask, config.ioCoreMask);
 
     SLOG_INFO("=== IOCP MMO Server ===");
     SLOG_INFO("Port: {}", config.port);

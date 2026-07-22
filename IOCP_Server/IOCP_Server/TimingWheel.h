@@ -8,6 +8,7 @@
 #include <Windows.h>
 
 #include "LockFree/LockFreeQueue.h"
+#include "CoreAffinity.h"
 
 //=============================================================================
 // CTimingWheel
@@ -195,6 +196,8 @@ private:
     //-------------------------------------------------------------------------
     void TimerThreadProc()
     {
+        CoreAffinity::PinIoThread();   // 타이머 스레드 → 게임코어 밖으로 (격리 off면 no-op)
+
         // 절대 시각 기준 tick 보정 — Sleep 후 처리 시간만큼 다음 Sleep을 줄여
         // tick 간격이 누적으로 밀리지 않도록 한다.
         auto nextTick = std::chrono::steady_clock::now();

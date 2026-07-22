@@ -5,6 +5,8 @@
 #include <chrono>
 #include <algorithm>
 
+#include "CoreAffinity.h"
+
 #pragma comment(lib, "winmm.lib")
 
 extern void SignalProcessShutdown(); // main 쪽에 정의된 종료 알림 함수
@@ -601,6 +603,8 @@ void CIOCPServer::ShutdownServer()
 // listen socket close로 accept를 깨운다.
 void CIOCPServer::AcceptThread()
 {
+    CoreAffinity::PinIoThread();   // Accept 스레드 → 게임코어 밖으로 (격리 off면 no-op)
+
     while (_running == TRUE)
     {
         SOCKADDR_IN clientAddr;
@@ -696,6 +700,8 @@ void CIOCPServer::ProcessAccept(SOCKET clientSocket)
 // 완료 통지 처리. IOCount 감소는 ProcessRecv/ProcessSend 이후에만 수행한다.
 void CIOCPServer::WorkerThread()
 {
+    CoreAffinity::PinIoThread();   // IOCP 워커 → 게임코어 밖으로 (격리 off면 no-op)
+
     int workerIndex = _monitor.RegisterWorkerThread();
 
     // CPU 점유율 측정용: 자기 실핸들을 복제해 슬롯에 등록 (HTTP 스레드가 GetThreadTimes로 읽음)
@@ -1507,6 +1513,8 @@ void CIOCPServer::FlushPendingSends()
 // PostSend 내부의 AcquireSession/_sending 가드가 lifetime·세션당 단일 송신을 보장한다.
 void CIOCPServer::SendWorkerThread(int workerIdx)
 {
+    CoreAffinity::PinIoThread();   // 송신 워커 → 게임코어 밖으로 (격리 off면 no-op)
+
     SendWorker& worker = *_sendWorkers[workerIdx];
 
     // [계측] CPU 점유율 측정용 — 자기 실핸들을 복제해 모니터 슬롯에 등록 (게임루프/워커와 동일 패턴).
@@ -1703,6 +1711,8 @@ int CIOCPServer::RioDrainCompletions(RioWorker& worker, int monitorIndex)
 // v1은 스핀 없이 notify+대기 — 부하클라 동거 머신에서 코어 소모를 피하고, 실측 후 필요 시 추가.
 void CIOCPServer::RioWorkerThread(int workerIdx)
 {
+    CoreAffinity::PinIoThread();   // RIO 워커도 I/O — 게임코어 밖으로 (현 빌드 USE_RIO_TRANSPORT=0라 미컴파일)
+
     RioWorker& worker = *_rioWorkers[workerIdx];
     t_rioWorkerIndex = workerIdx;
 

@@ -11,6 +11,7 @@
 
 #include "../MonitorManager.h"
 #include "../../../Shared/Common/ErrorLog.h"
+#include "../CoreAffinity.h"
 
 #pragma comment(lib, "libmysql.lib")
 
@@ -166,6 +167,7 @@ void CDBWorker::EnqueueBatch(const std::vector<DBSaveJob>& batch)
 
 void CDBWorker::WorkerThread(int idx)
 {
+    CoreAffinity::PinIoThread();   // DB 워커 → 게임코어 밖으로 (격리 off면 no-op)
     mysql_thread_init();
 
     DBWorkerSlot& slot = *_workers[idx];
