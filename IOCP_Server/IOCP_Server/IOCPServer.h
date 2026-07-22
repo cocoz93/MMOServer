@@ -349,7 +349,8 @@ private:
     // 세션 소유 워커 = uniqueId % N 고정 (기존 SendWorker 분배와 동일 근거 — index 비트 누수 없음).
     // 불변식: 한 세션의 RQ 조작(생성·RIOReceive/RIOSend 제출·closesocket)은 소유 워커
     //         스레드에서만 수행한다 — CancelIoEx 부재를 이 직렬화가 대체한다.
-    // 워커 루프: 명령 드레인 → CQ 드레인(RIODequeueCompletion 배치) → 스핀 → RIONotify → 대기.
+    // 워커 루프: 명령 드레인 → CQ 드레인(RIODequeueCompletion 배치) → 유휴 시 RIONotify 무장 → 재드레인 → 대기.
+    //   (v1은 스핀 없음 — 부하클라 동거 머신 코어 소모 회피. 실측 후 필요 시 추가. 본체 주석 RioWorkerThread 참조)
     struct RioCmd
     {
         enum class Type { NewConn, FlushSend, Disconnect };

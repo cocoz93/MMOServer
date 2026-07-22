@@ -1437,10 +1437,15 @@ void CIOCPServer::FlushPendingSends()
 
     for (CSession* session : _dirtySessions)
     {
-        const int64_t sessionId = session->_sessionId; // volatile → 일반 복사 후 사용
         session->_sendDirty = false;                   // 게임 스레드 단독 접근 → 안전
         if (InterlockedExchange(&session->_queuedForSend, TRUE) == FALSE)
+        {
+            // sessionId는 exchange "후"에 읽는다 — 읽기~exchange 사이 slot 재사용 시 옛 id를
+            //   push하면 워커가 FindSession으로 새 세션을 못 찾아 _queuedForSend가 TRUE인 채
+            //   안 지워져 그 세션이 송신 mute. exchange 후 읽으면 push id=플래그 세운 세션이라 봉합.
+            const int64_t sessionId = session->_sessionId; // volatile → 일반 복사 후 사용
             perWorker[RioOwnerIndex(sessionId)].push_back(sessionId);
+        }
     }
     _dirtySessions.clear();
 
@@ -1474,15 +1479,19 @@ void CIOCPServer::FlushPendingSends()
 
     for (CSession* session : _dirtySessions)
     {
-        const int64_t sessionId = session->_sessionId; // volatile → 일반 복사 후 사용
         session->_sendDirty = false;                   // 게임 스레드 단독 접근 → 안전
         // 틱을 넘는 중복 방지(_queuedForSend): 이미 큐에 있으면(미처리) 다시 넣지 않는다.
         //   발산 시 같은 세션이 매 틱 쌓여 큐가 무한 증가하는 것을 막음(처리량 천장은 별개).
         if (InterlockedExchange(&session->_queuedForSend, TRUE) == FALSE)
+        {
+            // sessionId는 exchange "후"에 읽는다 — 읽기~exchange 사이 slot 재사용 시 옛 id를 push하면
+            //   워커가 FindSession으로 새 세션을 못 찾아 _queuedForSend가 TRUE인 채 안 지워져 송신 mute.
             // [분배 수정] uniqueId(하위 48비트)로 분배 — raw sessionId%K는 K가 2의 거듭제곱이 아니면
             //   상위 index 비트가 modulo에 새어든다. index는 스택 재사용으로 카운트다운·uniqueId는 카운트업이라
             //   (index+uniqueId)가 상수가 돼 K3에서 한 워커로 ~90% 쏠림(실측·시뮬 확인). uniqueId만 쓰면 K 무관 균등·FIFO 보존.
+            const int64_t sessionId = session->_sessionId; // volatile → 일반 복사 후 사용
             perWorker[CSession::ExtractUniqueId(sessionId) % _sendWorkerCount].push_back(sessionId);  // raw ptr 아닌 id
+        }
     }
     _dirtySessions.clear();
 
