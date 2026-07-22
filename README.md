@@ -7,9 +7,9 @@
 
 ## 🔗 링크
 - 🌐 **WEB PROFILE** — https://cocoz93.github.io/portfolio/
-- 📝 **DEV LOG 26** — [Notion 블로그 전체](https://app.notion.com/p/2db16a0b9f598196a471d53775ab4223)
+- 🍀 **기술경력서** — [Notion 바로가기](https://app.notion.com/p/23316a0b9f59809db2e5d610a23a10a5)
+- 📚 **DEV LOG 26** — [노션 블로그 전체](https://app.notion.com/p/2db16a0b9f598196a471d53775ab4223)
 - 📧 **Email** — wndnwls7@gmail.com
-- 🐙 **GitHub** — https://github.com/cocoz93/MMOServer
 
 ## 🛠 기술 스택
 C++17 · Windows IOCP · WinSock · Prometheus · Grafana
