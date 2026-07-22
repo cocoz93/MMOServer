@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --slate:#566072; --pill-gray:#e9edf3;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:620px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:572px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:30px 56px 0}
+  .title{font-size:38px;font-weight:800;color:var(--ink);letter-spacing:-.6px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .sub{margin-top:10px;font-size:20px;font-weight:500;color:var(--muted)}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .stage{margin-top:24px;display:grid;grid-template-columns:1fr 150px 1fr;align-items:start}
+  .col{display:flex;flex-direction:column;align-items:center}
+
+  .pill{font-size:18px;font-weight:800;padding:6px 18px;border-radius:999px;letter-spacing:-.3px}
+  .pill.before{background:var(--pill-gray);color:var(--slate)}
+  .pill.after{background:var(--red);color:#fff}
+
+  svg{font-family:inherit}
+  .diagram{margin-top:14px}
+  .sv-cap{font-size:15.5px;font-weight:700;fill:#8089a0;letter-spacing:-.2px}
+  .sv-cap.b{fill:var(--slate)}
+  .sv-cap.r{fill:var(--red);font-weight:800}
+  .sv-white{font-size:17px;font-weight:800;fill:#fff;letter-spacing:-.3px}
+
+  .bignum{margin-top:10px;font-weight:800;letter-spacing:-1px;display:flex;align-items:baseline;gap:8px}
+  .bignum .n{font-size:40px}
+  .bignum .u{font-size:20px;font-weight:700;color:#46627f}
+  .bignum.b .n{color:var(--slate)}
+  .bignum.r .n{color:var(--red)}
+  .delta{align-self:center;font-size:17px;font-weight:800;color:#fff;background:var(--red);
+    border-radius:999px;padding:4px 13px;margin-left:6px;letter-spacing:-.3px}
+
+  .botcap{margin-top:9px;font-size:17px;font-weight:500;color:#8089a0}
+  .botcap b{color:#3a4254;font-weight:700}
+
+  .arrowcol{display:flex;flex-direction:column;align-items:center;padding-top:158px}
+  .arrowcol .t{font-size:19px;font-weight:800;color:var(--red);text-align:center;line-height:1.16;margin-bottom:8px}
+
+  .foot{position:absolute;left:56px;right:56px;bottom:15px;padding-top:11px;border-top:1px solid #eef0f3;
+    font-size:16px;color:#9aa3b2;font-weight:500}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">enqueue <span class="r">27만 &rarr; 5천</span> &mdash; 패킷 기준을 수신자 기준으로 뒤집기</div>
+    <div class="sub">같은 섹터 주민이 받는 내용은 같다 &rarr; 이웃 9섹터 몫을 이어붙여 <b>세션당 1회</b>만 넣는다</div>
+
+    <div class="stage">
+      <!-- LEFT : before -->
+      <div class="col">
+        <div class="pill before">변경 전 &middot; 패킷 기준</div>
+        <svg class="diagram" width="430" height="222" viewBox="0 0 430 222">
+          <rect x="167" y="4" width="96" height="38" rx="10" fill="#6e7a90"/>
+          <text class="sv-white" x="215" y="29" text-anchor="middle">패킷 1개</text>
+          <g stroke="#a7b1c2" stroke-width="1.8">
+            <line x1="215" y1="42" x2="35"  y2="148"/>
+            <line x1="215" y1="42" x2="80"  y2="148"/>
+            <line x1="215" y1="42" x2="125" y2="148"/>
+            <line x1="215" y1="42" x2="170" y2="148"/>
+            <line x1="215" y1="42" x2="215" y2="148"/>
+            <line x1="215" y1="42" x2="260" y2="148"/>
+            <line x1="215" y1="42" x2="305" y2="148"/>
+            <line x1="215" y1="42" x2="350" y2="148"/>
+            <line x1="215" y1="42" x2="395" y2="148"/>
+          </g>
+          <g fill="#dfe5ec" stroke="#b9c2cf" stroke-width="2">
+            <circle cx="35"  cy="160" r="13"/><circle cx="80"  cy="160" r="13"/>
+            <circle cx="125" cy="160" r="13"/><circle cx="170" cy="160" r="13"/>
+            <circle cx="215" cy="160" r="13"/><circle cx="260" cy="160" r="13"/>
+            <circle cx="305" cy="160" r="13"/><circle cx="350" cy="160" r="13"/>
+            <circle cx="395" cy="160" r="13"/>
+          </g>
+          <text class="sv-cap b" x="215" y="203" text-anchor="middle">수신자 923명, 한 명씩 enqueue &mdash; 이걸 295콜 반복</text>
+        </svg>
+        <div class="bignum b"><span class="n">27만</span><span class="u">회 / tick</span></div>
+        <div class="botcap">매회 세션 찾기&middot;검증 고정비 지불</div>
+      </div>
+
+      <!-- CENTER -->
+      <div class="arrowcol">
+        <div class="t">수신섹터<br>배칭</div>
+        <svg width="92" height="34" viewBox="0 0 92 34">
+          <defs><marker id="ah" markerWidth="9" markerHeight="9" refX="6.5" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 Z" fill="#d7263d"/></marker></defs>
+          <line x1="4" y1="17" x2="74" y2="17" stroke="#d7263d" stroke-width="6" stroke-linecap="round" marker-end="url(#ah)"/>
+        </svg>
+      </div>
+
+      <!-- RIGHT : after -->
+      <div class="col">
+        <div class="pill after">변경 후 &middot; 수신자 기준</div>
+        <svg class="diagram" width="430" height="222" viewBox="0 0 430 222">
+          <g>
+            <rect x="177" y="2"  width="24" height="24" rx="6" fill="#f2b8c0"/><rect x="208" y="2"  width="24" height="24" rx="6" fill="#f2b8c0"/><rect x="239" y="2"  width="24" height="24" rx="6" fill="#f2b8c0"/>
+            <rect x="177" y="33" width="24" height="24" rx="6" fill="#f2b8c0"/><rect x="208" y="33" width="24" height="24" rx="6" fill="#e8455a"/><rect x="239" y="33" width="24" height="24" rx="6" fill="#f2b8c0"/>
+            <rect x="177" y="64" width="24" height="24" rx="6" fill="#f2b8c0"/><rect x="208" y="64" width="24" height="24" rx="6" fill="#f2b8c0"/><rect x="239" y="64" width="24" height="24" rx="6" fill="#f2b8c0"/>
+          </g>
+          <text class="sv-cap" x="290" y="50" text-anchor="start">&larr; 이웃 9섹터 보류물</text>
+          <g stroke="#d98b97" stroke-width="1.8">
+            <line x1="189" y1="92" x2="204" y2="118"/>
+            <line x1="220" y1="92" x2="220" y2="118"/>
+            <line x1="251" y1="92" x2="236" y2="118"/>
+          </g>
+          <rect x="130" y="120" width="180" height="34" rx="10" fill="#d7263d"/>
+          <text class="sv-white" x="220" y="142" text-anchor="middle">한 덩어리로 연결</text>
+          <line x1="220" y1="158" x2="220" y2="176" stroke="#d7263d" stroke-width="5" stroke-linecap="round"/>
+          <path d="M212,176 L228,176 L220,188 Z" fill="#d7263d"/>
+          <circle cx="220" cy="200" r="13" fill="#dfe5ec" stroke="#b9c2cf" stroke-width="2"/>
+          <text class="sv-cap r" x="245" y="206" text-anchor="start">세션당 딱 1회</text>
+        </svg>
+        <div class="bignum r"><span class="n">5천</span><span class="u">회 / tick</span><span class="delta">&minus;98%</span></div>
+        <div class="botcap">보내는 바이트&middot;클라 파싱은 <b>불변</b> &mdash; 고정비만 접힘</div>
+      </div>
+    </div>
+
+    <div class="foot">플래그 <b>USE_BROADCAST_BUNDLE</b> &middot; 서버만 변경(패킷 규격&middot;클라 무변경) &middot; 전제: 섹터 묶음 + coalescing ON</div>
+  </div>
+</body>
+</html>

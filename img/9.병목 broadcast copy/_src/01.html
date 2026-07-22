@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --slate:#566072;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:940px;height:680px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:892px;height:632px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:34px 50px 0}
+
+  .title{font-size:38px;font-weight:800;color:var(--ink);letter-spacing:-.8px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:74px;height:6px;border-radius:3px;background:var(--red);margin-top:13px}
+  .sub{margin-top:13px;font-size:20px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .chart{margin-top:26px}
+  .plot{position:relative;display:grid;grid-template-columns:repeat(4,1fr);column-gap:44px;height:300px;align-items:end;padding:0 8px}
+  .cap{position:absolute;left:8px;right:8px;top:65px;height:0;border-top:3px dashed #d17384}
+  .cap .tag{position:absolute;left:0;top:-30px;font-size:15.5px;font-weight:800;color:#c3475a;letter-spacing:-.3px}
+
+  .col{display:flex;flex-direction:column;align-items:center;justify-content:flex-end}
+  .cpu{font-size:34px;font-weight:800;line-height:1;margin-bottom:11px;letter-spacing:-1px;color:var(--slate)}
+  .cpu small{font-size:17px;font-weight:800;letter-spacing:-.3px;margin-left:2px}
+  .col.hot .cpu{color:var(--red)}
+  .col.max .cpu{color:var(--deep)}
+  .bar{width:100%;max-width:150px;flex:0 0 auto;border-radius:13px 13px 0 0;
+    display:flex;align-items:flex-end;justify-content:center;padding-bottom:14px;
+    background:linear-gradient(180deg,#8b96aa,#6e7a90)}
+  .col.hot .bar{background:linear-gradient(180deg,#ef4459,#d7263d);box-shadow:0 -2px 22px rgba(215,38,61,.18)}
+  .col.max .bar{background:linear-gradient(180deg,#b81430,#8f0a1e);box-shadow:0 -2px 26px rgba(160,15,35,.30)}
+  .bar .in{color:#fff;font-size:18px;font-weight:800;letter-spacing:-.3px;white-space:nowrap;opacity:.97}
+
+  .axis{position:relative;height:3px;background:#2f5fd0;border-radius:2px}
+
+  .labels{display:grid;grid-template-columns:repeat(4,1fr);column-gap:44px;margin-top:22px;padding:0 8px}
+  .lb{text-align:center}
+  .lb .nm{font-size:22px;font-weight:800;color:var(--ink);letter-spacing:-.5px}
+  .lb .ds{margin-top:5px;font-size:16px;font-weight:600;color:var(--muted);letter-spacing:-.3px}
+  .lb .ds.bad{color:var(--red);font-weight:800}
+
+  .foot{position:absolute;left:50px;right:50px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
+    font-size:15.5px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">천장 <span class="r">4500&ndash;5000</span> &mdash; 게임루프 한 코어가 포화</div>
+    <div class="uline"></div>
+    <div class="sub">동접만 4000 &rarr; 5500 올리며 실측 &middot; 막대 = <b>게임루프 CPU</b> (1.00 = 코어 하나 전부)</div>
+
+    <div class="chart">
+      <div class="plot">
+        <div class="cap"><span class="tag">코어 한계 1.00</span></div>
+        <div class="col">
+          <div class="cpu">0.50</div>
+          <div class="bar" style="height:118px"><span class="in">안정</span></div>
+        </div>
+        <div class="col">
+          <div class="cpu">0.71</div>
+          <div class="bar" style="height:167px"><span class="in">안정</span></div>
+        </div>
+        <div class="col hot">
+          <div class="cpu">0.96</div>
+          <div class="bar" style="height:226px"><span class="in">한계</span></div>
+        </div>
+        <div class="col max">
+          <div class="cpu">1.00<small>포화</small></div>
+          <div class="bar" style="height:235px"><span class="in">붕괴</span></div>
+        </div>
+      </div>
+
+      <div class="axis"></div>
+
+      <div class="labels">
+        <div class="lb"><div class="nm">동접 4000</div><div class="ds">tick p99 40 ms</div></div>
+        <div class="lb"><div class="nm">동접 4500</div><div class="ds">tick p99 40 ms</div></div>
+        <div class="lb"><div class="nm">동접 5000</div><div class="ds">tick p99 69 ms</div></div>
+        <div class="lb"><div class="nm">동접 5500</div><div class="ds bad">tick p99 197 ms</div></div>
+      </div>
+    </div>
+
+    <div class="foot">INI ClientCount만 변경 &middot; 부하 클라는 건강(buffer_full 0) &rarr; 서버 병목 확정 | 단일 PC loopback &mdash; 5000+ 절대치는 추세 참고</div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --slate:#566072;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1060px;height:680px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1012px;height:632px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:34px 50px 0}
+
+  .title{font-size:38px;font-weight:800;color:var(--ink);letter-spacing:-.8px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:74px;height:6px;border-radius:3px;background:var(--red);margin-top:13px}
+  .sub{margin-top:13px;font-size:20px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+  .sw{display:inline-block;width:15px;height:15px;border-radius:4px;vertical-align:-1px}
+  .sw.g{background:#cfd6e0} .sw.r{background:linear-gradient(180deg,#ef4459,#d7263d)}
+
+  .chart{margin-top:24px}
+  .plot{display:grid;grid-template-columns:repeat(4,1fr);column-gap:46px;height:302px;align-items:end;padding:0 6px}
+  .colm{display:flex;flex-direction:column;align-items:center;justify-content:flex-end}
+  .pct{font-size:36px;font-weight:800;color:var(--red);line-height:1;margin-bottom:12px;letter-spacing:-1.2px}
+  .colm.star .pct{font-size:42px;color:var(--deep)}
+  .pair{display:flex;align-items:flex-end;gap:12px}
+  .b{display:flex;flex-direction:column;align-items:center}
+  .b .v{font-size:17px;font-weight:800;margin-bottom:6px;letter-spacing:-.3px}
+  .b.off .v{color:#8a93a5}
+  .b.on  .v{color:var(--red)}
+  .stick{width:64px;border-radius:11px 11px 0 0}
+  .b.off .stick{background:#cfd6e0}
+  .b.on  .stick{background:linear-gradient(180deg,#ef4459,#d7263d);box-shadow:0 -2px 20px rgba(215,38,61,.20)}
+  .colm.star .b.on .stick{background:linear-gradient(180deg,#b81430,#8f0a1e);box-shadow:0 -2px 24px rgba(160,15,35,.30)}
+  .colm.star .b.on .v{color:var(--deep)}
+
+  .axis{position:relative;height:3px;background:#2f5fd0;border-radius:2px}
+
+  .labels{display:grid;grid-template-columns:repeat(4,1fr);column-gap:46px;margin-top:22px;padding:0 6px}
+  .lb{text-align:center}
+  .lb .nm{font-size:22px;font-weight:800;color:var(--ink);letter-spacing:-.5px}
+  .lb .ds{margin-top:5px;font-size:16px;font-weight:600;color:var(--muted);letter-spacing:-.3px}
+
+  .foot{position:absolute;left:50px;right:50px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
+    font-size:15.5px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">A/B 실측 &mdash; 병목 <span class="r">&minus;88%</span> &middot; tick 반토막</div>
+    <div class="uline"></div>
+    <div class="sub">동접 4000 &middot; 3회 반복 중앙값 &middot; <span class="sw g"></span> OFF &rarr; <span class="sw r"></span> <b>ON(수신섹터 배칭)</b></div>
+
+    <div class="chart">
+      <div class="plot">
+        <div class="colm star">
+          <div class="pct">&minus;88%</div>
+          <div class="pair">
+            <div class="b off"><span class="v">15.9</span><div class="stick" style="height:210px"></div></div>
+            <div class="b on"><span class="v">1.9</span><div class="stick" style="height:25px"></div></div>
+          </div>
+        </div>
+        <div class="colm">
+          <div class="pct">&minus;64%</div>
+          <div class="pair">
+            <div class="b off"><span class="v">0.57</span><div class="stick" style="height:210px"></div></div>
+            <div class="b on"><span class="v">0.21</span><div class="stick" style="height:78px"></div></div>
+          </div>
+        </div>
+        <div class="colm">
+          <div class="pct">&minus;62%</div>
+          <div class="pair">
+            <div class="b off"><span class="v">24.0</span><div class="stick" style="height:210px"></div></div>
+            <div class="b on"><span class="v">9.0</span><div class="stick" style="height:79px"></div></div>
+          </div>
+        </div>
+        <div class="colm">
+          <div class="pct">&minus;52%</div>
+          <div class="pair">
+            <div class="b off"><span class="v">39.8</span><div class="stick" style="height:210px"></div></div>
+            <div class="b on"><span class="v">19.1</span><div class="stick" style="height:101px"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="axis"></div>
+
+      <div class="labels">
+        <div class="lb"><div class="nm">broadcast copy</div><div class="ds">ms/tick &middot; 병목 그 자체</div></div>
+        <div class="lb"><div class="nm">gameloop CPU</div><div class="ds">core &middot; 단일코어 병목</div></div>
+        <div class="lb"><div class="nm">tick avg</div><div class="ds">ms &middot; 예산 40</div></div>
+        <div class="lb"><div class="nm">tick p99</div><div class="ds">ms &middot; 꼬리 지연</div></div>
+      </div>
+    </div>
+
+    <div class="foot">플래그 <b>USE_BROADCAST_BUNDLE</b>만 변경 &middot; 통제: membership_sends/session 불변 &middot; 덤: network 14.1 &rarr; 0.36 ms (&minus;97%)</div>
+  </div>
+</body>
+</html>

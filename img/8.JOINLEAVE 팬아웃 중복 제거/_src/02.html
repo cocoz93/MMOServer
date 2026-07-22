@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --blue:#3a78b8; --blue-ink:#2b6aa8; --slate:#566072;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:700px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:652px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:32px 56px 0}
+
+  .title{font-size:37px;font-weight:800;color:var(--ink);letter-spacing:-.8px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:66px;height:6px;border-radius:3px;background:var(--red);margin-top:13px}
+  .sub{margin-top:12px;font-size:19px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .panels{margin-top:20px;display:flex;flex-direction:column;gap:16px}
+  .panel{height:218px;border-radius:20px;padding:14px 30px;display:flex;flex-direction:column;
+    border:1.5px solid #e7ebf1;overflow:hidden}
+  .panel.out{background:linear-gradient(180deg,#f4f8fc,#eef4fa)}
+  .panel.in{background:linear-gradient(180deg,#fdf3f5,#fbeef1)}
+
+  .phead{display:flex;align-items:center;gap:12px;height:30px;flex:0 0 auto}
+  .ptag{font-size:15px;font-weight:800;letter-spacing:.2px;padding:5px 15px;border-radius:999px}
+  .panel.out .ptag{background:#e2eef9;color:var(--blue-ink)}
+  .panel.in  .ptag{background:#fbdfe4;color:var(--red)}
+  .pdir{font-size:16.5px;font-weight:700;color:#6a7488;letter-spacing:-.2px}
+  .pdir b{color:var(--ink);font-weight:800}
+
+  .pbody{flex:1;display:flex;align-items:center}
+
+  /* mover node */
+  .me{width:112px;height:112px;border-radius:22px;flex:0 0 auto;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:#fff;
+    box-shadow:0 8px 20px rgba(30,40,70,.14)}
+  .panel.out .me{background:linear-gradient(160deg,#4a86c4,#2f6099)}
+  .panel.in  .me{background:linear-gradient(160deg,#e23f53,#b3122a)}
+  .me .big{font-size:32px;font-weight:800;letter-spacing:-1px}
+  .me .sm{font-size:13.5px;font-weight:700;opacity:.85}
+
+  /* fan wires */
+  .fan{flex:0 0 auto;width:186px;height:150px}
+
+  /* peer cluster */
+  .peers{flex:0 0 auto;width:146px;height:150px;display:flex;flex-direction:column;justify-content:space-between}
+  .peer{height:26px;border-radius:8px;display:flex;align-items:center;padding-left:13px;
+    font-size:14px;font-weight:700;color:#5b6474;background:#fff;border:1.4px solid #e2e7ee}
+  .peer .pk{width:14px;height:14px;border-radius:4px;margin-right:9px;flex:0 0 auto}
+
+  .mid{flex:0 0 auto;width:146px;text-align:center;padding:0 8px}
+  .mid .k{font-size:20px;font-weight:800;color:var(--ink);letter-spacing:-.4px;line-height:1.2}
+  .panel.out .mid .k .accent{color:var(--blue-ink)}
+  .panel.in  .mid .k .accent{color:var(--red)}
+  .mid .d{margin-top:7px;font-size:14.5px;font-weight:600;color:#8a93a5;letter-spacing:-.2px;line-height:1.35}
+
+  .concl{flex:1 1 auto;margin-left:22px;border-radius:16px;padding:18px 24px;
+    display:flex;flex-direction:column;gap:7px;background:#fff}
+  .panel.out .concl{border:1.5px solid #cfe0f1}
+  .panel.in  .concl{border:1.5px solid #f4ccd3}
+  .concl .cp{font-size:16px;font-weight:800;letter-spacing:-.2px;display:inline-flex;align-items:center;gap:9px}
+  .concl .cp .badge{font-size:16px;font-weight:800;color:#fff;padding:3px 13px;border-radius:8px}
+  .panel.out .concl .cp{color:var(--blue-ink)} .panel.out .concl .cp .badge{background:var(--blue)}
+  .panel.in  .concl .cp{color:var(--red)}      .panel.in  .concl .cp .badge{background:var(--red)}
+  .concl .ct{font-size:20px;font-weight:800;color:var(--ink);letter-spacing:-.4px;line-height:1.25}
+
+  .foot{position:absolute;left:56px;right:56px;bottom:15px;padding-top:11px;border-top:1px solid #eef0f3;
+    font-size:15.5px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">경계를 넘을 때마다 — <span class="r">두 방향</span>으로 쏟아진다</div>
+    <div class="uline"></div>
+    <div class="sub">mover가 섹터를 넘으면 주변과 Join/Leave 교환 · <b>방향마다 특성이 달라 처리도 둘로</b> (통일 불가)</div>
+
+    <div class="panels">
+      <!-- OUTBOUND -->
+      <div class="panel out">
+        <div class="phead"><span class="ptag">아웃바운드</span><span class="pdir"><b>나</b> → 상대 N명</span></div>
+        <div class="pbody">
+          <div class="me"><span class="big">나</span><span class="sm">mover</span></div>
+          <svg class="fan" viewBox="0 0 186 150">
+            <g stroke="#3a78b8" stroke-width="3" fill="none" opacity=".85">
+              <line x1="4" y1="75" x2="182" y2="13"/>
+              <line x1="4" y1="75" x2="182" y2="44"/>
+              <line x1="4" y1="75" x2="182" y2="75"/>
+              <line x1="4" y1="75" x2="182" y2="106"/>
+              <line x1="4" y1="75" x2="182" y2="137"/>
+            </g>
+          </svg>
+          <div class="peers">
+            <div class="peer"><span class="pk" style="background:#3a78b8"></span>상대 1</div>
+            <div class="peer"><span class="pk" style="background:#3a78b8"></span>상대 2</div>
+            <div class="peer"><span class="pk" style="background:#3a78b8"></span>상대 3</div>
+            <div class="peer"><span class="pk" style="background:#3a78b8"></span>상대 4</div>
+            <div class="peer"><span class="pk" style="background:#3a78b8"></span>상대 N</div>
+          </div>
+          <div class="mid">
+            <div class="k">내용 <span class="accent">동일</span></div>
+            <div class="d">모두 같은 바이트<br>(mover 정보)</div>
+          </div>
+          <div class="concl">
+            <div class="cp"><span class="badge">P1</span> 아웃바운드 팬아웃</div>
+            <div class="ct">1버퍼를 만들어 N명이 공유</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- INBOUND -->
+      <div class="panel in">
+        <div class="phead"><span class="ptag">인바운드</span><span class="pdir">상대 N명 → <b>나</b></span></div>
+        <div class="pbody">
+          <div class="peers">
+            <div class="peer"><span class="pk" style="background:#d7263d"></span>상대 1</div>
+            <div class="peer"><span class="pk" style="background:#e0863f"></span>상대 2</div>
+            <div class="peer"><span class="pk" style="background:#3a78b8"></span>상대 3</div>
+            <div class="peer"><span class="pk" style="background:#6c7a90"></span>상대 4</div>
+            <div class="peer"><span class="pk" style="background:#b3122a"></span>상대 N</div>
+          </div>
+          <svg class="fan" viewBox="0 0 186 150">
+            <g stroke-width="3" fill="none" opacity=".9">
+              <line x1="4" y1="13"  x2="182" y2="75" stroke="#d7263d"/>
+              <line x1="4" y1="44"  x2="182" y2="75" stroke="#e0863f"/>
+              <line x1="4" y1="75"  x2="182" y2="75" stroke="#3a78b8"/>
+              <line x1="4" y1="106" x2="182" y2="75" stroke="#6c7a90"/>
+              <line x1="4" y1="137" x2="182" y2="75" stroke="#b3122a"/>
+            </g>
+          </svg>
+          <div class="me"><span class="big">나</span><span class="sm">mover</span></div>
+          <div class="mid">
+            <div class="k">내용 <span class="accent">제각각</span></div>
+            <div class="d">수신자는 나 1명<br>(각자 정보)</div>
+          </div>
+          <div class="concl">
+            <div class="cp"><span class="badge">P2</span> 인바운드 묶음</div>
+            <div class="ct">N패킷을 1패킷으로 접음</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">원래 로직은 <b>수신자 수만큼 패킷을 매번 새로 생성</b>(Alloc+직렬화) → 밀도가 높을수록 생성 반복이 곱으로 증가</div>
+  </div>
+</body>
+</html>

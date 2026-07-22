@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --slate:#566072; --gray-fill:#e2e6ec; --track:#eef1f5;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:600px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:552px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:34px 56px 0}
+
+  .title{font-size:37px;font-weight:800;color:var(--ink);letter-spacing:-.8px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:66px;height:6px;border-radius:3px;background:var(--red);margin-top:14px}
+  .sub{margin-top:13px;font-size:19px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .stage{margin-top:22px;display:grid;grid-template-columns:290px 1fr;column-gap:52px;align-items:center}
+
+  .donutwrap{position:relative;width:280px;height:280px;justify-self:center}
+  .donut{position:absolute;inset:0;border-radius:50%;
+    background:conic-gradient(from -90deg,#e8455a,var(--deep) 194.4deg,#6f7c92 194.4deg,#8b98ac 320.4deg,var(--gray-fill) 320.4deg 360deg);
+    -webkit-mask:radial-gradient(circle at center,transparent 58%,#000 59%);
+            mask:radial-gradient(circle at center,transparent 58%,#000 59%);
+    filter:drop-shadow(0 8px 22px rgba(215,38,61,.18))}
+  .dlbl{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
+  .dlbl .n{font-size:78px;font-weight:800;color:var(--red);letter-spacing:-3px}
+  .dlbl .c{font-size:15px;font-weight:600;color:var(--muted);margin-top:12px;letter-spacing:-.2px}
+
+  .legend{display:flex;flex-direction:column;gap:22px;padding-right:4px}
+  .row .rt{display:flex;align-items:center;gap:11px}
+  .dot{width:15px;height:15px;border-radius:5px;flex:0 0 auto}
+  .dot.r{background:var(--red)} .dot.s{background:#7c8aa0} .dot.g{background:#c4cbd6}
+  .name{font-size:21px;font-weight:800;color:var(--ink);letter-spacing:-.4px}
+  .name .mut{color:var(--muted);font-weight:700;font-size:18px}
+  .val{margin-top:8px;font-size:18px;font-weight:800;letter-spacing:-.3px;white-space:nowrap;margin-left:26px}
+  .val.r{color:var(--red)} .val.s{color:#5b6b86} .val.g{color:#8890a0}
+  .bar{margin-top:9px;height:13px;border-radius:7px;background:var(--track);overflow:hidden;margin-left:26px}
+  .fill{height:100%;border-radius:7px}
+  .fill.r{background:linear-gradient(90deg,#e23f53,var(--red))}
+  .fill.s{background:linear-gradient(90deg,#93a0b4,#6c7a90)}
+  .fill.g{background:#cfd6e0}
+
+  .foot{position:absolute;left:56px;right:56px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
+    font-size:15.5px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">병목 — 섹터 JOIN/LEAVE가 게임루프의 <span class="r">54%</span></div>
+    <div class="uline"></div>
+    <div class="sub">게임루프는 <b>코어 1개가 천장</b> — 그 절반을 시야 진입/이탈 처리가 삼킨다</div>
+
+    <div class="stage">
+      <div class="donutwrap">
+        <div class="donut"></div>
+        <div class="dlbl">
+          <span class="n">54%</span>
+          <span class="c">게임루프 1코어 중</span>
+        </div>
+      </div>
+
+      <div class="legend">
+        <div class="row">
+          <div class="rt"><span class="dot r"></span><span class="name">섹터 JOIN/LEAVE <span class="mut">시야 진입·이탈</span></span></div>
+          <div class="val r">9.90 ms · 54% ← 병목</div>
+          <div class="bar"><div class="fill r" style="width:100%"></div></div>
+        </div>
+        <div class="row">
+          <div class="rt"><span class="dot s"></span><span class="name">network <span class="mut">송신 처리</span></span></div>
+          <div class="val s">6.47 ms · 35%</div>
+          <div class="bar"><div class="fill s" style="width:65%"></div></div>
+        </div>
+        <div class="row">
+          <div class="rt"><span class="dot g"></span><span class="name">broadcast · 순수 로직</span></div>
+          <div class="val g">1.95 ms · 11%</div>
+          <div class="bar"><div class="fill g" style="width:20%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">동접 2400 · game_logic 스레드 tick 분해 | 게임루프는 <b>단일 스레드(코어 1)</b> → 워커·송신 코어가 남아도 1코어가 먼저 찬다</div>
+  </div>
+</body>
+</html>

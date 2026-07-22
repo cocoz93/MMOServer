@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --slate:#566072; --pill-gray:#e9edf3;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:640px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:592px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:32px 56px 0}
+
+  .title{font-size:37px;font-weight:800;color:var(--ink);letter-spacing:-.7px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:66px;height:6px;border-radius:3px;background:var(--red);margin-top:13px}
+  .sub{margin-top:12px;font-size:19px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .stage{margin-top:20px;display:grid;grid-template-columns:1fr 168px 1fr;align-items:start}
+  .col{display:flex;flex-direction:column;align-items:center;position:relative}
+
+  .pill{font-size:17px;font-weight:800;padding:7px 20px;border-radius:999px;letter-spacing:-.3px}
+  .pill.before{background:var(--pill-gray);color:var(--slate)}
+  .pill.after{background:var(--red);color:#fff}
+
+  .scene{margin-top:20px;height:196px;position:relative;width:440px;display:flex;align-items:center;justify-content:center}
+
+  /* BEFORE: N wasteful full buffers (25B payload in 1460B) */
+  .wstack{position:relative;width:210px;height:172px}
+  .wbuf{position:absolute;width:96px;height:150px;border-radius:11px;background:#f4f6f9;border:1.6px solid #d9dfe8;overflow:hidden}
+  .wbuf .load{position:absolute;top:0;left:0;right:0;height:15px;background:linear-gradient(180deg,#e6394f,#d7263d)}
+  .wbuf .cap25{position:absolute;top:19px;left:0;right:0;text-align:center;font-size:12px;font-weight:800;color:var(--red)}
+  .wbuf .cap1460{position:absolute;bottom:9px;left:0;right:0;text-align:center;font-size:12.5px;font-weight:700;color:#aab2c0}
+  .wstack .wbuf:nth-child(1){left:0;top:22px;transform:rotate(-4deg)}
+  .wstack .wbuf:nth-child(2){left:36px;top:12px;transform:rotate(1deg)}
+  .wstack .wbuf:nth-child(3){left:74px;top:2px}
+  .wstack .wbuf:nth-child(1) .cap25,.wstack .wbuf:nth-child(1) .cap1460,
+  .wstack .wbuf:nth-child(2) .cap25,.wstack .wbuf:nth-child(2) .cap1460{display:none}
+  .xn{position:absolute;right:-30px;bottom:6px;font-size:44px;font-weight:800;color:var(--slate);letter-spacing:-2px}
+  .xn small{font-size:22px;font-weight:800}
+
+  /* AFTER: one bundled packet with N entries */
+  .bundle{width:220px;height:172px;border-radius:14px;background:#fff;border:2px solid var(--red);
+    box-shadow:0 8px 22px rgba(215,38,61,.14);overflow:hidden}
+  .bundle .bh{height:34px;background:linear-gradient(180deg,#e6394f,#d7263d);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;letter-spacing:-.2px}
+  .bundle .rows{padding:9px 12px;display:flex;flex-direction:column;gap:6px}
+  .bentry{height:16px;border-radius:5px;background:#fdeef0;border:1px solid #f6cdd4;display:flex;align-items:center;padding-left:9px;
+    font-size:11px;font-weight:700;color:#b3495a}
+  .bentry .e{width:9px;height:9px;border-radius:2px;background:var(--red);margin-right:7px}
+
+  .bignum{margin-top:8px;text-align:center}
+  .bignum .n{font-size:52px;font-weight:800;letter-spacing:-2px;line-height:1}
+  .bignum.before .n{color:var(--slate)}
+  .bignum.after .n{color:var(--red)}
+  .bignum .cap{margin-top:6px;font-size:16.5px;font-weight:700;color:#8089a0;letter-spacing:-.3px}
+
+  .arrowcol{display:flex;flex-direction:column;align-items:center;padding-top:74px}
+  .arrowcol .flag{font-size:13px;font-weight:800;color:var(--red);background:#fde7ea;border:1.3px solid #f4c4cc;
+    border-radius:8px;padding:6px 10px;margin-bottom:12px;text-align:center;line-height:1.3;letter-spacing:-.2px}
+
+  .callout{position:absolute;left:56px;right:56px;bottom:74px;display:flex;align-items:center;gap:24px;
+    background:#fdeef0;border:1.5px solid #f6cdd4;border-radius:16px;padding:16px 26px}
+  .callout .txt{flex:1;font-size:17.5px;font-weight:600;color:#8a4550;line-height:1.5;letter-spacing:-.3px}
+  .callout .txt b{color:var(--red);font-weight:800} .callout .txt .ink{color:var(--ink);font-weight:700}
+  .callout .badge{flex:0 0 auto;text-align:center;border-left:1.5px solid #f0bcc5;padding-left:24px}
+  .callout .badge .big{font-size:44px;font-weight:800;color:var(--red);letter-spacing:-1.5px;line-height:1}
+  .callout .badge .side{margin-top:6px;font-size:15.5px;font-weight:700;color:#8a4550;letter-spacing:-.3px}
+  .callout .badge .side b{color:var(--ink);font-weight:800}
+
+  .foot{position:absolute;left:56px;right:56px;bottom:15px;padding-top:11px;border-top:1px solid #eef0f3;
+    font-size:15.5px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">P2 · 인바운드 — <span class="r">N패킷</span>을 1패킷으로 묶음</div>
+    <div class="uline"></div>
+    <div class="sub">수신자는 나 1명 → <b>여러 상대를 한 패킷에 접는다</b> (재사용 버퍼에 모아 배치 빌드)</div>
+
+    <div class="stage">
+      <!-- BEFORE -->
+      <div class="col">
+        <div class="pill before">OFF (P1) · 상대마다 1패킷</div>
+        <div class="scene">
+          <div class="wstack">
+            <div class="wbuf"><div class="load"></div><div class="cap25">25B</div><div class="cap1460">1460B 버퍼</div></div>
+            <div class="wbuf"><div class="load"></div><div class="cap25">25B</div><div class="cap1460">1460B 버퍼</div></div>
+            <div class="wbuf"><div class="load"></div><div class="cap25">25B</div><div class="cap1460">1460B 버퍼</div></div>
+            <div class="xn">×<small>N</small></div>
+          </div>
+        </div>
+        <div class="bignum before"><div class="n">N패킷</div><div class="cap">작은 내용에도 버퍼 통째 Alloc</div></div>
+      </div>
+
+      <!-- ARROW -->
+      <div class="arrowcol">
+        <div class="flag">#define<br>INBOUND_BUNDLE</div>
+        <svg width="120" height="40" viewBox="0 0 120 40">
+          <defs><marker id="ah" markerWidth="9" markerHeight="9" refX="6.5" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 Z" fill="#d7263d"/></marker></defs>
+          <line x1="6" y1="20" x2="100" y2="20" stroke="#d7263d" stroke-width="7" stroke-linecap="round" marker-end="url(#ah)"/>
+        </svg>
+      </div>
+
+      <!-- AFTER -->
+      <div class="col">
+        <div class="pill after">ON (P1+P2) · 묶음 1패킷</div>
+        <div class="scene">
+          <div class="bundle">
+            <div class="bh">S2C_..._BATCH · count + 엔트리</div>
+            <div class="rows">
+              <div class="bentry"><span class="e"></span>상대 1</div>
+              <div class="bentry"><span class="e"></span>상대 2</div>
+              <div class="bentry"><span class="e"></span>상대 3</div>
+              <div class="bentry"><span class="e"></span>상대 N</div>
+            </div>
+          </div>
+        </div>
+        <div class="bignum after"><div class="n">1패킷</div><div class="cap">엔트리 N개 · avg 71 → 93B</div></div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <div class="txt">인바운드는 <b>25B 내용에도 1460B 버퍼를 통째로 Alloc</b>하고 송신 머신을 돌려 — <span class="ink">패킷당 고정비가 지배적</span>이었다. N→1 묶음이 그 고정비를 통째로 걷어냄.</div>
+      <div class="badge">
+        <div class="big">−52%</div>
+        <div class="side">gameloop <b>0.67 → 0.49</b> core<br>= P1의 <b>2배</b> 효과</div>
+      </div>
+    </div>
+
+    <div class="foot">USE_MEMBERSHIP_INBOUND_BUNDLE · CREATE 64 · DELETE 350 엔트리/패킷 상한 | 통제(송신 횟수) 불변 · 동접 4000 · 중앙값(3rep)</div>
+  </div>
+</body>
+</html>
