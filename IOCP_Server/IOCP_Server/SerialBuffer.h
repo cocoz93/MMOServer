@@ -5,6 +5,7 @@
 #pragma once
 
 #include <atomic>
+#include <cstdint>
 #include "LockFree/ExternalTlsFreeList.h"
 
 // 기본 직렬화 버퍼 크기 — 현재 프로토콜 최대 패킷(~1034B)을 수용할 수 있으면 충분
@@ -81,19 +82,19 @@ public:
 	//Input
 public:
 	CSerialBuffer& operator << (const char* Value);
-	CSerialBuffer& operator << (const WCHAR* Value);
+	CSerialBuffer& operator << (const wchar_t* Value);
 
-	CSerialBuffer& operator << (BYTE Value);
+	CSerialBuffer& operator << (uint8_t Value);
 	CSerialBuffer& operator << (char Value);
 
 	CSerialBuffer& operator << (short Value);
-	CSerialBuffer& operator << (WORD Value);
+	CSerialBuffer& operator << (uint16_t Value);
 
 	CSerialBuffer& operator << (int Value);
-	CSerialBuffer& operator << (DWORD Value);
+	CSerialBuffer& operator << (uint32_t Value);
 
-	CSerialBuffer& operator << (INT64 Value);
-	CSerialBuffer& operator << (UINT64 Value);
+	CSerialBuffer& operator << (int64_t Value);
+	CSerialBuffer& operator << (uint64_t Value);
 
 
 	CSerialBuffer& operator << (float Value);
@@ -103,17 +104,17 @@ public:
 public:
 	//CSerialBuffer& operator >> (char* Value);
 
-	CSerialBuffer& operator >> (BYTE& Value);
+	CSerialBuffer& operator >> (uint8_t& Value);
 	CSerialBuffer& operator >> (char& Value);
 
 	CSerialBuffer& operator >> (short& Value);
-	CSerialBuffer& operator >> (WORD& Value);
+	CSerialBuffer& operator >> (uint16_t& Value);
 
 	CSerialBuffer& operator >> (int& Value);
-	CSerialBuffer& operator >> (DWORD& Value);
+	CSerialBuffer& operator >> (uint32_t& Value);
 
-	CSerialBuffer& operator >> (INT64& Value);
-	CSerialBuffer& operator >> (UINT64& Value);
+	CSerialBuffer& operator >> (int64_t& Value);
+	CSerialBuffer& operator >> (uint64_t& Value);
 
 	CSerialBuffer& operator >> (float& Value);
 	CSerialBuffer& operator >> (double& Value);

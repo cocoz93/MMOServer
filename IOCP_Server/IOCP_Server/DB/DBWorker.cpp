@@ -133,7 +133,7 @@ void CDBWorker::PushToSlot(DBWorkerSlot& slot, const DBSaveJob* jobs, size_t cou
     const size_t dropped = count - take;
     if (dropped > 0)
     {
-        _monitor._dbDroppedJobs.Add(static_cast<LONG64>(dropped));
+        _monitor._dbDroppedJobs.Add(static_cast<int64_t>(dropped));
         SLOG_ERROR("[DB] backpressure drop — worker={} dropped={} (queue full, max={})",
                    slot.index, dropped, _queueMax);
     }

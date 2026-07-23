@@ -26,8 +26,8 @@ namespace
     // 헤더 시작: size placeholder(아래서 백패치) + type
     inline void BeginPacket(CSerialBuffer* buf, MsgType type)
     {
-        *buf << static_cast<WORD>(0);                 // header.size (placeholder)
-        *buf << static_cast<WORD>(type);              // header.type
+        *buf << static_cast<uint16_t>(0);                 // header.size (placeholder)
+        *buf << static_cast<uint16_t>(type);              // header.type
     }
 
     // 헤더 종료: size 백패치(= 전체 payload 바이트) + Seal
@@ -45,7 +45,7 @@ namespace
         CSerialBuffer* buf = CSerialBuffer::Alloc();
         BeginPacket(buf, MSG_S2C_MOVE_START::TYPE);
         *buf << static_cast<int>(playerId);
-        *buf << static_cast<BYTE>(direction);
+        *buf << static_cast<uint8_t>(direction);
         *buf << x;
         *buf << y;
         FinalizePacket(buf);
@@ -58,7 +58,7 @@ namespace
         CSerialBuffer* buf = CSerialBuffer::Alloc();
         BeginPacket(buf, MSG_S2C_MOVE_STOP::TYPE);
         *buf << static_cast<int>(playerId);
-        *buf << static_cast<BYTE>(direction);
+        *buf << static_cast<uint8_t>(direction);
         *buf << x;
         *buf << y;
         FinalizePacket(buf);
@@ -97,9 +97,9 @@ namespace
         CSerialBuffer* buf = CSerialBuffer::Alloc();
         BeginPacket(buf, MSG_S2C_CREATE_MY_PLAYER::TYPE);
         *buf << static_cast<int>(target->_playerId);
-        *buf << static_cast<BYTE>(target->_direction);
-        *buf << static_cast<BYTE>(target->_displayChar);
-        *buf << static_cast<BYTE>(target->_colorIndex);
+        *buf << static_cast<uint8_t>(target->_direction);
+        *buf << static_cast<uint8_t>(target->_displayChar);
+        *buf << static_cast<uint8_t>(target->_colorIndex);
         *buf << target->_x;
         *buf << target->_y;
         *buf << static_cast<int>(target->_speed);
@@ -113,11 +113,11 @@ namespace
         CSerialBuffer* buf = CSerialBuffer::Alloc();
         BeginPacket(buf, MSG_S2C_CREATE_OTHER_PLAYER::TYPE);
         *buf << static_cast<int>(player->_playerId);
-        *buf << static_cast<BYTE>(player->_direction);
-        *buf << static_cast<BYTE>(player->_moveState);
-        *buf << static_cast<BYTE>(player->_displayChar);
-        *buf << static_cast<BYTE>(player->_colorIndex);
-        *buf << static_cast<BYTE>(reason);
+        *buf << static_cast<uint8_t>(player->_direction);
+        *buf << static_cast<uint8_t>(player->_moveState);
+        *buf << static_cast<uint8_t>(player->_displayChar);
+        *buf << static_cast<uint8_t>(player->_colorIndex);
+        *buf << static_cast<uint8_t>(reason);
         *buf << player->_x;
         *buf << player->_y;
         *buf << static_cast<int>(player->_speed);
@@ -143,9 +143,9 @@ namespace
         *buf << static_cast<int>(mapId);
         *buf << static_cast<int>(channelIndex);
         *buf << static_cast<int>(target->_playerId);
-        *buf << static_cast<BYTE>(target->_displayChar);
-        *buf << static_cast<BYTE>(target->_colorIndex);
-        *buf << static_cast<BYTE>(target->_direction);
+        *buf << static_cast<uint8_t>(target->_displayChar);
+        *buf << static_cast<uint8_t>(target->_colorIndex);
+        *buf << static_cast<uint8_t>(target->_direction);
         *buf << target->_x;
         *buf << target->_y;
         FinalizePacket(buf);
@@ -157,7 +157,7 @@ namespace
     {
         CSerialBuffer* buf = CSerialBuffer::Alloc();
         BeginPacket(buf, MSG_S2C_ZONE_CHANGE_FAIL::TYPE);
-        *buf << static_cast<BYTE>(reason);
+        *buf << static_cast<uint8_t>(reason);
         FinalizePacket(buf);
         assert(buf->GetDataSize() == sizeof(MSG_S2C_ZONE_CHANGE_FAIL));
         return buf;
@@ -188,8 +188,8 @@ namespace
         CSerialBuffer* buf = CSerialBuffer::Alloc();
         BeginPacket(buf, MSG_S2C_CHAT::TYPE);
         *buf << static_cast<int>(playerId);
-        *buf << static_cast<BYTE>(displayChar);
-        *buf << static_cast<BYTE>(colorIndex);
+        *buf << static_cast<uint8_t>(displayChar);
+        *buf << static_cast<uint8_t>(colorIndex);
         buf->SetData(reinterpret_cast<char*>(message),
             (msgLen + 1) * sizeof(wchar_t));               // message (가변, null 포함, raw)
         FinalizePacket(buf);
@@ -205,13 +205,13 @@ namespace
     {
         CSerialBuffer* buf = CSerialBuffer::Alloc();
         BeginPacket(buf, MSG_S2C_SECTOR_UPDATES::TYPE);
-        *buf << static_cast<WORD>(count);
+        *buf << static_cast<uint16_t>(count);
         for (int i = 0; i < count; ++i)
         {
             CPlayer* p = players[i];
             *buf << static_cast<int>(p->_playerId);
-            *buf << static_cast<BYTE>(p->_direction);
-            *buf << static_cast<BYTE>(p->_moveState);
+            *buf << static_cast<uint8_t>(p->_direction);
+            *buf << static_cast<uint8_t>(p->_moveState);
             *buf << p->_x;
             *buf << p->_y;
         }
@@ -230,16 +230,16 @@ namespace
     {
         CSerialBuffer* buf = CSerialBuffer::Alloc();
         BeginPacket(buf, MSG_S2C_CREATE_PLAYER_BATCH::TYPE);
-        *buf << static_cast<WORD>(count);
+        *buf << static_cast<uint16_t>(count);
         for (int i = 0; i < count; ++i)
         {
             CPlayer* p = players[i];
             *buf << static_cast<int>(p->_playerId);
-            *buf << static_cast<BYTE>(p->_direction);
-            *buf << static_cast<BYTE>(p->_moveState);
-            *buf << static_cast<BYTE>(p->_displayChar);
-            *buf << static_cast<BYTE>(p->_colorIndex);
-            *buf << static_cast<BYTE>(SpawnReason::NORMAL);   // 인바운드(걸어서 시야 진입) 경로 고정 — OFF의 기본 인자와 동일
+            *buf << static_cast<uint8_t>(p->_direction);
+            *buf << static_cast<uint8_t>(p->_moveState);
+            *buf << static_cast<uint8_t>(p->_displayChar);
+            *buf << static_cast<uint8_t>(p->_colorIndex);
+            *buf << static_cast<uint8_t>(SpawnReason::NORMAL);   // 인바운드(걸어서 시야 진입) 경로 고정 — OFF의 기본 인자와 동일
             *buf << p->_x;
             *buf << p->_y;
             *buf << static_cast<int>(p->_speed);
@@ -255,7 +255,7 @@ namespace
     {
         CSerialBuffer* buf = CSerialBuffer::Alloc();
         BeginPacket(buf, MSG_S2C_DELETE_PLAYER_BATCH::TYPE);
-        *buf << static_cast<WORD>(count);
+        *buf << static_cast<uint16_t>(count);
         for (int i = 0; i < count; ++i)
             *buf << static_cast<int>(players[i]->_playerId);
         FinalizePacket(buf);
@@ -1053,7 +1053,7 @@ void CGameServer::SendPacket(CPlayer* target, CSerialBuffer* pMsg)
         if (_network->RequestSendMsg(target->_sessionId, pMsg, SendFlush::Deferred))
         {
             _monitor._sendPackets.Inc();
-            _monitor._sendEnqueuedBytes.Add(static_cast<LONG64>(dataSize));
+            _monitor._sendEnqueuedBytes.Add(static_cast<int64_t>(dataSize));
         }
     }
     pMsg->SubRef();       // 빌더가 넘긴 소유권 1 회수 (세션 무효여도 안전 회수)
@@ -1076,7 +1076,7 @@ void CGameServer::BroadcastAroundSector(CZone* zone, CPlayer* player, CSerialBuf
         _measGatherT1 - _measGatherT0).count();
 
     _monitor._gameLoop._broadcastCalls.Inc();
-    _monitor._gameLoop._broadcastTargets.Add(static_cast<LONG64>(_broadcastBuffer.size()));
+    _monitor._gameLoop._broadcastTargets.Add(static_cast<int64_t>(_broadcastBuffer.size()));
 
     // 유효 타겟(세션 보유) 수 선카운트 → 타겟별 AddRef를 1회 배치 AddRef로 압축 (원자연산 N→1)
     // 단일 게임루프 스레드 내 호출이라 두 패스 사이 _sessionId 변동 없음 → 카운트 정합 보장
@@ -1088,7 +1088,7 @@ void CGameServer::BroadcastAroundSector(CZone* zone, CPlayer* player, CSerialBuf
     }
 
     if (validCount > 0)
-        pMsg->AddRef(static_cast<LONG64>(validCount));   // 타겟별 소유권 일괄 확보
+        pMsg->AddRef(static_cast<int64_t>(validCount));   // 타겟별 소유권 일괄 확보
 
     // 송신 메트릭은 타겟별 원자증가 대신 성공분을 지역 누적 후 1회 반영 (원자연산 N→1)
     const int dataSize = pMsg->GetDataSize();
@@ -1102,8 +1102,8 @@ void CGameServer::BroadcastAroundSector(CZone* zone, CPlayer* player, CSerialBuf
     }
     if (sentPkts > 0)
     {
-        _monitor._sendPackets.Add(static_cast<LONG64>(sentPkts));
-        _monitor._sendEnqueuedBytes.Add(static_cast<LONG64>(sentPkts) * dataSize);
+        _monitor._sendPackets.Add(static_cast<int64_t>(sentPkts));
+        _monitor._sendEnqueuedBytes.Add(static_cast<int64_t>(sentPkts) * dataSize);
     }
     pMsg->SubRef();   // 빌더가 넘긴 소유권 1 회수 (타겟 0명이어도 안전 회수)
 
@@ -1611,7 +1611,7 @@ void CGameServer::FanoutToSectors(CZone* zone,
     }
 
     if (validCount > 0)
-        pMsg->AddRef(static_cast<LONG64>(validCount));   // 타겟별 소유권 일괄 확보 (원자연산 N→1)
+        pMsg->AddRef(static_cast<int64_t>(validCount));   // 타겟별 소유권 일괄 확보 (원자연산 N→1)
 
     // 2패스: 팬아웃 — RequestSendMsg가 타겟별 소유권 1 소비 (성공/실패 모든 경로에서 SubRef)
     const int dataSize = pMsg->GetDataSize();
@@ -1633,8 +1633,8 @@ void CGameServer::FanoutToSectors(CZone* zone,
 
     if (sentPkts > 0)
     {
-        _monitor._sendPackets.Add(static_cast<LONG64>(sentPkts));
-        _monitor._sendEnqueuedBytes.Add(static_cast<LONG64>(sentPkts) * dataSize);
+        _monitor._sendPackets.Add(static_cast<int64_t>(sentPkts));
+        _monitor._sendEnqueuedBytes.Add(static_cast<int64_t>(sentPkts) * dataSize);
     }
 
     pMsg->SubRef();   // 빌더가 넘긴 소유권 1 회수 (타겟 0명이어도 안전)
@@ -1727,7 +1727,7 @@ void CGameServer::BroadcastSectorPacket(CZone* zone, int32_t sectorX, int32_t se
     zone->GetSectorManager().GetAroundPlayers(sectorX, sectorY, _broadcastBuffer, nullptr);
 
     _monitor._gameLoop._broadcastCalls.Inc();
-    _monitor._gameLoop._broadcastTargets.Add(static_cast<LONG64>(_broadcastBuffer.size()));
+    _monitor._gameLoop._broadcastTargets.Add(static_cast<int64_t>(_broadcastBuffer.size()));
 
     // 유효 타겟(세션 보유) 선카운트 → 배치 AddRef (원자연산 N→1)
     size_t validCount = 0;
@@ -1737,7 +1737,7 @@ void CGameServer::BroadcastSectorPacket(CZone* zone, int32_t sectorX, int32_t se
             ++validCount;
     }
     if (validCount > 0)
-        pMsg->AddRef(static_cast<LONG64>(validCount));
+        pMsg->AddRef(static_cast<int64_t>(validCount));
 
     const int dataSize = pMsg->GetDataSize();
     size_t sentPkts = 0;
@@ -1750,8 +1750,8 @@ void CGameServer::BroadcastSectorPacket(CZone* zone, int32_t sectorX, int32_t se
     }
     if (sentPkts > 0)
     {
-        _monitor._sendPackets.Add(static_cast<LONG64>(sentPkts));
-        _monitor._sendEnqueuedBytes.Add(static_cast<LONG64>(sentPkts) * dataSize);
+        _monitor._sendPackets.Add(static_cast<int64_t>(sentPkts));
+        _monitor._sendEnqueuedBytes.Add(static_cast<int64_t>(sentPkts) * dataSize);
     }
     pMsg->SubRef();   // 빌더가 넘긴 소유권 1 회수 (타겟 0명이어도 안전 회수)
 }
