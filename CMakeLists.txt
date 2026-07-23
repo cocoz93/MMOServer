@@ -16,6 +16,8 @@ set(MYSQL_DIR "C:/Program Files/MySQL/MySQL Server 8.0" CACHE PATH "MySQL instal
 
 set(SRV_DIR ${CMAKE_CURRENT_SOURCE_DIR}/IOCP_Server/IOCP_Server)
 
+if(WIN32)
+
 # ─────────────────────────────────────────────────────────────
 #  IOCP 서버 (Windows) — 기존 IOCP_Server.vcxproj 재현
 # ─────────────────────────────────────────────────────────────
@@ -62,3 +64,17 @@ set_target_properties(IOCP_Server PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_CURRENT_SOURCE_DIR}/Run/bin
     RUNTIME_OUTPUT_DIRECTORY_DEBUG   ${CMAKE_CURRENT_SOURCE_DIR}/Run/bin
 )
+endif()  # WIN32
+
+# ─────────────────────────────────────────────────────────────
+#  epoll 에코 PoC (Linux) — Phase 2 툴체인/이벤트 루프 검증용
+#  게임서버 본체와 무관한 독립 실행파일 (LockFree 포팅 전 단계)
+# ─────────────────────────────────────────────────────────────
+if(UNIX)
+    add_executable(epoll_echo_poc
+        ${SRV_DIR}/poc/epoll_echo_main.cpp
+    )
+    target_compile_features(epoll_echo_poc PRIVATE cxx_std_17)
+    set_target_properties(epoll_echo_poc PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Run/bin)
+endif()
