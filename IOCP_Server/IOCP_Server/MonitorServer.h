@@ -390,6 +390,7 @@ private:
     struct CpuSample
     {
         uint64_t lastCpu100ns = 0;
+        uint64_t lastKernel100ns = 0;   // 직전 커널모드 CPU 누적 (syscall 실행분 격리용)
         uint64_t lastWall100ns = 0;
         bool primed = false;
     };
@@ -399,7 +400,7 @@ private:
         return (static_cast<uint64_t>(ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
     }
 
-    void SampleThreadCpu(std::ostringstream& ss, const char* label,
+    void SampleThreadCpu(std::ostringstream& ss, std::ostringstream& ssKernel, const char* label,
                          HANDLE h, CpuSample& s, uint64_t wallNow)
     {
         if (h == nullptr) return;   // 아직 미등록(예: 에코 모드엔 게임루프 없음)
@@ -408,20 +409,26 @@ private:
         if (!GetThreadTimes(h, &ftCreate, &ftExit, &ftKernel, &ftUser))
             return;
 
-        uint64_t cpuNow = FileTimeToU64(ftKernel) + FileTimeToU64(ftUser);
+        uint64_t kernelNow = FileTimeToU64(ftKernel);          // 커널모드 CPU만 (syscall 실행분 격리)
+        uint64_t cpuNow = kernelNow + FileTimeToU64(ftUser);   // 총 CPU (user+kernel)
 
         double ratio = 0.0;
+        double kernelRatio = 0.0;
         if (s.primed && wallNow > s.lastWall100ns)
         {
-            uint64_t dCpu = cpuNow - s.lastCpu100ns;
             uint64_t dWall = wallNow - s.lastWall100ns;
-            ratio = static_cast<double>(dCpu) / static_cast<double>(dWall);
+            ratio       = static_cast<double>(cpuNow - s.lastCpu100ns)       / static_cast<double>(dWall);
+            kernelRatio = static_cast<double>(kernelNow - s.lastKernel100ns) / static_cast<double>(dWall);
         }
         s.lastCpu100ns = cpuNow;
+        s.lastKernel100ns = kernelNow;
         s.lastWall100ns = wallNow;
         s.primed = true;
 
-        ss << "mmo_thread_cpu_ratio{thread=\"" << label << "\"} " << ratio << "\n";
+        // 커널 라인은 ssKernel에 따로 모은다 — Prometheus 텍스트 포맷은 한 메트릭 패밀리의
+        // 라인들이 연속이어야 하므로(교차 금지), cpu_ratio 블록과 kernel_ratio 블록을 분리해 뒤에 붙인다.
+        ss       << "mmo_thread_cpu_ratio{thread=\""    << label << "\"} " << ratio       << "\n";
+        ssKernel << "mmo_thread_kernel_ratio{thread=\"" << label << "\"} " << kernelRatio << "\n";
     }
 
     void WriteThreadCpu(std::ostringstream& ss)
@@ -430,36 +437,43 @@ private:
         GetSystemTimeAsFileTime(&ftNow);   // 100ns 단위 벽시계 (GetThreadTimes와 동일 단위)
         uint64_t wallNow = FileTimeToU64(ftNow);
 
+        std::ostringstream ssKernel;   // 커널 비율 라인은 여기 모아 cpu 블록 뒤에 append (패밀리 연속성 유지)
+
         ss << "# HELP mmo_thread_cpu_ratio Per-thread CPU utilization (1.0 = one full core)\n";
         ss << "# TYPE mmo_thread_cpu_ratio gauge\n";
+        ssKernel << "# HELP mmo_thread_kernel_ratio Per-thread kernel-mode CPU (1.0 = one full core; syscall 실행분 격리)\n";
+        ssKernel << "# TYPE mmo_thread_kernel_ratio gauge\n";
         ss << std::fixed << std::setprecision(4);
+        ssKernel << std::fixed << std::setprecision(4);
 
         // 게임루프 (진단정리 4-🔴 capacity-bound 판정 핵심 지표)
-        SampleThreadCpu(ss, "gameloop",
+        SampleThreadCpu(ss, ssKernel, "gameloop",
                         _monitor._gameLoopThreadHandle, _cpuGameLoop, wallNow);
 
-        // IOCP 워커 ("게임루프만 타고 워커는 노나" 대조용)
+        // IOCP 워커 ("게임루프만 타고 워커는 노나" 대조용). RIO 워커도 같은 라벨(worker-i)로 등록됨.
         LONG workerCount = _monitor._workerThreadCount;
         for (int i = 0; i < workerCount && i < CMonitorManager::MAX_WORKER_THREADS; ++i)
         {
             char label[24];
             std::snprintf(label, sizeof(label), "worker-%d", i);
-            SampleThreadCpu(ss, label,
+            SampleThreadCpu(ss, ssKernel, label,
                             _monitor._workerCounters[i].threadHandle, _cpuWorker[i], wallNow);
         }
 
         // [USE_SEND_THREAD] 전용 송신 워커 (비용 이전 판정 — 게임루프 flush가 여기로 샜는지, 워커별 분산 확인).
         //   토글 OFF면 _sendWorkerCount=0이라 루프가 돌지 않음(라인 생략). 워커 노출과 동일 패턴.
+        //   RIO 빌드는 송신 워커가 통합워커로 흡수돼 이 루프가 비어(sendworker-* 라인 0) 있음.
         const LONG sendCount = _monitor._sendWorkerCount;
         for (int i = 0; i < sendCount && i < CMonitorManager::MAX_SEND_WORKERS; ++i)
         {
             char label[24];
             std::snprintf(label, sizeof(label), "sendworker-%d", i);
-            SampleThreadCpu(ss, label,
+            SampleThreadCpu(ss, ssKernel, label,
                             _monitor._sendCounters[i].threadHandle, _cpuSendWorker[i], wallNow);
         }
 
         ss << std::defaultfloat << "\n";
+        ss << ssKernel.str() << "\n";   // 커널 블록을 cpu 블록 뒤에 이어붙임
     }
 
 private:
