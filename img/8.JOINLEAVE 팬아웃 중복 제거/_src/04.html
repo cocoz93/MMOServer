@@ -35,9 +35,9 @@
   /* BEFORE: N wasteful full buffers (25B payload in 1460B) */
   .wstack{position:relative;width:210px;height:172px}
   .wbuf{position:absolute;width:96px;height:150px;border-radius:11px;background:#f4f6f9;border:1.6px solid #d9dfe8;overflow:hidden}
-  .wbuf .load{position:absolute;top:0;left:0;right:0;height:15px;background:linear-gradient(180deg,#e6394f,#d7263d)}
+  .wbuf .load{position:absolute;top:0;left:0;right:0;height:15px;background:var(--red)}
   .wbuf .cap25{position:absolute;top:19px;left:0;right:0;text-align:center;font-size:12px;font-weight:800;color:var(--red)}
-  .wbuf .cap1460{position:absolute;bottom:9px;left:0;right:0;text-align:center;font-size:12.5px;font-weight:700;color:#aab2c0}
+  .wbuf .cap1460{position:absolute;bottom:9px;left:0;right:0;text-align:center;font-size:12.5px;font-weight:700;color:#6B7484}
   .wstack .wbuf:nth-child(1){left:0;top:22px;transform:rotate(-4deg)}
   .wstack .wbuf:nth-child(2){left:36px;top:12px;transform:rotate(1deg)}
   .wstack .wbuf:nth-child(3){left:74px;top:2px}
@@ -48,8 +48,8 @@
 
   /* AFTER: one bundled packet with N entries */
   .bundle{width:220px;height:172px;border-radius:14px;background:#fff;border:2px solid var(--red);
-    box-shadow:0 8px 22px rgba(215,38,61,.14);overflow:hidden}
-  .bundle .bh{height:34px;background:linear-gradient(180deg,#e6394f,#d7263d);color:#fff;
+    box-shadow:0 6px 16px rgba(30,40,70,.08);overflow:hidden}
+  .bundle .bh{height:34px;background:var(--red);color:#fff;
     display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;letter-spacing:-.2px}
   .bundle .rows{padding:9px 12px;display:flex;flex-direction:column;gap:6px}
   .bentry{height:16px;border-radius:5px;background:#fdeef0;border:1px solid #f6cdd4;display:flex;align-items:center;padding-left:9px;
@@ -72,8 +72,9 @@
   .callout .txt b{color:var(--red);font-weight:800} .callout .txt .ink{color:var(--ink);font-weight:700}
   .callout .badge{flex:0 0 auto;text-align:center;border-left:1.5px solid #f0bcc5;padding-left:24px}
   .callout .badge .big{font-size:44px;font-weight:800;color:var(--red);letter-spacing:-1.5px;line-height:1}
-  .callout .badge .side{margin-top:6px;font-size:15.5px;font-weight:700;color:#8a4550;letter-spacing:-.3px}
+  .callout .badge .side{margin-top:6px;font-size:15.5px;font-weight:700;color:#8a4550;letter-spacing:-.3px;line-height:1.5}
   .callout .badge .side b{color:var(--ink);font-weight:800}
+  .callout .badge .side .sec{display:inline-block;margin-top:5px;font-size:13px;font-weight:700;color:#a98a90}
 
   .foot{position:absolute;left:56px;right:56px;bottom:15px;padding-top:11px;border-top:1px solid #eef0f3;
     font-size:15.5px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
@@ -133,7 +134,7 @@
       <div class="txt">인바운드는 <b>25B 내용에도 1460B 버퍼를 통째로 Alloc</b>하고 송신 머신을 돌려 — <span class="ink">패킷당 고정비가 지배적</span>이었다. N→1 묶음이 그 고정비를 통째로 걷어냄.</div>
       <div class="badge">
         <div class="big">−52%</div>
-        <div class="side">gameloop <b>0.67 → 0.49</b> core<br>= P1의 <b>2배</b> 효과</div>
+        <div class="side">섹터 JOIN/LEAVE 비용<br>membership <b>12.7 → 6.2</b> ms/tick<br><span class="sec">gameloop 0.67 → 0.49 core · P1의 2배</span></div>
       </div>
     </div>
 

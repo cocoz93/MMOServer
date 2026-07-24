@@ -10,13 +10,13 @@
   .chart svg{ width:484px; height:auto; display:block; }
 
   .right{ flex:1; display:flex; flex-direction:column; gap:17px; }
-  .diagbox{ display:flex; gap:15px; align-items:center; background:linear-gradient(135deg,#fff6f6,#fdeaea);
-    border:1px solid var(--red-line); border-radius:18px; padding:16px 22px; box-shadow:0 12px 28px -18px rgba(220,38,38,.45); }
+  .diagbox{ display:flex; gap:15px; align-items:center; background:var(--red-bg);
+    border:1px solid var(--red-line); border-radius:18px; padding:16px 22px; box-shadow:0 2px 6px -2px rgba(15,23,42,.12); }
   .diagbox .txt .t{ font-size:24px; font-weight:900; color:var(--red-deep); letter-spacing:-.6px; }
   .diagbox .txt .s{ font-size:15.5px; color:#9a4a4a; font-weight:600; margin-top:3px; }
   .pts{ display:flex; flex-direction:column; gap:16px; padding:2px 2px; }
   .pt{ display:flex; gap:13px; align-items:flex-start; font-size:18px; line-height:1.45; color:#334155; font-weight:600; }
-  .pt .badge{ background:linear-gradient(135deg,#f87171,#dc2626); margin-top:1px; box-shadow:0 4px 10px -4px rgba(220,38,38,.55); }
+  .pt .badge{ background:var(--red-deep); margin-top:1px; box-shadow:0 2px 6px -2px rgba(15,23,42,.12); }
   .pt b{ color:var(--red-deep); font-weight:800; }
 </style></head>
 <body><div class="card">
@@ -28,39 +28,42 @@
   <div class="body" style="align-items:center;">
     <div class="row">
       <div class="chart">
-        <svg viewBox="0 0 484 256" xmlns="http://www.w3.org/2000/svg">
+        <svg viewBox="0 0 484 268" xmlns="http://www.w3.org/2000/svg">
           <defs>
-            <linearGradient id="gRed" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fb6a6a"/><stop offset="1" stop-color="#dc2626"/></linearGradient>
-            <linearGradient id="gBlue" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#60a5fa"/><stop offset="1" stop-color="#2563eb"/></linearGradient>
-            <linearGradient id="gGray" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e2e8f0"/><stop offset="1" stop-color="#c2ccda"/></linearGradient>
-            <filter id="dsoft" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="7" stdDeviation="7" flood-color="#0f172a" flood-opacity="0.20"/></filter>
+            <filter id="dsoft" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#0f172a" flood-opacity="0.12"/></filter>
           </defs>
 
-          <!-- 도넛 (12시 시작, 시계방향) : 송신 74.1% / copy 18.4% / 그외+모으기 7.48% -->
-          <g transform="rotate(-90 210 124)" filter="url(#dsoft)">
-            <circle cx="210" cy="124" r="78" fill="none" stroke="url(#gRed)"  stroke-width="27" stroke-dasharray="356.2 133.8" stroke-dashoffset="0"/>
-            <circle cx="210" cy="124" r="78" fill="none" stroke="url(#gBlue)" stroke-width="27" stroke-dasharray="83.3 406.7" stroke-dashoffset="-363.1"/>
-            <circle cx="210" cy="124" r="78" fill="none" stroke="url(#gGray)" stroke-width="27" stroke-dasharray="29.8 460.2" stroke-dashoffset="-453.3"/>
+          <!-- 도넛 (12시 시작, 시계방향) : 송신 74.1% / copy 18.4% / 그외+모으기 7.48% — 단색 역할색 -->
+          <!-- r=60, 둘레 376.99 : 송신 279.3 / copy 69.4 / 그외 28.2 (1.5 gap) -->
+          <g transform="rotate(-90 210 88)" filter="url(#dsoft)">
+            <circle cx="210" cy="88" r="60" fill="none" stroke="#dc2626" stroke-width="24" stroke-dasharray="279.3 97.7" stroke-dashoffset="0"/>
+            <circle cx="210" cy="88" r="60" fill="none" stroke="#2563eb" stroke-width="24" stroke-dasharray="69.4 307.6" stroke-dashoffset="-280.8"/>
+            <circle cx="210" cy="88" r="60" fill="none" stroke="#cbd5e1" stroke-width="24" stroke-dasharray="28.2 348.8" stroke-dashoffset="-351.7"/>
           </g>
 
           <!-- 중앙 값 -->
-          <text x="210" y="118" text-anchor="middle" font-family="Pretendard" font-size="45" font-weight="900" fill="#dc2626" letter-spacing="-2">74%</text>
-          <text x="210" y="142" text-anchor="middle" font-family="Pretendard" font-size="14" font-weight="800" fill="#dc2626">송신 flush_send</text>
+          <text x="210" y="82" text-anchor="middle" font-family="Pretendard" font-size="40" font-weight="900" fill="#dc2626" letter-spacing="-2">74%</text>
+          <text x="210" y="100" text-anchor="middle" font-family="Pretendard" font-size="12" font-weight="800" fill="#dc2626">송신</text>
+          <text x="210" y="113" text-anchor="middle" font-family="Pretendard" font-size="11.5" font-weight="800" fill="#dc2626">flush_send</text>
 
-          <!-- 송신 leader (우하) -->
-          <polyline points="277,187 322,203 348,203" fill="none" stroke="#dc2626" stroke-width="2"/>
-          <circle cx="277" cy="187" r="3.6" fill="#dc2626"/>
-          <text x="353" y="197" font-family="Pretendard" font-size="18" font-weight="800" fill="#dc2626">송신 74.1%</text>
-          <text x="353" y="219" font-family="Pretendard" font-size="14.5" font-weight="700" fill="#94a3b8">14.56 ms</text>
-
-          <!-- copy leader (좌상) -->
-          <polyline points="131,78 92,63 66,63" fill="none" stroke="#2563eb" stroke-width="2"/>
-          <circle cx="131" cy="78" r="3.6" fill="#2563eb"/>
-          <text x="61" y="57" text-anchor="end" font-family="Pretendard" font-size="18" font-weight="800" fill="#2563eb">copy 18.4%</text>
-          <text x="61" y="79" text-anchor="end" font-family="Pretendard" font-size="14.5" font-weight="700" fill="#94a3b8">3.61 ms</text>
-
-          <!-- 하단 미세 항목 -->
-          <text x="210" y="246" text-anchor="middle" font-family="Pretendard" font-size="15" font-weight="700" fill="#94a3b8">그 외 7.45% · 모으기 gather 0.03%</text>
+          <!-- 정렬된 범례 (지시선 제거) — 라벨 좌정렬 · 퍼센트/디테일 우정렬 열 -->
+          <g font-family="Pretendard">
+            <!-- 송신 -->
+            <rect x="76" y="182" width="14" height="14" rx="4" fill="#dc2626"/>
+            <text x="98" y="194" font-size="18" font-weight="800" fill="#dc2626">송신</text>
+            <text x="338" y="194" text-anchor="end" font-size="18" font-weight="900" fill="#dc2626">74.1%</text>
+            <text x="470" y="194" text-anchor="end" font-size="15" font-weight="700" fill="#94a3b8">14.56 ms</text>
+            <!-- copy -->
+            <rect x="76" y="212" width="14" height="14" rx="4" fill="#2563eb"/>
+            <text x="98" y="224" font-size="18" font-weight="800" fill="#2563eb">copy</text>
+            <text x="338" y="224" text-anchor="end" font-size="18" font-weight="900" fill="#2563eb">18.4%</text>
+            <text x="470" y="224" text-anchor="end" font-size="15" font-weight="700" fill="#94a3b8">3.61 ms</text>
+            <!-- 그 외 -->
+            <rect x="76" y="242" width="14" height="14" rx="4" fill="#cbd5e1"/>
+            <text x="98" y="254" font-size="18" font-weight="800" fill="#54637c">그 외 · 모으기</text>
+            <text x="338" y="254" text-anchor="end" font-size="18" font-weight="900" fill="#54637c">7.48%</text>
+            <text x="470" y="254" text-anchor="end" font-size="15" font-weight="700" fill="#94a3b8">gather 0.03%</text>
+          </g>
         </svg>
       </div>
 

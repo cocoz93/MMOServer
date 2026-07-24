@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';src:url('fonts/PretendardVariable.woff2') format('woff2');font-weight:100 900;font-style:normal;font-display:block}
+  :root{--bg:#eef1f5;--card:#ffffff;--ink:#1f2330;--muted:#7c8597;--red:#d7263d;--deep:#b3122a;--slate:#566072;--tile:#f6f8fb;--track:#e7ebf1;--blue:#3a78b8;--deepblue:#2b5f95}
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:700px;overflow:hidden;background:var(--bg);font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:652px;background:var(--card);border:1px solid #eef0f3;border-radius:34px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);padding:40px 54px 0}
+  .title{font-size:40px;font-weight:800;color:var(--ink);letter-spacing:-1px;line-height:1.1}
+  .title .r{color:var(--red)}
+  .uline{width:76px;height:6px;border-radius:4px;background:var(--red);margin-top:16px}
+  .sub{margin-top:16px;font-size:21px;font-weight:500;color:var(--muted);letter-spacing:-.3px;line-height:1.4}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .band{margin-top:28px}
+  .bandlab{font-size:17px;font-weight:800;color:var(--slate);letter-spacing:-.3px;margin-bottom:13px}
+  .bandlab .n{color:var(--muted);font-weight:600}
+  .cores{display:grid;grid-template-columns:1.55fr 1fr 1fr 1fr 1fr 1fr;column-gap:15px}
+  .core{background:var(--tile);border-radius:20px;padding:19px 18px 20px;position:relative;overflow:hidden;min-height:158px}
+  .core:before{content:"";position:absolute;left:0;top:0;bottom:0;width:8px;background:#c4cbd6}
+  .core.hot{background:#fbecef;box-shadow:inset 0 0 0 3px var(--red)}
+  .core.hot:before{background:var(--red)}
+  .core.blue{background:#eef4fb}
+  .core.blue:before{background:var(--blue)}
+  .cid{font-size:17px;font-weight:800;color:var(--muted);letter-spacing:-.3px}
+  .core.hot .cid{color:var(--deep)}
+  .core.blue .cid{color:var(--deepblue)}
+  .clog{font-size:15px;font-weight:700;color:#a9b2c0;margin-top:3px}
+  .cbody{margin-top:14px;font-size:19px;font-weight:800;color:var(--slate);letter-spacing:-.3px;line-height:1.28}
+  .core.hot .cbody{color:var(--deep);font-size:20px}
+  .core.blue .cbody{color:var(--deepblue)}
+  .csub{margin-top:8px;font-size:15px;font-weight:600;color:var(--muted);line-height:1.32}
+
+  .lc{margin-top:20px}
+  .lc .lclab{font-size:16px;font-weight:800;color:#a9b2c0;letter-spacing:-.3px;margin-bottom:11px}
+  .lcrow{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;column-gap:15px}
+  .lcell{background:#f2f4f8;border-radius:15px;padding:13px 16px}
+  .lcell .cid{color:#a9b2c0;font-size:16px}
+  .lcell .cbody{font-size:16px;color:#8792a3;margin-top:7px}
+
+  .callout{margin-top:22px;display:flex;align-items:flex-start;gap:16px;background:#fbecef;border-radius:18px;padding:20px 24px}
+  .callout .k{flex:0 0 auto;font-size:17px;font-weight:800;color:#fff;background:var(--red);border-radius:9px;padding:7px 14px;margin-top:1px}
+  .callout .t{font-size:19px;font-weight:700;color:#7a2130;letter-spacing:-.3px;line-height:1.4}
+  .callout .t b{color:var(--deep)}
+
+  .foot{position:absolute;left:54px;right:54px;bottom:22px;padding-top:18px;border-top:1px solid #eef0f3;font-size:18px;color:#9aa3b2;font-weight:500;letter-spacing:-.3px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">코어 마스크 2개 — 게임루프만 <span class="r">코어0 통째</span>로 격리</div>
+    <div class="uline"></div>
+    <div class="sub">게임루프=물리코어0(형제 논리 0·1 전용), 그 외 전부=물리 1–5. <b>서버 0–5</b> / 부하클라 6–9</div>
+
+    <div class="band">
+      <div class="bandlab">서버 물리코어 <span class="n">0–5 (i9-10900 · 물리 10 / 논리 20)</span></div>
+      <div class="cores">
+        <div class="core hot">
+          <div class="cid">물리코어 0</div>
+          <div class="clog">논리 0 · 1 전용</div>
+          <div class="cbody">게임루프</div>
+          <div class="csub">멤버십 팬아웃 · 게임로직 (두 논리코어 비움)</div>
+        </div>
+        <div class="core blue"><div class="cid">코어 1</div><div class="clog">논리 2·3</div><div class="cbody">IOCP</div></div>
+        <div class="core blue"><div class="cid">코어 2</div><div class="clog">논리 4·5</div><div class="cbody">송신</div></div>
+        <div class="core"><div class="cid">코어 3</div><div class="clog">논리 6·7</div><div class="cbody">accept<br>·DB</div></div>
+        <div class="core"><div class="cid">코어 4</div><div class="clog">논리 8·9</div><div class="cbody">타이머</div></div>
+        <div class="core"><div class="cid">코어 5</div><div class="clog">논리 10·11</div><div class="cbody">모니터</div></div>
+      </div>
+    </div>
+
+    <div class="lc">
+      <div class="lclab">부하클라이언트(봇) 물리코어 6–9 — 서버와 분리</div>
+      <div class="lcrow">
+        <div class="lcell"><div class="cid">코어 6</div><div class="cbody">봇 부하</div></div>
+        <div class="lcell"><div class="cid">코어 7</div><div class="cbody">봇 부하</div></div>
+        <div class="lcell"><div class="cid">코어 8</div><div class="cbody">봇 부하</div></div>
+        <div class="lcell"><div class="cid">코어 9</div><div class="cbody">봇 부하</div></div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <span class="k">왜</span>
+      <span class="t">'게임만 고정'으론 부족 — 형제 논리코어에 송신워커가 얹히면 같은 물리코어 <b>L2(코어전용 256KB)</b>를 동시에 오염. 그래서 나머지를 <b>1–5로 밀어내</b> 코어0의 두 논리코어를 모두 비운다</span>
+    </div>
+
+    <div class="foot">INI <b>GameCore</b>(빈값=off / <b>0</b>=on) 재기동 A/B · 리빌드 없음 · Windows 의존 코드는 <b>CoreAffinity.cpp</b> 한 파일에 격리</div>
+  </div>
+</body>
+</html>

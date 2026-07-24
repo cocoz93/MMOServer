@@ -63,16 +63,16 @@
 </head>
 <body>
   <div class="card">
-    <div class="title">슬롯 수 <span class="r">+1</span> 보정 — 안 하면 5초 일찍 끊긴다</div>
-    <div class="sub">timeout=<b>60초</b> · tick=<b>5초</b> · Drain 직후 Tick이 cursor를 전진시키는 구조</div>
+    <div class="title">슬롯 수 <span class="r">+1</span> 보정 — 안 하면 1초 일찍 끊긴다</div>
+    <div class="sub">timeout=<b>60초</b> · tick=<b>1초</b> · Drain 직후 Tick이 cursor를 전진시키는 구조</div>
 
     <div class="stage">
       <!-- LEFT: no +1 -->
       <div class="col">
-        <div class="pill before">보정 전 · 12슬롯</div>
+        <div class="pill before">보정 전 · 60슬롯</div>
         <div class="arrowcap b">삽입 슬롯(C) 건너뜀 ↓</div>
-        <div class="donut"><svg viewBox="0 0 240 240"><g id="ringL"></g></svg><div class="lbl b"><span class="n">11</span><span class="u">tick 후 도달</span></div></div>
-        <div class="bignum b"><span class="n">55</span><span class="u">초</span></div>
+        <div class="donut"><svg viewBox="0 0 240 240"><g id="ringL"></g></svg><div class="lbl b"><span class="n">59</span><span class="u">tick 후 도달</span></div></div>
+        <div class="bignum b"><span class="n">59</span><span class="u">초</span></div>
         <div class="botcap warn">⚠ 정상 세션도 조기 만료 가능</div>
       </div>
 
@@ -88,9 +88,9 @@
 
       <!-- RIGHT: +1 -->
       <div class="col">
-        <div class="pill after">보정 후 · 13슬롯</div>
+        <div class="pill after">보정 후 · 61슬롯</div>
         <div class="arrowcap r">삽입 슬롯(C)에 정확히 복귀 ↓</div>
-        <div class="donut"><svg viewBox="0 0 240 240"><g id="ringR"></g></svg><div class="lbl r"><span class="n">12</span><span class="u">tick 후 도달</span></div></div>
+        <div class="donut"><svg viewBox="0 0 240 240"><g id="ringR"></g></svg><div class="lbl r"><span class="n">60</span><span class="u">tick 후 도달</span></div></div>
         <div class="bignum r"><span class="n">60</span><span class="u">초</span></div>
         <div class="botcap ok">✓ timeout과 정확히 일치</div>
       </div>
@@ -107,7 +107,7 @@ function wedge(cx,cy,rO,rI,a0,a1){
 }
 function buildRing(id, cells, theme){
   const cx=120,cy=120,rO=114,rI=77, N=cells.length;
-  const gap = N>10 ? 3.2 : 5.5, step=360/N, ns="http://www.w3.org/2000/svg";
+  const gap = N>40 ? 1.4 : (N>10 ? 3.2 : 5.5), step=360/N, ns="http://www.w3.org/2000/svg";
   const g=document.getElementById(id);
   for(let i=0;i<N;i++){
     const a0=(-90+i*step+gap/2)*Math.PI/180, a1=(-90+(i+1)*step-gap/2)*Math.PI/180;
@@ -121,11 +121,11 @@ function buildRing(id, cells, theme){
   }
 }
 const B='#3a78b8', R='#d7263d', G='#e2e6ec';
-// left: 12 slots, slot 0 = insert point C (dashed outline), rest filled blue
-const left=[]; for(let i=0;i<12;i++){ left.push(i===0?'dash':B); }
+// left: 60 slots (no +1), slot 0 = insert point C (dashed outline), rest filled blue
+const left=[]; for(let i=0;i<60;i++){ left.push(i===0?'dash':B); }
 buildRing('ringL', left, B);
-// right: 13 slots, slot 0 = insert point C (dashed outline), rest filled red
-const right=[]; for(let i=0;i<13;i++){ right.push(i===0?'dash':R); }
+// right: 61 slots (+1 corrected), slot 0 = insert point C (dashed outline), rest filled red
+const right=[]; for(let i=0;i<61;i++){ right.push(i===0?'dash':R); }
 buildRing('ringR', right, R);
 </script>
 </body>

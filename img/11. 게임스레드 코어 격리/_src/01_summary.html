@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --blue:#3a78b8; --gray-fill:#e2e6ec; --slate:#566072; --track:#eef1f5;
+    --tile:#f6f8fb;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:700px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:652px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:34px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:48px 66px 0}
+
+  .title{font-size:47px;font-weight:800;color:var(--ink);letter-spacing:-1.1px;line-height:1.1}
+  .title .r{color:var(--red)}
+  .uline{width:88px;height:7px;border-radius:4px;background:var(--red);margin-top:20px}
+  .sub{margin-top:20px;font-size:23px;font-weight:500;color:var(--muted);letter-spacing:-.3px;line-height:1.4}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .hero{margin-top:38px;display:grid;grid-template-columns:1fr 1fr;column-gap:30px}
+  .tile{background:var(--tile);border-radius:26px;padding:32px 36px 30px;position:relative;overflow:hidden}
+  .tile:before{content:"";position:absolute;left:0;top:0;bottom:0;width:9px}
+  .tile.r:before{background:var(--red)}
+  .tile.b{background:#eef4fb}
+  .tile.b:before{background:var(--blue)}
+  .tlab{font-size:22px;font-weight:700;color:var(--slate);letter-spacing:-.3px}
+  .tlab .tag{font-weight:800}
+  .tile.r .tlab .tag{color:var(--red)} .tile.b .tlab .tag{color:var(--blue)}
+  .tbig{margin-top:14px;font-size:60px;font-weight:800;color:var(--ink);letter-spacing:-2.5px;line-height:1;display:flex;align-items:baseline;gap:8px}
+  .tbig .arw{color:var(--red);font-size:38px;font-weight:800;margin:0 3px}
+  .tbig .u{font-size:26px;font-weight:700;color:var(--slate);letter-spacing:-.5px}
+  .tbig .approx{font-size:40px;font-weight:800;color:var(--muted);margin-right:2px}
+  .tile.b .tbig{color:var(--blue)}
+  .tbig.sm{font-size:50px;letter-spacing:-2px}
+  .tcap{margin-top:18px;font-size:20px;font-weight:600;color:var(--muted);letter-spacing:-.3px;line-height:1.35}
+  .tcap b{color:#6b7484;font-weight:700}
+
+  .insight{margin-top:36px;display:flex;align-items:center;gap:18px;background:#fbecef;border-radius:22px;padding:26px 30px}
+  .insight .k{flex:0 0 auto;font-size:20px;font-weight:800;color:#fff;background:var(--red);border-radius:11px;padding:9px 18px;letter-spacing:.2px}
+  .insight .t{font-size:24px;font-weight:700;color:#7a2130;letter-spacing:-.4px;line-height:1.35}
+  .insight .t b{color:var(--deep)}
+
+  .foot{position:absolute;left:66px;right:66px;bottom:26px;padding-top:20px;border-top:1px solid #eef0f3;
+    font-size:19px;color:#9aa3b2;font-weight:500;letter-spacing:-.3px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">게임루프 <span class="r">코어 격리</span> — 천장 불변, <span class="r">기각</span></div>
+    <div class="uline"></div>
+    <div class="sub">균등화가 부른 캐시 손실(~10% 천장↓)을 코어 배치로 되찾으려 시도 → <b>off·on 차이 없음</b></div>
+
+    <div class="hero">
+      <div class="tile b">
+        <div class="tlab">접속 천장 — <span class="tag">불변</span></div>
+        <div class="tbig"><span class="approx">~</span>5200<span class="u">동접</span></div>
+        <div class="tcap">off·on <b>둘 다 동일</b> (둘 다 5400서 붕괴)</div>
+      </div>
+      <div class="tile r">
+        <div class="tlab">과부하(5400) 틱 p99 — <span class="tag">독</span></div>
+        <div class="tbig sm">57.6<span class="arw">→</span>97.8<span class="u">ms</span></div>
+        <div class="tcap">off → on · <b>on이 더 악화</b> — 격리가 붕괴를 키움</div>
+      </div>
+    </div>
+
+    <div class="insight">
+      <span class="k">결론</span>
+      <span class="t">천장을 정하는 건 캐시(~5%)가 아니라 <b>멤버십 '일의 양'</b> — 틀린 지점을 쳤다</span>
+    </div>
+
+    <div class="foot">i9-10900(물리10/논리20) · INI <b>GameCore</b> 런타임 A/B · loopback·봇 부하</div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';src:url('fonts/PretendardVariable.woff2') format('woff2');font-weight:100 900;font-style:normal;font-display:block}
+  :root{--bg:#eef1f5;--card:#ffffff;--ink:#1f2330;--muted:#7c8597;--red:#d7263d;--deep:#b3122a;--slate:#566072;--tile:#f6f8fb;--track:#e7ebf1;--blue:#3a78b8;--bdeep:#2c5f95;
+    --btint:#e7f0fa}
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:700px;overflow:hidden;background:var(--bg);font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:652px;background:var(--card);border:1px solid #eef0f3;border-radius:34px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);padding:44px 58px 0}
+  .title{font-size:43px;font-weight:800;color:var(--ink);letter-spacing:-1px;line-height:1.1}
+  .title .r{color:var(--red)}
+  .uline{width:76px;height:6px;border-radius:3px;background:var(--red);margin-top:18px}
+  .sub{margin-top:17px;font-size:22px;font-weight:500;color:var(--muted);letter-spacing:-.2px;line-height:1.4}
+  .sub b{color:#3a4254;font-weight:700}
+  .wrap{margin-top:30px;display:grid;grid-template-columns:1fr 300px;column-gap:34px}
+  /* chart */
+  .chart{position:relative;height:388px;padding-top:24px}
+  .budget{position:absolute;left:0;right:0;border-top:2.5px dashed #b9c2d0;z-index:2}
+  .blab{position:absolute;right:0;top:-13px;font-size:16px;font-weight:700;color:#8792a3;background:var(--card);padding:0 6px}
+  .bars{display:flex;align-items:flex-end;justify-content:space-around;height:270px;border-bottom:2.5px solid #e3e8ee}
+  .grp{display:flex;flex-direction:column;align-items:center;width:19%}
+  .bwrap{height:252px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;width:100%}
+  .bv{font-size:21px;font-weight:800;margin-bottom:7px}
+  .bar{width:70px;border-radius:10px 10px 0 0}
+  .under{background:var(--blue)}
+  .over{background:var(--red)}
+  .grp .bv.o{color:var(--deep)}.grp .bv.u{color:var(--bdeep)}
+  .xl{margin-top:14px;font-size:20px;font-weight:800;color:var(--ink)}
+  .xs{margin-top:7px;font-size:15px;font-weight:600;color:var(--muted);text-align:center;line-height:1.4}
+  .xs b{color:var(--red);font-weight:800}
+  .legend{margin-top:20px;font-size:16px;color:var(--muted);font-weight:600}
+  /* side */
+  .side{padding-top:8px;height:388px;display:flex;flex-direction:column;gap:12px}
+  .scard{background:var(--tile);border-radius:18px;padding:14px 20px;flex:1 1 0;display:flex;flex-direction:column;justify-content:center}
+  .scard.gd{background:var(--btint)}
+  .scard.hl{background:#fbecef}
+  .sh{font-size:17.5px;font-weight:800;color:var(--slate)}
+  .sh.g{color:var(--bdeep)}
+  .sh.r{color:var(--deep)}
+  .sbig{margin-top:5px;font-size:16.5px;font-weight:700;color:var(--ink);line-height:1.34}
+  .sbig b{color:var(--deep);font-weight:800}
+  .scard.gd .sbig b{color:var(--bdeep)}
+  .foot{position:absolute;left:58px;right:58px;bottom:22px;padding-top:15px;border-top:1px solid #eef0f3;font-size:18px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">천장 <span class="r">~5000</span> — 벽은 송신 아닌 게임루프</div>
+    <div class="uline"></div>
+    <div class="sub">K3 고정, 동접 5000→6500 스윕. <b>6000서 게임루프 1.00 포화</b>(CPU 하드월)·틱 p99 138ms. 주범은 <b>멤버십</b>(초선형)</div>
+
+    <div class="wrap">
+      <div class="chart">
+        <div class="budget" style="bottom:81px"><span class="blab">틱 예산 40ms</span></div>
+        <div class="bars">
+          <div class="grp"><div class="bwrap"><span class="bv u">43</span><div class="bar under" style="height:55px"></div></div><div class="xl">5000</div><div class="xs">게임루프 0.54<br>멤버십 18</div></div>
+          <div class="grp"><div class="bwrap"><span class="bv u">59</span><div class="bar under" style="height:75px"></div></div><div class="xl">5500</div><div class="xs">게임루프 0.87<br>멤버십 30</div></div>
+          <div class="grp"><div class="bwrap"><span class="bv o">138</span><div class="bar over" style="height:176px"></div></div><div class="xl">6000</div><div class="xs"><b>게임루프 1.00 포화</b><br>멤버십 56</div></div>
+          <div class="grp"><div class="bwrap"><span class="bv o">198</span><div class="bar over" style="height:252px"></div></div><div class="xl">6500</div><div class="xs">게임루프 1.00<br>멤버십 90</div></div>
+        </div>
+        <div class="legend">막대 = 틱 p99(ms) · 숫자 아래 = 게임루프 CPU(코어) · 멤버십(ms/틱)</div>
+      </div>
+
+      <div class="side">
+        <div class="scard gd">
+          <div class="sh g">송신워커는 천장이 아니다</div>
+          <div class="sbig">전 구간 <b>비포화</b>(최대 0.82→0.62)</div>
+        </div>
+        <div class="scard">
+          <div class="sh">5000도 턱걸이</div>
+          <div class="sbig">p99 <b>43</b>(예산선에 붙음) · 5500은 열화(59)</div>
+        </div>
+        <div class="scard hl">
+          <div class="sh r">6000서 CPU 포화</div>
+          <div class="sbig"><b>멤버십 56ms/틱</b>이 40 예산 초과</div>
+        </div>
+        <div class="scard hl">
+          <div class="sh r">진짜 천장 = 게임루프</div>
+          <div class="sbig">per-pair 팬아웃 → <b>단일 게임스레드 상한</b></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">K3 · WT4 · 멤버십=수신자마다 다른 per-pair CREATE/DELETE(broadcast처럼 연접 불가) · CPU 하드월 6000 · 클라 buffer_full 0</div>
+  </div>
+</body>
+</html>

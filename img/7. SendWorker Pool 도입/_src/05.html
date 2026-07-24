@@ -26,10 +26,11 @@
   .ba{margin-top:30px;display:grid;grid-template-columns:1fr 220px 1fr;align-items:center;column-gap:8px}
   .side{border-radius:20px;padding:26px 30px;text-align:center;position:relative}
   .side.before{background:#f7f8fb;border:1.5px solid #e7ebf1}
-  .side.after{background:#eef5fc;border:2px solid #8ebce3;box-shadow:0 8px 26px rgba(43,106,168,.10)}
+  .side.after{background:#eef5fc;border:2px solid #8ebce3;box-shadow:0 6px 18px rgba(30,40,70,.06)}
   .plabel{display:inline-block;font-size:16.5px;font-weight:800;padding:7px 17px;border-radius:999px;letter-spacing:-.3px}
   .side.before .plabel{background:var(--pill-gray);color:var(--slate)}
   .side.after .plabel{background:var(--blue);color:#fff}
+  .plabel .mk{display:inline-block;width:11px;height:11px;border-radius:3px;background:#fff;margin-right:8px;vertical-align:middle;transform:translateY(-1px)}
   .big{margin-top:12px;display:flex;align-items:baseline;justify-content:center;gap:7px}
   .big .n{font-size:54px;font-weight:800;letter-spacing:-2.4px;line-height:.9}
   .big .u{font-size:21px;font-weight:800}
@@ -44,7 +45,7 @@
 
   .final{margin-top:24px;background:#f4f6f9;border:1.5px solid #e5eaf1;border-radius:16px;padding:18px 26px 18px 32px;
     display:flex;align-items:center;justify-content:center;gap:16px;position:relative;overflow:hidden;box-shadow:0 5px 16px rgba(30,40,70,.05)}
-  .final::before{content:"";position:absolute;left:0;top:0;bottom:0;width:10px;background:linear-gradient(180deg,#4a86c4,#2f6db0)}
+  .final::before{content:"";position:absolute;left:0;top:0;bottom:0;width:10px;background:var(--blue)}
   .final .ck{font-size:18px;font-weight:800;color:var(--blue-ink);letter-spacing:-.3px}
   .final .code{font-size:21px;font-weight:800;color:var(--ink);letter-spacing:-.2px}
   .final .code b{color:var(--red)}
@@ -74,7 +75,7 @@
       </div>
 
       <div class="side after">
-        <span class="plabel">✅ 워커 4 × 송신 2</span>
+        <span class="plabel"><span class="mk"></span>워커 4 × 송신 2</span>
         <div class="big"><span class="n">102</span><span class="u">ms</span></div>
         <div class="blbl">왕복 최악 (RTT p99)</div>
       </div>

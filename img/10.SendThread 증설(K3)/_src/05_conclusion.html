@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';src:url('fonts/PretendardVariable.woff2') format('woff2');font-weight:100 900;font-style:normal;font-display:block}
+  :root{--bg:#eef1f5;--card:#ffffff;--ink:#1f2330;--muted:#7c8597;--red:#d7263d;--deep:#b3122a;--slate:#566072;--tile:#f6f8fb;--track:#e7ebf1;
+    --blue:#3a78b8;--bdeep:#2c5f95;--btint:#e7f0fa}
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:700px;overflow:hidden;background:var(--bg);font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:652px;background:var(--card);border:1px solid #eef0f3;border-radius:34px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);padding:42px 58px 0}
+  .title{font-size:43px;font-weight:800;color:var(--ink);letter-spacing:-1px;line-height:1.1}
+  .title .r{color:var(--red)}
+  .uline{width:76px;height:6px;border-radius:3px;background:var(--red);margin-top:17px}
+  .sub{margin-top:16px;font-size:22px;font-weight:500;color:var(--muted);letter-spacing:-.2px;line-height:1.4}
+  .sub b{color:#3a4254;font-weight:700}
+  .gates{margin-top:30px;display:grid;grid-template-columns:1fr 56px 1fr;align-items:stretch;column-gap:0}
+  .gate{border-radius:26px;padding:26px 30px}
+  .g1{background:var(--btint)}
+  .g2{background:#fbecef;box-shadow:inset 0 0 0 3px var(--red)}
+  .gtop{display:flex;align-items:center;justify-content:space-between}
+  .glab{font-size:19px;font-weight:800;color:var(--slate)}
+  .g1 .glab{color:var(--bdeep)}
+  .g2 .glab{color:var(--deep)}
+  .gst{font-size:16px;font-weight:800;border-radius:9px;padding:6px 14px}
+  .gst.ok{color:#fff;background:var(--blue)}
+  .gst.no{color:#fff;background:var(--red)}
+  .gname{margin-top:16px;font-size:29px;font-weight:800;color:var(--ink);letter-spacing:-.6px}
+  .g1 .gname{color:var(--bdeep)}
+  .g2 .gname{color:var(--deep)}
+  .gname .big{font-size:44px}
+  .gdesc{margin-top:12px;font-size:19px;font-weight:600;color:var(--muted);line-height:1.44}
+  .gdesc b{color:#3a4254;font-weight:800}
+  .g1 .gdesc b{color:var(--bdeep)}
+  .g2 .gdesc b{color:var(--deep)}
+  .arrow{display:flex;align-items:center;justify-content:center;color:#b4bccb;font-size:40px;font-weight:800}
+  .levers{margin-top:30px}
+  .lh{font-size:19px;font-weight:800;color:var(--slate);letter-spacing:-.2px}
+  .lh b{color:var(--deep)}
+  .chips{margin-top:16px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;column-gap:16px}
+  .chip{background:var(--tile);border-radius:18px;padding:18px 20px;border-top:4px solid transparent}
+  .cn{font-size:19px;font-weight:800;color:var(--ink);letter-spacing:-.3px}
+  .cs{margin-top:6px;font-size:15.5px;font-weight:600;color:var(--muted);line-height:1.38}
+  .cs .w{color:#a9b2c0;font-weight:700}
+  .chip.rp{border-top-color:var(--red)}
+  .chip.rp .cn{color:var(--deep)}
+  .chip.bp{border-top-color:var(--blue)}
+  .chip.bp .cn{color:var(--bdeep)}
+  .foot{position:absolute;left:58px;right:58px;bottom:22px;padding-top:15px;border-top:1px solid #eef0f3;font-size:18px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">K는 <span class="r">송신 벽</span>만 푼다 — 천장은 게임루프</div>
+    <div class="uline"></div>
+    <div class="sub">일꾼을 늘려 송신 포화는 넘었지만, 천장을 정하는 건 <b>멤버십 팬아웃</b>이다 — 다음 레버는 K가 아니다</div>
+
+    <div class="gates">
+      <div class="gate g1">
+        <div class="gtop"><span class="glab">1차 벽 · 송신워커</span><span class="gst ok">✓ 넘음</span></div>
+        <div class="gname">K2 포화 → <span style="color:var(--bdeep)">K3</span></div>
+        <div class="gdesc">두 워커 포화를 K개 균등증설로 해소. <b>왕복 187→138ms</b> · 최대 CPU 1.00→0.82. 송신은 더 이상 천장이 아니다</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="gate g2">
+        <div class="gtop"><span class="glab">2차 벽 · 게임루프(멤버십)</span><span class="gst no">✗ 천장</span></div>
+        <div class="gname"><span class="big">~5000</span> 동접</div>
+        <div class="gdesc"><b>멤버십 팬아웃</b>이 40ms 틱벽을 침(6000서 56ms/틱). per-pair CREATE/DELETE라 연접 불가 — <b>K로는 못 넘는다</b></div>
+      </div>
+    </div>
+
+    <div class="levers">
+      <div class="lh">다음 레버 — <b>K가 아니라</b> '일을 덜 하기'와 스케일아웃</div>
+      <div class="chips">
+        <div class="chip rp"><div class="cn">멤버십 경감</div><div class="cs">AOI 축소 · 섹터 hysteresis — 팬아웃 일 자체를 줄임</div></div>
+        <div class="chip rp"><div class="cn">스케일아웃</div><div class="cs">맵=게임스레드 샤딩 — 맵당 ~5000 독립 처리</div></div>
+        <div class="chip bp"><div class="cn">RIO</div><div class="cs">송신 CPU 2.36→~0.5코어 <span class="w">· 멤버십 벽엔 무력</span></div></div>
+        <div class="chip bp"><div class="cn">코어 격리</div><div class="cs">캐시간섭 ~10% 회복 <span class="w">· 천장은 못 올림</span></div></div>
+      </div>
+    </div>
+
+    <div class="foot">실측 단일박스 i9-10900(6 물리코어) · 지연 천장 p99≤40 <b>~5000</b>(턱걸이) · CPU 하드월 6000 · 단일 게임스레드(멤버십) 상한</div>
+  </div>
+</body>
+</html>

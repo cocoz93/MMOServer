@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';src:url('fonts/PretendardVariable.woff2') format('woff2');font-weight:100 900;font-style:normal;font-display:block}
+  :root{--bg:#eef1f5;--card:#ffffff;--ink:#1f2330;--muted:#7c8597;--red:#d7263d;--deep:#b3122a;--slate:#566072;--tile:#f6f8fb;--track:#e7ebf1;
+    --blue:#3a78b8;--bdeep:#2c5f95;--btint:#e7f0fa;--rtint:#fbecef}
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:700px;overflow:hidden;background:var(--bg);font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:652px;background:var(--card);border:1px solid #eef0f3;border-radius:34px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);padding:40px 58px 0}
+  .title{font-size:42px;font-weight:800;color:var(--ink);letter-spacing:-1px;line-height:1.1}
+  .title .r{color:var(--red)}
+  .uline{width:76px;height:6px;border-radius:3px;background:var(--red);margin-top:16px}
+  .sub{margin-top:15px;font-size:21px;font-weight:500;color:var(--muted);letter-spacing:-.2px;line-height:1.4}
+  .sub b{color:#3a4254;font-weight:700}
+  .cols{margin-top:26px;display:grid;grid-template-columns:1fr 1fr 1fr;column-gap:24px}
+  .col{background:var(--tile);border-radius:24px;padding:22px 26px 22px;position:relative}
+  .col.win{background:var(--btint);box-shadow:inset 0 0 0 3px var(--blue)}
+  .ktop{display:flex;align-items:center;gap:11px}
+  .kname{font-size:29px;font-weight:800;color:var(--ink);letter-spacing:-.5px}
+  .col.win .kname{color:var(--bdeep)}
+  .kbadge{font-size:16px;font-weight:800;color:#fff;border-radius:8px;padding:4px 0;min-width:58px;text-align:center}
+  .kbadge.win{background:var(--blue)}
+  .kbadge.warn{background:var(--red)}
+  .kbadge.mut{background:#c4cbd6;color:#5c6577}
+  .khero{margin-top:14px;font-size:19px;font-weight:700;color:var(--slate)}
+  .kval{font-size:52px;font-weight:800;color:var(--slate);letter-spacing:-2.5px;line-height:1.05}
+  .col.win .kval{color:var(--bdeep)}
+  .kval .u{font-size:24px;font-weight:700;color:var(--muted);margin-left:4px}
+  .krow{margin-top:17px}
+  .krl{font-size:18px;font-weight:600;color:var(--muted)}
+  .krv{font-size:21px;font-weight:800;color:var(--ink)}
+  .kbar{margin-top:9px;height:14px;border-radius:7px;background:var(--track);overflow:hidden}
+  .kfill{height:100%;border-radius:7px}
+  .ktag{margin-top:18px;font-size:17px;font-weight:800;letter-spacing:-.2px;text-align:center;border-radius:12px;padding:10px 0}
+  .ktag.warn{color:var(--deep);background:var(--rtint)}
+  .ktag.good{color:#fff;background:var(--blue)}
+  .ktag.over{color:#5c6577;background:#e5e9ef}
+  .insight{margin-top:22px;display:flex;align-items:center;gap:16px;background:var(--btint);border-radius:18px;padding:17px 24px}
+  .insight .k{flex:0 0 auto;font-size:17px;font-weight:800;color:#fff;background:var(--blue);border-radius:9px;padding:7px 14px}
+  .insight .t{font-size:19px;font-weight:700;color:#294f78;letter-spacing:-.3px;line-height:1.38}
+  .insight .t b{color:var(--bdeep)}
+  .foot{position:absolute;left:58px;right:58px;bottom:20px;padding-top:14px;border-top:1px solid #eef0f3;font-size:17.5px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">송신워커 <span class="r">K 스윕</span> — K3가 포화·왕복의 균형점</div>
+    <div class="uline"></div>
+    <div class="sub">세션을 <b>uniqueId%K</b>로 균등 분배(같은 세션=같은 워커). K↑로 포화는 풀리나 배칭↓로 syscall↑</div>
+
+    <div class="cols">
+      <div class="col">
+        <div class="ktop"><span class="kname">K2</span><span class="kbadge warn">포화</span></div>
+        <div class="khero">왕복 p99</div>
+        <div class="kval">187<span class="u">ms</span></div>
+        <div class="krow"><div style="display:flex;justify-content:space-between"><span class="krl">워커 최대 CPU</span><span class="krv">1.00</span></div><div class="kbar"><div class="kfill" style="width:100%;background:var(--red)"></div></div></div>
+        <div class="krow"><div style="display:flex;justify-content:space-between"><span class="krl">WSASend</span><span class="krv">99k /s</span></div></div>
+        <div class="ktag warn">두 워커 포화 → 송신 밀림</div>
+      </div>
+
+      <div class="col win">
+        <div class="ktop"><span class="kname">K3</span><span class="kbadge win">채택</span></div>
+        <div class="khero">왕복 p99</div>
+        <div class="kval">138<span class="u">ms</span></div>
+        <div class="krow"><div style="display:flex;justify-content:space-between"><span class="krl">워커 최대 CPU</span><span class="krv">0.82</span></div><div class="kbar"><div class="kfill" style="width:82%;background:var(--blue)"></div></div></div>
+        <div class="krow"><div style="display:flex;justify-content:space-between"><span class="krl">WSASend</span><span class="krv">122k /s</span></div></div>
+        <div class="ktag good">포화 없음 · 왕복 최저</div>
+      </div>
+
+      <div class="col">
+        <div class="ktop"><span class="kname">K4</span><span class="kbadge mut">잉여</span></div>
+        <div class="khero">왕복 p99</div>
+        <div class="kval">171<span class="u">ms</span></div>
+        <div class="krow"><div style="display:flex;justify-content:space-between"><span class="krl">워커 최대 CPU</span><span class="krv">0.65</span></div><div class="kbar"><div class="kfill" style="width:65%;background:#cfd6e0"></div></div></div>
+        <div class="krow"><div style="display:flex;justify-content:space-between"><span class="krl">WSASend</span><span class="krv">122k /s</span></div></div>
+        <div class="ktag over">오버섭스크립션 → 재악화</div>
+      </div>
+    </div>
+
+    <div class="insight">
+      <span class="k">해석</span>
+      <span class="t">포화는 풀려도(<b>1.00→0.65</b>) 배칭↓로 <b>syscall 99k→122k</b>·캐시간섭↑. K4는 일꾼만 늘려 왕복 재악화 — <b>K3가 균형점</b></span>
+    </div>
+
+    <div class="foot">동접 5000 · WT4 · 3rep 중앙값 | 틱 p99는 K2·K3·K4 셋 다 ~39.7ms(예산 40 내) · backlog=세션/K로 균등</div>
+  </div>
+</body>
+</html>

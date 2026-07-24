@@ -9,7 +9,7 @@
   :root{
     --bg:#eef1f5; --card:#fff; --ink:#1f2330; --muted:#7c8597;
     --red:#d7263d; --deep:#b3122a; --slate:#566072;
-    --ok:#16a34a; --ok-deep:#0f7a37; --amber:#e08a1e; --amber-deep:#b56b0c;
+    --ok:#94a3b8; --ok-deep:#54637c; --amber:#d7263d; --amber-deep:#b3122a;
   }
   *{box-sizing:border-box}
   html,body{margin:0;width:1180px;height:620px;overflow:hidden;background:var(--bg);
@@ -45,8 +45,8 @@
   .funnel{display:flex;justify-content:center;margin-top:4px}
   .funnel svg{overflow:visible}
 
-  .concl{margin-top:2px;border-radius:18px;background:linear-gradient(180deg,#fdeef0,#fce4e8);border:1.6px solid #f2b8c0;
-    padding:16px 30px;display:flex;align-items:center;justify-content:center;gap:22px;box-shadow:0 8px 24px rgba(215,38,61,.12)}
+  .concl{margin-top:2px;border-radius:18px;background:#fdeef0;border:1.6px solid #f2b8c0;
+    padding:16px 30px;display:flex;align-items:center;justify-content:center;gap:22px;box-shadow:0 6px 16px rgba(215,38,61,.10)}
   .concl .lead{font-size:16px;font-weight:800;color:var(--red);letter-spacing:-.2px;text-align:center;line-height:1.2;flex:0 0 auto}
   .concl .big{font-size:34px;font-weight:800;color:var(--deep);letter-spacing:-1.2px;line-height:1;white-space:nowrap}
   .concl .big .u{font-size:22px;font-weight:800}
@@ -55,7 +55,7 @@
   .concl .vdiv{width:1.5px;height:46px;background:#f2b8c0;flex:0 0 auto}
 
   .foot{position:absolute;left:56px;right:56px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
-    font-size:15.5px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+    font-size:15.5px;color:#6b7484;font-weight:500;letter-spacing:-.2px}
   .foot b{color:#6b7484;font-weight:700}
 </style>
 </head>
@@ -90,12 +90,13 @@
     </div>
 
     <div class="funnel">
-      <svg width="720" height="52" viewBox="0 0 720 52">
-        <path d="M120 3 L356 40" stroke="#c2c9d6" stroke-width="3" fill="none" stroke-linecap="round"/>
-        <path d="M360 3 L360 40" stroke="#c2c9d6" stroke-width="3" fill="none" stroke-linecap="round"/>
-        <path d="M600 3 L364 40" stroke="#c2c9d6" stroke-width="3" fill="none" stroke-linecap="round"/>
-        <path d="M360 30 L360 46" stroke="#d7263d" stroke-width="5" fill="none" stroke-linecap="round"/>
-        <path d="M349 40 L360 54 L371 40 Z" fill="#d7263d"/>
+      <svg width="720" height="56" viewBox="0 0 720 56">
+        <!-- 3축이 한 점으로 수렴: 굵기 통일(3.5) · 양옆 대칭(같은 각·같은 길이) · 가운데 수직 -->
+        <path d="M150 6 L360 40" stroke="#c2c9d6" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+        <path d="M360 6 L360 40" stroke="#c2c9d6" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+        <path d="M570 6 L360 40" stroke="#c2c9d6" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+        <path d="M360 40 L360 46" stroke="#d7263d" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+        <path d="M350 44 L360 56 L370 44 Z" fill="#d7263d"/>
       </svg>
     </div>
 

@@ -9,7 +9,7 @@
   :root{
     --bg:#eef1f5; --card:#fff; --ink:#1f2330; --muted:#7c8597;
     --red:#d7263d; --deep:#b3122a; --blue:#3a78b8; --blue-ink:#2b6aa8;
-    --green:#16a34a; --green-deep:#0f7a37; --ok:#0d9488; --ok-deep:#0b7d72; --ok-bg:#dff5f0;
+    --green:#94a3b8; --green-deep:#54637c; --ok:#3b82f6; --ok-deep:#2563eb; --ok-bg:#e3edfb;
     --slate:#566072; --pill-gray:#e9edf3;
   }
   *{box-sizing:border-box}
@@ -29,7 +29,7 @@
 
   .row{display:flex;align-items:center;gap:22px;height:198px;border-radius:22px;padding:0 30px}
   .row.before{background:#fdf5f6}
-  .row.after{background:#eef9f4}
+  .row.after{background:#eef3fb}
 
   .rowlab{width:126px;flex:0 0 auto}
   .rowlab .a{font-size:26px;font-weight:800;letter-spacing:-.5px;line-height:1.05;display:block}
@@ -52,7 +52,7 @@
   /* wall — hero */
   .wall{width:196px;height:162px;border-radius:18px;position:relative;overflow:hidden;
     display:flex;flex-direction:column;align-items:center;justify-content:center;
-    background:linear-gradient(180deg,#e6394f,var(--deep));box-shadow:0 8px 22px rgba(179,18,42,.34)}
+    background:var(--deep);box-shadow:0 5px 16px rgba(179,18,42,.22)}
   .wall::before{content:"";position:absolute;inset:0;opacity:.5;
     background:repeating-linear-gradient(0deg,transparent 0 23px,rgba(0,0,0,.16) 23px 25px),
     repeating-linear-gradient(90deg,transparent 0 48px,rgba(0,0,0,.16) 48px 50px)}
@@ -70,11 +70,11 @@
   .res .rs{font-size:16px;font-weight:800;letter-spacing:-.2px;margin-top:7px}
   .res.bad{background:#fff;border:2px solid #f2b8c0}
   .res.bad .rn{font-size:62px;color:var(--red)} .res.bad .ru{color:var(--red)} .res.bad .rs{color:var(--red)}
-  .res.good{background:var(--ok-bg);border:2px solid #9cdccf;box-shadow:0 7px 20px rgba(13,148,136,.16)}
+  .res.good{background:var(--ok-bg);border:2px solid #bcd4ea;box-shadow:0 6px 16px rgba(59,130,246,.14)}
   .res.good .rn{font-size:70px;color:var(--ok-deep)} .res.good .rs{color:var(--ok-deep)}
 
   /* one-PC container (after) — label inside, no hanging element */
-  .pcbox{display:flex;flex-direction:column;align-items:center;gap:10px;border:2.5px dashed #b3d2c5;border-radius:22px;
+  .pcbox{display:flex;flex-direction:column;align-items:center;gap:10px;border:2.5px dashed #b7cdea;border-radius:22px;
     background:rgba(255,255,255,.55);padding:13px 30px 17px}
   .pclbl{font-size:16px;font-weight:800;color:var(--ok-deep);letter-spacing:-.3px}
   .pcinner{display:flex;align-items:center;gap:20px}
@@ -131,7 +131,7 @@
             <div class="pcinner">
               <div class="node server"><div class="ico">🖥️</div><div class="t">서버</div><div class="s">코어 0~5</div></div>
               <div class="loop"><span class="ll">loopback</span>
-                <svg width="84" height="36"><path d="M4 12 H68" stroke="#0d9488" stroke-width="4.5" stroke-linecap="round"/><path d="M64 5 L82 12 L64 19 Z" fill="#0d9488"/><path d="M80 29 H16" stroke="#0d9488" stroke-width="4.5" stroke-linecap="round"/><path d="M20 22 L2 29 L20 36 Z" fill="#0d9488"/></svg>
+                <svg width="84" height="36"><path d="M4 12 H68" stroke="#2563eb" stroke-width="4.5" stroke-linecap="round"/><path d="M64 5 L82 12 L64 19 Z" fill="#2563eb"/><path d="M80 29 H16" stroke="#2563eb" stroke-width="4.5" stroke-linecap="round"/><path d="M20 22 L2 29 L20 36 Z" fill="#2563eb"/></svg>
               </div>
               <div class="node client"><div class="ico">💻</div><div class="t">클라</div><div class="s">코어 6~9</div></div>
             </div>

@@ -10,36 +10,38 @@
   .cols{ display:flex; gap:30px; align-items:stretch; width:100%; }
   .col{ flex:1; border-radius:22px; padding:16px 22px; display:flex; flex-direction:column; position:relative; }
   .col.before{ background:var(--red-bg);  border:1px solid var(--red-line);
-               box-shadow:0 14px 30px -20px rgba(220,38,38,.4); }
-  .col.after{ background:var(--green-bg); border:1px solid var(--green-line);
-              box-shadow:0 14px 30px -20px rgba(5,150,105,.4); }
+               box-shadow:0 12px 24px -20px rgba(220,38,38,.32); }
+  .col.after{ background:var(--blue-bg); border:1px solid #cfe0fb;
+              box-shadow:0 12px 24px -20px rgba(37,99,235,.32); }
   .tag{ align-self:flex-start; font-size:18px; font-weight:800; letter-spacing:-.2px;
         padding:6px 16px; border-radius:999px; margin-bottom:13px; color:#fff; }
-  .col.before .tag{ background:linear-gradient(135deg,#f87171,#dc2626); }
-  .col.after  .tag{ background:linear-gradient(135deg,#34d399,#059669); }
+  .col.before .tag{ background:var(--red-deep); }
+  .col.after  .tag{ background:var(--blue-deep); }
 
   .flow{ display:flex; flex-direction:column; gap:6px; }
+  .col.before .flow{ gap:20px; margin-top:6px; }
+  .col.before .flow .node{ padding:4px 0; }
   .node{ display:flex; align-items:center; gap:13px; }
   .msg{ flex:0 0 126px; font-size:18px; font-weight:700; color:var(--ink); background:#fff;
         border:1px solid var(--line); border-radius:11px; padding:7px 14px; text-align:center;
         box-shadow:0 3px 8px -4px rgba(15,23,42,.18); }
   .to{ font-size:21px; color:var(--faint); font-weight:800; }
   .send{ flex:1; font-size:19px; font-weight:800; color:#fff; border-radius:11px; padding:7px 16px; text-align:center; }
-  .send.sys{ background:linear-gradient(135deg,#f87171,#e02424); box-shadow:0 6px 14px -6px rgba(220,38,38,.55); }
-  .send.one{ background:linear-gradient(135deg,#34d399,#059669); box-shadow:0 6px 14px -6px rgba(5,150,105,.55); }
-  .keep{ font-size:16px; font-weight:700; color:var(--amber-deep); }
+  .send.sys{ background:var(--red-deep); box-shadow:0 4px 10px -6px rgba(220,38,38,.4); }
+  .send.one{ background:var(--blue-deep); box-shadow:0 4px 10px -6px rgba(37,99,235,.4); }
+  .keep{ font-size:16px; font-weight:700; color:var(--sub); }
 
-  .buf{ background:linear-gradient(135deg,#fef3c7,#fde9b0); border:1.5px dashed var(--amber);
+  .buf{ background:#eef3f8; border:1.5px dashed #cbd5e1;
         border-radius:13px; padding:8px 16px; text-align:center; font-size:19px; font-weight:800;
-        color:var(--amber-deep); margin:5px 0 2px; }
-  .buf small{ display:block; font-size:15px; font-weight:600; color:#b07c1e; margin-top:1px; }
-  .down{ text-align:center; font-size:17px; color:var(--amber-deep); font-weight:800; margin:4px 0; letter-spacing:-.2px; }
+        color:#54637c; margin:5px 0 2px; }
+  .buf small{ display:block; font-size:15px; font-weight:600; color:#94a3b8; margin-top:1px; }
+  .down{ text-align:center; font-size:17px; color:var(--sub); font-weight:800; margin:4px 0; letter-spacing:-.2px; }
 
   .cap{ margin-top:auto; align-self:flex-start; padding:9px 18px; border-radius:12px;
         font-size:19px; font-weight:800; display:inline-flex; align-items:center; gap:8px; background:#fff;
         box-shadow:0 6px 16px -10px rgba(15,23,42,.3); }
   .col.before .cap{ color:var(--red-deep); border:1.6px solid var(--red-line); }
-  .col.after .cap{ color:var(--green-deep); border:1.6px solid var(--green-line); }
+  .col.after .cap{ color:var(--blue-deep); border:1.6px solid #cfe0fb; }
   .cap b{ font-size:24px; }
 </style></head>
 <body><div class="card">

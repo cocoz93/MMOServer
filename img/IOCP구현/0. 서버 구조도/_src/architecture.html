@@ -98,17 +98,25 @@
     .fl{stroke:#9aa3b2;stroke-width:3.4;fill:none;stroke-linecap:round}
     .fd{stroke:#c6cdd8;stroke-width:3;fill:none;stroke-linecap:round;stroke-dasharray:2 8}
     .hf{fill:#9aa3b2}.hd{fill:#c6cdd8}.pt{fill:#9aa3b2}</style></defs>
-    <path class="fd" d="M228 502 Q292 376 320 356"/><polygon class="hd" points="312,350 326,352 318,364"/>
-    <path class="fl" d="M228 530 Q280 506 320 484"/><polygon class="hf" points="312,478 322,489 322,475"/>
-    <path class="fl" d="M320 678 Q250 624 228 566"/><polygon class="hf" points="237,570 226,561 239,557"/>
-    <path class="fl" d="M704 484 Q750 494 788 506"/><polygon class="hf" points="781,500 791,510 791,497"/>
-    <path class="fl" d="M788 606 Q744 642 708 676"/><polygon class="hf" points="716,670 705,680 703,667"/>
+    <!-- client -> Accept (accept) : solid, enters Accept left edge horizontally -->
+    <path class="fl" d="M228 508 C 268 508, 288 344, 308 344"/><polygon class="hf" points="308,338 308,350 320,344"/>
+    <!-- client -> IOCP (recv) : solid, enters IOCP left edge horizontally -->
+    <path class="fl" d="M228 530 C 270 522, 288 482, 308 482"/><polygon class="hf" points="308,476 308,488 320,482"/>
+    <!-- Send Worker -> client (WSASend) : leaves card left edge horizontally, into client right edge -->
+    <path class="fl" d="M320 678 C 288 678, 252 602, 234 576"/><polygon class="hf" points="228,566 239,573 229,580"/>
+    <!-- IOCP -> game loop (SwapQ) : horizontal into hero left edge -->
+    <path class="fl" d="M704 486 H776"/><polygon class="hf" points="776,480 776,492 788,486"/>
+    <!-- game loop -> Send Worker (dirty) : horizontal out of hero left edge -->
+    <path class="fl" d="M788 672 H716"/><polygon class="hf" points="716,666 716,678 704,672"/>
+    <!-- game loop -> DB (snapshot) -->
     <path class="fl" d="M1154 558 H1224"/><polygon class="hf" points="1224,551 1224,565 1236,558"/>
+    <!-- DB -> MySQL -->
     <path class="fl" d="M1566 560 H1590"/><polygon class="hf" points="1590,553 1590,567 1602,560"/>
-    <circle class="pt" cx="228" cy="530" r="4.2"/><circle class="pt" cx="320" cy="484" r="4.2"/>
-    <circle class="pt" cx="320" cy="678" r="4.2"/><circle class="pt" cx="228" cy="566" r="4.2"/>
-    <circle class="pt" cx="704" cy="484" r="4.2"/><circle class="pt" cx="788" cy="506" r="4.2"/>
-    <circle class="pt" cx="788" cy="606" r="4.2"/><circle class="pt" cx="708" cy="676" r="4.2"/>
+    <circle class="pt" cx="228" cy="508" r="4.2"/>
+    <circle class="pt" cx="228" cy="530" r="4.2"/>
+    <circle class="pt" cx="320" cy="678" r="4.2"/>
+    <circle class="pt" cx="704" cy="486" r="4.2"/>
+    <circle class="pt" cx="788" cy="672" r="4.2"/>
     <circle class="pt" cx="1154" cy="558" r="4.2"/><circle class="pt" cx="1236" cy="558" r="4.2"/><circle class="pt" cx="1566" cy="560" r="4.2"/>
   </svg>
 
@@ -126,7 +134,7 @@
   </div>
   <div class="node net" style="left:320px;top:620px;width:384px;height:116px">
     <div class="ibox"><svg viewBox="0 0 24 24"><use href="#ic-send"/></svg></div>
-    <div class="tx"><div class="nm">Send Worker <span class="k">×K</span></div><div class="ds"><span class="m">WSASend</span> 제출 · <span class="m">sessionId%K</span></div></div>
+    <div class="tx"><div class="nm">Send Worker <span class="k">×K</span></div><div class="ds"><span class="m">WSASend</span> 제출 · <span class="m">uniqueId%K</span></div></div>
   </div>
 
   <div class="hero" style="left:788px;top:424px;width:366px;height:268px">
@@ -147,8 +155,8 @@
   <div class="el b" style="left:244px;top:400px">accept</div>
   <div class="el b" style="left:250px;top:502px">recv</div>
   <div class="el" style="left:234px;top:600px">WSASend</div>
-  <div class="el r" style="left:718px;top:466px">SwapQ</div>
-  <div class="el r" style="left:712px;top:648px">dirty</div>
+  <div class="el r" style="left:716px;top:454px">SwapQ</div>
+  <div class="el r" style="left:722px;top:642px">dirty</div>
   <div class="el g" style="left:1160px;top:534px">snapshot</div>
 
   <div class="foot">

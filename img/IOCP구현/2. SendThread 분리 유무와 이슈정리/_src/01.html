@@ -55,10 +55,14 @@
   .foot{position:absolute;left:46px;right:46px;bottom:24px;padding-top:14px;border-top:1px solid var(--line);
     font-size:15px;color:#8089a0;font-weight:500}
   .foot b{color:#3a4254;font-weight:700}
+
+  .era{position:absolute;top:34px;right:46px;font-size:12.5px;font-weight:800;letter-spacing:-.2px;
+    color:var(--slate);background:var(--pill-gray);border:1px solid #dfe4ec;border-radius:999px;padding:6px 15px}
 </style>
 </head>
 <body>
   <div class="card">
+    <span class="era">초기 설계</span>
     <div class="title">Send는 <span class="r">Worker</span> 안에서 끝난다</div>
     <div class="sub">SendThread를 따로 두지 않는다 — 현재 규모에서는 분리할 이유가 없다</div>
 
@@ -84,7 +88,7 @@
       </div>
     </div>
 
-    <div class="foot">각 Worker가 직접 <b>WSASend</b> 호출 · 큐·전용 스레드 추가 없이 즉시 송신 — 트레이드오프 상세는 노션 원문 참고</div>
+    <div class="foot">각 Worker가 직접 <b>WSASend</b> 호출 · 큐·전용 스레드 추가 없이 즉시 송신 — <b>이후 송신이 병목으로 측정</b>되어 전용 Send Worker 풀(×K)로 분리(→ 별도 챕터)</div>
   </div>
 </body>
 </html>

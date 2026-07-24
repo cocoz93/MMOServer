@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';src:url('fonts/PretendardVariable.woff2') format('woff2');font-weight:100 900;font-style:normal;font-display:block}
+  :root{--bg:#eef1f5;--card:#ffffff;--ink:#1f2330;--muted:#7c8597;--red:#d7263d;--deep:#b3122a;--slate:#566072;--tile:#f6f8fb;--track:#e7ebf1;--blue:#3a78b8;--deepblue:#2b5f95}
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:700px;overflow:hidden;background:var(--bg);font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:652px;background:var(--card);border:1px solid #eef0f3;border-radius:34px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);padding:42px 54px 0}
+  .title{font-size:42px;font-weight:800;color:var(--ink);letter-spacing:-1px;line-height:1.1}
+  .title .r{color:var(--red)}
+  .uline{width:76px;height:6px;border-radius:4px;background:var(--red);margin-top:16px}
+  .sub{margin-top:16px;font-size:21px;font-weight:500;color:var(--muted);letter-spacing:-.3px;line-height:1.4}
+  .sub b{color:#3a4254;font-weight:700}
+  .gates{margin-top:30px;display:grid;grid-template-columns:1fr 58px 1fr;align-items:stretch;column-gap:0}
+  .gate{border-radius:26px;padding:26px 32px}
+  .g1{background:var(--tile)}
+  .g2{background:#fbecef;box-shadow:inset 0 0 0 3px var(--red)}
+  .gtop{display:flex;align-items:center;justify-content:space-between}
+  .glab{font-size:19px;font-weight:800;color:var(--slate)}
+  .g2 .glab{color:var(--deep)}
+  .gst{font-size:17px;font-weight:800;border-radius:9px;padding:6px 15px}
+  .gst.ok{color:#fff;background:#8a94a5}
+  .gst.no{color:#fff;background:var(--red)}
+  .gname{margin-top:16px;font-size:27px;font-weight:800;color:var(--ink);letter-spacing:-.6px;line-height:1.2}
+  .g2 .gname{color:var(--deep)}
+  .gname .big{font-size:40px}
+  .gdesc{margin-top:13px;font-size:19px;font-weight:600;color:var(--muted);line-height:1.42}
+  .gdesc b{color:#3a4254;font-weight:800}
+  .g2 .gdesc b{color:var(--deep)}
+  .arrow{display:flex;align-items:center;justify-content:center;color:#b4bccb;font-size:40px;font-weight:800}
+  .levers{margin-top:30px}
+  .lh{font-size:19px;font-weight:800;color:var(--slate);letter-spacing:-.3px}
+  .lh b{color:var(--deep)}
+  .chips{margin-top:15px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;column-gap:16px}
+  .chip{background:var(--tile);border-radius:18px;padding:18px 20px}
+  .cn{font-size:20px;font-weight:800;color:var(--ink);letter-spacing:-.3px}
+  .cs{margin-top:6px;font-size:16px;font-weight:600;color:var(--muted);line-height:1.35}
+  .cs .w{color:#a9b2c0;font-weight:700}
+  .chip.prime{background:#fbecef}
+  .chip.prime .cn{color:var(--deep)}
+  .chip.ops{background:#eef4fb}
+  .chip.ops .cn{color:var(--deepblue)}
+  .foot{position:absolute;left:54px;right:54px;bottom:22px;padding-top:18px;border-top:1px solid #eef0f3;font-size:18px;color:#9aa3b2;font-weight:500;letter-spacing:-.3px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title"><span class="r">기각</span> — 틀린 지점을 쳤다</div>
+    <div class="uline"></div>
+    <div class="sub">격리는 접속 천장을 못 올렸고(off·on 둘 다 <b>~5200</b>) 과부하에선 오히려 독</div>
+
+    <div class="gates">
+      <div class="gate g1">
+        <div class="gtop"><span class="glab">시도한 것</span><span class="gst ok">가설</span></div>
+        <div class="gname">게임루프 코어0 격리</div>
+        <div class="gdesc">L2 캐시를 형제 논리코어 오염에서 지켜 <b>캐시간섭 ~5% 회복</b> → 천장을 되찾자</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="gate g2">
+        <div class="gtop"><span class="glab">결과</span><span class="gst no">✗ 기각</span></div>
+        <div class="gname">천장 불변 <span class="big">~5200</span> · 과부하 붕괴</div>
+        <div class="gdesc">off·on 동일 · 5400 tick <b>97.8ms</b> 붕괴. 격리는 <b>팬아웃 '일'</b>을 안 줄인다</div>
+      </div>
+    </div>
+
+    <div class="levers">
+      <div class="lh">다음 레버 — <b>캐시가 아니라</b> '일을 덜 하기'와 송신 효율</div>
+      <div class="chips">
+        <div class="chip prime"><div class="cn">멤버십 경감</div><div class="cs">팬아웃 일 자체를 축소 — 천장을 정하는 진짜 벽</div></div>
+        <div class="chip prime"><div class="cn">샤딩</div><div class="cs">맵=게임스레드 스케일아웃 — 맵당 독립 처리</div></div>
+        <div class="chip ops"><div class="cn">RIO</div><div class="cs">송신 CPU <b style="color:var(--deepblue)">2.36→~0.5코어</b> <span class="w">· 지배자 감축</span></div></div>
+        <div class="chip ops"><div class="cn">[운영] GameCore off</div><div class="cs">기본 off 유지 <span class="w">· 토글은 무해 잔존</span></div></div>
+      </div>
+    </div>
+
+    <div class="foot">천장을 올리려면 팬아웃 감축(샤딩/멤버십) · 송신 CPU는 RIO · 운영 기본 <b>off</b> 유지</div>
+  </div>
+</body>
+</html>

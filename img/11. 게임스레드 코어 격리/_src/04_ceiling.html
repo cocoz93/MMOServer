@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';src:url('fonts/PretendardVariable.woff2') format('woff2');font-weight:100 900;font-style:normal;font-display:block}
+  :root{--bg:#eef1f5;--card:#ffffff;--ink:#1f2330;--muted:#7c8597;--red:#d7263d;--deep:#b3122a;--slate:#566072;--tile:#f6f8fb;--track:#e7ebf1;--blue:#3a78b8;--bdeep:#2c5f95}
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:700px;overflow:hidden;background:var(--bg);font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:652px;background:var(--card);border:1px solid #eef0f3;border-radius:34px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);padding:40px 54px 0}
+  .title{font-size:40px;font-weight:800;color:var(--ink);letter-spacing:-1px;line-height:1.1}
+  .title .r{color:var(--red)}
+  .uline{width:76px;height:6px;border-radius:4px;background:var(--red);margin-top:16px}
+  .sub{margin-top:16px;font-size:21px;font-weight:500;color:var(--muted);letter-spacing:-.3px;line-height:1.4}
+  .sub b{color:#3a4254;font-weight:700}
+  .wrap{margin-top:22px;display:grid;grid-template-columns:1fr 328px;column-gap:34px}
+  /* chart */
+  .chart{position:relative;height:340px;padding-top:26px}
+  .budget{position:absolute;left:0;right:0;border-top:3px dashed #b9c2d0;z-index:2}
+  .blab{position:absolute;right:0;top:-13px;font-size:17px;font-weight:700;color:#8792a3;background:var(--card);padding:0 6px}
+  .bars{display:flex;align-items:flex-end;height:296px;border-bottom:3px solid #e3e8ee;padding:0 14px}
+  .grp{display:flex;align-items:flex-end;justify-content:center;gap:20px;flex:1;position:relative}
+  .grp+.grp:before{content:"";position:absolute;left:0;top:30px;bottom:0;border-left:1px solid #eef0f3}
+  .pair{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:276px}
+  .bv{font-size:21px;font-weight:800;margin-bottom:7px}
+  .bar{width:70px;border-radius:11px 11px 0 0}
+  .bcap{margin-top:10px;font-size:17px;font-weight:800;color:var(--slate)}
+  .pass{background:var(--blue)}
+  .over{background:var(--red)}
+  .grp .bv.o{color:var(--deep)}.grp .bv.p{color:var(--bdeep)}
+  .xl{margin-top:12px;font-size:21px;font-weight:800;color:var(--ink);text-align:center}
+  .xline{display:flex;padding:0 14px}
+  .xline .xg{flex:1;text-align:center}
+  .legend{margin-top:12px;font-size:17px;color:var(--muted);font-weight:600}
+  .legend .sw{display:inline-block;width:15px;height:15px;border-radius:4px;vertical-align:-1px;margin:0 6px 0 14px}
+  .legend .sw.p{background:var(--blue)}.legend .sw.o{background:var(--red)}
+  /* side */
+  .side{padding-top:2px;height:384px;display:flex;flex-direction:column;gap:13px}
+  .scard{background:var(--tile);border-radius:20px;padding:17px 22px;flex:1 1 0;display:flex;flex-direction:column;justify-content:center}
+  .scard.hl{background:#fbecef}
+  .sh{font-size:18px;font-weight:800;color:var(--slate)}
+  .sh.r{color:var(--deep)}
+  .sbig{margin-top:6px;font-size:17px;font-weight:700;color:var(--ink);line-height:1.38}
+  .sbig b{color:var(--deep);font-weight:800}
+  .sbig .bl{color:var(--blue);font-weight:800}
+  .foot{position:absolute;left:54px;right:54px;bottom:22px;padding-top:18px;border-top:1px solid #eef0f3;font-size:18px;color:#9aa3b2;font-weight:500;letter-spacing:-.3px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">천장 <span class="r">off·on 모두 ~5200</span> — 격리는 못 올린다</div>
+    <div class="uline"></div>
+    <div class="sub">5200 둘 다 <b>턱걸이 통과</b> · 5400 둘 다 <b>붕괴</b>(on이 더 심화) — tick p99 실측</div>
+
+    <div class="wrap">
+      <div class="chart">
+        <div class="budget" style="bottom:156px"><span class="blab">틱 예산 40ms</span></div>
+        <div class="bars">
+          <div class="grp">
+            <div class="pair"><span class="bv p">39.8</span><div class="bar pass" style="height:112px"></div><div class="bcap">off</div></div>
+            <div class="pair"><span class="bv p">39.9</span><div class="bar pass" style="height:112px"></div><div class="bcap">on</div></div>
+          </div>
+          <div class="grp">
+            <div class="pair"><span class="bv o">57.6</span><div class="bar over" style="height:163px;background:#e78a97"></div><div class="bcap">off</div></div>
+            <div class="pair"><span class="bv o">97.8</span><div class="bar over" style="height:276px"></div><div class="bcap" style="color:var(--deep)">on</div></div>
+          </div>
+        </div>
+        <div class="xline"><div class="xg"><div class="xl">동접 5200</div></div><div class="xg"><div class="xl">동접 5400</div></div></div>
+        <div class="legend">막대 = tick p99(ms) · <span class="sw p"></span>40 이하(통과) · <span class="sw o"></span>40 초과(붕괴)</div>
+      </div>
+
+      <div class="side">
+        <div class="scard">
+          <div class="sh">천장 = off·on 모두 ~5200</div>
+          <div class="sbig">5200 둘 다 통과(39.8·39.9), <b>5400 둘 다 붕괴</b> — 격리로 천장이 안 움직인다</div>
+        </div>
+        <div class="scard hl">
+          <div class="sh r">과부하 on 악화 — 독</div>
+          <div class="sbig">게임스레드가 코어0에 묶여 틱 폭발(<b>97.8ms</b>)→송신워커 일감 안 흘러감. sendworker_cpu_max 5400: <span class="bl">off 0.94↑</span> vs <b>on 0.77 정체</b></div>
+        </div>
+        <div class="scard">
+          <div class="sh">고정 5000은 판정 불가</div>
+          <div class="sbig">tick p99가 40 상한에 붙어 천장 이동 판단 못 함(gameloop −5% · handle_p99 +9%)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">전 지점 session = 목표치 · 송신버퍼 포화 = 0(비교 유효) · off/on = INI <b>GameCore</b> 재기동 A/B</div>
+  </div>
+</body>
+</html>

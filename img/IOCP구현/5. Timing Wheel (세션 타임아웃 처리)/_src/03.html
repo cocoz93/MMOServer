@@ -50,18 +50,18 @@
 </head>
 <body>
   <div class="card">
-    <div class="title">Tick 해상도 선택 — <span class="r">5초</span>가 균형점</div>
+    <div class="title">Tick 해상도 선택 — <span class="r">1초</span>가 균형점</div>
     <div class="uline"></div>
-    <div class="sub">막대 = 최악 타임아웃(초) · 파란선 = 안전 마지노선(하트비트 30초)</div>
+    <div class="sub">막대 = 최악 타임아웃(초) · 파란선 = 안전 마지노선(하트비트 20초)</div>
 
     <div class="chart">
       <div class="plot">
-        <div class="col">
+        <div class="col pick">
+          <div class="badge">채택</div>
           <div class="pct">59초</div>
           <div class="bar" style="height:100%"><span class="in">61슬롯</span></div>
         </div>
-        <div class="col pick">
-          <div class="badge">채택</div>
+        <div class="col">
           <div class="pct">55초</div>
           <div class="bar" style="height:93%"><span class="in">13슬롯</span></div>
         </div>
@@ -75,17 +75,17 @@
         </div>
       </div>
 
-      <div class="axis"><span class="tag">기준 · 하트비트 간격 30초</span></div>
+      <div class="axis"><span class="tag">기준 · 하트비트 간격 20초</span></div>
 
       <div class="labels">
-        <div class="lb"><div class="nm">1,000ms</div><div class="ds">wake-up 1.0/초 · 과잉</div></div>
-        <div class="lb"><div class="nm">5,000ms</div><div class="ds">wake-up 0.2/초 · 채택</div></div>
+        <div class="lb"><div class="nm">1,000ms</div><div class="ds">wake-up 1.0/초 · 채택</div></div>
+        <div class="lb"><div class="nm">5,000ms</div><div class="ds">wake-up 0.2/초 · 대안</div></div>
         <div class="lb"><div class="nm">10,000ms</div><div class="ds">wake-up 0.1/초 · 경계선</div></div>
         <div class="lb"><div class="nm">15,000ms</div><div class="ds">wake-up 0.07/초 · 위험</div></div>
       </div>
     </div>
 
-    <div class="foot">하트비트 30초 · 타임아웃 60초 기준 · 최악 타임아웃(=타임아웃−해상도) &gt; 하트비트+네트워크지연이면 안전 | 5,000ms=슬롯13개로 균형</div>
+    <div class="foot">하트비트 20초 · 타임아웃 60초 기준 · 최악 타임아웃(=타임아웃−해상도) &gt; 하트비트+네트워크지연이면 안전 | 1,000ms=슬롯61개로 정확도 우선</div>
   </div>
 </body>
 </html>

@@ -13,7 +13,8 @@
   .kpi .t{ font-size:22px; font-weight:800; color:var(--ink); margin-top:12px; }
   .kpi .d{ font-size:18px; color:var(--sub); font-weight:500; margin-top:5px; }
   .kpi .d b{ color:var(--ink); font-weight:700; }
-  .red{color:var(--red-deep);} .green{color:var(--green-deep);} .blue{color:var(--blue-deep);}
+  .red{color:var(--red-deep);} .blue{color:var(--blue-deep);} .gray{color:var(--sub);}
+  .ico.gray-ico{ background:#eef2f7; }
 
   .why{ margin-top:18px; display:flex; align-items:center; gap:15px; width:100%;
         background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:17px 24px; }
@@ -37,14 +38,14 @@
         <div class="d tnum"><b>82,133</b> <span style="color:var(--faint)">→</span> <b>4,877</b> /s</div>
       </div>
       <div class="kpi">
-        <div class="ico" style="background:var(--green-bg)"><svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M12 2h0M9 2h6"/></svg></div>
-        <div class="num green tnum">65<span class="ar">→</span>9<span class="u">ms</span></div>
-        <div class="t">tick p99 <span class="green">−86%</span></div>
+        <div class="ico" style="background:var(--blue-bg)"><svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M12 2h0M9 2h6"/></svg></div>
+        <div class="num blue tnum">65<span class="ar">→</span>9<span class="u">ms</span></div>
+        <div class="t">tick p99 <span class="blue">−86%</span></div>
         <div class="d">한 틱 처리시간 천장</div>
       </div>
       <div class="kpi">
-        <div class="ico" style="background:var(--blue-bg)"><svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M12 3 21 8l-9 5-9-5z"/><path d="m3 13 9 5 9-5M3 16.5l9 5 9-5"/></svg></div>
-        <div class="num blue tnum">×17</div>
+        <div class="ico gray-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#54637c" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M12 3 21 8l-9 5-9-5z"/><path d="m3 13 9 5 9-5M3 16.5l9 5 9-5"/></svg></div>
+        <div class="num gray tnum">×17</div>
         <div class="t">한 번에 묶인 메시지</div>
         <div class="d tnum">평균 WSABUF <b>1 → 17</b></div>
       </div>

@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';src:url('fonts/PretendardVariable.woff2') format('woff2');font-weight:100 900;font-style:normal;font-display:block}
+  :root{--bg:#eef1f5;--card:#ffffff;--ink:#1f2330;--muted:#7c8597;--red:#d7263d;--deep:#b3122a;--slate:#566072;--tile:#f6f8fb;--track:#e7ebf1;
+        --green:#1f9d6b;--blue:#3a78b8;--bluedeep:#2c5e93;--orange:#e08b2a;--orangedeep:#b96f16;--greent:#e7f6ef;--bluet:#e7f0fa;--oranget:#fbf1e2}
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:700px;overflow:hidden;background:var(--bg);font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:652px;background:var(--card);border:1px solid #eef0f3;border-radius:34px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);padding:42px 60px 0}
+  .title{font-size:42px;font-weight:800;color:var(--ink);letter-spacing:-1px;line-height:1.1}
+  .title .r{color:var(--red)}
+  .uline{width:74px;height:6px;border-radius:3px;background:var(--red);margin-top:16px}
+  .sub{margin-top:16px;font-size:20px;font-weight:500;color:var(--muted);letter-spacing:-.2px;line-height:1.4}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .grid{margin-top:32px;display:grid;grid-template-columns:360px 1fr;column-gap:34px}
+
+  /* left: in vs out contrast */
+  .cbox{background:var(--tile);border-radius:24px;padding:28px 30px 26px}
+  .ch{font-size:20px;font-weight:800;color:var(--slate);letter-spacing:-.2px;line-height:1.3}
+  .cnote{margin-top:6px;font-size:16px;font-weight:600;color:var(--muted);line-height:1.35}
+  .cmp{margin-top:26px}
+  .crow{margin-bottom:22px}
+  .crlab{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+  .crn{font-size:19px;font-weight:800;color:var(--slate)}
+  .crn.b{color:var(--bluedeep)}.crn.r{color:var(--deep)}
+  .crv{font-size:19px;font-weight:800;color:var(--ink)}
+  .crv.b{color:var(--bluedeep)}.crv.r{color:var(--deep)}
+  .ctrack{height:32px;border-radius:11px;background:#fff;box-shadow:inset 0 0 0 1px #e3e8ee;overflow:hidden}
+  .cfill{height:100%;border-radius:11px}
+  .cfill.in{background:var(--blue);width:21%}
+  .cfill.out{background:var(--red);width:100%}
+  .cratio{margin-top:4px;text-align:center;font-size:19px;font-weight:800;color:var(--deep);background:#fbecef;border-radius:14px;padding:16px 12px;line-height:1.35}
+  .cratio .big{font-size:25px}
+
+  /* right: ranking list */
+  .rank{padding-top:2px}
+  .item{display:flex;align-items:flex-start;gap:18px;background:var(--tile);border-radius:18px;padding:17px 22px;margin-bottom:15px}
+  .item.prime{background:#fbecef;box-shadow:inset 0 0 0 2px var(--red)}
+  .item.warn{background:#fdeef0;box-shadow:inset 0 0 0 2px #f0908f}
+  .item.info{background:var(--bluet);box-shadow:inset 0 0 0 2px var(--blue)}
+  .num{flex:0 0 auto;width:40px;height:40px;border-radius:12px;background:#dde2ea;color:var(--slate);font-size:21px;font-weight:800;display:flex;align-items:center;justify-content:center}
+  .item.prime .num{background:var(--red);color:#fff}
+  .item.warn .num{background:#dc2626;color:#fff}
+  .item.info .num{background:var(--blue);color:#fff}
+  .itxt{flex:1}
+  .iname{font-size:20px;font-weight:800;color:var(--ink);letter-spacing:-.3px}
+  .item.prime .iname{color:var(--deep)}
+  .item.warn .iname{color:#c0343f}
+  .item.info .iname{color:var(--bluedeep)}
+  .idesc{margin-top:4px;font-size:16px;font-weight:600;color:var(--muted);line-height:1.35}
+  .idesc b{color:#3a4254;font-weight:700}
+  .item.prime .idesc b{color:var(--deep)}
+  .item.warn .idesc b{color:#c0343f}
+  .item.info .idesc b{color:var(--bluedeep)}
+
+  .foot{position:absolute;left:60px;right:60px;bottom:22px;padding-top:15px;border-top:1px solid #eef0f3;font-size:17px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">코어가 널널해지면 병목은 <span class="r">out(송신)</span>으로</div>
+    <div class="uline"></div>
+    <div class="sub">이 워크로드는 들어오는 것 << 나가는 것(입력이 <b>~921명</b>에 팬아웃). <b>IOCP(수신)은 병목 아님</b></div>
+
+    <div class="grid">
+      <div class="cbox">
+        <div class="ch">인바운드는 팬아웃의 ~1/900</div>
+        <div class="cnote">값싸고 선형 — 코어 예산이 작다</div>
+        <div class="cmp">
+          <div class="crow">
+            <div class="crlab"><span class="crn b">IOCP 수신(in)</span><span class="crv b">0.5 코어</span></div>
+            <div class="ctrack"><div class="cfill in"></div></div>
+          </div>
+          <div class="crow">
+            <div class="crlab"><span class="crn r">송신(out)</span><span class="crv r">2.36 코어</span></div>
+            <div class="ctrack"><div class="cfill out"></div></div>
+          </div>
+        </div>
+        <div class="cratio">인바운드 = 팬아웃의 <span class="big">~1/900</span><br>수신은 병목이 아니다</div>
+      </div>
+
+      <div class="rank">
+        <div class="item prime">
+          <div class="num">1</div>
+          <div class="itxt"><div class="iname">NIC — 대역폭 + 패킷 레이트</div>
+          <div class="idesc"><b>loopback이 가린 벽</b> · 1G면 ~1000–1500/맵서 막힘 · 5000/맵 = 10G+ 전제</div></div>
+        </div>
+        <div class="item warn">
+          <div class="num">2</div>
+          <div class="itxt"><div class="iname">메모리 대역폭</div>
+          <div class="idesc">팬아웃 복사 · 전 코어 공유라 <b>코어로 못 늘림</b></div></div>
+        </div>
+        <div class="item info">
+          <div class="num">3</div>
+          <div class="itxt"><div class="iname">공유 직렬화</div>
+          <div class="idesc">단일 MySQL · 크로스맵 글로벌(채팅·파티·길드) · 단일 accept 스레드</div></div>
+        </div>
+        <div class="item">
+          <div class="num">4</div>
+          <div class="itxt"><div class="iname">NUMA</div>
+          <div class="idesc">멀티소켓 원격 메모리 지연</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">인바운드 = 팬아웃의 <b>~1/900</b>(IOCP 0.5 vs 송신 2.36코어) · 병목은 전부 <b>out·공유 자원</b></div>
+  </div>
+</body>
+</html>

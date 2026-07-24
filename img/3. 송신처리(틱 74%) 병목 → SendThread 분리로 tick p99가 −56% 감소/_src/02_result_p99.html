@@ -2,10 +2,10 @@
 <link rel="stylesheet" href="common.css">
 <style>
   .card{ padding:30px 54px; }
-  .eyebrow{ background:var(--green-bg); color:var(--green-deep); border-color:var(--green-line); box-shadow:0 3px 8px -4px rgba(5,150,105,.28); }
+  .eyebrow{ background:var(--blue-bg); color:var(--blue-deep); border-color:#cfe0fb; box-shadow:0 2px 6px -4px rgba(37,99,235,.3); }
   .h-title{ font-size:42px; }
-  .h-title .kg{ background:linear-gradient(180deg,transparent 60%,#c9f2e0 60% 92%,transparent 92%); padding:0 4px; border-radius:3px; color:var(--green-deep); }
-  .h-rule{ background:linear-gradient(90deg,var(--green),#6ee7b7); }
+  .h-title .kg{ background:linear-gradient(180deg,transparent 60%,#d3e4fd 60% 92%,transparent 92%); padding:0 4px; border-radius:3px; color:var(--blue-deep); }
+  .h-rule{ background:var(--blue-deep); }
 
   .row{ display:flex; gap:40px; align-items:center; width:100%; }
 
@@ -13,32 +13,32 @@
   .left{ flex:0 0 378px; display:flex; flex-direction:column; align-items:center; }
   .cmp{ display:flex; align-items:center; gap:12px; }
   .qty{ display:flex; flex-direction:column; align-items:center; border-radius:20px; padding:20px 22px; min-width:138px; }
-  .qty.b{ background:linear-gradient(180deg,#fff5f5,#fdecec); border:1px solid var(--red-line); box-shadow:0 12px 26px -18px rgba(220,38,38,.45); }
-  .qty.a{ background:linear-gradient(180deg,#eefcf4,#e0f7ec); border:1px solid var(--green-line); box-shadow:0 16px 32px -16px rgba(5,150,105,.5); }
+  .qty.b{ background:var(--red-bg); border:1px solid var(--red-line); box-shadow:0 2px 6px -2px rgba(15,23,42,.12); }
+  .qty.a{ background:var(--blue-bg); border:1px solid #cfe0fb; box-shadow:0 2px 6px -2px rgba(15,23,42,.12); }
   .qty .lb{ font-size:15px; font-weight:800; letter-spacing:.3px; margin-bottom:8px; }
-  .qty.b .lb{ color:var(--red-deep); } .qty.a .lb{ color:var(--green-deep); }
+  .qty.b .lb{ color:var(--red-deep); } .qty.a .lb{ color:var(--blue-deep); }
   .qty .v{ font-size:54px; font-weight:900; letter-spacing:-2.5px; line-height:1; }
-  .qty.b .v{ color:var(--red-deep); } .qty.a .v{ color:var(--green-deep); }
+  .qty.b .v{ color:var(--red-deep); } .qty.a .v{ color:var(--blue-deep); }
   .qty .v .u{ font-size:21px; font-weight:800; }
   .p99lab{ margin-top:16px; font-size:21px; font-weight:800; color:var(--ink); }
-  .p99lab .big{ color:var(--green-deep); font-size:26px; font-weight:900; }
+  .p99lab .big{ color:var(--blue-deep); font-size:26px; font-weight:900; }
 
   /* 우: 보조 지표 바 */
   .right{ flex:1; display:flex; flex-direction:column; gap:11px; }
-  .metric{ background:#fff; border:1px solid var(--line); border-radius:15px; padding:12px 20px; box-shadow:0 8px 20px -14px rgba(15,23,42,.26); }
+  .metric{ background:#fff; border:1px solid var(--line); border-radius:15px; padding:12px 20px; box-shadow:0 2px 6px -2px rgba(15,23,42,.12); }
   .metric .mt{ font-size:18.5px; font-weight:800; color:var(--ink); display:flex; align-items:center; gap:8px; }
   .metric .mt small{ font-size:14px; font-weight:600; color:var(--sub); }
   .bar2{ position:relative; height:15px; border-radius:7px; overflow:hidden; margin:9px 0 7px; background:#eef2f7; box-shadow:inset 0 1px 3px rgba(15,23,42,.12); }
-  .bar2 .off{ position:absolute; inset:0; background:linear-gradient(90deg,#f87171,#e02424); border-radius:7px; }
-  .bar2 .on{ position:absolute; left:0; top:0; bottom:0; background:linear-gradient(90deg,#34d399,#059669); border-radius:7px; box-shadow:0 2px 6px -2px rgba(5,150,105,.5); }
+  .bar2 .off{ position:absolute; inset:0; background:#cbd5e1; border-radius:7px; }
+  .bar2 .on{ position:absolute; left:0; top:0; bottom:0; background:var(--blue-deep); border-radius:7px; }
   .metric .lab{ display:flex; justify-content:space-between; font-size:15.5px; font-weight:800; }
-  .metric .lab .g{ color:var(--green-deep); } .metric .lab .o{ color:var(--red-deep); }
+  .metric .lab .g{ color:var(--blue-deep); } .metric .lab .o{ color:var(--faint); }
   .metric.flat .lab .g{ color:var(--blue-deep); }
 
-  .box{ display:flex; align-items:center; gap:11px; background:linear-gradient(135deg,#eafaf1,#dcf5e7);
-    border:1px solid var(--green-line); border-radius:15px; padding:12px 18px; font-size:18px; font-weight:800; color:#1f5f4a;
-    box-shadow:0 10px 24px -16px rgba(5,150,105,.5); }
-  .box b{ color:var(--green-deep); font-weight:900; }
+  .box{ display:flex; align-items:center; gap:11px; background:var(--blue-bg);
+    border:1px solid #cfe0fb; border-radius:15px; padding:12px 18px; font-size:18px; font-weight:800; color:#1e3a5f;
+    box-shadow:0 2px 6px -2px rgba(15,23,42,.12); }
+  .box b{ color:var(--blue-deep); font-weight:900; }
 </style></head>
 <body><div class="card">
   <div class="eyebrow"><span class="no">C</span>&nbsp;검증 · A/B 실측</div>
@@ -63,8 +63,8 @@
             <svg class="svg-ic" width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M4 18V10m5 8V6m5 12v-5m5 5V8" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round"/></svg>
             system_cpu_total <small>· 전체 스레드 CPU 합 (가드레일)</small>
           </div>
-          <div class="bar2"><div class="off" style="background:#cbd5e1"></div><div class="on" style="width:98%;background:linear-gradient(90deg,#60a5fa,#2563eb)"></div></div>
-          <div class="lab"><span class="g">0.537 core · 비증가</span><span class="o">0.548 core</span></div>
+          <div class="bar2"><div class="off" style="background:#cbd5e1"></div><div class="on" style="width:98%;background:var(--blue-deep)"></div></div>
+          <div class="lab"><span class="o">OFF 0.548</span><span class="g">→ ON 0.537 core · 비증가</span></div>
         </div>
         <div class="metric">
           <div class="mt">tick p50 <small>· 틱 중앙값</small></div>
@@ -77,7 +77,7 @@
           <div class="lab"><span class="g">4.93 ms · −75%</span><span class="o">19.46 ms</span></div>
         </div>
         <div class="box">
-          <svg class="svg-ic" width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#059669"/><path d="M7.4 12.4l3 3 6.1-6.5" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <svg class="svg-ic" width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#2563eb"/><path d="M7.4 12.4l3 3 6.1-6.5" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span>채택 — tick p99↓ · CPU 비증가 · backlog 미누적 <b>3조건 충족</b></span>
         </div>
       </div>

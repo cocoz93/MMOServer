@@ -57,11 +57,11 @@
   .side.io .tag{background:var(--blue-bg);color:var(--blue-ink)}
   .side.io .big em{color:var(--blue-deep)}
   .side.io .chip{background:var(--blue-bg);border:1px solid var(--blue-line);color:var(--blue-ink)} .side.io .chip .dot{background:var(--blue-ink)}
-  .side.rel{border:1.6px solid var(--green-line)}
-  .side.rel::before{background:var(--green)}
-  .side.rel .tag{background:var(--green-bg);color:var(--green-ink)}
-  .side.rel .big{color:var(--green-ink)} .side.rel .big em{font-family:var(--mono)}
-  .side.rel .chip{background:var(--green-bg);border:1px solid var(--green-line);color:var(--green-ink)} .side.rel .chip .dot{background:var(--green)}
+  .side.rel{border:1.6px solid var(--blue-line)}
+  .side.rel::before{background:var(--blue-ink)}
+  .side.rel .tag{background:var(--blue-bg);color:var(--blue-ink)}
+  .side.rel .big{color:var(--blue-ink)} .side.rel .big em{font-family:var(--mono)}
+  .side.rel .chip{background:var(--blue-bg);border:1px solid var(--blue-line);color:var(--blue-ink)} .side.rel .chip .dot{background:var(--blue-ink)}
 
   .conn{width:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:11px}
   .conn .cl{font-size:14.5px;font-weight:800;color:var(--muted);letter-spacing:-.2px;text-align:center;line-height:1.25}
@@ -79,14 +79,14 @@
   .lockhero .sub{position:relative;z-index:2;margin-top:8px;font-size:19px;font-weight:700;color:var(--slate);letter-spacing:-.3px}
 
   .win{position:relative;display:flex;align-items:center;gap:18px;align-self:center;
-    background:var(--green-bg);border:1.6px solid var(--green-line);border-radius:18px;padding:20px 36px;
+    background:var(--blue-bg);border:1.6px solid var(--blue-line);border-radius:18px;padding:20px 36px;
     box-shadow:0 1px 3px rgba(30,40,70,.05),0 10px 24px -16px rgba(30,40,70,.12)}
   .win::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:4px;border-radius:0 4px 4px 0;
-    background:var(--green)}
-  .win .ck{flex:0 0 auto;width:46px;height:46px;border-radius:50%;background:var(--green);
+    background:var(--blue-ink)}
+  .win .ck{flex:0 0 auto;width:46px;height:46px;border-radius:50%;background:var(--blue-ink);
     display:flex;align-items:center;justify-content:center}
-  .win .wt{font-size:24px;font-weight:800;color:var(--green-ink);letter-spacing:-.4px}
-  .win .wt b{color:var(--green-deep);text-decoration:underline;text-decoration-color:var(--green-line);text-underline-offset:4px}
+  .win .wt{font-size:24px;font-weight:800;color:var(--blue-ink);letter-spacing:-.4px}
+  .win .wt b{color:var(--blue-deep);text-decoration:underline;text-decoration-color:var(--blue-line);text-underline-offset:4px}
   .win .wt .r{color:var(--deep)}
 </style>
 </head>
@@ -132,9 +132,9 @@
 
         <div class="conn">
           <svg width="96" height="30" viewBox="0 0 96 30" fill="none">
-            <path d="M6 15 H67" stroke="#1f9d6b" stroke-width="8" stroke-linecap="round"/>
-            <path d="M61 3.5 L95 15 L61 26.5 Z" fill="#15805a"/>
-            <circle cx="6" cy="15" r="5.5" fill="#1f9d6b" stroke="#fff" stroke-width="2"/>
+            <path d="M6 15 H67" stroke="#3a78b8" stroke-width="8" stroke-linecap="round"/>
+            <path d="M61 3.5 L95 15 L61 26.5 Z" fill="#2b6aa8"/>
+            <circle cx="6" cy="15" r="5.5" fill="#3a78b8" stroke="#fff" stroke-width="2"/>
           </svg>
           <div class="cl">IOCount = 0<span class="sub2"><span class="m">pending</span> 완료</span></div>
         </div>

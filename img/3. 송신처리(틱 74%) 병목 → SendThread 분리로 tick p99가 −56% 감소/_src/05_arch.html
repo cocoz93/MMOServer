@@ -1,16 +1,16 @@
 <!doctype html><html lang="ko"><head><meta charset="utf-8">
 <link rel="stylesheet" href="common.css">
 <style>
-  :root{ --violet-deep:#7c3aed; --mono:'SFMono-Regular',ui-monospace,'Cascadia Mono','Consolas',monospace; }
+  :root{ --mono:'SFMono-Regular',ui-monospace,'Cascadia Mono','Consolas',monospace; }
   .card{ padding:34px 52px; overflow:visible; }
+  .card::before{ background:var(--red); }
   .m{ font-family:var(--mono); font-weight:700; letter-spacing:-.3px; }
 
-  .eyebrow{ background:linear-gradient(135deg,#e7effe,#d9e6fd); color:#1d4ed8; border-color:#bcd2fb;
-            box-shadow:0 4px 10px -5px rgba(37,99,235,.4); letter-spacing:.3px; }
+  .eyebrow{ background:var(--blue-bg); color:var(--blue-deep); border-color:#cfe0fb;
+            box-shadow:0 2px 6px -4px rgba(37,99,235,.3); letter-spacing:.3px; }
   .h-title{ font-size:41px; letter-spacing:-2px; }
-  .h-title .kg{ color:var(--violet-deep); white-space:nowrap;
-                background:linear-gradient(180deg,transparent 60%,#e0ccfa 60% 93%,transparent 93%); padding:0 7px; border-radius:4px; }
-  .h-rule{ width:72px; height:6px; background:linear-gradient(90deg,#2563eb,var(--violet-deep)); box-shadow:0 3px 8px -3px rgba(99,102,241,.55); }
+  .h-title .kg{ color:var(--blue-deep); white-space:nowrap; }
+  .h-rule{ width:72px; height:6px; background:var(--blue-deep); }
 
   .body{ align-items:center; }
   .lanes{ display:grid; width:100%;
@@ -22,70 +22,72 @@
 
   /* ── 구분선 ── */
   .split{ grid-column:1 / 9; grid-row:2; display:flex; align-items:center; gap:14px; margin:19px 4px; }
-  .split .ln{ flex:1; height:2px; border-radius:2px; background:linear-gradient(90deg,transparent,#c7d0dd 12%,#c7d0dd 88%,transparent); }
+  .split .ln{ flex:1; height:2px; border-radius:2px; background:#d3dbe6; }
   .split .lbl{ display:inline-flex; align-items:center; gap:7px; font-size:13px; font-weight:800; color:#475569; letter-spacing:-.2px;
                background:#fff; border:1px solid #dbe2ea; padding:6px 16px; border-radius:999px; white-space:nowrap;
-               box-shadow:0 6px 14px -7px rgba(15,23,42,.3); }
+               box-shadow:0 2px 6px -4px rgba(15,23,42,.22); }
 
   /* ── 레인 태그 ── */
   .lane-tag{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:7px; padding:0 15px;
              font-size:18px; font-weight:900; border-radius:16px; letter-spacing:-.5px; color:#fff;
-             box-shadow:0 11px 22px -11px rgba(15,23,42,.55); }
+             box-shadow:0 2px 7px -3px rgba(15,23,42,.28); }
   .lane-tag .dot{ width:9px; height:9px; border-radius:50%; background:#fff; opacity:.95; }
-  .lane-tag.b{ background:linear-gradient(160deg,#f4574f,#d81f1f); }
-  .lane-tag.a{ background:linear-gradient(160deg,#13bd84,#059669); }
+  .lane-tag.b{ background:var(--red-deep); }
+  .lane-tag.a{ background:var(--blue-deep); }
 
   /* ── 노드 ── */
   .node{ border-radius:19px; padding:17px 14px; position:relative;
          display:flex; flex-direction:column; align-items:center; justify-content:center; gap:9px; min-height:128px;
-         box-shadow:0 1px 0 rgba(255,255,255,.85) inset, 0 2px 6px -1px rgba(15,23,42,.14), 0 15px 26px -14px rgba(15,23,42,.44); }
-  .ic{ width:44px; height:44px; border-radius:13px; display:flex; align-items:center; justify-content:center;
-       box-shadow:0 8px 16px -5px rgba(15,23,42,.42), 0 1px 0 rgba(255,255,255,.4) inset; }
+         box-shadow:0 2px 6px -2px rgba(15,23,42,.12); }
+  .ic{ width:44px; height:44px; border-radius:13px; display:flex; align-items:center; justify-content:center; }
   .nt{ font-size:20px; font-weight:900; letter-spacing:-.6px; line-height:1.1; }
   .tag{ font-size:12.5px; font-weight:800; padding:4px 13px; border-radius:999px; letter-spacing:-.2px; white-space:nowrap; }
   .tag .hi{ font-weight:900; }
 
-  .node.side{ background:linear-gradient(165deg,#eef3f8,#dae3ed); border:1.5px solid #bccadb; }
-  .node.side .ic{ background:linear-gradient(160deg,#6b7c93,#4c5c72); }
+  .node.side{ background:#eef3f8; border:1.5px solid #cdd8e6; }
+  .node.side .ic{ background:#5b6b81; }
   .node.side .nt{ color:#2c3a4e; }
 
-  .node.game{ background:linear-gradient(165deg,#fff3d2,#fde3a6); border:1.5px solid #eec870; }
-  .node.game .ic{ background:linear-gradient(160deg,#f0a021,#d97706); }
-  .node.game .nt{ color:#b45309; }
-  .node.game .tag{ color:#9a6410; background:#fdecc2; border:1px solid #f0d485; }
-  .node.game.hot{ background:linear-gradient(165deg,#ffe5df,#ffc6ba); border:1.6px solid #f2a08f;
-                  box-shadow:0 1px 0 rgba(255,255,255,.7) inset, 0 3px 8px -1px rgba(220,38,38,.24), 0 17px 30px -15px rgba(220,38,38,.52); }
-  .node.game.hot .ic{ background:linear-gradient(160deg,#ef4444,#c81e1e); }
-  .node.game.hot .nt{ color:#c81e1e; }
-  .node.game.hot .tag{ color:#b31d1d; background:#ffd9d1; border:1px solid #f6b6a8; }
-  .node.game.hot .tag .hi{ color:#dc2626; }
+  /* 변경 후 게임 스레드 = 병목 해소되어 중립(회색) */
+  .node.game{ background:#eef3f8; border:1.5px solid #cdd8e6; }
+  .node.game .ic{ background:#5b6b81; }
+  .node.game .nt{ color:#2c3a4e; }
+  .node.game .tag{ color:#475569; background:#eaeff5; border:1px solid #d3dbe6; }
+  /* 변경 전 게임 스레드 = 병목(빨강) */
+  .node.game.hot{ background:var(--red-bg); border:1.6px solid var(--red-line);
+                  box-shadow:0 2px 7px -2px rgba(220,38,38,.2); }
+  .node.game.hot .ic{ background:var(--red-deep); }
+  .node.game.hot .nt{ color:var(--red-deep); }
+  .node.game.hot .tag{ color:#b31d1d; background:#fde3e3; border:1px solid var(--red-line); }
+  .node.game.hot .tag .hi{ color:var(--red-deep); }
 
-  .node.send{ background:linear-gradient(165deg,#ede0fb,#d5bcf6); border:1.8px solid #b48ee9;
-              box-shadow:0 1px 0 rgba(255,255,255,.8) inset, 0 3px 9px -1px rgba(124,58,237,.3), 0 18px 32px -15px rgba(124,58,237,.62); }
-  .node.send .ic{ background:linear-gradient(160deg,#8b5cf6,#6d28d9); }
-  .node.send .nt{ color:#6d28d9; }
-  .node.send .tag{ color:#6d28d9; background:#e6d6fb; border:1px solid #cbaef2; }
+  /* SendThread = 신규 컴포넌트(파랑 강조) */
+  .node.send{ background:var(--blue-bg); border:1.8px solid #bcd4fb;
+              box-shadow:0 2px 7px -2px rgba(37,99,235,.2); }
+  .node.send .ic{ background:var(--blue-deep); }
+  .node.send .nt{ color:var(--blue-deep); }
+  .node.send .tag{ color:var(--blue-deep); background:#e2edfd; border:1px solid #bcd4fb; }
 
   /* ── 비용 뱃지 ── */
   .cbadge{ position:absolute; top:-13px; left:50%; transform:translateX(-50%); z-index:5; color:#fff; width:auto; height:auto;
            font-size:12.5px; font-weight:900; padding:5px 15px; border-radius:999px; white-space:nowrap; letter-spacing:-.3px; }
-  .cbadge.red{ background:linear-gradient(135deg,#f5455c,#c81e1e); box-shadow:0 9px 17px -5px rgba(200,30,30,.6); }
-  .cbadge.grn{ background:linear-gradient(135deg,#17b57e,#047857); box-shadow:0 9px 17px -5px rgba(4,120,87,.55); }
+  .cbadge.red{ background:var(--red-deep); box-shadow:0 4px 10px -4px rgba(200,30,30,.4); }
+  .cbadge.grn{ background:var(--blue-deep); box-shadow:0 4px 10px -4px rgba(37,99,235,.4); }
 
   /* ── 커넥터 ── */
   .conn{ display:flex; align-items:center; justify-content:center; }
   .conn svg{ display:block; }
   .conn.key{ flex-direction:column; gap:8px; }
   .conn.key .lbl{ font-size:11.5px; font-weight:900; color:#fff; letter-spacing:-.2px;
-                  background:linear-gradient(135deg,#8b5cf6,#7c3aed); padding:4px 12px; border-radius:999px; white-space:nowrap;
-                  box-shadow:0 7px 15px -5px rgba(124,58,237,.6); }
-  /* 전용 긴 화살표(전: 직접 송신) */
+                  background:var(--blue-deep); padding:4px 12px; border-radius:999px; white-space:nowrap;
+                  box-shadow:0 3px 9px -4px rgba(37,99,235,.5); }
+  /* 전용 긴 화살표(전: 직접 송신) — 단색 빨강, 커넥터와 동일 머리 */
   .longarrow{ grid-column:5 / 8; grid-row:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:9px; }
-  .longarrow .lbl{ font-size:12px; font-weight:900; color:#c81e1e; letter-spacing:-.2px; }
+  .longarrow .lbl{ font-size:12px; font-weight:900; color:var(--red-deep); letter-spacing:-.2px; }
   .longarrow .lbl .m{ font-size:11.5px; }
-  .longarrow .bar{ position:relative; width:100%; height:3px; border-radius:3px; background:linear-gradient(90deg,#f6b0b0,#dc2626); }
+  .longarrow .bar{ position:relative; width:100%; height:3px; border-radius:3px; background:var(--red-deep); }
   .longarrow .bar::after{ content:""; position:absolute; right:-1px; top:50%; transform:translateY(-50%);
-                          border-left:13px solid #dc2626; border-top:8px solid transparent; border-bottom:8px solid transparent; }
+                          border-left:13px solid var(--red-deep); border-top:8px solid transparent; border-bottom:8px solid transparent; }
 </style></head>
 <body><div class="card">
   <div class="eyebrow">
@@ -120,7 +122,7 @@
       <!-- 구분선 (row 2) -->
       <div class="split">
         <span class="ln"></span>
-        <span class="lbl"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 5v13m0 0l-6-6m6 6l6-6" stroke="#7c3aed" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>송신만 전용 스레드로 분리</span>
+        <span class="lbl"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 5v13m0 0l-6-6m6 6l6-6" stroke="#64748b" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>송신만 전용 스레드로 분리</span>
         <span class="ln"></span>
       </div>
 
@@ -139,7 +141,7 @@
       </div>
       <div class="conn key rb x5">
         <span class="lbl"><span class="m">sessionId</span> 배치</span>
-        <svg width="34" height="16" viewBox="0 0 34 16" fill="none"><defs><linearGradient id="gV" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#a882f0"/><stop offset="1" stop-color="#7c3aed"/></linearGradient></defs><line x1="1" y1="8" x2="20" y2="8" stroke="url(#gV)" stroke-width="3.4" stroke-linecap="round"/><path d="M19 2.5l12 5.5-12 5.5z" fill="#7c3aed"/></svg>
+        <svg width="34" height="16" viewBox="0 0 34 16" fill="none"><line x1="1" y1="8" x2="20" y2="8" stroke="#2563eb" stroke-width="3.4" stroke-linecap="round"/><path d="M19 2.5l12 5.5-12 5.5z" fill="#2563eb"/></svg>
       </div>
       <div class="node send rb x6">
         <div class="ic"><svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M21.5 2.5L11 13M21.5 2.5l-6.8 19-3.7-8.5-8.5-3.7 19-6.8z" stroke="#fff" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg></div>

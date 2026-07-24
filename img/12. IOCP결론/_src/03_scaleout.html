@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';src:url('fonts/PretendardVariable.woff2') format('woff2');font-weight:100 900;font-style:normal;font-display:block}
+  :root{--bg:#eef1f5;--card:#ffffff;--ink:#1f2330;--muted:#7c8597;--red:#d7263d;--deep:#b3122a;--slate:#566072;--tile:#f6f8fb;--track:#e7ebf1;
+        --green:#1f9d6b;--greendeep:#17795286;--blue:#3a78b8;--orange:#e08b2a;--greent:#e7f6ef;--bluet:#e7f0fa;--oranget:#fbf1e2}
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:700px;overflow:hidden;background:var(--bg);font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:652px;background:var(--card);border:1px solid #eef0f3;border-radius:34px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);padding:42px 60px 0}
+  .title{font-size:42px;font-weight:800;color:var(--ink);letter-spacing:-1px;line-height:1.1}
+  .title .r{color:var(--red)}
+  .uline{width:74px;height:6px;border-radius:3px;background:var(--red);margin-top:16px}
+  .sub{margin-top:16px;font-size:20px;font-weight:500;color:var(--muted);letter-spacing:-.2px;line-height:1.4}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .grid{margin-top:28px;display:grid;grid-template-columns:1fr 1fr;column-gap:32px;align-items:start}
+  .panel{background:var(--tile);border-radius:24px;padding:26px 30px 24px}
+  .panel.hl{background:var(--bluet);box-shadow:inset 0 0 0 2px var(--blue)}
+  .ph{font-size:20px;font-weight:800;color:var(--slate);letter-spacing:-.2px}
+  .panel.hl .ph{color:var(--blue)}
+  .psub{margin-top:6px;font-size:16.5px;font-weight:600;color:var(--muted);line-height:1.35}
+
+  /* left: stacked cost bar */
+  .stackwrap{margin-top:24px;display:flex;align-items:center;gap:28px}
+  .stack{width:104px;height:236px;background:#fff;border-radius:16px;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end;box-shadow:inset 0 0 0 1px #e3e8ee}
+  .seg{width:100%;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;color:#fff;letter-spacing:-.3px}
+  .seg.send{background:var(--red);color:#fff}
+  .seg.game{background:var(--blue);color:#fff}
+  .seg.iocp{background:#b7c0cd;color:#fff}
+  .stotal{margin-top:12px;text-align:center;font-size:18px;font-weight:800;color:var(--ink)}
+  .stotal b{color:var(--deep);font-size:29px}
+  .legs{flex:1}
+  .leg{display:flex;align-items:center;gap:12px;padding:10px 0}
+  .dot{width:17px;height:17px;border-radius:5px;flex:0 0 auto}
+  .dot.send{background:var(--red)}.dot.game{background:var(--blue)}.dot.iocp{background:#b7c0cd}
+  .lname{font-size:19px;font-weight:800;color:var(--ink)}
+  .lname.r{color:var(--deep)}.lname.b{color:var(--blue)}
+  .lval{font-size:18px;font-weight:700;color:var(--muted);margin-left:auto}
+  .lval b{color:var(--ink)}
+  .lnote{margin-top:16px;font-size:17.5px;font-weight:700;color:var(--slate);text-align:center;background:#fff;border-radius:13px;padding:13px 0;box-shadow:inset 0 0 0 1px #e3e8ee}
+  .lnote b{color:var(--red)}
+
+  /* right: RIO before/after */
+  .rio{margin-top:22px}
+  .rbar{margin-bottom:22px}
+  .rlab{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+  .rname{font-size:18px;font-weight:800;color:var(--slate)}
+  .rval{font-size:19px;font-weight:800;color:var(--ink)}
+  .rval.g{color:var(--blue)}
+  .rtrack{height:34px;border-radius:12px;background:#fff;box-shadow:inset 0 0 0 1px #e3e8ee;overflow:hidden}
+  .rfill{height:100%;border-radius:12px;display:flex;align-items:center;padding-left:16px;font-size:17px;font-weight:800;color:#fff}
+  .rfill.before{background:#cbd5e1;color:var(--slate)}
+  .rfill.after{background:var(--blue)}
+  .rgain{margin-top:4px;text-align:center;font-size:19px;font-weight:800;color:var(--blue);background:var(--bluet);border-radius:14px;padding:15px 0}
+  .rgain .big{font-size:27px}
+
+  .foot{position:absolute;left:60px;right:60px;bottom:22px;padding-top:15px;border-top:1px solid #eef0f3;font-size:17px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">수평 확장 — <span class="r">맵 = 게임 스레드</span></div>
+    <div class="uline"></div>
+    <div class="sub">맵이 늘면 스레드가 늘어 각자 독립 ~5000 처리 → <b>맵당 5000</b>(존 독립이면 완전 병렬)</div>
+
+    <div class="grid">
+      <div class="panel">
+        <div class="ph">맵당 비용 ~3.4코어 — 송신이 지배</div>
+        <div class="psub">게임 0.53 + 송신 2.36 + IOCP 0.5 → 물리코어당 ~1400명</div>
+        <div class="stackwrap">
+          <div>
+            <div class="stack">
+              <div class="seg game" style="height:37px">0.53</div>
+              <div class="seg send" style="height:163px">2.36</div>
+              <div class="seg iocp" style="height:36px">0.5</div>
+            </div>
+            <div class="stotal">합계 <b>~3.4</b> 코어</div>
+          </div>
+          <div class="legs">
+            <div class="leg"><span class="dot send"></span><span class="lname r">송신</span><span class="lval"><b>2.36</b> 코어 (지배)</span></div>
+            <div class="leg"><span class="dot game"></span><span class="lname b">게임</span><span class="lval"><b>0.53</b> 코어</span></div>
+            <div class="leg"><span class="dot iocp"></span><span class="lname">IOCP</span><span class="lval"><b>0.5</b> 코어</span></div>
+            <div class="lnote">C코어 박스 ≈ <b>C / 3.4</b> 맵</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel hl">
+        <div class="ph">RIO 레버 — 송신 CPU를 깎는다</div>
+        <div class="psub">송신 2.36→~0.5코어 → 맵당 3.4→~1.5코어</div>
+        <div class="rio">
+          <div class="rbar">
+            <div class="rlab"><span class="rname">지금 (링버퍼 송신)</span><span class="rval">3.4 코어 / 맵</span></div>
+            <div class="rtrack"><div class="rfill before" style="width:100%">3.4</div></div>
+          </div>
+          <div class="rbar">
+            <div class="rlab"><span class="rname">RIO 적용</span><span class="rval g">1.5 코어 / 맵</span></div>
+            <div class="rtrack"><div class="rfill after" style="width:44%">1.5</div></div>
+          </div>
+          <div class="rgain">박스당 맵 밀도 <span class="big">~2배</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">C코어 박스 ≈ <b>C / 3.4</b> 맵 · RIO는 샤딩 세계서 <b>수용 맵 수를 직접 늘리는 지렛대</b> · 존 독립=완전 병렬</div>
+  </div>
+</body>
+</html>

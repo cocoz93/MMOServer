@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --blue:#3a78b8; --bdeep:#2c5f95;
+    --gray-fill:#e2e6ec; --slate:#566072; --track:#eef1f5;
+    --tile:#f6f8fb; --btint:#e7f0fa;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:700px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:652px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:34px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:44px 60px 0}
+
+  .title{font-size:46px;font-weight:800;color:var(--ink);letter-spacing:-1px;line-height:1.1}
+  .title .r{color:var(--red)}
+  .uline{width:78px;height:6px;border-radius:3px;background:var(--red);margin-top:18px}
+  .sub{margin-top:18px;font-size:23px;font-weight:500;color:var(--muted);letter-spacing:-.2px;line-height:1.4}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .hero{margin-top:34px;display:grid;grid-template-columns:1fr 1fr;column-gap:28px}
+  .tile{background:var(--tile);border-radius:24px;padding:28px 32px 26px;position:relative;overflow:hidden}
+  .tile:before{content:"";position:absolute;left:0;top:0;bottom:0;width:8px}
+  .tile.g{background:var(--btint)}
+  .tile.g:before{background:var(--blue)}
+  .tile.r:before{background:var(--red)}
+  .tlab{font-size:20px;font-weight:700;color:var(--slate);letter-spacing:-.2px}
+  .tlab .tag{font-weight:800}
+  .tile.g .tlab .tag{color:var(--bdeep)} .tile.r .tlab .tag{color:var(--red)}
+  .tbig{margin-top:12px;font-size:58px;font-weight:800;color:var(--ink);letter-spacing:-2px;line-height:1;display:flex;align-items:baseline;gap:8px}
+  .tile.g .arw{color:var(--blue);font-size:38px;font-weight:800;margin:0 3px}
+  .tile.r .approx{font-size:38px;font-weight:800;color:var(--muted);margin-right:2px}
+  .tbig .u{font-size:25px;font-weight:700;color:var(--slate);letter-spacing:-.5px}
+  .tile.g .tbig{color:var(--bdeep)}
+  .tcap{margin-top:16px;font-size:19px;font-weight:600;color:var(--muted);letter-spacing:-.2px;line-height:1.4}
+  .tcap b{color:#6b7484;font-weight:700}
+  .tile.g .tcap b{color:var(--bdeep)}
+
+  .insight{margin-top:30px;display:flex;align-items:center;gap:16px;background:#fbecef;border-radius:20px;padding:22px 28px}
+  .insight .k{flex:0 0 auto;font-size:18px;font-weight:800;color:#fff;background:var(--red);border-radius:10px;padding:8px 15px;letter-spacing:.2px}
+  .insight .t{font-size:22px;font-weight:700;color:#7a2130;letter-spacing:-.3px;line-height:1.35}
+  .insight .t b{color:var(--deep)}
+
+  .foot{position:absolute;left:60px;right:60px;bottom:22px;padding-top:16px;border-top:1px solid #eef0f3;
+    font-size:18px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">송신워커를 늘려도, 천장은 <span class="r">게임루프</span></div>
+    <div class="uline"></div>
+    <div class="sub">K2 두 워커가 동접 5000서 <b>둘 다 포화</b> → 워커를 <b>K개로 균등 증설</b>. K3가 포화·왕복의 균형점</div>
+
+    <div class="hero">
+      <div class="tile g">
+        <div class="tlab">송신 병목 — <span class="tag">K3로 해소</span></div>
+        <div class="tbig">187<span class="arw">→</span>138<span class="u">ms</span></div>
+        <div class="tcap">왕복 p99 · 워커 최대 CPU <b>1.00→0.82</b>(포화 풀림)</div>
+      </div>
+      <div class="tile r">
+        <div class="tlab">접속 천장 — <span class="tag">진짜 벽</span></div>
+        <div class="tbig"><span class="approx">~</span>5000<span class="u">동접</span></div>
+        <div class="tcap">송신 아님 · <b>게임루프(멤버십)</b> 상한 (6000서 포화)</div>
+      </div>
+    </div>
+
+    <div class="insight">
+      <span class="k">결론</span>
+      <span class="t">일꾼(송신워커)을 늘려 <b>송신 벽은 넘었지만</b>, 천장을 정하는 건 게임루프의 <b>멤버십 팬아웃</b>이다</span>
+    </div>
+
+    <div class="foot">동접 5000 · WT4 · i9-10900(6 물리코어) · K{2,3,4} × 3rep 중앙값 | 왕복·틱 p99 실측</div>
+  </div>
+</body>
+</html>

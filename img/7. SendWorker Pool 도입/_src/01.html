@@ -9,7 +9,7 @@
   :root{
     --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
     --red:#d7263d; --deep:#b3122a; --blue:#3a78b8; --blue-ink:#2b6aa8;
-    --teal:#3c8a8f; --slate:#566072; --track:#eaeef3;
+    --slate:#566072; --track:#eaeef3;
   }
   *{box-sizing:border-box}
   html,body{margin:0;width:1000px;height:640px;overflow:hidden;background:var(--bg);
@@ -35,9 +35,9 @@
   .track{position:relative;height:58px;border-radius:15px;background:var(--track);
     border-right:3px dashed #c3ccd8;overflow:hidden}
   .fill{position:absolute;left:0;top:0;height:100%;border-radius:15px;display:flex;align-items:center;justify-content:flex-end}
-  .fill.r{background:linear-gradient(180deg,#e6394f,var(--red));box-shadow:0 3px 16px rgba(215,38,61,.30)}
-  .fill.b{background:linear-gradient(180deg,#4a86c4,#356ba8);box-shadow:0 3px 14px rgba(58,120,184,.22)}
-  .fill.t{background:linear-gradient(180deg,#4a9ba0,#357f84);box-shadow:0 3px 14px rgba(60,138,143,.20)}
+  .fill.r{background:var(--red)}
+  .fill.b{background:var(--blue)}
+  .fill.t{background:#aeb8c6}
 
   .mval{display:flex;flex-direction:column;align-items:flex-start;gap:7px}
   .num{font-size:35px;font-weight:800;color:var(--ink);letter-spacing:-1.2px;line-height:1}

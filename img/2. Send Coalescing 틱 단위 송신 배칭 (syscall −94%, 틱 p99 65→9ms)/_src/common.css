@@ -34,14 +34,13 @@ html, body {
   background:var(--card);
   border-radius:32px;
   border:1px solid rgba(255,255,255,.7);
-  box-shadow:0 32px 72px -22px rgba(15,23,42,.24),
-             0 10px 24px -12px rgba(15,23,42,.10);
+  box-shadow:0 18px 44px -20px rgba(15,23,42,.16);
   padding:48px 58px;
   display:flex; flex-direction:column; overflow:hidden;
 }
 /* 카드 상단 얇은 강조 띠 */
 .card::before{ content:""; position:absolute; top:0; left:0; right:0; height:6px;
-  background:linear-gradient(90deg,var(--red),#fb923c 55%,var(--amber)); opacity:.92; }
+  background:var(--red); opacity:.92; }
 
 /* 헤더 */
 .eyebrow{ display:inline-flex; align-items:center; gap:8px; align-self:flex-start;
@@ -55,7 +54,7 @@ html, body {
 .h-title .kb{ color:var(--blue-deep); }
 .h-title .kg{ color:var(--green-deep); }
 .h-rule{ width:72px; height:6px; border-radius:3px; margin:16px 0 12px;
-  background:linear-gradient(90deg,var(--red),#fb7185); }
+  background:var(--red); }
 .h-sub{ font-size:21px; color:var(--sub); font-weight:500; line-height:1.45; }
 .h-sub b{ color:var(--ink); font-weight:700; }
 .h-sub .k{ color:var(--red-deep); font-weight:700; }

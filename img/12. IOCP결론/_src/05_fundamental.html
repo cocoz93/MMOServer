@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';src:url('fonts/PretendardVariable.woff2') format('woff2');font-weight:100 900;font-style:normal;font-display:block}
+  :root{--bg:#eef1f5;--card:#ffffff;--ink:#1f2330;--muted:#7c8597;--red:#d7263d;--deep:#b3122a;--slate:#566072;--tile:#f6f8fb;--track:#e7ebf1;
+        --green:#1f9d6b;--greendeep:#177952;--blue:#3a78b8;--bluedeep:#2c5e93;--orange:#e08b2a;--greent:#e7f6ef;--bluet:#e7f0fa;--oranget:#fbf1e2}
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:700px;overflow:hidden;background:var(--bg);font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:652px;background:var(--card);border:1px solid #eef0f3;border-radius:34px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);padding:44px 60px 0}
+  .title{font-size:44px;font-weight:800;color:var(--ink);letter-spacing:-1px;line-height:1.1}
+  .title .r{color:var(--red)}
+  .uline{width:76px;height:6px;border-radius:3px;background:var(--red);margin-top:18px}
+  .sub{margin-top:18px;font-size:21px;font-weight:500;color:var(--muted);letter-spacing:-.2px;line-height:1.4}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .gates{margin-top:30px;display:grid;grid-template-columns:1fr 68px 1fr;align-items:stretch;column-gap:0}
+  .gate{border-radius:24px;padding:24px 30px}
+  .g1{background:var(--bluet);box-shadow:inset 0 0 0 2px var(--blue)}
+  .g2{background:#fbecef;box-shadow:inset 0 0 0 2px var(--red)}
+  .gtop{display:flex;align-items:center;justify-content:space-between}
+  .glab{font-size:19px;font-weight:800;color:var(--slate)}
+  .g1 .glab{color:var(--bluedeep)}
+  .g2 .glab{color:var(--deep)}
+  .gst{font-size:16px;font-weight:800;border-radius:9px;padding:6px 15px}
+  .gst.ok{color:#fff;background:var(--blue)}
+  .gst.no{color:#fff;background:var(--red)}
+  .gname{margin-top:15px;font-size:30px;font-weight:800;color:var(--ink);letter-spacing:-.5px}
+  .g1 .gname{color:var(--bluedeep)}
+  .g2 .gname{color:var(--deep)}
+  .gdesc{margin-top:11px;font-size:19px;font-weight:600;color:var(--muted);line-height:1.42}
+  .gdesc b{color:#3a4254;font-weight:800}
+  .g1 .gdesc b{color:var(--bluedeep)}
+  .g2 .gdesc b{color:var(--deep)}
+  .arrow{display:flex;align-items:center;justify-content:center;color:#b4bccb;font-size:42px;font-weight:800}
+
+  .callout{margin-top:22px;display:flex;align-items:center;gap:18px;background:#fbecef;border-radius:19px;padding:19px 26px;box-shadow:inset 0 0 0 2px var(--red)}
+  .callout .k{flex:0 0 auto;font-size:17px;font-weight:800;color:#fff;background:var(--red);border-radius:10px;padding:8px 16px;letter-spacing:.2px}
+  .callout .t{font-size:21px;font-weight:800;color:#7a2130;letter-spacing:-.3px;line-height:1.35}
+  .callout .t b{color:var(--deep)}
+
+  .note{margin-top:20px;display:grid;grid-template-columns:1fr 1fr;column-gap:22px}
+  .ncard{background:var(--tile);border-radius:18px;padding:16px 22px;position:relative;overflow:hidden}
+  .ncard:before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px}
+  .ncard.m:before{background:var(--slate)}
+  .ncard.d:before{background:#c4cbd6}
+  .nh{font-size:16px;font-weight:800;letter-spacing:.2px}
+  .ncard.m .nh{color:var(--slate)} .ncard.d .nh{color:#8792a3}
+  .nt{margin-top:6px;font-size:18px;font-weight:700;color:var(--ink);letter-spacing:-.2px;line-height:1.35}
+  .nt b{color:var(--deep)}
+
+  .foot{position:absolute;left:60px;right:60px;bottom:22px;padding-top:15px;border-top:1px solid #eef0f3;font-size:17px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">근본 벽 = <span class="r">팬아웃</span></div>
+    <div class="uline"></div>
+    <div class="sub">코어 벽(coalescing·RIO)을 넘으면 다음은 <b>대역폭 벽</b> — 지렛대가 바뀐다</div>
+
+    <div class="gates">
+      <div class="gate g1">
+        <div class="gtop"><span class="glab">1차 벽 · 코어</span><span class="gst ok">✓ 넘음</span></div>
+        <div class="gname">싸게 보내기</div>
+        <div class="gdesc">coalescing · RIO로 송신 <b>CPU를 깎아</b> 코어 벽을 넘음. 보내는 비용을 낮춘다</div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="gate g2">
+        <div class="gtop"><span class="glab">2차 벽 · 대역폭</span><span class="gst no">✗ 다음 벽</span></div>
+        <div class="gname">적게·작게 보내기</div>
+        <div class="gdesc"><b>AOI 축소 · 델타 압축 · 관심 관리</b>로 egress 바이트·pps 자체를 줄여야 넘는다</div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <span class="k">핵심</span>
+      <span class="t">RIO는 송신 CPU만 줄이지 <b>egress 바이트·pps는 못 줄여</b> — <b>NIC 벽엔 무력</b></span>
+    </div>
+
+    <div class="note">
+      <div class="ncard m">
+        <div class="nh">측정 (단일 맵·loopback)</div>
+        <div class="nt"><b>~5000</b> · 맵당 3.4코어 (IOCP 0.5 / 송신 2.36)</div>
+      </div>
+      <div class="ncard d">
+        <div class="nh">설계·추정 (멀티맵·실 NIC 미측정)</div>
+        <div class="nt">맵당 5000 · 병목 순서 · NIC egress Gbps</div>
+      </div>
+    </div>
+
+    <div class="foot">단일 노드 <b>~5000</b> · 다음은 수평 확장(샤딩) + 관심 관리(AOI·압축)</div>
+  </div>
+</body>
+</html>

@@ -59,11 +59,11 @@
 
   /* 결론 한 줄 */
   .win{display:flex;align-items:center;gap:18px;align-self:center;
-    background:var(--green-bg);border:1px solid var(--green-line);border-radius:18px;padding:22px 38px}
-  .win .ck{flex:0 0 auto;width:42px;height:42px;border-radius:50%;background:var(--green);
+    background:var(--blue-bg);border:1px solid var(--blue-line);border-radius:18px;padding:22px 38px}
+  .win .ck{flex:0 0 auto;width:42px;height:42px;border-radius:50%;background:var(--blue-ink);
     display:flex;align-items:center;justify-content:center}
-  .win .wt{font-size:24px;font-weight:800;color:var(--green-ink);letter-spacing:-.4px}
-  .win .wt b{color:var(--green-deep)} .win .wt .m{font-family:var(--mono);font-size:19px}
+  .win .wt{font-size:24px;font-weight:800;color:var(--blue-ink);letter-spacing:-.4px}
+  .win .wt b{color:var(--blue-deep)} .win .wt .m{font-family:var(--mono);font-size:19px}
 </style>
 </head>
 <body>
@@ -94,8 +94,8 @@
 
         <div class="step">
           <div class="s-head"><span class="s-no">3</span><span class="s-nm ko">재확인</span></div>
-          <div class="s-desc">sessionId <span class="b">재확인</span><br>불일치면 <span class="r">롤백</span></div>
-          <div class="s-code"><span class="dot"></span>recheck → mismatch = rollback</div>
+          <div class="s-desc"><span class="b">sessionId</span> 재확인<br>pin 사이 재할당이면 <span class="r">롤백</span></div>
+          <div class="s-code"><span class="dot"></span>session-&gt;sessionId != id → rollback</div>
         </div>
       </div>
 

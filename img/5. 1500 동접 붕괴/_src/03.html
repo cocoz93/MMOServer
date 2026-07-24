@@ -9,7 +9,7 @@
   :root{
     --bg:#eef1f5; --card:#fff; --ink:#1f2330; --muted:#7c8597;
     --red:#d7263d; --deep:#b3122a; --blue:#3a78b8; --blue-ink:#2b6aa8;
-    --ok:#16a34a; --ok-deep:#0f7a37; --slate:#566072; --pill-gray:#e9edf3;
+    --ok:#3b82f6; --ok-deep:#2563eb; --slate:#566072; --pill-gray:#e9edf3;
   }
   *{box-sizing:border-box}
   html,body{margin:0;width:1200px;height:690px;overflow:hidden;background:var(--bg);
@@ -28,20 +28,20 @@
   .side{display:flex;flex-direction:column;align-items:center;position:relative}
   .pill{font-size:18px;font-weight:800;padding:7px 20px;border-radius:999px;letter-spacing:-.3px;margin-bottom:18px}
   .pill.before{background:var(--pill-gray);color:var(--slate)}
-  .pill.after{background:#e3f5ea;color:var(--ok-deep)}
+  .pill.after{background:#e3edfb;color:var(--ok-deep)}
 
   .flow{display:flex;flex-direction:column;align-items:center;position:relative}
   .box{width:340px;height:64px;border-radius:14px;display:flex;align-items:center;justify-content:center;gap:10px;
     font-size:20px;font-weight:800;letter-spacing:-.4px;position:relative}
   .box .ip{font-size:14px;font-weight:700;color:#9aa3b2;letter-spacing:0}
   .box.server{background:#eaf1f9;border:1.6px solid #bcd4ea;color:var(--blue-ink)}
-  .box.client{background:#eaf6ef;border:1.6px solid #bfe2cc;color:var(--ok-deep)}
+  .box.client{background:#eef3f8;border:1.6px solid #cbd5e1;color:var(--slate)}
   .box .burst{position:absolute;right:12px;top:-13px;font-size:15px;font-weight:800;color:var(--red);
     background:#fff;border:1.5px solid #f2b8c0;border-radius:999px;padding:2px 10px;box-shadow:0 3px 10px rgba(215,38,61,.16)}
 
   .wall{width:340px;height:80px;border-radius:12px;position:relative;overflow:hidden;
     display:flex;flex-direction:column;align-items:center;justify-content:center;
-    background:linear-gradient(180deg,#e6394f,var(--deep));box-shadow:0 6px 20px rgba(179,18,42,.30)}
+    background:var(--deep);box-shadow:0 4px 14px rgba(179,18,42,.20)}
   .wall::before{content:"";position:absolute;inset:0;opacity:.5;
     background:repeating-linear-gradient(0deg,transparent 0 18px,rgba(0,0,0,.16) 18px 20px),
     repeating-linear-gradient(90deg,transparent 0 46px,rgba(0,0,0,.16) 46px 48px)}
@@ -54,22 +54,30 @@
   .lane{width:250px;height:64px;border-radius:14px;background:#f4f7fb;border:1.6px dashed #c2d0e2;
     display:flex;align-items:center;justify-content:center;gap:14px;position:relative}
   .lane .pc{font-size:16px;font-weight:800;padding:8px 12px;border-radius:10px;letter-spacing:-.3px}
-  .lane .pc.s{background:#eaf1f9;color:var(--blue-ink)} .lane .pc.c{background:#eaf6ef;color:var(--ok-deep)}
+  .lane .pc.s{background:#eaf1f9;color:var(--blue-ink)} .lane .pc.c{background:#eef3f8;color:var(--slate)}
   .lane .lp{font-size:19px;color:#9aa3b2;font-weight:800}
   .loopcap{margin-top:9px;font-size:15px;font-weight:700;color:#8089a0;letter-spacing:-.2px}
 
+  /* after — pass-through card (mirrors the red wall on the before side) */
+  .passthru{width:340px;height:80px;border-radius:12px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:#eaf1f9;border:1.6px solid #bcd4ea}
+  .passthru .pn{color:var(--blue-ink);font-size:22px;font-weight:800;letter-spacing:-.6px;line-height:1}
+  .passthru .pn b{color:var(--blue-ink)}
+  .passthru .ps{color:#7c93ad;font-size:13.5px;font-weight:700;margin-top:6px;letter-spacing:-.2px}
+
   .result{margin-top:16px;font-size:18px;font-weight:800;padding:10px 20px;border-radius:12px;letter-spacing:-.3px;text-align:center}
   .result.bad{background:#fdeef0;color:var(--red);border:1.5px solid #f4c4cc}
-  .result.good{background:#e3f5ea;color:var(--ok-deep);border:1.5px solid #bfe2cc}
+  .result.good{background:#e3edfb;color:var(--ok-deep);border:1.5px solid #bcd4ea}
 
   /* feedback loop (completion delay) */
-  .fb{position:absolute;left:-6px;top:70px;width:74px;height:196px}
+  .fb{position:absolute;left:-40px;top:70px;width:30px;height:196px}
   .fb svg{overflow:visible}
-  .fblbl{position:absolute;left:-150px;top:120px;width:150px;text-align:right;font-size:13.5px;font-weight:800;color:var(--red);line-height:1.28;letter-spacing:-.2px}
+  .fblbl{position:absolute;left:-158px;top:78px;width:150px;text-align:right;font-size:13.5px;font-weight:800;color:var(--red);line-height:1.28;letter-spacing:-.2px}
 
-  .divider{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding-top:150px}
-  .divider .dt{font-size:16px;font-weight:800;color:var(--ink);text-align:center;line-height:1.2;margin-bottom:9px;letter-spacing:-.3px}
-  .vbar{width:2px;flex:1;background:linear-gradient(180deg,transparent,#e2e6ec 12%,#e2e6ec 88%,transparent);margin-top:6px}
+  .divider{display:flex;flex-direction:column;align-items:center;justify-content:center;height:400px}
+  .divider .dt{font-size:16px;font-weight:800;color:var(--ink);text-align:center;line-height:1.2;margin-bottom:12px;letter-spacing:-.3px}
+  .vbar{width:2px;flex:1;background:#e2e6ec;margin-top:8px}
 
   .foot{position:absolute;left:56px;right:56px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
     font-size:15.5px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
@@ -97,7 +105,7 @@
 
           <div class="fb">
             <div class="fblbl">송신완료 통지<br>~1초 지연<br>→ 큐 안 비워짐</div>
-            <svg width="74" height="196"><path d="M64 186 C 6 186, 6 10, 60 10" stroke="#d7263d" stroke-width="3" fill="none" stroke-dasharray="6 5"/><path d="M66 2 L52 9 L60 20 Z" fill="#d7263d"/></svg>
+            <svg width="30" height="196"><path d="M15 190 V16" stroke="#d7263d" stroke-width="3" fill="none"/><path d="M15 2 L7 18 L23 18 Z" fill="#d7263d"/></svg>
           </div>
         </div>
         <div class="result bad">overflow 26/s → 세션 강제 종료</div>
@@ -119,8 +127,17 @@
             <span class="pc c">더미 클라</span>
           </div>
           <div class="loopcap">loopback — 회선(WAN)을 아예 안 탐</div>
+
+          <div class="down" style="margin:16px 0 4px">
+            <div class="dl" style="color:#2563eb">회선 통과 ↓</div>
+            <svg width="16" height="20"><path d="M8 0 V12" stroke="#2563eb" stroke-width="3.5"/><path d="M2 10 L8 20 L14 10 Z" fill="#2563eb"/></svg>
+          </div>
+          <div class="passthru">
+            <div class="pn">474 Mbps 벽 <b>없음</b></div>
+            <div class="ps">서버→클라가 랜카드 안에서 끝남 · 커널 loopback</div>
+          </div>
         </div>
-        <div class="result good" style="margin-top:150px">✅ overflow 0 · 서버 실한계 측정 가능</div>
+        <div class="result good" style="margin-top:20px">✅ overflow 0 · 서버 실한계 측정 가능</div>
       </div>
     </div>
 

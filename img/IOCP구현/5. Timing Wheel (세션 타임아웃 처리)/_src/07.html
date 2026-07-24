@@ -56,7 +56,7 @@
   <div class="card">
     <div class="title">구체적 예시 — Refresh가 만료 시점을 <span class="r">리셋</span>한다</div>
     <div class="uline"></div>
-    <div class="sub">timeout <b>60초</b> · tick <b>5초</b> · 슬롯 <b>13개</b> · Session A의 수명 추적</div>
+    <div class="sub">timeout <b>60초</b> · tick <b>1초</b> · 슬롯 <b>61개</b> · Session A의 수명 추적</div>
 
     <div class="stage">
       <!-- LEFT: wheel -->
@@ -73,13 +73,13 @@
 
           <!-- center hub -->
           <circle cx="210" cy="180" r="40" fill="#fff" stroke="#e2e6ec" stroke-width="2"/>
-          <text x="210" y="174" text-anchor="middle" font-size="16" font-weight="800" fill="#566072">13 슬롯</text>
-          <text x="210" y="194" text-anchor="middle" font-size="13" font-weight="700" fill="#9aa3b2">tick 5초</text>
+          <text x="210" y="174" text-anchor="middle" font-size="16" font-weight="800" fill="#566072">61 슬롯</text>
+          <text x="210" y="194" text-anchor="middle" font-size="13" font-weight="700" fill="#9aa3b2">tick 1초</text>
 
           <!-- refresh movement arrow: slot0 -> slot6 -->
           <path d="M 250 84 Q 428 188 232 276" fill="none" stroke="#3a78b8" stroke-width="3.2"
                 stroke-dasharray="7 5" marker-end="url(#ahB)"/>
-          <text x="405" y="150" text-anchor="middle" font-size="15.5" font-weight="800" fill="#2b6aa8">30초</text>
+          <text x="405" y="150" text-anchor="middle" font-size="15.5" font-weight="800" fill="#2b6aa8">20초</text>
           <text x="408" y="170" text-anchor="middle" font-size="14" font-weight="800" fill="#2b6aa8">Refresh</text>
 
           <!-- ghost A at slot 0 (insert) -->
@@ -93,7 +93,7 @@
           <!-- solid A at slot 6 (expire) -->
           <circle cx="210" cy="294" r="21" fill="#d7263d"/>
           <text x="210" y="301" text-anchor="middle" font-size="21" font-weight="800" fill="#fff">A</text>
-          <text x="210" y="342" text-anchor="middle" font-size="14.5" font-weight="800" fill="#d7263d">90초 만료 · Slot 6</text>
+          <text x="210" y="342" text-anchor="middle" font-size="14.5" font-weight="800" fill="#d7263d">80초 만료 · Slot 20</text>
         </svg>
       </div>
 
@@ -107,20 +107,20 @@
           </div>
           <div class="step">
             <div class="dot b">↻</div>
-            <div class="stx"><b><span class="t">30초</span></b> 패킷 수신 → <b style="color:#2b6aa8">Refresh</b><br><span>Slot 0에서 빼고 <b style="color:#2b6aa8">Slot 6</b>으로 재삽입 → 만료 시점 리셋</span></div>
+            <div class="stx"><b><span class="t">20초</span></b> 패킷 수신 → <b style="color:#2b6aa8">Refresh</b><br><span>Slot 0에서 빼고 <b style="color:#2b6aa8">Slot 20</b>으로 재삽입 → 만료 시점 리셋</span></div>
           </div>
           <div class="step">
             <div class="dot r">✕</div>
-            <div class="stx"><b><span class="t">90초</span></b> cursor가 <b class="cb">Slot 6</b> 도달 → <b class="cb">만료</b><br><span>RequestDisconnectSession(A) 호출</span></div>
+            <div class="stx"><b><span class="t">80초</span></b> cursor가 <b class="cb">Slot 20</b> 도달 → <b class="cb">만료</b><br><span>RequestDisconnectSession(A) 호출</span></div>
           </div>
         </div>
 
-        <div class="eq">마지막 활동 <b>30초</b> + 타임아웃 <b>60초</b> = <b class="r">90초 만료</b></div>
+        <div class="eq">마지막 활동 <b>20초</b> + 타임아웃 <b>60초</b> = <b class="r">80초 만료</b></div>
         <div class="eqs">Refresh가 없었다면 &nbsp;0 + 60 = <b>60초</b>&nbsp; 에 만료됐을 것</div>
       </div>
     </div>
 
-    <div class="foot">노드가 삽입된 슬롯에 cursor가 <b>한 바퀴 돌아 다시 도달</b>하면 만료 · Refresh는 노드를 현재 cursor 슬롯으로 옮겨 <b>타이머를 리셋</b> · 한 바퀴 = 12 tick × 5초 = 60초</div>
+    <div class="foot">노드가 삽입된 슬롯에 cursor가 <b>한 바퀴 돌아 다시 도달</b>하면 만료 · Refresh는 노드를 현재 cursor 슬롯으로 옮겨 <b>타이머를 리셋</b> · 한 바퀴 = 60 tick × 1초 = 60초</div>
   </div>
 
 <script>
@@ -130,25 +130,29 @@ function wedge(cx,cy,rO,rI,a0,a1){
   return `M ${P(rO,a0)} A ${rO} ${rO} 0 ${large} 1 ${P(rO,a1)} L ${P(rI,a1)} A ${rI} ${rI} 0 ${large} 0 ${P(rI,a0)} Z`;
 }
 (function(){
-  const cx=210,cy=180,rO=140,rI=88,N=13,gap=2.4,step=360/N,ns="http://www.w3.org/2000/svg";
+  const cx=210,cy=180,rO=140,rI=88,N=61,gap=1.2,step=360/N,ns="http://www.w3.org/2000/svg";
   const g=document.getElementById('ring');
   for(let i=0;i<N;i++){
     const a0=(-90+i*step+gap/2)*Math.PI/180, a1=(-90+(i+1)*step-gap/2)*Math.PI/180;
     const p=document.createElementNS(ns,'path');
     p.setAttribute('d',wedge(cx,cy,rO,rI,a0,a1));
-    if(i===6){p.setAttribute('fill','#fbdfe4');}       // active expiry slot (light red)
+    // expiry marker (cursor hand + solid A) sits at the bottom (6 o'clock ~ slot 30);
+    // highlight that wedge so it lines up with the overlay. Callout names it "Slot 20".
+    if(i===30){p.setAttribute('fill','#fbdfe4');}      // active expiry slot (light red)
     else if(i===0){p.setAttribute('fill','#eceff3');}  // original insert slot (faint)
     else{p.setAttribute('fill','#e6e9ef');}
     g.appendChild(p);
-    // slot index numbers (subtle)
-    const ac=(-90+(i+0.5)*step)*Math.PI/180, rl=rO+14;
-    const tn=document.createElementNS(ns,'text');
-    tn.setAttribute('x',(cx+rl*Math.cos(ac)).toFixed(2));
-    tn.setAttribute('y',(cy+rl*Math.sin(ac)+4).toFixed(2));
-    tn.setAttribute('text-anchor','middle');tn.setAttribute('font-size','11.5');
-    tn.setAttribute('font-weight','700');tn.setAttribute('fill', (i===0||i===6)?'#c2c9d6':'#c9d0da');
-    if(i!==0&&i!==6) tn.textContent=i;   // 0 and 6 labeled by callouts instead
-    g.appendChild(tn);
+    // 61 slots: per-slot numbers too dense — meaningful slots labeled by outer callouts
+    if(false){
+      const ac=(-90+(i+0.5)*step)*Math.PI/180, rl=rO+14;
+      const tn=document.createElementNS(ns,'text');
+      tn.setAttribute('x',(cx+rl*Math.cos(ac)).toFixed(2));
+      tn.setAttribute('y',(cy+rl*Math.sin(ac)+4).toFixed(2));
+      tn.setAttribute('text-anchor','middle');tn.setAttribute('font-size','11.5');
+      tn.setAttribute('font-weight','800');tn.setAttribute('fill','#c2c9d6');
+      // labels handled by outer callouts; keep dots minimal
+      g.appendChild(tn);
+    }
   }
 })();
 </script>

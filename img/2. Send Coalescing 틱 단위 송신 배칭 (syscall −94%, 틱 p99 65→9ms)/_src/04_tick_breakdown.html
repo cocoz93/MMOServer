@@ -13,12 +13,12 @@
   .left{ flex:0 0 336px; display:flex; flex-direction:column; align-items:center; }
   .donut{ position:relative; width:246px; height:246px; }
   .donut .ring{ position:absolute; inset:0; border-radius:50%;
-    background:conic-gradient(var(--green) 0 83%, var(--blue) 83% 98%, var(--gray-bar) 98% 100%);
+    background:conic-gradient(var(--blue) 0 83%, #94a3b8 83% 98%, var(--gray-bar) 98% 100%);
     -webkit-mask:radial-gradient(circle at center, transparent 58%, #000 59%);
             mask:radial-gradient(circle at center, transparent 58%, #000 59%);
-    filter:drop-shadow(0 10px 22px rgba(5,150,105,.18)); }
+    filter:drop-shadow(0 8px 18px rgba(37,99,235,.15)); }
   .donut .ctr{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1; }
-  .donut .ctr .n{ font-size:50px; font-weight:800; letter-spacing:-2px; color:var(--green-deep); }
+  .donut .ctr .n{ font-size:50px; font-weight:800; letter-spacing:-2px; color:var(--blue-deep); }
   .donut .ctr .n .u{ font-size:25px; }
   .donut .ctr .d{ font-size:16px; color:var(--sub); font-weight:600; margin-top:6px; }
   .leg{ margin-top:24px; width:100%; display:flex; flex-direction:column; gap:12px; }
@@ -33,18 +33,18 @@
   .metric .mt{ font-size:22px; font-weight:800; color:var(--ink); }
   .metric .mt small{ font-size:17px; font-weight:600; color:var(--sub); }
   .bar2{ position:relative; height:20px; border-radius:7px; overflow:hidden; margin:13px 0 9px; }
-  .bar2 .off{ position:absolute; inset:0; background:linear-gradient(90deg,#f87171,#e02424); border-radius:7px; }
-  .bar2 .on{ position:absolute; left:0; top:0; bottom:0; width:9px; background:linear-gradient(90deg,#34d399,#10b981); border-radius:7px 0 0 7px; }
+  .bar2 .off{ position:absolute; inset:0; background:var(--red); border-radius:7px; }
+  .bar2 .on{ position:absolute; left:0; top:0; bottom:0; width:9px; background:var(--blue-deep); border-radius:7px 0 0 7px; }
   .metric .lab{ display:flex; justify-content:space-between; font-size:18px; font-weight:800; }
-  .metric .lab .o{ color:var(--red-deep); } .metric .lab .g{ color:var(--green-deep); }
+  .metric .lab .o{ color:var(--red-deep); } .metric .lab .g{ color:var(--blue-deep); }
 
-  .box{ background:var(--green-bg); border:1px solid var(--green-line); border-radius:16px; padding:17px 22px;
-        font-size:20px; font-weight:700; color:#1f5f4a; line-height:1.45; }
-  .box b{ color:var(--green-deep); font-weight:800; } .box .r{ color:var(--red-deep); font-weight:800; }
+  .box{ background:var(--blue-bg); border:1px solid #cfe0fb; border-radius:16px; padding:17px 22px;
+        font-size:20px; font-weight:700; color:#274b7a; line-height:1.45; }
+  .box b{ color:var(--blue-deep); font-weight:800; } .box .r{ color:var(--red-deep); font-weight:800; }
 </style></head>
 <body><div class="card">
   <div class="eyebrow"><span class="no">④</span> 원인 분해 · WHY IT WORKED</div>
-  <div class="h-title">틱 단축 <span class="kg">−23.8ms</span>, 8할이 송신</div>
+  <div class="h-title">틱 단축 <span class="kb">−23.8ms</span>, 8할이 송신</div>
   <div class="h-rule"></div>
   <div class="h-sub">tick p50 <b>29.8 → 3.1ms</b>. 줄어든 시간의 대부분이 network_dispatch(송신 페이즈)</div>
 
@@ -56,8 +56,8 @@
           <div class="ctr"><div class="n tnum">−23.8<span class="u">ms</span></div><div class="d">틱 단축분 기여도</div></div>
         </div>
         <div class="leg">
-          <div class="li"><span class="sw" style="background:var(--green)"></span><span class="nm">network_dispatch</span><span class="pc">83%</span></div>
-          <div class="li"><span class="sw" style="background:var(--blue)"></span><span class="nm">game_logic</span><span class="pc">15%</span></div>
+          <div class="li"><span class="sw" style="background:var(--blue)"></span><span class="nm">network_dispatch</span><span class="pc">83%</span></div>
+          <div class="li"><span class="sw" style="background:#94a3b8"></span><span class="nm">game_logic</span><span class="pc">15%</span></div>
           <div class="li"><span class="sw" style="background:var(--gray-bar)"></span><span class="nm">기타</span><span class="pc">2%</span></div>
         </div>
       </div>

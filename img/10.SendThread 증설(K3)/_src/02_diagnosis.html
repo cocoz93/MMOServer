@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';src:url('fonts/PretendardVariable.woff2') format('woff2');font-weight:100 900;font-style:normal;font-display:block}
+  :root{--bg:#eef1f5;--card:#ffffff;--ink:#1f2330;--muted:#7c8597;--red:#d7263d;--deep:#b3122a;--slate:#566072;--tile:#f6f8fb;--track:#e7ebf1;--blue:#3a78b8;--bdeep:#2c5f95;--btint:#e7f0fa}
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:700px;overflow:hidden;background:var(--bg);font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:652px;background:var(--card);border:1px solid #eef0f3;border-radius:34px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);padding:44px 58px 0}
+  .title{font-size:43px;font-weight:800;color:var(--ink);letter-spacing:-1px;line-height:1.1}
+  .title .r{color:var(--red)}
+  .uline{width:76px;height:6px;border-radius:3px;background:var(--red);margin-top:18px}
+  .sub{margin-top:17px;font-size:22px;font-weight:500;color:var(--muted);letter-spacing:-.2px;line-height:1.4}
+  .sub b{color:#3a4254;font-weight:700}
+  .panels{margin-top:32px;display:grid;grid-template-columns:1fr 1fr;column-gap:30px}
+  .box{background:var(--tile);border-radius:24px;padding:28px 30px 30px}
+  .bh{font-size:20px;font-weight:800;color:var(--slate);letter-spacing:-.2px}
+  .bh .n{color:var(--muted);font-weight:600}
+  /* left: worker cpu bars */
+  .wrow{margin-top:26px}
+  .wtop{display:flex;justify-content:space-between;align-items:baseline}
+  .wname{font-size:22px;font-weight:700;color:var(--ink)}
+  .wval{font-size:23px;font-weight:800;color:var(--red)}
+  .wbar{margin-top:12px;height:22px;border-radius:11px;background:var(--track);overflow:hidden}
+  .wfill{height:100%;border-radius:11px;background:var(--red)}
+  .wtag{display:inline-block;margin-left:11px;font-size:16px;font-weight:800;color:#fff;background:var(--red);border-radius:8px;padding:3px 11px;vertical-align:middle}
+  .wsum{margin-top:24px;font-size:20px;font-weight:600;color:var(--slate);line-height:1.4}
+  .wsum b{color:var(--deep);font-weight:800}
+  /* right: 왕복 bars */
+  .rrow{margin-top:22px;display:grid;grid-template-columns:72px 1fr 82px;align-items:center;column-gap:16px}
+  .rlab{font-size:20px;font-weight:700;color:var(--slate)}
+  .rtrack{height:21px;border-radius:11px;background:var(--track);overflow:hidden}
+  .rfill{height:100%;border-radius:11px;background:var(--red)}
+  .rval{font-size:22px;font-weight:800;color:var(--ink);text-align:right}
+  .rnote{margin-top:24px;background:var(--btint);border-radius:16px;padding:16px 20px;font-size:18px;font-weight:600;color:var(--slate);line-height:1.45}
+  .rnote b{color:#3a4254;font-weight:700}
+  .rnote .gk{color:var(--bdeep);font-weight:800}
+  .foot{position:absolute;left:58px;right:58px;bottom:22px;padding-top:16px;border-top:1px solid #eef0f3;font-size:18px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">게임루프를 걷어내자, 벽이 <span class="r">송신워커</span>로</div>
+    <div class="uline"></div>
+    <div class="sub">broadcast 배칭으로 게임루프 병목을 없애자 → 동접 5000서 <b>K2 두 워커가 둘 다 CPU 1.00 포화</b></div>
+
+    <div class="panels">
+      <div class="box">
+        <div class="bh">송신워커 2개 <span class="n">· 동접 5000 · K2</span></div>
+        <div class="wrow">
+          <div class="wtop"><span class="wname">Worker #0</span><span class="wval">1.00 코어<span class="wtag">포화</span></span></div>
+          <div class="wbar"><div class="wfill" style="width:100%"></div></div>
+        </div>
+        <div class="wrow">
+          <div class="wtop"><span class="wname">Worker #1</span><span class="wval">1.00 코어<span class="wtag">포화</span></span></div>
+          <div class="wbar"><div class="wfill" style="width:100%"></div></div>
+        </div>
+        <div class="wsum">합 <b>1.99</b> / 2.00 코어 — 두 워커 모두 천장. 송신 제출이 밀린다</div>
+      </div>
+
+      <div class="box">
+        <div class="bh">틱은 예산 내, <span style="color:var(--deep)">왕복만 폭등</span></div>
+        <div class="rrow"><span class="rlab">4000</span><div class="rtrack"><div class="rfill" style="width:51%;background:#cfd6e0"></div></div><span class="rval" style="color:var(--slate)">99 ms</span></div>
+        <div class="rrow"><span class="rlab">4500</span><div class="rtrack"><div class="rfill" style="width:64%;background:#e78a97"></div></div><span class="rval" style="color:var(--slate)">125 ms</span></div>
+        <div class="rrow"><span class="rlab">5000</span><div class="rtrack"><div class="rfill" style="width:93%"></div></div><span class="rval">182 ms</span></div>
+        <div class="rnote">동접별 <b>클라 왕복 p99</b>. 같은 구간 틱 p99는 <span class="gk">39.5ms(예산 40 내)</span> — 틱은 멀쩡한데 왕복만 오른다 = 병목이 <b>송신 경로</b>로 이동</div>
+      </div>
+    </div>
+
+    <div class="foot">동접 5000 · K2(송신워커 2개) · uniqueId%K 분배 | 게임루프 병목(broadcast copy) 해소 직후 측정 · 왕복 99→182ms</div>
+  </div>
+</body>
+</html>

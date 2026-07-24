@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';src:url('fonts/PretendardVariable.woff2') format('woff2');font-weight:100 900;font-style:normal;font-display:block}
+  :root{--bg:#eef1f5;--card:#ffffff;--ink:#1f2330;--muted:#7c8597;--red:#d7263d;--deep:#b3122a;--slate:#566072;--tile:#f6f8fb;--track:#e7ebf1;--blue:#3a78b8;--bdeep:#2c5f95;--graybar:#c0c8d4}
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:700px;overflow:hidden;background:var(--bg);font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:652px;background:var(--card);border:1px solid #eef0f3;border-radius:34px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);padding:36px 52px 0}
+  .title{font-size:39px;font-weight:800;color:var(--ink);letter-spacing:-1px;line-height:1.1}
+  .title .r{color:var(--red)}
+  .uline{width:74px;height:6px;border-radius:4px;background:var(--red);margin-top:14px}
+  .sub{margin-top:14px;font-size:20px;font-weight:500;color:var(--muted);letter-spacing:-.3px;line-height:1.4}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .panels{margin-top:22px;display:grid;grid-template-columns:1.15fr 1fr;column-gap:26px}
+  .box{background:var(--tile);border-radius:24px;padding:20px 26px 22px}
+  .bh{font-size:19px;font-weight:800;color:var(--slate);letter-spacing:-.3px}
+  .bh .n{color:var(--muted);font-weight:600}
+
+  /* left: cpu bars */
+  .wrow{margin-top:18px}
+  .wtop{display:flex;justify-content:space-between;align-items:baseline}
+  .wname{font-size:21px;font-weight:700;color:var(--ink)}
+  .wname .pct{color:var(--muted);font-weight:700;font-size:18px;margin-left:8px}
+  .wval{font-size:21px;font-weight:800;color:var(--slate)}
+  .wrow.hot .wval{color:var(--red)}
+  .wrow.good .wval{color:var(--slate)}
+  .wbar{margin-top:9px;height:20px;border-radius:10px;background:var(--track);overflow:hidden}
+  .wfill{height:100%;border-radius:10px}
+  .wfill.r{background:var(--red)}
+  .wfill.g{background:var(--graybar)}
+  .wfill.blue{background:#3a78b8}
+  .wtag{display:inline-block;margin-left:11px;font-size:15px;font-weight:800;color:#5c6577;background:#dbe1ea;border-radius:8px;padding:3px 11px;vertical-align:middle}
+  .wsum{margin-top:18px;font-size:18px;font-weight:600;color:var(--slate);line-height:1.4}
+  .wsum b{color:var(--deep);font-weight:800}
+  .wsum .gb{color:var(--slate);font-weight:800}
+
+  /* right: tick donut */
+  .donutwrap{margin-top:16px;display:flex;align-items:center;gap:24px}
+  .donut{flex:0 0 auto;width:192px;height:192px;border-radius:50%;
+    background:conic-gradient(var(--red) 0 79%, #cfd6e0 79% 100%);
+    display:flex;align-items:center;justify-content:center;position:relative}
+  .donut:after{content:"";position:absolute;width:116px;height:116px;border-radius:50%;background:var(--tile)}
+  .dctr{position:relative;z-index:2;text-align:center}
+  .dctr .dn{font-size:44px;font-weight:800;color:var(--deep);letter-spacing:-2px;line-height:1}
+  .dctr .dl{font-size:16px;font-weight:700;color:var(--muted);margin-top:3px}
+  .dleg{flex:1 1 auto}
+  .lrow{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+  .dot{flex:0 0 auto;width:17px;height:17px;border-radius:5px}
+  .dot.r{background:var(--red)}.dot.gray{background:#cfd6e0}
+  .ltxt{font-size:19px;font-weight:700;color:var(--ink);line-height:1.25}
+  .ltxt .lv{color:var(--slate);font-weight:800}
+  .ltxt .ls{display:block;font-size:16px;font-weight:600;color:var(--muted);margin-top:2px}
+  .dnote{margin-top:10px;font-size:17px;font-weight:700;color:var(--slate);line-height:1.4;background:#fff;border-radius:16px;padding:15px 18px}
+  .dnote b{color:var(--deep);font-weight:800}
+
+  .callout{margin-top:18px;display:flex;align-items:center;gap:16px;background:#fbecef;border-radius:18px;padding:18px 24px}
+  .callout .k{flex:0 0 auto;font-size:17px;font-weight:800;color:#fff;background:var(--red);border-radius:9px;padding:7px 14px}
+  .callout .t{font-size:20px;font-weight:700;color:#7a2130;letter-spacing:-.3px;line-height:1.35}
+  .callout .t b{color:var(--deep)}
+
+  .foot{position:absolute;left:52px;right:52px;bottom:20px;padding-top:16px;border-top:1px solid #eef0f3;font-size:17px;color:#9aa3b2;font-weight:500;letter-spacing:-.3px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">게임루프는 <span class="r">CPU를 굶은 게 아니다</span></div>
+    <div class="uline"></div>
+    <div class="sub">전용코어를 줘도 남는 이득은 <b>캐시간섭 ~5%</b>뿐 — 진짜 벽은 딴 데 있다</div>
+
+    <div class="panels">
+      <div class="box">
+        <div class="bh">CPU 분해 <span class="n">· baseline 합 ~3.4코어 / 물리 6</span></div>
+        <div class="wrow hot">
+          <div class="wtop"><span class="wname">송신워커<span class="pct">70%</span></span><span class="wval">2.36 코어</span></div>
+          <div class="wbar"><div class="wfill r" style="width:100%"></div></div>
+        </div>
+        <div class="wrow good">
+          <div class="wtop"><span class="wname">게임루프<span class="pct">16%</span></span><span class="wval">0.53 코어<span class="wtag">안 굶음</span></span></div>
+          <div class="wbar"><div class="wfill g" style="width:22.5%"></div></div>
+        </div>
+        <div class="wrow">
+          <div class="wtop"><span class="wname">IOCP<span class="pct">15%</span></span><span class="wval">0.50 코어</span></div>
+          <div class="wbar"><div class="wfill blue" style="width:21%"></div></div>
+        </div>
+        <div class="wsum">지배자는 <b>송신 syscall(WSASend) 2.36코어</b>. 게임루프는 0.53코어로 <span class="gb">CPU가 남는다</span> — 전용코어를 줘도 캐시간섭 ~5%만 회복</div>
+      </div>
+
+      <div class="box">
+        <div class="bh">게임틱 분해 <span class="n">· 틱 22ms</span></div>
+        <div class="donutwrap">
+          <div class="donut"><div class="dctr"><div class="dn">79%</div><div class="dl">멤버십</div></div></div>
+          <div class="dleg">
+            <div class="lrow"><span class="dot r"></span><span class="ltxt">멤버십 팬아웃 <span class="lv">17.6ms</span><span class="ls">틱의 79% — 진짜 벽</span></span></div>
+            <div class="lrow"><span class="dot gray"></span><span class="ltxt">나머지 <span class="lv">4.4ms</span><span class="ls">그 외 게임로직</span></span></div>
+          </div>
+        </div>
+        <div class="dnote">틱 22ms 중 <b>멤버십 팬아웃 17.6ms</b>. 이게 40ms 틱벽에 먼저 닿는다 — 캐시가 아니라 '일의 양'</div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <span class="k">핵심</span>
+      <span class="t">천장을 정하는 벽 = 총 CPU가 아니라 <b>멤버십 팬아웃(일의 양)</b>이 40ms 틱벽을 친다</span>
+    </div>
+
+    <div class="foot">baseline 물리 6코어 중 <b>~3.4 사용</b> · 송신 = WSASend syscall(≈20µs/호출) · 게임틱 목표예산 40ms</div>
+  </div>
+</body>
+</html>

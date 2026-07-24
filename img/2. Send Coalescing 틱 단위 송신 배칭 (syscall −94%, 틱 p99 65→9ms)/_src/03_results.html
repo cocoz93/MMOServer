@@ -10,21 +10,21 @@
   .chart { display:flex; align-items:flex-end; justify-content:space-around;
            width:100%; padding:0 6px; }
   .grp { flex:1; display:flex; flex-direction:column; align-items:center; }
-  .pct { font-size:31px; font-weight:800; letter-spacing:-1px; color:var(--green-deep); margin-bottom:9px; }
+  .pct { font-size:31px; font-weight:800; letter-spacing:-1px; color:var(--blue-deep); margin-bottom:9px; }
 
   .barwrap { position:relative; width:130px; height:240px; }
   /* OFF 고스트 막대 (= 100, 전체 높이) */
   .ghost { position:absolute; left:0; right:0; bottom:0; height:222px;
-           background:linear-gradient(180deg,#eef2f7,#e2e8f0);
+           background:#e8edf4;
            border:1.5px solid #dce2ec; border-radius:11px 11px 4px 4px; }
   .ghost .off { position:absolute; top:-31px; left:0; right:0; text-align:center;
                 font-size:17px; font-weight:700; color:var(--faint); }
   /* ON 실막대 */
   .on { position:absolute; left:0; right:0; bottom:0;
-        background:linear-gradient(180deg,#34d399,#059669);
-        border-radius:11px 11px 4px 4px; box-shadow:0 10px 22px -8px rgba(5,150,105,.5); }
+        background:var(--blue-deep);
+        border-radius:11px 11px 4px 4px; box-shadow:0 8px 16px -8px rgba(37,99,235,.35); }
   .on .val { position:absolute; left:0; right:0; top:-30px; text-align:center;
-             font-size:18px; font-weight:800; color:var(--green-deep); white-space:nowrap; }
+             font-size:18px; font-weight:800; color:var(--blue-deep); white-space:nowrap; }
 
   .xlab { margin-top:14px; text-align:center; }
   .xlab .n { font-size:21px; font-weight:800; letter-spacing:-.3px; }
@@ -34,7 +34,7 @@
   <div class="eyebrow"><span class="no">③</span> 실측 결과 · OFF vs ON</div>
   <div class="h-title">송신 페이즈 처리시간 <span class="k">급감</span></div>
   <div class="h-rule"></div>
-  <div class="h-sub">회색 = <b>OFF</b> · <span style="color:var(--green-deep);font-weight:700">초록</span> = <b>ON</b> · 막대 위 숫자는 실측값 · <b>낮을수록 부하↓</b></div>
+  <div class="h-sub">회색 = <b>OFF</b> · <span style="color:var(--blue-deep);font-weight:700">파랑</span> = <b>ON</b> · 막대 위 숫자는 실측값 · <b>낮을수록 부하↓</b></div>
 
   <div class="body" style="align-items:center;">
     <div class="chart">

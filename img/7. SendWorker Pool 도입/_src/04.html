@@ -39,9 +39,12 @@
   .cell .st{margin-top:12px;font-size:19px;font-weight:800;letter-spacing:-.3px}
 
   .cell.cool{background:#f0f5fb} .cell.cool .st{color:var(--blue-ink)}
-  .cell.warm{background:#fdf5ee;border-color:#f2e2cf} .cell.warm .st{color:#a9741a}
+  .cell.warm{background:#f3f5f8;border-color:#dde3ec} .cell.warm .n{color:var(--slate)} .cell.warm .st{color:var(--slate)}
   .cell.best{background:#eaf3fc;border-color:#8ebce3} .cell.best .n{color:var(--blue-ink)} .cell.best .st{color:var(--blue-ink)}
   .cell.bad{background:#fbe4e8;border-color:#e79aa6} .cell.bad .n{color:var(--deep)} .cell.bad .u{color:var(--red)} .cell.bad .st{color:var(--red)}
+
+  .mk{display:inline-block;width:13px;height:13px;border-radius:4px;margin-right:8px;vertical-align:middle;transform:translateY(-1px)}
+  .mk.b{background:var(--blue-ink)} .mk.r{background:var(--red)}
 
   .note{margin-top:24px;text-align:center;font-size:20px;font-weight:600;color:var(--slate);letter-spacing:-.3px}
   .note b{color:var(--red);font-weight:800}
@@ -76,11 +79,11 @@
       <div class="rowh"><span class="k">IOCP 워커</span><span class="v">4</span></div>
       <div class="cell best">
         <div class="top"><span class="n">102</span><span class="u">ms</span></div>
-        <div class="st">✅ 전 지표 최고</div>
+        <div class="st"><span class="mk b"></span>전 지표 최고</div>
       </div>
       <div class="cell bad">
         <div class="top"><span class="n">688</span><span class="u">ms</span></div>
-        <div class="st">❌ 파국 · 금지 조합</div>
+        <div class="st"><span class="mk r"></span>파국 · 금지 조합</div>
       </div>
     </div>
 

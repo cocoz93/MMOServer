@@ -47,7 +47,7 @@ html, body {
 }
 /* 카드 상단 얇은 강조 띠 */
 .card::before{ content:""; position:absolute; top:0; left:0; right:0; height:5px;
-  background:linear-gradient(90deg,var(--red),#fb7185 45%,#fb923c 76%,var(--amber)); }
+  background:var(--red); }
 
 /* 헤더 */
 .eyebrow{ display:inline-flex; align-items:center; gap:8px; align-self:flex-start;
