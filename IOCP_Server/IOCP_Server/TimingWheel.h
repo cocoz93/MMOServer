@@ -98,13 +98,13 @@ public:
     // Init
     // - maxSessions: 최대 동시 세션 수
     // - timeoutSec: 무활동 타임아웃 (초)
-    // - tickIntervalMs: tick 주기 (밀리초, 기본 5000ms)
+    // - tickIntervalMs: tick 주기 (밀리초). 운영값 = IOCPServer::TIMER_TICK_INTERVAL_MS = 1000 (1초)
     // 
     //   세션 타임아웃은 수십 초 단위이므로 고해상도 tick 불필요
-    //   해상도를 5초로 잡고 메모리-CPU부담을 줄이고 하트비트 2회분 대비 충분한 여유(최악 -5초) 확보
+    //   1초 해상도로 60초 타임아웃 -> 슬롯 61개(60000/1000+1). 슬롯 메모리 부담은 무시 수준, 최악 오차 -1초
     //   반환값: 초기화 성공 여부
     //-------------------------------------------------------------------------
-    bool Init(uint16_t maxSessions, int timeoutSec, int tickIntervalMs = 5000)
+    bool Init(uint16_t maxSessions, int timeoutSec, int tickIntervalMs = 1000)
     {
         if (maxSessions == 0 || timeoutSec <= 0 || tickIntervalMs <= 0)
             return false;
