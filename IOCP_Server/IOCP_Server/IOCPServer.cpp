@@ -649,6 +649,13 @@ void CIOCPServer::ProcessAccept(SOCKET clientSocket)
     // session 초기화. 사용가능한 상태가 됨
     _sessions[index]->Initialize(clientSocket, sessionId);
 
+    // 세션 지표 기록 — Initialize 직후에 올린다.
+    //   아래 BindIOCP(RIO 모드에서는 워커의 RQ 생성)가 실패하면 ReleaseSession 경로로 빠지는데,
+    //   거기서는 sessionId만 보고 무조건 감소시킨다. 증가를 성공 경로에만 두면 실패 시
+    //   감소만 일어나 동접 게이지가 음수 방향으로 영구히 밀린다.
+    InterlockedIncrement64(&_monitor._sessionCreated);
+    InterlockedIncrement(&_monitor._sessionCount);
+
 #if !USE_RIO_TRANSPORT
     // IOCP의 CompletionKey는 단순 식별자 역할이므로, 세션 소유권을 갖지 않는다.
     if (!BindIOCP(clientSocket, (ULONG_PTR)_sessions[index].get()))
@@ -672,10 +679,6 @@ void CIOCPServer::ProcessAccept(SOCKET clientSocket)
         PushNetworkEvent(NetworkEvent(NetworkEvent::Type::CONNECTED, sessionId));
         break;
     }
-
-    // 세션 지표 기록
-    InterlockedIncrement64(&_monitor._sessionCreated);
-    InterlockedIncrement(&_monitor._sessionCount);
 
     // 타이밍 휠에 세션 등록 (타임아웃 카운트 시작)
     _timingWheel->RequestRegister(CSession::ExtractIndex(sessionId), sessionId);
@@ -974,7 +977,20 @@ void CIOCPServer::ParsePackets(CSession* session)
             RequestDisconnectSession(session);
             return;
         }
-        pMsg->MoveWritePos(static_cast<int>(totalPacketSize));
+        // MoveWritePos는 용량을 넘으면 아무것도 하지 않고 0을 반환한다.
+        //   상한(MAX_PACKET_SIZE)과 버퍼 가용량이 어긋나면 여기서 걸린다. 반환값을 버리면
+        //   _DataSize=0인 빈 버퍼가 정상인 척 상위로 흘러가 미초기화 헤더 분기를 연다.
+        if (pMsg->MoveWritePos(static_cast<int>(totalPacketSize)) != static_cast<int>(totalPacketSize))
+        {
+            LOG_ERROR_STREAM("[Error] MoveWritePos failed - size: " << totalPacketSize
+                << " - SessionId: " << session->_sessionId);
+            InterlockedIncrement64(&_monitor._packetErrors);
+            pMsg->SubRef();
+            if (parsedPackets != 0)
+                InterlockedExchangeAdd64(&_monitor._recvPackets, parsedPackets);
+            RequestDisconnectSession(session);
+            return;
+        }
 
         // 수신 패킷 카운트 (지역 누적, 종료 시 1회 반영)
         ++parsedPackets;

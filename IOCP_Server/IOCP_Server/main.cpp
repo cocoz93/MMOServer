@@ -20,10 +20,22 @@ std::atomic<bool> running{true};
 std::mutex mtx;
 std::condition_variable cv;
 
+// main이 정리(server.Stop)를 끝냈는지 — 콘솔 종료 핸들러가 이걸 기다린다.
+std::atomic<bool> shutdownComplete{false};
+
+// CTRL_CLOSE/LOGOFF/SHUTDOWN에서 정리를 기다릴 상한.
+//   이 이벤트들은 OS 유예(기본 5초) 후 프로세스를 강제 종료하므로 그보다 짧게 잡는다.
+constexpr ULONGLONG SHUTDOWN_WAIT_MAX_MS = 4500;
+
 // 프로세스 전체 종료 컨트롤러이므로 메인문에 빼둔다
+//   running 변경은 반드시 mtx 안에서 — 락 없이 바꾸면 main이 wait 술어를 평가한 직후
+//   대기 큐에 등록되기 전 구간에 끼어들어 notify가 유실된다(기상 유실).
 void SignalProcessShutdown()
 {
-    running = false;
+    {
+        std::lock_guard<std::mutex> lk(mtx);
+        running = false;
+    }
     cv.notify_one();
 }
 
@@ -34,11 +46,29 @@ BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType)
     {
     case CTRL_C_EVENT:
     case CTRL_BREAK_EVENT:
+        // 이 둘은 핸들러가 반환해도 프로세스가 계속 살아 있다 → main이 Stop()을 완주할 수 있다.
+        SignalProcessShutdown();
+        return TRUE;
+
     case CTRL_CLOSE_EVENT:
     case CTRL_SHUTDOWN_EVENT:
     case CTRL_LOGOFF_EVENT:
+        // 이 셋은 핸들러가 반환하는 순간 OS가 프로세스를 종료한다.
+        //   그냥 반환하면 main의 server.Stop()(SaveAllPlayers + DB 드레인)이 시작도 못 하고 잘려
+        //   마지막 저장 주기 이후의 플레이어 위치가 통째로 유실된다.
+        //   → 정리가 끝날 때까지 여기서 버틴다. 유예를 넘기면 어차피 OS가 죽이므로 포기하고 반환.
         SignalProcessShutdown();
+        {
+            const ULONGLONG deadline = GetTickCount64() + SHUTDOWN_WAIT_MAX_MS;
+            while (!shutdownComplete.load(std::memory_order_acquire))
+            {
+                if (GetTickCount64() >= deadline)
+                    break;
+                Sleep(20);
+            }
+        }
         return TRUE;
+
     default:
         return FALSE;
     }
@@ -127,5 +157,6 @@ int main()
     server.Stop();
 
     SLOG_INFO("Server shutdown complete");
+    shutdownComplete.store(true, std::memory_order_release);   // 콘솔 종료 핸들러 해제
     return 0;
 }

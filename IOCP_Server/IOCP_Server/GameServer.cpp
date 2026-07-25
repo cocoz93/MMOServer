@@ -772,8 +772,15 @@ void CGameServer::OnReceived(int64_t sessionId, CSerialBuffer* pMsg)
         return;
 
     // 헤더에서 패킷 타입 읽기
-    MsgHeader header;
-    pMsg->PeekData(reinterpret_cast<char*>(&header), sizeof(header));
+    //   PeekData는 담긴 데이터가 요청 크기보다 작으면 Dest를 건드리지 않고 0을 반환한다.
+    //   반환값을 안 보면 header가 직전 패킷이 남긴 스택 잔여값인 채로 분기해 엉뚱한 핸들러가 돈다.
+    MsgHeader header{};
+    if (pMsg->PeekData(reinterpret_cast<char*>(&header), sizeof(header)) != sizeof(header))
+    {
+        InterlockedIncrement64(&_monitor._packetErrors);
+        pMsg->SubRef();
+        return;
+    }
 
     // 타입별 최소 패킷 크기 검증
     uint16_t expectedSize = GetExpectedSize(header.type);
@@ -847,7 +854,7 @@ void CGameServer::RecvMoveStart(CPlayer* player, CSerialBuffer* pMsg)
     if (zone == nullptr)
         return;
 
-    MSG_C2S_MOVE_START recvMsg;
+    MSG_C2S_MOVE_START recvMsg{};
     pMsg->GetData(reinterpret_cast<char*>(&recvMsg), sizeof(recvMsg));
 
     // Direction 범위 검증 (4방향)
@@ -869,6 +876,10 @@ void CGameServer::RecvMoveStart(CPlayer* player, CSerialBuffer* pMsg)
         {
             player->_moveState = MoveState::IDLE;
             player->_direction = dir;
+
+#if USE_DB_WORKER
+            player->_dbDirty = true;   // MOVING → IDLE 전이(주기저장 MOVING 조건에서 빠지므로 최종위치 마킹)
+#endif
 
             NotifyMoveStop(zone, player, false);  // 본인 포함
             return;
@@ -901,6 +912,10 @@ void CGameServer::RecvMoveStart(CPlayer* player, CSerialBuffer* pMsg)
             player->_x = acceptX;
             player->_y = acceptY;
 
+#if USE_DB_WORKER
+            player->_dbDirty = true;   // 클라 예측 좌표 채택 → 위치 변경, 저장 대상
+#endif
+
             // 좌표 수용으로 섹터가 변경되었을 수 있으므로 재계산
             int32_t newSectorX = zone->GetSectorManager().CalcSectorX(player->_x);
             int32_t newSectorY = zone->GetSectorManager().CalcSectorY(player->_y);
@@ -923,7 +938,11 @@ void CGameServer::RecvMoveStart(CPlayer* player, CSerialBuffer* pMsg)
     // 벽 방향 검증: 벽 위치에서 벽 쪽으로 이동 시도 시 차단
     if (IsBlockedByWall(zone, player, dir))
     {
-        SendSyncPosition(player);
+        SendSyncPosition(player);        // 본인 — 서버 권위 좌표로 되돌림
+        NotifyMoveSync(zone, player);    // 주변 — 위에서 채택한 좌표를 전파.
+                                         //   이게 없으면 상태가 IDLE이라 주기 동기화(MOVING 대상)에도
+                                         //   틱 끝 묶음(dirty 대상)에도 안 실려, 주변은 최대 8타일 떨어진
+                                         //   옛 위치를 계속 렌더한다.
         return;
     }
 
@@ -945,7 +964,7 @@ void CGameServer::RecvMoveStop(CPlayer* player, CSerialBuffer* pMsg)
     if (zone == nullptr)
         return;
 
-    MSG_C2S_MOVE_STOP recvMsg;
+    MSG_C2S_MOVE_STOP recvMsg{};
     pMsg->GetData(reinterpret_cast<char*>(&recvMsg), sizeof(recvMsg));
 
     // 이동 중이 아니면 무시 (서버 벽 클램핑으로 이미 IDLE 처리됨)
@@ -995,7 +1014,7 @@ void CGameServer::RecvChat(CPlayer* player, CSerialBuffer* pMsg)
         return;
 
     // 가변 길이 수신: header.size 기반으로 실제 메시지 길이 역산
-    MsgHeader header;
+    MsgHeader header{};
     pMsg->PeekData(reinterpret_cast<char*>(&header), sizeof(header));
 
     uint16_t recvSize = header.size;
@@ -1227,7 +1246,7 @@ void CGameServer::RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg)
     if (oldZone == nullptr)
         return;
 
-    MSG_C2S_ZONE_CHANGE recvMsg;
+    MSG_C2S_ZONE_CHANGE recvMsg{};
     pMsg->GetData(reinterpret_cast<char*>(&recvMsg), sizeof(recvMsg));
 
     int32_t targetMapId = recvMsg.targetMapId;
@@ -1342,11 +1361,14 @@ void CGameServer::RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg)
 
 // ── 운영자 인증 ──
 
-static constexpr char ADMIN_KEY[] = "admin1234";  // 운영자 인증 키
+// 부하 테스트 도구용 고정 키 — 실서비스 인증 아님.
+// 와이어에 평문으로 흐르고 해시·시도 제한도 없다. admin 권한 효과는 채널 인원 제한 우회뿐(CMapInstance::FindOrCreateChannel).
+// 실계정 연동 단계에서 계정 DB 조회 기반 인증으로 교체한다.
+static constexpr char ADMIN_KEY[] = "admin1234";
 
 void CGameServer::RecvAdminLogin(CPlayer* player, CSerialBuffer* pMsg)
 {
-    MSG_C2S_ADMIN_LOGIN recvMsg;
+    MSG_C2S_ADMIN_LOGIN recvMsg{};
     pMsg->GetData(reinterpret_cast<char*>(&recvMsg), sizeof(recvMsg));
 
     // null-terminate 보장

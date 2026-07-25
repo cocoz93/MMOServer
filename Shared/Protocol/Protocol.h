@@ -255,8 +255,9 @@ struct SectorUpdateEntry
     float   y;
 };
 
-// 한 섹터 최대 엔트리 수. 패킷이 1460B를 넘지 않게:
-//   (MSG_DEFAULT_SIZE 1460 - 헤더4 - count2) / 엔트리14 = 최대 103개 → 여유 두고 100.
+// 한 섹터 최대 엔트리 수. 패킷이 MAX_PACKET_SIZE(1458B)를 넘지 않게:
+//   ※ 기준은 1460이 아니라 1458 — CSerialBuffer는 1460B를 잡지만 선두 2B가 길이 헤더 자리다.
+//   (1458 - 헤더4 - count2) / 엔트리14 = 최대 103개 → 여유 두고 100.
 // 균등 부하 평균 섹터 ~55명이라 평소엔 1패킷, 초과 시 청크 분할
 constexpr int SECTOR_UPDATE_MAX_ENTRIES = 100;
 
@@ -298,9 +299,9 @@ struct DeletePlayerBatchEntry
     int32_t playerId;
 };
 
-// 배치당 최대 엔트리 수. 패킷이 1460B를 넘지 않게 (SECTOR_UPDATE_MAX_ENTRIES와 동일 정책):
-//   CREATE: (MSG_DEFAULT_SIZE 1460 - 헤더4 - count2) / 엔트리21 = 최대 69개 → 여유 두고 64.
-//   DELETE: (1460 - 6) / 엔트리4 = 최대 363개 → 여유 두고 350.
+// 배치당 최대 엔트리 수. 패킷이 MAX_PACKET_SIZE(1458B)를 넘지 않게 (SECTOR_UPDATE_MAX_ENTRIES와 동일 정책):
+//   CREATE: (1458 - 헤더4 - count2) / 엔트리21 = 최대 69개 → 여유 두고 64.
+//   DELETE: (1458 - 6) / 엔트리4 = 최대 363개 → 여유 두고 350.
 // 초과분은 서버가 청크 분할 송신
 constexpr int CREATE_PLAYER_BATCH_MAX_ENTRIES = 64;
 constexpr int DELETE_PLAYER_BATCH_MAX_ENTRIES = 350;

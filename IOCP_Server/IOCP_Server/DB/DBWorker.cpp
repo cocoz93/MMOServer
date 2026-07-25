@@ -333,7 +333,14 @@ void CDBWorker::Shutdown(int drainTimeoutSec)
     // 모든 슬롯에 정지 신호 → 각 워커가 잔여 드레인 후 종료
     _stop.store(true);
     for (auto& s : _workers)
+    {
+        // 빈 lock — 막 wait에 진입하는 워커와의 race 방지.
+        //   워커가 술어를 false로 평가한 직후 ~ 대기 큐에 등록되기 전 구간에 _stop+notify가 끼면
+        //   기상이 유실되고, 타임아웃 없는 wait이라 아래 join이 영구 대기한다(종료 행).
+        //   락을 한 번 통과시키면 그 구간이 닫힌다. 송신 워커 정지(IOCPServer.cpp)에 있는 것과 같은 브리지.
+        { std::lock_guard<std::mutex> lk(s->mutex); }
         s->cv.notify_one();
+    }
 
     for (auto& s : _workers)
         if (s->thread.joinable())

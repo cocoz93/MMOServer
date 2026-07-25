@@ -26,6 +26,7 @@
 #include <iostream>
 #include <cstdio>
 #include <cstdint>
+#include <mutex>
 
 #include "ThirdParty/httplib.h"
 #include "MonitorManager.h"
@@ -59,7 +60,18 @@ public:
     void Stop()
     {
         _stopFlag = true;
-        if (_svr) _svr->stop();
+        if (_svr)
+        {
+            // httplib의 stop()은 is_running_(=listen 진입 완료)일 때만 리슨 소켓을 닫는다.
+            //   기동 직후라 아직 bind 중이면 stop()이 통째로 no-op이 되고, 그 직후 스레드가
+            //   accept 루프로 들어가 아래 join()이 영구 대기한다.
+            //   → running이 될 때까지 짧게 기다린다. 재시도 대기 중이라 영영 running이 안 되는
+            //     경우도 있으므로(그때는 스레드가 _stopFlag를 보고 스스로 빠져나온다) 상한을 둔다.
+            for (int i = 0; i < 100 && !_svr->is_running(); ++i)
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+            _svr->stop();
+        }
         if (_httpThread.joinable()) _httpThread.join();
         _svr.reset();
     }
@@ -82,6 +94,11 @@ private:
             {
                 SLOG_ERROR("[MonitorServer] listen failed on port {}. Retrying in {}s...", _port, RETRY_INTERVAL_SEC);
 
+                // httplib은 bind 실패 시 is_decommisioned 래치를 세우고, 이후 모든 bind를 시도조차
+                //   하지 않고 즉시 실패시킨다. 래치를 푸는 경로는 stop()뿐 — 이걸 부르지 않으면
+                //   포트가 풀려도 이 재시도 루프가 영원히 무력해진다(로그만 5초마다 쌓임).
+                _svr->stop();
+
                 for (int i = 0; i < RETRY_INTERVAL_SEC * 10 && !_stopFlag; ++i)
                     std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
@@ -96,6 +113,11 @@ private:
 
     std::string BuildMetricsText()
     {
+        // /metrics 핸들러는 _httpThread가 아니라 httplib ThreadPool 워커(기본 ≥8개)에서 실행된다.
+        //   스크레이프가 겹치면 아래 SampleThreadCpu가 CpuSample을 비원자 read-modify-write로
+        //   갱신하면서 lastWall/lastCpu가 찢겨 cpu_ratio가 엉뚱한 값으로 노출된다.
+        std::lock_guard<std::mutex> lk(_metricsMutex);
+
         std::ostringstream ss;
 
         // ── 카운터 ──
@@ -171,6 +193,11 @@ private:
         ss << "# HELP mmo_session_count Current active sessions\n";
         ss << "# TYPE mmo_session_count gauge\n";
         ss << "mmo_session_count " << _monitor._sessionCount << "\n\n";
+
+        // [transport A/B assert] active transport at build time — collect script cross-checks vs arm label (guards incremental-build mislabel)
+        ss << "# HELP mmo_transport_rio Active transport at build time (1=RIO, 0=IOCP)\n";
+        ss << "# TYPE mmo_transport_rio gauge\n";
+        ss << "mmo_transport_rio " << (int)(USE_RIO_TRANSPORT) << "\n\n";
 
         ss << "# HELP mmo_event_queue_size Network event queue size before dispatch\n";
         ss << "# TYPE mmo_event_queue_size gauge\n";
@@ -483,7 +510,10 @@ private:
     std::unique_ptr<httplib::Server> _svr;
     std::thread _httpThread;
 
-    // CPU 점유율 직전 샘플 상태 (HTTP 스레드 단독 접근 → 락 불필요)
+    // CPU 점유율 직전 샘플 상태.
+    //   핸들러가 httplib ThreadPool 워커에서 도는 탓에 "HTTP 스레드 단독 접근"이 성립하지 않는다.
+    //   → BuildMetricsText 전체를 _metricsMutex로 직렬화해 보호한다.
+    std::mutex _metricsMutex;
     CpuSample _cpuGameLoop;
     CpuSample _cpuWorker[CMonitorManager::MAX_WORKER_THREADS];
     CpuSample _cpuSendWorker[CMonitorManager::MAX_SEND_WORKERS];   // [USE_SEND_THREAD] 송신 워커별 CPU 직전 샘플

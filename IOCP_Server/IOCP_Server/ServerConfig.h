@@ -94,7 +94,21 @@ struct ServerConfig
         mode = ParseServerMode(buf);
 
         port        = GetPrivateProfileIntW(L"Server", L"Port", 6000, path);
-        maxClients  = GetPrivateProfileIntW(L"Server", L"MaxClients", 1000, path);
+        // GetPrivateProfileIntW의 반환형은 UINT다. INI에 음수를 적으면 그대로 파싱되어
+        //   -1 → 0xFFFFFFFF → int로 받는 순간 -1이 된다(문서의 "음수면 0" 설명과 실제 동작이 다름).
+        //   이 값이 GameServer::Init의 vector::assign에 들어가면 size_t로 확대되어 length_error를
+        //   던지고, catch가 없어 "Init failed" 로그 대신 크래시 덤프를 남기며 죽는다.
+        //   Start()의 범위 검사는 Init보다 뒤라 여기서 막지 않으면 도달하지 못한다.
+        constexpr int MAX_CLIENTS_LIMIT   = 65535;  // 세션 인덱스가 SessionID 상위 16bit
+        constexpr int MAX_CLIENTS_DEFAULT = 1000;
+
+        maxClients  = GetPrivateProfileIntW(L"Server", L"MaxClients", MAX_CLIENTS_DEFAULT, path);
+        if (maxClients <= 0 || maxClients > MAX_CLIENTS_LIMIT)
+        {
+            SLOG_ERROR("[ServerConfig] MaxClients({}) out of range (1~{}). Using default {}.",
+                       maxClients, MAX_CLIENTS_LIMIT, MAX_CLIENTS_DEFAULT);
+            maxClients = MAX_CLIENTS_DEFAULT;
+        }
         monitorPort = GetPrivateProfileIntW(L"Server", L"MonitorPort", 9090, path);
         monitorEnabled = (GetPrivateProfileIntW(L"Server", L"MonitorEnabled", 0, path) != 0);
 

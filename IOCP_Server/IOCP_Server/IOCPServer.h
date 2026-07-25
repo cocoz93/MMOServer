@@ -32,7 +32,11 @@
 
 #pragma comment(lib, "ws2_32.lib")
 
-constexpr size_t MAX_PACKET_SIZE = MSG_DEFAULT_SIZE;  // SerialBuffer 버퍼 크기와 일치 (1460B, TCP MSS 기준)
+// CSerialBuffer의 "실제로 쓸 수 있는" 용량과 일치시킨다.
+//   버퍼는 MSG_DEFAULT_SIZE(1460B)를 잡지만 선두 HEADER_SIZE(2B)는 길이 헤더 자리라
+//   GetWriteBufferPtr()이 _Buff+2를 돌려준다 → 가용은 1458B.
+//   여기에 1460을 두면 ParsePackets의 Dequeue가 할당 밖 2B를 침범한다.
+constexpr size_t MAX_PACKET_SIZE = MSG_DEFAULT_SIZE - HEADER_SIZE;  // 1458B
 constexpr size_t MIN_PACKET_SIZE = sizeof(EchoMsgHeader);  // 최소 패킷 크기 (가장 작은 헤더 기준)
 
 // I/O 작업 종류
