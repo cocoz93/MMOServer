@@ -537,6 +537,10 @@ void CGameServer::GameLoopThread()
                                     change.oldSectorX, change.oldSectorY);
             }
         }
+        // 같은 틱에 함께 이동한 쌍은 위 루프가 서로를 놓친다(상대는 이미 새 섹터로 옮겨간 뒤라
+        // 이탈/진입 섹터 조회에 안 걸림) → 누락된 CREATE/DELETE만 보충. 보정 비용도 멤버십 구간에 포함.
+        FixSameTickMoverPairs();
+
         _tickMembershipUs += std::chrono::duration_cast<std::chrono::microseconds>(
             Clock::now() - membT0).count();
         _pendingSectorChanges.clear();
@@ -614,10 +618,12 @@ void CGameServer::GameLoopThread()
             std::chrono::duration_cast<std::chrono::microseconds>(flushT1 - flushT0).count());
         InterlockedExchangeAdd64(&_monitor._gameLoop._membershipSends, _tickMembershipSends);  // 멤버십 변경 복사량(횟수)
         InterlockedExchangeAdd64(&_monitor._gameLoop._membershipCostUs, _tickMembershipUs);    // 멤버십 변경 송신 시간
+        InterlockedExchangeAdd64(&_monitor._gameLoop._membershipPairFixes, _tickPairFixes);   // 같은 틱 이동자 쌍 보정 건수
         _tickBroadcastGatherUs = 0;
         _tickBroadcastEnqueueUs = 0;
         _tickMembershipSends = 0;
         _tickMembershipUs = 0;
+        _tickPairFixes = 0;
 
         // [계측 오버헤드 절감] handle-latency 지역 누적분 → 전역 1회 반영
         _monitor._gameLoop.FlushHandleLatency();
@@ -1419,6 +1425,22 @@ bool CGameServer::IsBlockedByWall(CZone* zone, CPlayer* player, Direction dir)
     }
 }
 
+// 두 섹터가 서로의 시야(주변 9섹터) 안인가 — 체비쇼프 거리 ≤ 1.
+//   GetAroundSectorList(SectorManager.cpp:166)가 dx,dy ∈ [-1,1]을 모으는 것과 같은 판정을
+//   섹터 목록을 만들지 않고 좌표만으로 계산한다(맵 밖 섹터는 애초에 주민이 없어 결과 동일).
+//   ※ 섹터 좌표는 존마다 별개 격자이므로, 호출부에서 반드시 같은 존인지 먼저 확인할 것.
+namespace
+{
+    inline bool IsSectorAdjacent(int32_t x1, int32_t y1, int32_t x2, int32_t y2)
+    {
+        int32_t dx = x1 - x2;
+        int32_t dy = y1 - y2;
+        if (dx < 0) dx = -dx;
+        if (dy < 0) dy = -dy;
+        return dx <= 1 && dy <= 1;
+    }
+}
+
 // ==========================================================================
 // 존 입장/퇴장 브로드캐스트
 // ==========================================================================
@@ -1492,6 +1514,45 @@ void CGameServer::BroadcastLeaveZone(CZone* zone, CPlayer* player)
     }
 #endif
 
+    // 같은 틱에 먼저 이동해 위 두 조회에서 모두 빠진 이동자에게도 DELETE (치유 불가 유령 방지)
+    //   위 조회는 (1) 퇴장자의 현재 섹터 주변, (2) 퇴장자의 이전 섹터 전용 뷰어 — 둘 다 이동자의
+    //   "이동 후" 위치로만 걸린다. 퇴장 전엔 퇴장자를 보고 있었지만 같은 틱에 서로 멀어진 이동자는
+    //   어느 쪽에도 안 걸리고, 퇴장자는 곧 사라지므로 나중에 치유될 통로조차 없다.
+    {
+        int32_t leaverOldX = player->_sectorX;
+        int32_t leaverOldY = player->_sectorY;
+        if (_sectorChangedSet.count(player))
+        {
+            for (const auto& change : _pendingSectorChanges)
+            {
+                if (change.player == player)
+                {
+                    leaverOldX = change.oldSectorX;
+                    leaverOldY = change.oldSectorY;
+                    break;
+                }
+            }
+        }
+
+        for (const auto& change : _pendingSectorChanges)
+        {
+            CPlayer* mover = change.player;
+            if (mover == player || mover->_zoneId != player->_zoneId)
+                continue;   // 대기열은 서버 전역 — 섹터 좌표는 존마다 별개 격자라 같은 존만 비교
+            if (change.oldSectorX == mover->_sectorX && change.oldSectorY == mover->_sectorY)
+                continue;   // 원위치 복귀 — 시야 변화 없음
+
+            // 이동 전엔 퇴장자를 보고 있었는데(클라가 들고 있음), 위 두 조회 어디에도 안 걸리는 경우만
+            if (IsSectorAdjacent(change.oldSectorX, change.oldSectorY, leaverOldX, leaverOldY) &&
+                !IsSectorAdjacent(mover->_sectorX, mover->_sectorY, player->_sectorX, player->_sectorY) &&
+                !IsSectorAdjacent(mover->_sectorX, mover->_sectorY, leaverOldX, leaverOldY))
+            {
+                SendDeletePlayer(mover, player);
+                ++_tickPairFixes;
+            }
+        }
+    }
+
     // 섹터 변경 대기열에서 제거
     _sectorChangedSet.erase(player);
     _pendingSectorChanges.erase(
@@ -1512,6 +1573,86 @@ void CGameServer::PushSectorChange(CPlayer* player, int32_t oldSectorX, int32_t 
         return;  // 이미 기록됨 → 최초 출발 섹터 유지
 
     _pendingSectorChanges.push_back({ player, oldSectorX, oldSectorY });
+}
+
+// ==========================================================================
+// 같은 틱 이동자 쌍 보정
+//
+// [왜 필요한가]
+//   섹터 점유는 이동 즉시 갱신되지만(Zone.cpp:120-123, RecvMoveStart/Stop) 통보는 틱 끝에 몰아서
+//   한다. 이때 ProcessSectorChange는 이탈/진입 섹터의 "틱 끝 시점" 주민을 읽으므로, 상대도 같은
+//   틱에 움직였다면 그 조회에 안 걸린다.
+//     · 서로 멀어짐 → 상호 DELETE 누락 → 클라에 유령(멈춘 캐릭터)이 남는다
+//     · 서로 같은 섹터로 수렴 → 상호 CREATE 누락 → 바로 옆인데 서로 안 보인다
+//   4방향으로 한 칸씩 걷다 같은 틱에 섹터를 넘기만 해도 발생한다. 클라에는 타임아웃 제거도
+//   전체 재동기화도 없어 스스로 복구되지 않는다.
+//
+// [무엇을 하는가]
+//   A 패스는 B의 "현재" 섹터로, B 패스는 A의 "현재" 섹터로 판정하므로
+//     A 패스 발동 = 인접(A이전, B현재),  B 패스 발동 = 인접(A현재, B이전)
+//   이다. 정말 필요한 것은 인접(A이전,B이전) → 인접(A현재,B현재)의 변화이므로,
+//   "시야가 바뀌었는데 두 패스 다 발동하지 않는" 쌍만 골라 보충한다. 기존 송신 경로는 그대로
+//   두므로 중복은 생기지 않는다(보내던 것을 다시 보내지 않음).
+//
+// [비용] 이동자 수 M에 대해 O(M²) 정수 비교. 실측 1,000명 M≈62 → 10us/틱(프레임의 0.02%),
+//   5,000명 M≈310 → 532us/틱(1.3%). 유의미해지면 이전/현재 섹터로 버킷팅해 후보를 줄일 것.
+// ==========================================================================
+
+void CGameServer::FixSameTickMoverPairs()
+{
+    const size_t count = _pendingSectorChanges.size();
+    if (count < 2)
+        return;
+
+    for (size_t i = 0; i < count; ++i)
+    {
+        CPlayer* a = _pendingSectorChanges[i].player;
+        const int32_t aOldX = _pendingSectorChanges[i].oldSectorX;
+        const int32_t aOldY = _pendingSectorChanges[i].oldSectorY;
+        if (aOldX == a->_sectorX && aOldY == a->_sectorY)
+            continue;   // 원위치 복귀 — 틱 끝 루프의 skip 조건과 동일
+
+        for (size_t j = i + 1; j < count; ++j)
+        {
+            CPlayer* b = _pendingSectorChanges[j].player;
+            if (a->_zoneId != b->_zoneId)
+                continue;   // 대기열은 서버 전역 — 섹터 좌표는 존마다 별개 격자라 같은 존만 비교
+
+            const int32_t bOldX = _pendingSectorChanges[j].oldSectorX;
+            const int32_t bOldY = _pendingSectorChanges[j].oldSectorY;
+            if (bOldX == b->_sectorX && bOldY == b->_sectorY)
+                continue;
+
+            const bool wasVisible = IsSectorAdjacent(aOldX, aOldY, bOldX, bOldY);
+            const bool isVisible  = IsSectorAdjacent(a->_sectorX, a->_sectorY, b->_sectorX, b->_sectorY);
+            if (wasVisible == isVisible)
+                continue;   // 시야 변화 없음 → 통보 자체가 불필요
+
+            const bool aPassHits = IsSectorAdjacent(aOldX, aOldY, b->_sectorX, b->_sectorY);
+            const bool bPassHits = IsSectorAdjacent(a->_sectorX, a->_sectorY, bOldX, bOldY);
+
+            if (!isVisible)
+            {
+                // 보였다가 안 보임 — 두 패스 다 못 잡았을 때만 보충
+                if (!aPassHits && !bPassHits)
+                {
+                    SendDeletePlayer(a, b);
+                    SendDeletePlayer(b, a);
+                    ++_tickPairFixes;
+                }
+            }
+            else
+            {
+                // 안 보이다가 보임 — 두 패스 다 못 잡았을 때만 보충
+                if (aPassHits && bPassHits)
+                {
+                    SendCreateOtherPlayer(a, b);
+                    SendCreateOtherPlayer(b, a);
+                    ++_tickPairFixes;
+                }
+            }
+        }
+    }
 }
 
 // ==========================================================================

@@ -88,6 +88,12 @@ private:
     // 섹터 변경 대기열에 추가 (중복 플레이어는 최초 출발 섹터만 유지)
     void PushSectorChange(CPlayer* player, int32_t oldSectorX, int32_t oldSectorY);
 
+    // 같은 틱에 함께 이동한 쌍 보정 — 틱 끝 일괄 통보가 구조적으로 놓치는 CREATE/DELETE를 보충.
+    //   ProcessSectorChange는 이탈/진입 섹터의 "틱 끝 시점" 주민을 읽는데, 상대도 같은 틱에
+    //   움직였으면 그 조회에 안 걸린다 → 상호 DELETE 누락(유령) / 상호 CREATE 누락(투명인간).
+    //   기존 송신 경로는 그대로 두고 두 패스 모두 놓친 쌍만 보충한다 (중복 없음).
+    void FixSameTickMoverPairs();
+
     // 존 입장/퇴장 브로드캐스트 (주변 상호 CREATE/DELETE 통보)
     void BroadcastEnterZone(CZone* zone, CPlayer* player, SpawnReason reason);
     void BroadcastLeaveZone(CZone* zone, CPlayer* player);
@@ -245,6 +251,7 @@ private:
     int64_t _tickBroadcastEnqueueUs = 0;  // 수신자별 처리(복사 포함)
     int64_t _tickMembershipSends = 0;     // 멤버십 변경 복사(BroadcastAroundSector 밖 경로) 송신 횟수
     int64_t _tickMembershipUs = 0;        // 멤버십 송신(ProcessSectorChange 구간) 시간 — 틱 끝 _membershipCostUs로 반영
+    int64_t _tickPairFixes = 0;           // 같은 틱 이동자 쌍 보정 발동 수 — 틱 끝 _membershipPairFixes로 반영
 
 #if USE_DB_WORKER
     // DB 저장 파이프라인 (dirty flag 기반 비동기 위치 저장)

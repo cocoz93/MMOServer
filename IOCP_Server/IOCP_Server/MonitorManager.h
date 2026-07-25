@@ -105,6 +105,12 @@ public:
         //   접속/퇴장(BroadcastEnter/LeaveZone)은 네트워크 페이즈라 1차 제외.
         volatile LONG64 _membershipCostUs = 0;
 
+        // 같은 틱 이동자 쌍 보정 발동 횟수 — 틱 끝 일괄 통보가 놓친 CREATE/DELETE를 보충한 건수.
+        //   섹터 점유는 이동 즉시 갱신되는데 통보는 틱 끝에 "그 시점 주민"을 읽으므로,
+        //   같은 틱에 상대도 움직였으면 서로의 조회에서 빠진다(유령/투명인간). 그 보충분 집계.
+        //   0에 수렴하면 보정이 불필요한 부하, 지속 증가면 정상(이동자 밀집도에 비례).
+        volatile LONG64 _membershipPairFixes = 0;
+
         // 비용종류별 계측 (counter, 마이크로초 누적) — 1단계: BroadcastAroundSector hot path 전용
         //
         // 기존 _phase*Us는 "루프 단계별"이라 하나의 브로드캐스트 비용이 network/broadcast_sync에

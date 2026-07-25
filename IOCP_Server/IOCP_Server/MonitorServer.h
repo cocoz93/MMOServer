@@ -168,6 +168,9 @@ private:
         WriteCounter(ss, "mmo_membership_sends_total",
                      "Uncounted membership-change copies (sector-change/enter/leave); compare vs broadcast_targets",
                      _monitor._gameLoop._membershipSends);
+        WriteCounter(ss, "mmo_membership_pair_fix_total",
+                     "Same-tick mover-pair CREATE/DELETE compensations (missed by tick-end batch notify)",
+                     _monitor._gameLoop._membershipPairFixes);
 
         // ── DB 저장 파이프라인 (USE_DB_WORKER) — dirty flag 비동기 저장 ──
         WriteCounter(ss, "mmo_db_saved_total",
