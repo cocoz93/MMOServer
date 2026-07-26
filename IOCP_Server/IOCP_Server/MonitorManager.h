@@ -111,6 +111,11 @@ public:
         //   0에 수렴하면 보정이 불필요한 부하, 지속 증가면 정상(이동자 밀집도에 비례).
         volatile LONG64 _membershipPairFixes = 0;
 
+        // C2S_MOVE_START 좌표 수용을 이동량 예산 초과로 거부한 횟수.
+        //   정상 클라는 예산이 늘 만충이라 0에 머무는 것이 정상 — 0이 아니면 치트 시도이거나
+        //   예산 계수(MOVE_BUDGET_SLACK)가 빡빡하다는 신호.
+        volatile LONG64 _moveBudgetRejects = 0;
+
         // 비용종류별 계측 (counter, 마이크로초 누적) — 1단계: BroadcastAroundSector hot path 전용
         //
         // 기존 _phase*Us는 "루프 단계별"이라 하나의 브로드캐스트 비용이 network/broadcast_sync에

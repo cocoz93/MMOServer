@@ -171,6 +171,9 @@ private:
         WriteCounter(ss, "mmo_membership_pair_fix_total",
                      "Same-tick mover-pair CREATE/DELETE compensations (missed by tick-end batch notify)",
                      _monitor._gameLoop._membershipPairFixes);
+        WriteCounter(ss, "mmo_move_budget_rejects_total",
+                     "C2S_MOVE_START coordinate accepts rejected by move budget (0 expected for honest clients)",
+                     _monitor._gameLoop._moveBudgetRejects);
 
         // ── DB 저장 파이프라인 (USE_DB_WORKER) — dirty flag 비동기 저장 ──
         WriteCounter(ss, "mmo_db_saved_total",

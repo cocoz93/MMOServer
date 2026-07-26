@@ -502,6 +502,7 @@ void CGameServer::GameLoopThread()
         // deltaTime 계산
         float deltaTime = std::chrono::duration<float>(frameStart - prevTime).count();
         prevTime = frameStart;
+        ++_frameCount;   // 이동 예산의 경과 시간 산출 기준 (틱당 FRAME_INTERVAL_MS)
 
         // 1) 네트워크 이벤트 전부 소비
         _monitor._gameLoop._eventQueueSize = static_cast<LONG>(_network->GetEventQueueSize());
@@ -619,11 +620,13 @@ void CGameServer::GameLoopThread()
         InterlockedExchangeAdd64(&_monitor._gameLoop._membershipSends, _tickMembershipSends);  // 멤버십 변경 복사량(횟수)
         InterlockedExchangeAdd64(&_monitor._gameLoop._membershipCostUs, _tickMembershipUs);    // 멤버십 변경 송신 시간
         InterlockedExchangeAdd64(&_monitor._gameLoop._membershipPairFixes, _tickPairFixes);   // 같은 틱 이동자 쌍 보정 건수
+        InterlockedExchangeAdd64(&_monitor._gameLoop._moveBudgetRejects, _tickMoveBudgetRejects);  // 이동 예산 거부 건수
         _tickBroadcastGatherUs = 0;
         _tickBroadcastEnqueueUs = 0;
         _tickMembershipSends = 0;
         _tickMembershipUs = 0;
         _tickPairFixes = 0;
+        _tickMoveBudgetRejects = 0;
 
         // [계측 오버헤드 절감] handle-latency 지역 누적분 → 전역 1회 반영
         _monitor._gameLoop.FlushHandleLatency();
@@ -900,11 +903,14 @@ void CGameServer::RecvMoveStart(CPlayer* player, CSerialBuffer* pMsg)
     }
 
     // 클라이언트 예측 좌표 수용 (IDLE → MOVING 전환 시에만):
-    // 서버 좌표와의 오차가 허용 범위 내이면 채택
+    // 서버 좌표와의 오차가 허용 범위 내이고, 초당 이동량 예산이 남아 있으면 채택.
+    //   거리 임계값만으로는 1회 한도밖에 못 막는다 — STOP/START를 연타하면 전이마다 다시 8타일이
+    //   수용되므로, 시간에 비례해 적립되는 예산을 함께 봐야 자기 속도 이상으로 못 움직인다.
     {
         float dx = recvMsg.x - player->_x;
         float dy = recvMsg.y - player->_y;
-        if (dx * dx + dy * dy <= MOVE_START_ACCEPT_DIST_SQ)
+        const float distSq = dx * dx + dy * dy;
+        if (distSq <= MOVE_START_ACCEPT_DIST_SQ && ConsumeMoveBudget(player, distSq))
         {
             // 맵 경계 클램핑 후 수용
             float acceptX = recvMsg.x;
@@ -938,7 +944,7 @@ void CGameServer::RecvMoveStart(CPlayer* player, CSerialBuffer* pMsg)
                 PushSectorChange(player, oldSectorX, oldSectorY);
             }
         }
-        // 범위 초과 시 서버 좌표 유지 (치트 방지)
+        // 범위 초과 또는 예산 부족 시 서버 좌표 유지 (치트 방지)
     }
 
     // 벽 방향 검증: 벽 위치에서 벽 쪽으로 이동 시도 시 차단
@@ -1423,6 +1429,33 @@ bool CGameServer::IsBlockedByWall(CZone* zone, CPlayer* player, Direction dir)
     case Direction::DOWN:  return atBottom;
     default: return false;
     }
+}
+
+// C2S_MOVE_START 좌표 수용의 이동량 예산 — 경과분을 적립하고, 통과하면 소비까지 수행.
+//   적립: 마지막 검사 이후 흐른 프레임 × 자기 속도 × 여유계수. 상한이 1회 수용 한도(8타일)와 같아
+//         정상 클라는 예산이 늘 만충이다(서버가 이동을 직접 계산하므로 예측 오차 소모가 거의 없음).
+//   소비: 실제 수용한 거리만큼. 연타해도 장기 평균은 적립 속도(자기 속도 × 여유계수)로 수렴한다.
+bool CGameServer::ConsumeMoveBudget(CPlayer* player, float distSq)
+{
+    const uint64_t elapsedFrames = _frameCount - player->_moveBudgetFrame;
+    if (elapsedFrames > 0)
+    {
+        player->_moveBudgetFrame = _frameCount;
+        const float elapsedSec = static_cast<float>(elapsedFrames) * (FRAME_INTERVAL_MS / 1000.0f);
+        player->_moveBudget += static_cast<float>(player->_speed) * MOVE_BUDGET_SLACK * elapsedSec;
+        if (player->_moveBudget > MOVE_BUDGET_CAP)
+            player->_moveBudget = MOVE_BUDGET_CAP;
+    }
+
+    const float dist = std::sqrt(distSq);
+    if (dist > player->_moveBudget)
+    {
+        ++_tickMoveBudgetRejects;
+        return false;
+    }
+
+    player->_moveBudget -= dist;
+    return true;
 }
 
 // 두 섹터가 서로의 시야(주변 9섹터) 안인가 — 체비쇼프 거리 ≤ 1.

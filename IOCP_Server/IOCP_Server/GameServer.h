@@ -161,6 +161,10 @@ private:
     // 벽 방향 검증 — 경계 위치에서 벽 쪽 이동 차단
     bool IsBlockedByWall(CZone* zone, CPlayer* player, Direction dir);
 
+    // C2S_MOVE_START 좌표 수용의 이동량 예산 검사 — 경과분 적립 후 통과하면 소비까지 수행.
+    // 반환 false면 수용하지 않고 서버 좌표를 유지한다(기존 범위초과 경로와 동일한 처리).
+    bool ConsumeMoveBudget(CPlayer* player, float distSq);
+
     // 패킷 타입별 최소 크기 반환 (0이면 알 수 없는 타입)
     static uint16_t GetExpectedSize(MsgType type);
 
@@ -181,6 +185,13 @@ private:
     static constexpr int SYNC_INTERVAL_FRAMES = 13;          // 13 × 40ms ≈ 500ms 주기적 위치 동기화
     static constexpr float SYNC_DISTANCE_THRESHOLD_SQ = 4.0f; // 델타 동기화 임계값 제곱 (2타일)
     static constexpr float MOVE_START_ACCEPT_DIST_SQ = 64.0f; // C2S_MOVE_START 좌표 수용 임계값 제곱 (8타일)
+
+    // 좌표 수용 예산 — 위 임계값은 1회 한도일 뿐 빈도 제한이 없어, STOP/START를 연타하면
+    //   매 전이마다 8타일씩 수용돼 사실상 무제한 순간이동이 됐다(수신 빈도 제한은 서버 어디에도 없음).
+    //   상한은 위 임계값과 같은 8타일 → 정상 클라의 단발 보정은 지금과 동일하게 통과.
+    //   적립은 자기 속도 × 여유계수로 시간 비례 → 연타해도 결국 자기 속도 이상은 못 간다.
+    static constexpr float MOVE_BUDGET_CAP = 8.0f;     // 예산 상한 (타일) — MOVE_START_ACCEPT_DIST_SQ의 제곱근
+    static constexpr float MOVE_BUDGET_SLACK = 1.25f;  // 적립 여유계수 (네트워크 지터·프레임 흔들림 흡수)
 
     int32_t _defaultMapId = 0;  // 최초 접속 시 입장할 맵
     int32_t _nextPlayerId = 1;  // 전역 playerId 카운터 (싱글스레드 게임 루프)
@@ -204,6 +215,7 @@ private:
     std::queue<NetworkEvent> _localEvents;
     int _cleanupFrameCount = 0;
     int _syncFrameCount = 0;
+    uint64_t _frameCount = 0;   // 단조 증가 프레임 번호 (이동 예산의 경과 시간 산출용)
 
     // 섹터 변경 배치 처리용 대기열 (프레임 내 수집 → 틱 후 일괄 처리)
     std::vector<SectorChangeInfo> _pendingSectorChanges;
@@ -252,6 +264,7 @@ private:
     int64_t _tickMembershipSends = 0;     // 멤버십 변경 복사(BroadcastAroundSector 밖 경로) 송신 횟수
     int64_t _tickMembershipUs = 0;        // 멤버십 송신(ProcessSectorChange 구간) 시간 — 틱 끝 _membershipCostUs로 반영
     int64_t _tickPairFixes = 0;           // 같은 틱 이동자 쌍 보정 발동 수 — 틱 끝 _membershipPairFixes로 반영
+    int64_t _tickMoveBudgetRejects = 0;   // 이동 예산 초과로 거부한 좌표 수용 수 — 틱 끝 _moveBudgetRejects로 반영
 
 #if USE_DB_WORKER
     // DB 저장 파이프라인 (dirty flag 기반 비동기 위치 저장)
