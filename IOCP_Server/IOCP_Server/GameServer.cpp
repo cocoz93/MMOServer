@@ -1329,6 +1329,15 @@ void CGameServer::RecvZoneChange(CPlayer* player, CSerialBuffer* pMsg)
             SendZoneChangeFail(player, 0);
             return;
         }
+
+        // 자동배정이 "지금 있는 존"을 그대로 돌려준 경우 — 채널 지정 분기(reason 2)와 동일하게 거부.
+        //   통과시키면 아래 LeaveZone→EnterZone의 CalcSpawnPos가 좌표를 맵 전역 난수로 재추첨해,
+        //   요청만으로 순간이동이 된다(MOVE_START 이동량 예산 우회).
+        if (newZone->GetZoneId() == oldZone->GetZoneId())
+        {
+            SendZoneChangeFail(player, 2);  // 이미 해당 채널
+            return;
+        }
     }
 
     // ── 현재 존에서 퇴장 ──
