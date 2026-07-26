@@ -7,8 +7,8 @@
 
 ## 🔗 링크
 - 🌐 **WEB PROFILE** — https://cocoz93.github.io/portfolio/
-- 🍀 **기술경력서** — [Notion 바로가기](https://app.notion.com/p/23316a0b9f59809db2e5d610a23a10a5)
-- 📚 **DEV LOG 26** — [노션 블로그 전체](https://app.notion.com/p/2db16a0b9f598196a471d53775ab4223)
+- 🍀 **기술경력서** — [Notion 바로가기](https://feline-vacation-d6d.notion.site/23316a0b9f59809db2e5d610a23a10a5?source=copy_link)
+- 📚 **DEV LOG 26** — [노션 블로그 전체](https://feline-vacation-d6d.notion.site/DEV-LOG-26-2db16a0b9f598196a471d53775ab4223?source=copy_link)
 - 📧 **Email** — wndnwls7@gmail.com
 
 ## 🛠 기술 스택
