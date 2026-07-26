@@ -788,8 +788,8 @@ void CGameServer::OnDisconnected(int64_t sessionId)
 
 void CGameServer::OnReceived(int64_t sessionId, CSerialBuffer* pMsg)
 {
-    if (pMsg == nullptr)
-        return;
+    // [불변식] RECEIVED 생산자는 ParsePackets 한 곳뿐이고, 그 버퍼는 직전에 역참조된 Alloc 결과다.
+    assert(pMsg != nullptr);
 
     // 헤더에서 패킷 타입 읽기
     //   [불변식] PeekData는 항상 성공한다 — RECEIVED 이벤트를 만드는 곳은 ParsePackets 한 군데뿐이고

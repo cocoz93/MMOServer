@@ -738,11 +738,9 @@ void CIOCPServer::WorkerThread()
         auto overlappedEx = reinterpret_cast<CSession::OverlappedEx*>(overlapped);
         auto session = reinterpret_cast<CSession*>(completionKey);
 
-        if (overlappedEx == nullptr || session == nullptr)
-        {
-            LOG_ERROR_STREAM("[Error] Invalid overlappedEx or session pointer in WorkerThread");
-            continue;
-        }
+        // [불변식] overlapped 널은 바로 위에서 걸렀고, completionKey는 BindIOCP가
+        //   _sessions[index].get()(비널)로만 등록한다.
+        assert(overlappedEx != nullptr && session != nullptr);
 
         IOOperation op = overlappedEx->operation;
         bool canProcess = (result != FALSE && bytesTransferred != 0 &&
@@ -779,13 +777,9 @@ void CIOCPServer::WorkerThread()
 // Recv 완료 통지 처리
 void CIOCPServer::ProcessRecv(CSession* session, DWORD bytesTransferred)
 {
-    // 방어 로직
-    if (bytesTransferred == 0)
-    {
-        SLOG_WARN("ProcessRecv called with bytesTransferred == 0 - SessionId: {}", session->_sessionId);
-        RequestDisconnectSession(session);
-        return;
-    }
+    // [불변식] 0바이트 완료(상대의 우아한 종료)는 호출자 2곳(WorkerThread·RioDrainCompletions)의
+    //   canProcess가 먼저 걸러낸다.
+    assert(bytesTransferred != 0);
 
     // 수신 바이트 지표 기록
     InterlockedExchangeAdd64(&_monitor._recvBytes, static_cast<LONG64>(bytesTransferred));
@@ -794,15 +788,12 @@ void CIOCPServer::ProcessRecv(CSession* session, DWORD bytesTransferred)
     _timingWheel->RequestRefresh(CSession::ExtractIndex(session->_sessionId), session->_sessionId);
 
     // 링버퍼 쓰기 포인터 이동
-    size_t movedSize = session->_recvQ.MoveWritePtr(bytesTransferred);
-    if (movedSize != bytesTransferred)
-    {
-        InterlockedIncrement64(&_monitor._recvBufferOverflow);
-        LOG_ERROR_STREAM("[Error] Recv buffer overflow - SessionId: " << session->_sessionId
-            << ", Expected: " << bytesTransferred << ", Moved: " << movedSize);
-        RequestDisconnectSession(session);
-        return;
-    }
+    // [불변식] PostRecv 게시량 = 게시 시점 freeSize이고, recv 1-pending이라 완료까지 freeSize가
+    //   줄지 않는다 → bytesTransferred <= freeSize.
+    //   ※ 호출을 assert 안에 넣지 말 것 — 쓰기 위치를 옮기는 부작용이다.
+    const size_t movedSize = session->_recvQ.MoveWritePtr(bytesTransferred);
+    assert(movedSize == bytesTransferred);
+    (void)movedSize;   // 릴리즈(NDEBUG) 미사용 경고 억제
 
     // 패킷 파싱
     ParsePackets(session);
@@ -859,14 +850,10 @@ void CIOCPServer::PostRecv(CSession* session, bool skipAcquire)
         }
     }
 
-    if (bufCount == 0)
-    {
-        InterlockedIncrement64(&_monitor._recvBufferOverflow);
-        LOG_ERROR_STREAM("[Error] Recv buffer full - SessionId: " << sessionId);
-        RequestDisconnectSession(session);
-        IOCountDecrement(session);
-        return;
-    }
+    // [불변식] 링이 가득 찰(bufCount==0) 수 없다 — 파싱 후 잔여는 불완전 패킷 조각뿐이라
+    //   MAX_PACKET_SIZE(1458) 미만인데 링 용량은 65535다. 파싱이 disconnect로 끝났다면
+    //   위 AcquireSession이 먼저 실패한다. 이 용량 관계가 어긋나면 여기서 먼저 터진다.
+    assert(bufCount > 0);
 
     if (session->_disconnecting == TRUE)
     {
@@ -934,12 +921,12 @@ void CIOCPServer::ParsePackets(CSession* session)
         }
 
         // 2. 헤더에서 size 필드 peek (size는 항상 첫 2byte)
+        // [불변식] 1번이 dataSize >= headerSize(2 또는 4)를 보장했고 요청은 2바이트뿐이다.
+        //   ※ 호출을 assert 안에 넣지 말 것 — packetSize를 채우는 부작용이다.
         uint16_t packetSize = 0;
-        size_t peekedSize = session->_recvQ.Peek(&packetSize, sizeof(uint16_t));
-        if (peekedSize != sizeof(uint16_t))
-        {
-            break; // peek 실패
-        }
+        const size_t peekedSize = session->_recvQ.Peek(&packetSize, sizeof(uint16_t));
+        assert(peekedSize == sizeof(uint16_t));
+        (void)peekedSize;   // 릴리즈(NDEBUG) 미사용 경고 억제
 
         // 3. 전체 패킷 크기 계산
         // GameCodiEchoTest: size = 페이로드 크기 → 헤더 크기를 더해야 전체 크기
@@ -968,16 +955,11 @@ void CIOCPServer::ParsePackets(CSession* session)
 
         // 6. CSerialBuffer에 패킷 전체 적재 (헤더 포함)
         CSerialBuffer* pMsg = CSerialBuffer::Alloc();
-        size_t dequeuedSize = session->_recvQ.Dequeue(pMsg->GetWriteBufferPtr(), totalPacketSize);
-        if (dequeuedSize != totalPacketSize)
-        {
-            LOG_ERROR_STREAM("[Error] Packet dequeue failed - SessionId: " << session->_sessionId);
-            pMsg->SubRef();
-            if (parsedPackets != 0)
-                InterlockedExchangeAdd64(&_monitor._recvPackets, parsedPackets);
-            RequestDisconnectSession(session);
-            return;
-        }
+        // [불변식] 5번이 dataSize >= totalPacketSize를 확인했고, 그 뒤 이 링을 소비하는 주체가 없다.
+        //   ※ 호출을 assert 안에 넣지 말 것 — 읽기 위치를 옮기는 부작용이다.
+        const size_t dequeuedSize = session->_recvQ.Dequeue(pMsg->GetWriteBufferPtr(), totalPacketSize);
+        assert(dequeuedSize == totalPacketSize);
+        (void)dequeuedSize;   // 릴리즈(NDEBUG) 미사용 경고 억제
         // [불변식] 적재는 항상 성공한다 — 실패 조건인 IsFull(size)는
         //   _DataSize + size > _BufferSize - HEADER_SIZE 인데, pMsg는 바로 위에서 Alloc한 것이라
         //   _DataSize=0이고 _BufferSize=MSG_DEFAULT_SIZE(1460) 고정, totalPacketSize는 위 4번
