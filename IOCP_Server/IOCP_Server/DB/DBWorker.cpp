@@ -66,6 +66,7 @@ bool CDBWorker::Start(const DBConfig& config, int workerCount, int queueMax)
     }
 
     _perWorker.assign(_workerCount, {});
+    _perWorkerIdx.assign(_workerCount, {});
     _monitor._dbWorkerCount = static_cast<LONG>(_workerCount);   // 지표 노출 상한
 
     // 커넥션 확보 후 워커 스레드 시작 (각 슬롯 커넥션은 해당 워커만 단독 사용)
@@ -110,10 +111,10 @@ bool CDBWorker::Connect(void*& outMysql)
     return true;
 }
 
-void CDBWorker::PushToSlot(DBWorkerSlot& slot, const DBSaveJob* jobs, size_t count)
+size_t CDBWorker::PushToSlot(DBWorkerSlot& slot, const DBSaveJob* jobs, size_t count)
 {
     if (count == 0)
-        return;
+        return 0;
 
     size_t take = 0;
     {
@@ -136,33 +137,53 @@ void CDBWorker::PushToSlot(DBWorkerSlot& slot, const DBSaveJob* jobs, size_t cou
         SLOG_ERROR("[DB] backpressure drop — worker={} dropped={} (queue full, max={})",
                    slot.index, dropped, _queueMax);
     }
+
+    return take;
 }
 
-void CDBWorker::Enqueue(const DBSaveJob& job)
+bool CDBWorker::Enqueue(const DBSaveJob& job)
 {
-    PushToSlot(*_workers[SlotIndex(job.accountId)], &job, 1);
+    return PushToSlot(*_workers[SlotIndex(job.accountId)], &job, 1) == 1;
 }
 
-void CDBWorker::EnqueueBatch(const std::vector<DBSaveJob>& batch)
+void CDBWorker::EnqueueBatch(const std::vector<DBSaveJob>& batch,
+                             std::vector<size_t>* outDropped)
 {
+    if (outDropped != nullptr)
+        outDropped->clear();
     if (batch.empty())
         return;
 
     // 단일 워커: 분류 생략, 통째 push (K=1 fast path)
     if (_workerCount == 1)
     {
-        PushToSlot(*_workers[0], batch.data(), batch.size());
+        const size_t take = PushToSlot(*_workers[0], batch.data(), batch.size());
+        if (outDropped != nullptr)
+            for (size_t i = take; i < batch.size(); ++i)   // 앞에서부터 수용 → 드롭분은 꼬리
+                outDropped->push_back(i);
         return;
     }
 
     // K>1: accountId%K로 워커별 분류 후 슬롯당 1회 핸드오프
     for (auto& v : _perWorker)
         v.clear();
-    for (const DBSaveJob& job : batch)
-        _perWorker[SlotIndex(job.accountId)].push_back(job);
+    for (auto& v : _perWorkerIdx)
+        v.clear();
+    for (size_t i = 0; i < batch.size(); ++i)
+    {
+        const int slot = SlotIndex(batch[i].accountId);
+        _perWorker[slot].push_back(batch[i]);
+        _perWorkerIdx[slot].push_back(i);   // 원본 인덱스를 나란히 보존 (드롭 피드백용)
+    }
     for (int i = 0; i < _workerCount; ++i)
-        if (!_perWorker[i].empty())
-            PushToSlot(*_workers[i], _perWorker[i].data(), _perWorker[i].size());
+    {
+        if (_perWorker[i].empty())
+            continue;
+        const size_t take = PushToSlot(*_workers[i], _perWorker[i].data(), _perWorker[i].size());
+        if (outDropped != nullptr)
+            for (size_t k = take; k < _perWorkerIdx[i].size(); ++k)   // 앞에서부터 수용 → 드롭분은 꼬리
+                outDropped->push_back(_perWorkerIdx[i][k]);
+    }
 }
 
 void CDBWorker::WorkerThread(int idx)

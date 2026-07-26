@@ -38,6 +38,7 @@ struct DBConfig
 #include <vector>
 #include <atomic>
 #include <memory>
+#include <cstddef>
 
 class CMonitorManager;
 
@@ -79,10 +80,15 @@ public:
     bool Start(const DBConfig& config, int workerCount, int queueMax);
 
     // 게임루프 전용 — 스냅샷 1건 (로그아웃 등 단건). accountId%K 슬롯에 push.
-    void Enqueue(const DBSaveJob& job);
+    //   반환 false = 백프레셔로 드롭됨. 호출부는 dirty를 되돌려 다음 기회에 재시도해야 한다
+    //   (드롭을 그냥 삼키면 그 변경은 영영 사라진다).
+    bool Enqueue(const DBSaveJob& job);
 
     // 게임루프 전용 — 배치를 accountId%K로 분류 후 슬롯별 1회 lock+append+notify (주기/종료 저장).
-    void EnqueueBatch(const std::vector<DBSaveJob>& batch);
+    //   outDropped가 있으면 백프레셔로 버려진 잡의 batch 내 인덱스를 담아 준다
+    //   → 호출부가 해당 플레이어의 dirty를 복원해 다음 주기에 자동 재시도.
+    void EnqueueBatch(const std::vector<DBSaveJob>& batch,
+                      std::vector<size_t>* outDropped = nullptr);
 
     // 모든 슬롯의 잔여 잡을 비우고 워커 종료 (멱등 — 소멸자에서도 호출).
     void Shutdown(int drainTimeoutSec);
@@ -92,7 +98,8 @@ private:
     bool Connect(void*& outMysql);            // 슬롯 커넥션 1개 생성
     bool PrepareStmt(DBWorkerSlot& slot);     // slot.mysql로 prepared stmt 준비 + 파라미터 바인딩
     bool ExecSave(DBWorkerSlot& slot, const DBSaveJob& job);   // 커넥션 유실 시 stmt/mysql을 null로(재연결은 WorkerThread)
-    void PushToSlot(DBWorkerSlot& slot, const DBSaveJob* jobs, size_t count);  // 백프레셔 포함
+    // 백프레셔 포함 — 큐 여유만큼만 수용하고 실제 수용 개수를 반환 (나머지는 드롭).
+    size_t PushToSlot(DBWorkerSlot& slot, const DBSaveJob* jobs, size_t count);
 
     int SlotIndex(int64_t accountId) const    // accountId % K (음수 방어)
     {
@@ -111,6 +118,9 @@ private:
 
     // EnqueueBatch 분류 버퍼 재사용 (게임스레드/종료 시 순차 접근 — 동시 호출 없음).
     std::vector<std::vector<DBSaveJob>> _perWorker;
+    // _perWorker와 나란한 원본 batch 인덱스 — 드롭분을 호출부에 되돌려주기 위함
+    // (PushToSlot은 앞에서부터 수용하므로 드롭분은 각 슬롯 목록의 꼬리).
+    std::vector<std::vector<size_t>>    _perWorkerIdx;
 };
 
 #endif // USE_DB_WORKER

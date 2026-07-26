@@ -426,8 +426,9 @@ DBSaveJob CGameServer::MakeSaveJob(const CPlayer* player) const
 
 void CGameServer::EnqueuePlayerSave(CPlayer* player)
 {
-    _dbWorker->Enqueue(MakeSaveJob(player));
-    player->_dbDirty = false;   // 저장 요청 후 리셋 (로그아웃 등 단건)
+    // 수용된 경우에만 dirty 해제 — 백프레셔로 드롭됐는데 지워버리면 그 변경은 복원 통로가 없다.
+    if (_dbWorker->Enqueue(MakeSaveJob(player)))
+        player->_dbDirty = false;
 }
 
 void CGameServer::TickPeriodicSave()
@@ -439,7 +440,10 @@ void CGameServer::TickPeriodicSave()
     // 서버 메모리 = 진실. 저장 대상(ShouldSave)만 배치에 모아 워커에 1회 핸드오프.
     //   thread_local 재사용으로 매 주기 할당 회피 (게임 스레드 단독 접근).
     thread_local std::vector<DBSaveJob> batch;
+    thread_local std::vector<CPlayer*>  owners;    // batch와 나란한 소유자 (드롭 시 dirty 복원용)
+    thread_local std::vector<size_t>    dropped;
     batch.clear();
+    owners.clear();
     for (CPlayer* player : _sessionSlots)
     {
         if (player == nullptr)
@@ -447,10 +451,17 @@ void CGameServer::TickPeriodicSave()
         if (ShouldSave(player))
         {
             batch.push_back(MakeSaveJob(player));
-            player->_dbDirty = false;   // 저장 요청 후 리셋
+            owners.push_back(player);
+            player->_dbDirty = false;   // 저장 요청 후 리셋 (드롭되면 아래에서 되돌림)
         }
     }
-    _dbWorker->EnqueueBatch(batch);   // lock 1회 + notify 1회
+    _dbWorker->EnqueueBatch(batch, &dropped);   // lock 1회 + notify 1회
+
+    // 백프레셔로 버려진 잡은 dirty를 되살려 다음 주기에 재시도한다.
+    //   되돌리지 않으면 정지(IDLE) 상태 플레이어의 변경은 ShouldSave 대상에서 빠져 영영 유실된다.
+    //   호출은 전부 게임 스레드 단독이라 owners 포인터는 이 시점에 유효하다.
+    for (size_t idx : dropped)
+        owners[idx]->_dbDirty = true;
 }
 
 void CGameServer::SaveAllPlayers()
