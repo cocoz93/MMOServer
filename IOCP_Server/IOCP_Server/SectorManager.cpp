@@ -1,6 +1,7 @@
 ﻿#include "SectorManager.h"
 #include "Player.h"
 #include <algorithm>
+#include <cassert>   // 도달불가 불변식 검증 (릴리즈에서는 사라짐)
 
 const std::vector<CPlayer*> CSectorManager::EMPTY_SECTOR;
 
@@ -68,8 +69,12 @@ void CSectorManager::RemovePlayer(CPlayer* player, int32_t sectorX, int32_t sect
     // 순서 보존 불필요 → 캐시 인덱스로 O(1) swap-and-pop (Zone::_listIndex와 동일 패턴)
     auto& players = SectorAt(sectorY, sectorX);
     int32_t idx = player->_sectorIndex;
-    if (idx < 0 || idx >= static_cast<int32_t>(players.size()) || players[idx] != player)
-        return;   // 미등록/불일치 방어 (기존 std::find 실패 = no-op 과 동일)
+    // [불변식] idx는 항상 이 섹터 안 자기 자리를 가리킨다 — AddPlayer가 push 직전 크기로 세팅하고,
+    //   아래 swap-and-pop이 당겨온 원소의 인덱스까지 갱신한 뒤 -1로 되돌린다. 호출부 4곳
+    //   (Zone::LeaveZone·Zone::Tick, CGameServer::RecvMoveStart·RecvMoveStop)은 모두 직전까지
+    //   등록돼 있던 플레이어를 그 등록 섹터 좌표로 넘기고, 중복 호출 경로도 없다
+    //   (LeaveZone 호출은 BroadcastLeaveZone 단 한 곳, 그 뒤엔 슬롯이 비거나 새 존에 재등록된다).
+    assert(idx >= 0 && idx < static_cast<int32_t>(players.size()) && players[idx] == player);
 
     CPlayer* back = players.back();
     players[idx] = back;

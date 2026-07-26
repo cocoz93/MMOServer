@@ -17,6 +17,7 @@
 #pragma once
 
 #include <cstdint>
+#include <cassert>   // 도달불가 불변식 검증 (릴리즈에서는 사라짐)
 #include <thread>
 #include <atomic>
 #include <memory>
@@ -211,8 +212,12 @@ private:
     CPlayer* FindPlayer(int64_t sessionId) const
     {
         uint16_t idx = CSession::ExtractIndex(sessionId);
-        if (idx >= _sessionSlots.size())
-            return nullptr;
+        // [불변식] idx < _sessionSlots.size() — 슬롯 배열은 Init에서 maxClients로 assign되고,
+        //   세션 인덱스는 같은 maxClients로 잡힌 CIOCPServer 세션 배열의 인덱스라 항상 그 미만이다.
+        //   ※ 바로 아래가 배열 인덱싱이다. 이 불변식이 깨지면 릴리즈에서는 곧장 범위 밖 접근이 된다
+        //     (다른 불변식 assert들과 달리 실패 대가가 메모리 손상). 슬롯 크기 산정이나 maxClients
+        //     전달 경로를 손보면 반드시 디버그 빌드로 여기를 통과시킬 것.
+        assert(idx < _sessionSlots.size());
         CPlayer* p = _sessionSlots[idx];
         return (p != nullptr && p->_sessionId == sessionId) ? p : nullptr;
     }

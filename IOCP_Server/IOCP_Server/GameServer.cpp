@@ -792,15 +792,15 @@ void CGameServer::OnReceived(int64_t sessionId, CSerialBuffer* pMsg)
         return;
 
     // 헤더에서 패킷 타입 읽기
-    //   PeekData는 담긴 데이터가 요청 크기보다 작으면 Dest를 건드리지 않고 0을 반환한다.
-    //   반환값을 안 보면 header가 직전 패킷이 남긴 스택 잔여값인 채로 분기해 엉뚱한 핸들러가 돈다.
+    //   [불변식] PeekData는 항상 성공한다 — RECEIVED 이벤트를 만드는 곳은 ParsePackets 한 군데뿐이고
+    //   (IOCPServer.cpp의 PushNetworkEvent(RECEIVED)), 거기 닿으려면 totalPacketSize >= sizeof(MsgHeader)
+    //   검증과 그 크기만큼의 적재 성공을 모두 통과해야 하므로 _DataSize >= sizeof(MsgHeader)가 보장된다.
+    //   ※ 호출을 assert 안에 넣지 말 것 — header를 채우는 부작용이라, 릴리즈에서 식째로 사라지면
+    //     header가 스택 잔여값인 채로 아래 switch를 타 엉뚱한 핸들러가 돈다(원래 결함 그 자체).
     MsgHeader header{};
-    if (pMsg->PeekData(reinterpret_cast<char*>(&header), sizeof(header)) != sizeof(header))
-    {
-        InterlockedIncrement64(&_monitor._packetErrors);
-        pMsg->SubRef();
-        return;
-    }
+    const int peekedSize = pMsg->PeekData(reinterpret_cast<char*>(&header), sizeof(header));
+    assert(peekedSize == static_cast<int>(sizeof(header)));
+    (void)peekedSize;   // 릴리즈(NDEBUG) 미사용 경고 억제
 
     // 타입별 최소 패킷 크기 검증
     uint16_t expectedSize = GetExpectedSize(header.type);

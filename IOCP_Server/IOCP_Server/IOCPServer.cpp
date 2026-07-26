@@ -4,6 +4,7 @@
 #include <iostream>
 #include <chrono>
 #include <algorithm>
+#include <cassert>   // 도달불가 불변식 검증 (릴리즈에서는 사라짐)
 
 #include "CoreAffinity.h"
 
@@ -977,20 +978,17 @@ void CIOCPServer::ParsePackets(CSession* session)
             RequestDisconnectSession(session);
             return;
         }
-        // MoveWritePos는 용량을 넘으면 아무것도 하지 않고 0을 반환한다.
-        //   상한(MAX_PACKET_SIZE)과 버퍼 가용량이 어긋나면 여기서 걸린다. 반환값을 버리면
-        //   _DataSize=0인 빈 버퍼가 정상인 척 상위로 흘러가 미초기화 헤더 분기를 연다.
-        if (pMsg->MoveWritePos(static_cast<int>(totalPacketSize)) != static_cast<int>(totalPacketSize))
-        {
-            LOG_ERROR_STREAM("[Error] MoveWritePos failed - size: " << totalPacketSize
-                << " - SessionId: " << session->_sessionId);
-            InterlockedIncrement64(&_monitor._packetErrors);
-            pMsg->SubRef();
-            if (parsedPackets != 0)
-                InterlockedExchangeAdd64(&_monitor._recvPackets, parsedPackets);
-            RequestDisconnectSession(session);
-            return;
-        }
+        // [불변식] 적재는 항상 성공한다 — 실패 조건인 IsFull(size)는
+        //   _DataSize + size > _BufferSize - HEADER_SIZE 인데, pMsg는 바로 위에서 Alloc한 것이라
+        //   _DataSize=0이고 _BufferSize=MSG_DEFAULT_SIZE(1460) 고정, totalPacketSize는 위 4번
+        //   검증에서 MAX_PACKET_SIZE(=MSG_DEFAULT_SIZE-HEADER_SIZE=1458) 이하가 보장된다
+        //   → 1458 > 1458 이 되어 성립할 수 없다.
+        //   이 세 상수의 관계가 다시 어긋나면(원래 Critical: 할당 밖 2B 침범) 여기서 먼저 터진다.
+        //   ※ 호출을 assert 안에 넣지 말 것 — 쓰기 위치를 실제로 옮기는 부작용이라, 릴리즈에서
+        //     식째로 사라지면 _DataSize=0인 빈 버퍼가 상위로 흘러간다.
+        const int movedSize = pMsg->MoveWritePos(static_cast<int>(totalPacketSize));
+        assert(movedSize == static_cast<int>(totalPacketSize));
+        (void)movedSize;   // 릴리즈(NDEBUG) 미사용 경고 억제
 
         // 수신 패킷 카운트 (지역 누적, 종료 시 1회 반영)
         ++parsedPackets;
