@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "LockFree/ExternalTlsFreeList.h"
+#include "LockFreeConfig.h"
 
 // 기본 직렬화 버퍼 크기 — 현재 프로토콜 최대 패킷(~1034B)을 수용할 수 있으면 충분
 // 값 자체에 특별한 성능적 근거는 없음. 대형 패킷 추가 시 MAX_PACKET_SIZE와 함께 확장할 것
@@ -15,7 +15,7 @@ static constexpr int HEADER_SIZE = 2;
 class CSerialBuffer
 {
 public:
-	static CExternalTlsFreeList<CSerialBuffer>* _TlsMsgFreeList;
+	static LockFree::CExternalTlsFreeList<CSerialBuffer>* _TlsMsgFreeList;
 
 public:
 	static CSerialBuffer* Alloc();

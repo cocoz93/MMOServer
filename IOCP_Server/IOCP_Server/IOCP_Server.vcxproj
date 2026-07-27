@@ -147,6 +147,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="CoreAffinity.cpp" />
     <ClCompile Include="SerialBuffer.cpp" />
+    <ClCompile Include="LockFreeConfig.cpp" />
     <ClCompile Include="Player.cpp" />
     <ClCompile Include="SectorManager.cpp" />
     <ClCompile Include="Zone.cpp" />
@@ -160,10 +161,7 @@
     <ClInclude Include="..\..\Shared\Common\Logger.h" />
     <ClInclude Include="Crash\CrashDump.h" />
     <ClInclude Include="IOCPServer.h" />
-    <ClInclude Include="LockFree\ExternalTlsFreeList.h" />
-    <ClInclude Include="LockFree\InternalFreeList.h" />
-    <ClInclude Include="LockFree\LockFreeQueue.h" />
-    <ClInclude Include="LockFree\LockFreeStack.h" />
+    <ClInclude Include="LockFreeConfig.h" />
     <ClInclude Include="SerialBuffer.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="SectorManager.h" />

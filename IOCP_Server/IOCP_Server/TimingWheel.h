@@ -7,7 +7,7 @@
 #include <chrono>
 #include <Windows.h>
 
-#include "LockFree/LockFreeQueue.h"
+#include "LockFreeConfig.h"
 #include "CoreAffinity.h"
 
 //=============================================================================

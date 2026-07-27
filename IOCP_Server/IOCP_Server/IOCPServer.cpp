@@ -184,7 +184,8 @@ bool CIOCPServer::Start()
 
     // SerialBuffer 메모리풀 초기화
     // 클라이언트당 동시 송신 대기 버퍼 1~2개 가정, 부족 시 청크 자동 증가
-    CSerialBuffer::_TlsMsgFreeList = new CExternalTlsFreeList<CSerialBuffer>();
+    // 생성자 인자 0 = 기본 워밍업 생략. 실제 사전 확보량은 바로 아래 Init()이 정한다.
+    CSerialBuffer::_TlsMsgFreeList = new LockFree::CExternalTlsFreeList<CSerialBuffer>(0);
     if (!CSerialBuffer::_TlsMsgFreeList->Init(_maxClients * 2))
     {
         LOG_ERROR_STREAM("Failed to init SerialBuffer FreeList");

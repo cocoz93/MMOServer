@@ -24,3 +24,30 @@ C++17 · Windows IOCP · WinSock · Prometheus · Grafana
 | `Shared/` | 공용 코드 |
 | `Run/` | 실행 스크립트 |
 | `img/` | 성능 실험 인포그래픽 (소스는 각 폴더 `_src/`) |
+
+## ⚠️ 빌드 전제 — LockFree 저장소가 나란히 있어야 합니다
+
+락프리 자료구조(큐·스택·메모리풀)는 이 저장소에 사본을 두지 않고
+[**LockFree 저장소**](https://github.com/cocoz93/LockFree)를 **직접 참조**합니다.
+예전엔 사본을 복사해 뒀다가 양쪽이 갈라져 결함 수정이 서버에 반영되지 않는 일이 있어, 사본을 없앴습니다.
+
+두 저장소를 **같은 부모 폴더에** 나란히 두세요:
+
+```
+<부모폴더>/
+├─ MMO/         ← 이 저장소
+└─ LockFree/    ← https://github.com/cocoz93/LockFree
+```
+
+연결은 프로젝트 설정이 아니라 소스에 있습니다 — `IOCP_Server/IOCP_Server/LockFreeConfig.h`
+한 파일이 상대경로로 저장소 헤더를 직접 include 합니다(락프리를 쓰는 코드는 이 헤더만 include).
+폴더가 없으면 이렇게 실패합니다:
+
+```
+LockFreeConfig.h(45,10): error C1083: 포함 파일을 열 수 없습니다.
+                         '../../../LockFree/LockFree_Test/LockFree/InternalFreeList.h'
+```
+
+빌드는 **`IOCP_Server/IOCP_Server.sln`** 으로 하세요.
+프로젝트 파일(`.vcxproj`)만 빌드하면 실행 파일이 `Run/bin/` 이 아닌 다른 경로에 생성돼,
+실행 스크립트가 예전 바이너리를 쓰게 됩니다. (x64 전용 — 128비트 CAS를 써서 Win32는 빌드되지 않습니다)

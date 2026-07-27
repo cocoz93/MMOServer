@@ -6,7 +6,7 @@
 
 //CFreeList<CSerialBuffer> CSerialBuffer::_MsgFreeList;
 //CLockFree_FreeList<CSerialBuffer>* CSerialBuffer::_MsgFreeList;
-CExternalTlsFreeList<CSerialBuffer>* CSerialBuffer::_TlsMsgFreeList;
+LockFree::CExternalTlsFreeList<CSerialBuffer>* CSerialBuffer::_TlsMsgFreeList;
 
 CSerialBuffer* CSerialBuffer::Alloc()
 {
