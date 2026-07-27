@@ -11,6 +11,7 @@
 #include "Config.h"
 #include "DummyManager.h"
 #include "StressMonitorServer.h"
+#include "IntegrityLog.h"
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -64,6 +65,9 @@ int main()
     Config cfg;
     cfg.Load();
 
+    // 무결성 위반 시 중단할지 여부 — 끄면 카운터/로그만 남기고 계속 돈다
+    Integrity::Init(cfg.failFastOnError);
+
         wprintf(L"\n[Custom Echo Stress] start. Server=%hs:%d, Clients=%d\n",
             cfg.serverIp.c_str(), cfg.port, cfg.clientCount);
         wprintf(L"[Custom Echo Stress] Prometheus metrics on port %d\n\n",
@@ -82,6 +86,14 @@ int main()
 
     while (!g_shutdownRequested.load(std::memory_order_acquire))
     {
+        // 무결성 위반 종료 — 계속 돌면 링버퍼가 덮이면서 증거만 사라진다.
+        // 아래 정상 종료 경로를 그대로 타므로 리포트와 덤프는 저장된다.
+        if (Integrity::HasFailed())
+        {
+            wprintf(L"\n[Custom Echo Stress] 무결성 위반 감지 — 테스트를 중단합니다.\n");
+            break;
+        }
+
         // 시간 제한 종료
         if (cfg.testDurationSec > 0)
         {
@@ -117,9 +129,25 @@ int main()
 
     int64_t avgTps = (elapsedSec > 0) ? (s.recvCount / elapsedSec) : 0;
 
+    // 무결성 위반으로 끝났으면 리포트 최상단에 배너 (콘솔·파일 양쪽에 남는다)
+    wchar_t banner[512] = L"";
+    if (Integrity::HasFailed())
+    {
+        swprintf_s(banner, _countof(banner),
+            L"\n"
+            L"********************************************\n"
+            L"  INTEGRITY FAIL — 무결성 위반으로 중단됨\n"
+            L"  위반 건수 : %d (덤프는 최초 %d건)\n"
+            L"  상세 로그 : %s\n"
+            L"  ※ 위반 이후의 RTT/TPS 수치는 신뢰할 수 없음\n"
+            L"********************************************\n",
+            Integrity::EntryCount(), Integrity::MAX_ENTRIES, Integrity::LogPath());
+    }
+
     // 리포트 문자열 생성 (콘솔 + 파일 공용)
     wchar_t report[2048];
     swprintf_s(report, _countof(report),
+        L"%s"
         L"\n"
         L"============================================\n"
         L"  [Test Result]  Duration: %02d:%02d\n"
@@ -142,10 +170,12 @@ int main()
         L"  RTT samples    : %lld\n"
         L"--------------------------------------------\n"
         L"  Echo Timeout   : %lld\n"
-        L"  Packet Error   : %lld\n"
+        L"  Pad Error      : %lld\n"
+        L"  Order Error    : %lld\n"
         L"  Late Arrival   : %lld\n"
         L"  SendBuf Full   : %lld\n"
         L"============================================\n",
+        banner,
         mm, ss,
         cfg.serverIp.c_str(), cfg.port,
         cfg.clientCount,
@@ -158,7 +188,8 @@ int main()
         avgTps,
         avgRtt, minRtt, maxRtt, samples,
         s.echoNotRecv,
-        s.packetError,
+        s.padError,
+        s.orderError,
         s.lateArrival,
         s.sendBufferFull);
 
@@ -197,6 +228,8 @@ int main()
             wprintf(L"\n  [Warning] Failed to save report file.\n");
         }
     }
+
+    Integrity::Close();
 
     // 리포트 저장 완료 — CTRL_CLOSE 핸들러 대기 해제
     g_reportDone.store(true, std::memory_order_release);

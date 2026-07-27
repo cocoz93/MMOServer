@@ -21,6 +21,8 @@ struct Config
     int         rampUpIntervalMs = 0;            // 점진 접속 간격(ms). 0이면 전체 동시 접속, >0이면 해당 간격마다 1명씩 추가
     int         attackMode       = 0;            // 0=정상 에코, 1=비정상 패킷 크기, 2=패킷 폭주, 3=idle(타임아웃), 4=sendQ 압박
     int         attackClientCount = 5;           // 0=전원 공격, N=앞에서 N명만 공격 (나머지 정상 에코)
+    bool        failFastOnError  = true;         // 무결성 위반(패딩 훼손/순서 역전) 발생 시 즉시 테스트 중단.
+                                                 // 끄면 카운터·로그만 남기고 계속 진행 (부하 측정만 볼 때)
 
     // 실행 파일 경로 기준으로 EchoStressConfig.ini 로드
     bool Load()
@@ -65,6 +67,7 @@ struct Config
         rampUpIntervalMs    = GetPrivateProfileIntW(L"Stress", L"RampUpIntervalMs", 0, path);
         attackMode          = GetPrivateProfileIntW(L"Stress", L"AttackMode", 0, path);
         attackClientCount   = GetPrivateProfileIntW(L"Stress", L"AttackClientCount", 5, path);
+        failFastOnError     = (GetPrivateProfileIntW(L"Stress", L"FailFastOnError", 1, path) != 0);
 
         // 유효성 보정
         if (minPacketSize < 12)   minPacketSize = 12;
@@ -98,5 +101,6 @@ private:
         wprintf(L"  RampUpInterval : %d ms\n", rampUpIntervalMs);
         wprintf(L"  AttackMode     : %d\n", attackMode);
         wprintf(L"  AttackClients  : %d\n", attackClientCount);
+        wprintf(L"  FailFastOnError: %d\n", failFastOnError ? 1 : 0);
     }
 };

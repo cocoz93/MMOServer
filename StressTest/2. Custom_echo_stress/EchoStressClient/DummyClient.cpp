@@ -1,6 +1,7 @@
 #include "DummyClient.h"
 #include <Windows.h>
 #include "Stats.h"
+#include "IntegrityLog.h"
 #include <cstring>
 #include <random>
 
@@ -187,7 +188,7 @@ void DummyClient::OnRecv(ThreadStats& stats, int reconnectDelayMs)
 // ─────────────────────────────────────────────────────────────────
 // 패킷 파싱
 // ─────────────────────────────────────────────────────────────────
-void DummyClient::ProcessPackets(ThreadStats& stats, int reconnectDelayMs, int maxPacketSize)
+void DummyClient::ProcessPackets(ThreadStats& stats, int reconnectDelayMs, int maxPacketSize, int clientIndex)
 {
     while (true)
     {
@@ -234,7 +235,12 @@ void DummyClient::ProcessPackets(ThreadStats& stats, int reconnectDelayMs, int m
                 size_t padLen = totalSize - ECHO_TOTAL_SIZE;
                 FillDeterministicPadding(expected, padLen, recvVal);
                 if (std::memcmp(packet + ECHO_TOTAL_SIZE, expected, padLen) != 0)
-                    stats.packetError++;
+                {
+                    stats.padError++;
+                    // 카운터만으로는 추적이 불가능하다 — 어긋난 위치와 원본 바이트를 남긴다
+                    Integrity::ReportPadding(clientIndex, recvVal, static_cast<int>(totalSize),
+                                             packet + ECHO_TOTAL_SIZE, expected, padLen);
+                }
             }
 
             _expectedRecv++;
@@ -254,7 +260,8 @@ void DummyClient::ProcessPackets(ThreadStats& stats, int reconnectDelayMs, int m
         else
         {
             // recvVal > _expectedRecv: 예상 밖 값 → 진짜 패킷 에러
-            stats.packetError++;
+            stats.orderError++;
+            Integrity::ReportOrder(clientIndex, _expectedRecv, recvVal);
             _expectedRecv = recvVal + 1;
             if (_pendingCount > 0)
             {

@@ -1,4 +1,5 @@
 ﻿#include "DummyManager.h"
+#include "IntegrityLog.h"
 #include <Windows.h>
 #include <algorithm>
 #include <timeapi.h>
@@ -113,8 +114,11 @@ void DummyManager::DisplayLoop()
         int mm = elapsed / 60;
         int ss = elapsed % 60;
 
-        wprintf(L"[%02d:%02d] Conn: %d/%d | Send: %lld/s | Recv: %lld/s | RTT: %lldms | Loop: %lldms | Pend: %d | BufFull: %lld | Err: %lld\n",
-                mm, ss, conn, total, sendTps, recvTps, avgRtt, loopMs, pending, bufFull, errors);
+        // PktErr는 Err 합계와 별도로 항상 표시한다 — 재접속 테스트 중이면 Err에
+        // 서버발 끊김이 계속 쌓여서, 그 안에 섞인 무결성 위반 1건이 묻혀버린다.
+        wprintf(L"[%02d:%02d] Conn: %d/%d | Send: %lld/s | Recv: %lld/s | RTT: %lldms | Loop: %lldms | Pend: %d | BufFull: %lld | Err: %lld | PktErr: pad=%lld ord=%lld\n",
+                mm, ss, conn, total, sendTps, recvTps, avgRtt, loopMs, pending, bufFull, errors,
+                merged.padError, merged.orderError);
 
         if (_config.attackMode > 0)
         {
@@ -152,7 +156,9 @@ void DummyManager::NetworkLoop(int begin, int end, int threadIdx)
 
     ThreadStats& myStats = _threadStats[threadIdx];
 
-    while (_running)
+    // 무결성 위반이 나면 main이 종료를 지시하기 전에 스스로 멈춘다 —
+    // main의 폴링 주기(100ms) 동안 송수신을 더 돌리면 그만큼 링버퍼가 덮인다.
+    while (_running && !Integrity::HasFailed())
     {
         int64_t loopStart = static_cast<int64_t>(GetTickCount64());
 
@@ -247,7 +253,7 @@ void DummyManager::NetworkLoop(int begin, int end, int threadIdx)
                 {
                     c.OnRecv(myStats, reconnectDelay);
                     if (c.IsConnected())
-                        c.ProcessPackets(myStats, reconnectDelay, maxPacketSize);
+                        c.ProcessPackets(myStats, reconnectDelay, maxPacketSize, i);
                 }
             }
         }

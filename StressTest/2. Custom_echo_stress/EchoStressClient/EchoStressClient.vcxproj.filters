@@ -32,6 +32,9 @@
     <ClInclude Include="Stats.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="IntegrityLog.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\..\Shared\Protocol\Protocol.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>

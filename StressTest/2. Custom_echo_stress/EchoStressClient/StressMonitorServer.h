@@ -106,8 +106,14 @@ private:
                      "Total server-initiated disconnects", m.disconnectFromServer);
         WriteCounter(ss, "stress_echo_not_recv_total",
                      "Total echo timeout (no response)", m.echoNotRecv);
+        // 합계는 기존 대시보드(stress-dashboard.json) 호환용으로 유지하고,
+        // 원인별 두 개를 따로 노출한다 — pad는 0이 아니면 곧 라이브러리 버그다.
         WriteCounter(ss, "stress_packet_error_total",
-                     "Total packet errors", m.packetError);
+                     "Total packet errors (pad + order)", m.packetError);
+        WriteCounter(ss, "stress_pad_error_total",
+                     "Total payload padding mismatches (library bug indicator)", m.padError);
+        WriteCounter(ss, "stress_order_error_total",
+                     "Total echo sequence violations", m.orderError);
         WriteCounter(ss, "stress_late_arrival_total",
                      "Total late arrivals", m.lateArrival);
         WriteCounter(ss, "stress_send_buffer_full_total",

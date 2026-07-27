@@ -157,6 +157,7 @@
   <ItemGroup>
     <ClInclude Include="Config.h" />
     <ClInclude Include="Stats.h" />
+    <ClInclude Include="IntegrityLog.h" />
     <ClInclude Include="..\..\..\Shared\Protocol\Protocol.h" />
     <ClInclude Include="RingBuffer.h" />
     <ClInclude Include="DummyClient.h" />

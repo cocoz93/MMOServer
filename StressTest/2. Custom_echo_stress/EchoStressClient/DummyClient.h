@@ -26,7 +26,8 @@ public:
     void OnRecv(ThreadStats& stats, int reconnectDelayMs);
 
     // OnRecv 후 RingBuffer에서 완성된 패킷 파싱
-    void ProcessPackets(ThreadStats& stats, int reconnectDelayMs, int maxPacketSize);
+    //   clientIndex: 무결성 위반 로그에 남길 클라이언트 식별자 (재접속해도 안 바뀜)
+    void ProcessPackets(ThreadStats& stats, int reconnectDelayMs, int maxPacketSize, int clientIndex);
 
     // 에코 송신 시도 (pendingCount < overSendCount 이면 송신버퍼에 enqueue)
     void TrySend(int overSendCount, int minPacketSize, int maxPacketSize, int reconnectDelayMs, ThreadStats& stats);

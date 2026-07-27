@@ -15,7 +15,11 @@ struct alignas(64) ThreadStats
     std::atomic<int64_t> connectFail{0};
     std::atomic<int64_t> disconnectFromServer{0};
     std::atomic<int64_t> echoNotRecv{0};
-    std::atomic<int64_t> packetError{0};
+    // 무결성 위반 — 부하가 만드는 현상이 아니라 라이브러리 버그 신호라 원인별로 나눈다.
+    //   padError   : payload 바이트 훼손 (링버퍼 랩/코얼레싱/부분전송 경계 결함)
+    //   orderError : 에코 값 역전 (유실·뒤섞임)
+    std::atomic<int64_t> padError{0};
+    std::atomic<int64_t> orderError{0};
     std::atomic<int64_t> lateArrival{0};
     std::atomic<int64_t> connectTotal{0};
 
@@ -87,7 +91,9 @@ struct MergedStats
     int64_t connectFail         = 0;
     int64_t disconnectFromServer= 0;
     int64_t echoNotRecv         = 0;
-    int64_t packetError         = 0;
+    int64_t padError            = 0;
+    int64_t orderError          = 0;
+    int64_t packetError         = 0;   // padError + orderError — 기존 지표/대시보드 호환용
     int64_t lateArrival         = 0;
     int64_t connectTotal        = 0;
 
@@ -121,7 +127,8 @@ inline MergedStats MergeThreadStats(const ThreadStats* v, int count)
         m.connectFail          += ts.connectFail.load(std::memory_order_relaxed);
         m.disconnectFromServer += ts.disconnectFromServer.load(std::memory_order_relaxed);
         m.echoNotRecv          += ts.echoNotRecv.load(std::memory_order_relaxed);
-        m.packetError          += ts.packetError.load(std::memory_order_relaxed);
+        m.padError             += ts.padError.load(std::memory_order_relaxed);
+        m.orderError           += ts.orderError.load(std::memory_order_relaxed);
         m.lateArrival          += ts.lateArrival.load(std::memory_order_relaxed);
         m.connectTotal         += ts.connectTotal.load(std::memory_order_relaxed);
 
@@ -148,5 +155,6 @@ inline MergedStats MergeThreadStats(const ThreadStats* v, int count)
         m.sendBufferFull       += ts.sendBufferFull.load(std::memory_order_relaxed);
         m.pendingPackets       += ts.pendingPackets.load(std::memory_order_relaxed);
     }
+    m.packetError = m.padError + m.orderError;   // 세부 두 개가 정본, 합계는 파생
     return m;
 }
