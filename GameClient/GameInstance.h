@@ -87,7 +87,7 @@ private:
     int  _zoneChangeElapsedMs = 0;
     static constexpr int ZONE_CHANGE_MIN_DISPLAY_MS = 500;
 
-    // 하트비트 (서버 타임아웃 30초 대비 20초 간격)
+    // 하트비트 (서버 타임아웃 60초 대비 20초 간격)
     static constexpr int HEARTBEAT_INTERVAL_MS = 20000;
     int _heartbeatAccumMs;
 
