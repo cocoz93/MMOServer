@@ -1,0 +1,12 @@
+{
+  "name": "mmo-web-client-demo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Browser pixel client + WS<->TCP relay for the IOCP MMO server (local demo)",
+  "scripts": {
+    "relay": "node relay.js --ws 9000 --server-port 6000"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

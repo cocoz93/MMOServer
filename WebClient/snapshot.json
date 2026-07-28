@@ -1,0 +1,22 @@
+{
+  "zone": { "mapWidth": 120, "mapHeight": 120, "sectorSize": 20 },
+  "self": { "id": 101, "x": 60, "y": 58, "dir": 2, "moveState": 0, "disp": 87, "color": 0, "speed": 30 },
+  "players": [
+    { "id": 102, "x": 52, "y": 52, "dir": 4, "moveState": 1, "disp": 66, "color": 1, "speed": 30 },
+    { "id": 205, "x": 68, "y": 54, "dir": 3, "moveState": 0, "disp": 67, "color": 2, "speed": 30 },
+    { "id": 309, "x": 55, "y": 62, "dir": 1, "moveState": 1, "disp": 68, "color": 3, "speed": 30 },
+    { "id": 413, "x": 66, "y": 63, "dir": 2, "moveState": 0, "disp": 69, "color": 4, "speed": 30 },
+    { "id": 517, "x": 48, "y": 60, "dir": 4, "moveState": 1, "disp": 70, "color": 5, "speed": 30 },
+    { "id": 621, "x": 72, "y": 60, "dir": 3, "moveState": 0, "disp": 71, "color": 6, "speed": 30 },
+    { "id": 733, "x": 58, "y": 50, "dir": 2, "moveState": 1, "disp": 72, "color": 0, "speed": 30 },
+    { "id": 848, "x": 64, "y": 52, "dir": 1, "moveState": 0, "disp": 73, "color": 1, "speed": 30 },
+    { "id": 959, "x": 50, "y": 55, "dir": 2, "moveState": 1, "disp": 74, "color": 2, "speed": 30 },
+    { "id": 1077, "x": 70, "y": 66, "dir": 4, "moveState": 0, "disp": 75, "color": 3, "speed": 30 },
+    { "id": 1234, "x": 56, "y": 66, "dir": 2, "moveState": 1, "disp": 76, "color": 4, "speed": 30 },
+    { "id": 1399, "x": 62, "y": 56, "dir": 3, "moveState": 0, "disp": 77, "color": 5, "speed": 30 },
+    { "id": 1502, "x": 46, "y": 64, "dir": 2, "moveState": 1, "disp": 78, "color": 6, "speed": 30 }
+  ],
+  "chats": [
+    { "id": 205, "disp": 67, "msg": "안녕! 여기 섹터 좋다" }
+  ]
+}

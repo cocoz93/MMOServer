@@ -1,0 +1,464 @@
+<!doctype html><html><head>
+<meta charset="utf8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MMO 웹 클라이언트 — 실서버 접속 (LIVE)</title>
+<style>
+  html,body{margin:0;background:#12211a;font-family:system-ui,"Malgun Gothic",sans-serif;color:#e7f0e7}
+  .stage{position:relative;width:100vw;height:100vh;overflow:hidden;background:#2f5a3a}
+  canvas{position:absolute;inset:0;width:100%;height:100%;image-rendering:pixelated;touch-action:none;cursor:pointer}
+  .conn{position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:5;
+    font-size:13px;padding:6px 14px;border-radius:20px;background:rgba(8,14,10,.8);border:1px solid rgba(255,255,255,.12)}
+  .conn.ok{color:#8fe6a2;border-color:rgba(120,220,150,.4)}
+  .conn.bad{color:#e88;border-color:rgba(220,120,120,.4)}
+  .chatbox{position:absolute;left:14px;bottom:14px;width:400px;height:32px;z-index:6;
+    background:rgba(10,16,12,.82);border:1px solid rgba(150,200,150,.25);border-radius:8px;
+    color:#eaf3e0;font:13px system-ui,"Malgun Gothic",sans-serif;padding:0 12px;outline:none}
+  .chatbox:focus{border-color:rgba(120,220,150,.6);background:rgba(12,20,14,.96)}
+  .chatbox::placeholder{color:rgba(200,220,200,.4)}
+</style>
+</head>
+<body>
+<div class="stage"><canvas id="v"></canvas><div class="conn" id="conn">연결 중…</div>
+<input id="chatbox" class="chatbox" maxlength="200" autocomplete="off" placeholder="Enter로 채팅 입력 · WASD로 이동"></div>
+<script src="proto.js"></script>
+<script src="assets/assetsB.js"></script>
+<script src="assets/lpc_layers.js"></script>
+<script>
+(()=>{
+"use strict";
+const P = window.Proto;
+const cv = document.getElementById('v'), ctx = cv.getContext('2d');
+const connEl = document.getElementById('conn');
+const chatbox = document.getElementById('chatbox');
+function typing(){ return document.activeElement===chatbox; }
+const SANS = 'system-ui,"Malgun Gothic",sans-serif';
+const MONO = 'ui-monospace,Consolas,monospace';
+const q = new URLSearchParams(location.search);
+const SNAP = q.has('snap');                 // headless verify: render one frame from snapshot.json
+const WS_URL = q.get('ws') || 'ws://127.0.0.1:9000';
+
+// ---- assets ----
+const IMG = {};
+
+// ---- world / camera ----
+let ZONE = { mapWidth:120, mapHeight:120, sectorSize:20 };
+let ZOOM = 20;                              // px per world unit
+let W=0,H=0,DPR=1;
+function resize(){
+  DPR=Math.min(2,devicePixelRatio||1);
+  const r=cv.getBoundingClientRect();
+  W=Math.round(r.width)||innerWidth; H=Math.round(r.height)||innerHeight;
+  cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR); ctx.setTransform(DPR,0,0,DPR,0,0);
+}
+new ResizeObserver(resize).observe(cv); resize();
+
+// ---- state (fed by the real server) ----
+let self = null;                            // {id,x,y,dir,moveState,disp,color,speed, rx,ry}
+const others = new Map();                   // id -> {x,y,dir,moveState,disp,color, rx,ry, chat,chatT}
+const chatLog = [];                         // {disp,msg}
+const BUBBLE_LIFE = 7;                       // 말풍선 표시 시간(초) — 캐릭터별 1개(전역 큐 없음)
+const stat = { count:{}, rate:{}, bytes:0, kbps:0, connected:false };
+function bump(name,n){ stat.count[name]=(stat.count[name]||0)+(n===undefined?1:n); }
+setInterval(()=>{ stat.rate=stat.count; stat.count={}; stat.kbps=stat.bytes/1024; stat.bytes=0; }, 1000);
+
+// ---- 캐릭터 외형 합성 (서버는 캐릭터 타입을 저장 안 함 → playerId에서 유도) ----
+// LPC 레이어(몸/머리/바지/상의/머리카락)를 겹쳐 조합. 조합별 1회만 오프스크린에 구워 캐시 → 매 프레임은 1 draw.
+const LAYER = {};                                   // name -> Image (걷기블록 576x256: up/left/down/right x 9프레임)
+const MBODY=['b_light','b_olive','b_amber','b_bronze','b_brown','b_green','b_zombie'];
+const MHEAD=['hd_light','hd_olive','hd_amber','hd_bronze','hd_brown','hd_green','hd_zombie']; // MBODY 와 같은 순서(피부톤 1:1)
+const MHAIR=['h_plain','h_spiked','h_afro','h_bedhead','h_long','h_messy1','h_mop','h_parted'];
+const MSHIRT=['t_red','t_forest','t_purple','t_yellow','t_teal','t_slate'];
+const MPANTS=['l_blue','l_brown','l_charcoal','l_teal','l_navy','l_leather'];
+const FBODY=['b_fem','bf_olive','bf_amber','bf_bronze'];
+const FHEAD=['hd_f_light','hd_f_olive','hd_f_amber','hd_f_bronze'];                            // FBODY 와 같은 순서
+const FHAIR=['hf_ponytail','hf_long','hf_braid','hf_bangslong','hf_pixie'];
+const FSHIRT=['tf_teal','tf_rose','tf_purple','tf_navy'];
+const FPANTS=['lf_navy','lf_rose','lf_brown','lf_teal'];
+function ihash(id,n){ let x=(((id>>>0)*2654435761) ^ (n*40503))>>>0; x^=x>>>15; x=(x*2246822519)>>>0; x^=x>>>13; return x>>>0; }
+function comboFor(id){ id=id>>>0;
+  if(ihash(id,1)%12===0) return {key:'k', L:['b_skeleton']};                          // ~8% 스켈레톤(맨몸)
+  if(ihash(id,2)%100<30){ const b=ihash(id,3)%FBODY.length,h=ihash(id,4)%FHAIR.length,s=ihash(id,5)%FSHIRT.length,p=ihash(id,6)%FPANTS.length;
+    return {key:'f'+b+h+s+p, L:[FBODY[b],FHEAD[b],FPANTS[p],FSHIRT[s],FHAIR[h]]}; }    // ~30% 여성
+  const b=ihash(id,3)%MBODY.length,h=ihash(id,4)%MHAIR.length,s=ihash(id,5)%MSHIRT.length,p=ihash(id,6)%MPANTS.length;
+  return {key:'m'+b+h+s+p, L:[MBODY[b],MHEAD[b],MPANTS[p],MSHIRT[s],MHAIR[h]]};        // 남성
+}
+// 조합은 최대 2337가지(남 7×8×6×6 + 여 4×5×4×4 + 스켈레톤). 통째로(576x256=590KB) 캐시하면
+// 시야를 스쳐간 사람이 쌓일수록 캔버스가 무제한 누적된다 → 방향 1줄(576x64)만 굽고 최근 사용 N개로 상한.
+const SHEETC = new Map();                            // '조합키:행' -> 구운 캔버스(576x64)
+const SHEET_CACHE_MAX = 256;                         // 576×64×4B ≈ 147KB × 256 ≈ 37MB 상한
+function rowOf(dir){ return dir===1?0 : dir===3?1 : dir===4?3 : 2; }  // UP/LEFT/RIGHT else DOWN
+function sheetFor(o,row){ const c=comboFor(o.id||0), k=c.key+':'+row;
+  const hit=SHEETC.get(k);
+  if(hit){ SHEETC.delete(k); SHEETC.set(k,hit); return hit; }                          // 재삽입 = 최근 사용 갱신
+  const cv=document.createElement('canvas'); cv.width=576; cv.height=64; const cx=cv.getContext('2d');
+  for(const name of c.L){ const im=LAYER[name]; if(im) cx.drawImage(im, 0,row*64,576,64, 0,0,576,64); } // z순서: 몸→머리→바지→상의→머리카락
+  SHEETC.set(k,cv);
+  if(SHEETC.size>SHEET_CACHE_MAX) SHEETC.delete(SHEETC.keys().next().value);           // 가장 오래 안 쓴 것부터 버림
+  return cv; }
+// 서버 CSectorManager::CalcSectorX/Y 와 같은 식 — 0..섹터수-1 로 가둔다(맵 끝에서 없는 섹터가 표시되지 않게)
+function secIdx(v,s,len){ const n=Math.ceil(len/s); return Math.max(0, Math.min(n-1, Math.floor(v/s))); }
+function sectorOf(x,y){ const s=ZONE.sectorSize; return secIdx(x,s,ZONE.mapWidth)+','+secIdx(y,s,ZONE.mapHeight); }
+
+function onPacket(p){
+  bump(p.name);                             // 패킷 이름별 개수(묶음 1개는 1로 셈)
+  // 진입/이탈은 낱개·묶음 두 경로로 오므로 따로 센다 — 묶음은 안에 든 인원수만큼 더한다.
+  switch(p.type){
+    case P.MSG.S2C_ZONE_INFO: ZONE={mapWidth:p.mapWidth,mapHeight:p.mapHeight,sectorSize:p.sectorSize}; break;
+    case P.MSG.S2C_CREATE_MY_PLAYER:
+      self={id:p.playerId,x:p.x,y:p.y,dir:p.direction,moveState:0,disp:p.displayChar,color:p.colorIndex,speed:p.speed,rx:p.x,ry:p.y}; break;
+    case P.MSG.S2C_CREATE_OTHER_PLAYER: bump('ENTER');
+      others.set(p.playerId,{x:p.x,y:p.y,dir:p.direction,moveState:p.moveState,speed:p.speed||30,disp:p.displayChar,color:p.colorIndex,rx:p.x,ry:p.y,chat:null,chatT:0}); break;
+    case P.MSG.S2C_CREATE_PLAYER_BATCH: bump('ENTER', p.count);
+      p.entries.forEach(e=>others.set(e.playerId,{x:e.x,y:e.y,dir:e.direction,moveState:e.moveState,speed:e.speed||30,disp:e.displayChar,color:e.colorIndex,rx:e.x,ry:e.y,chat:null,chatT:0})); break;
+    case P.MSG.S2C_DELETE_PLAYER: bump('LEAVE'); others.delete(p.playerId); break;
+    case P.MSG.S2C_DELETE_PLAYER_BATCH: bump('LEAVE', p.count); p.entries.forEach(e=>others.delete(e.playerId)); break;
+    case P.MSG.S2C_SECTOR_UPDATES:
+      p.entries.forEach(e=>{
+        if(self && e.playerId===self.id){ self.x=e.x; self.y=e.y; self.dir=e.direction; self.moveState=e.moveState; }
+        else { const o=others.get(e.playerId); if(o){ o.x=e.x; o.y=e.y; o.dir=e.direction; o.moveState=e.moveState; } }
+      }); break;
+    case P.MSG.S2C_MOVE_START: case P.MSG.S2C_MOVE_STOP: {
+      const o=others.get(p.playerId); if(o){ o.x=p.x; o.y=p.y; o.dir=p.direction; o.moveState=(p.type===P.MSG.S2C_MOVE_START?1:0); } break; }
+    case P.MSG.S2C_SYNC_POSITION:
+      if(self && p.playerId===self.id){ self.x=p.x; self.y=p.y; self.rx=p.x; self.ry=p.y; }
+      else { const o=others.get(p.playerId); if(o){ o.x=p.x; o.y=p.y; } } break;
+    case P.MSG.S2C_CHAT: {
+      if(self && p.playerId===self.id) break;   // 내 채팅은 로컬 에코로 표시
+      const txt=p.message||''; chatLog.push({disp:p.displayChar,msg:txt}); if(chatLog.length>8)chatLog.shift();
+      const who = others.get(p.playerId);
+      if(who){ who.chat=txt; who.chatT=BUBBLE_LIFE; }   // 캐릭터별 말풍선(밀려남 없음)
+      break; }
+  }
+}
+
+// ---- input: drive MY avatar on the real server (WASD / arrows) ----
+const keys=new Set(); let lastDir=P.DIR.DOWN, moving=false;
+function curDir(){
+  if(keys.has('w')||keys.has('arrowup')) return P.DIR.UP;
+  if(keys.has('s')||keys.has('arrowdown')) return P.DIR.DOWN;
+  if(keys.has('a')||keys.has('arrowleft')) return P.DIR.LEFT;
+  if(keys.has('d')||keys.has('arrowright')) return P.DIR.RIGHT;
+  return 0;
+}
+function sendMove(){
+  if(!self || !ws || ws.readyState!==1) return;
+  const d=curDir();
+  if(d!==0){ lastDir=d; moving=true; self.dir=d; self.moveState=1;   // 로컬 즉시 예측(반응성)
+    ws.send(P.enc.moveStart(d, self.x, self.y)); }
+  else if(moving){ moving=false; self.moveState=0; ws.send(P.enc.moveStop(lastDir, self.x, self.y)); }
+}
+if(!SNAP){
+  addEventListener('keydown',e=>{ if(typing())return; const k=e.key.toLowerCase();
+    if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)){ if(!keys.has(k)){keys.add(k); sendMove();} e.preventDefault(); }});
+  addEventListener('keyup',e=>{ if(typing())return; const k=e.key.toLowerCase(); if(keys.delete(k)) sendMove(); });
+  // Enter=채팅 열기, 채팅창 내 Enter=전송/Esc=취소
+  addEventListener('keydown',e=>{ if(e.key==='Enter' && !typing()){ chatbox.focus(); e.preventDefault(); } });
+  chatbox.addEventListener('keydown',e=>{ e.stopPropagation();
+    if(e.key==='Enter'){ const t=chatbox.value.trim(); if(t)sendChat(t); chatbox.value=''; chatbox.blur(); }
+    else if(e.key==='Escape'){ chatbox.value=''; chatbox.blur(); } });
+  chatbox.addEventListener('focus',()=>{ if(moving && ws && ws.readyState===1){ moving=false; if(self)self.moveState=0; ws.send(P.enc.moveStop(lastDir, self?self.x:0, self?self.y:0)); } keys.clear(); });
+}
+function sendChat(text){
+  if(!ws || ws.readyState!==1 || !self) return;
+  ws.send(P.enc.chat(text));
+  // 로컬 즉시 에코(서버 브로드캐스트가 발신자 자신을 포함 안 할 수 있어) — S2C_CHAT에서 내 것은 스킵해 중복 방지
+  chatLog.push({disp:self.disp, msg:text}); if(chatLog.length>8)chatLog.shift();
+  self.chat=text; self.chatT=BUBBLE_LIFE;
+}
+
+// ---- camera ----
+const cam={x:60,y:60};
+let aoiValid=0;   // 내 유효 섹터(AOI ±1 중 월드 내) 개수 — drawSectorGrid가 계산, drawHUD가 표시
+const sx = wx => (wx-cam.x)*ZOOM + W/2;
+const sy = wy => (wy-cam.y)*ZOOM + H/2;
+
+// ---- decorative props (client-only eye candy, keyed to world) ----
+const hash=(i,j)=>{let h=(i*73856093)^(j*19349663);h=(h^(h>>13))*1274126177;return((h^(h>>16))>>>0);};
+
+function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function shadow(x,y,r){ ctx.save(); ctx.globalAlpha=.26; ctx.fillStyle='#000'; ctx.beginPath(); ctx.ellipse(x,y,r,r*.4,0,0,7); ctx.fill(); ctx.restore(); }
+
+function drawGround(){
+  ctx.imageSmoothingEnabled=false;
+  const g=IMG.grass; if(!g) return;
+  const step=2; // world units per grass cell
+  const u0=Math.floor((cam.x - W/2/ZOOM)/step)*step - step, u1=cam.x + W/2/ZOOM + step;
+  const v0=Math.floor((cam.y - H/2/ZOOM)/step)*step - step, v1=cam.y + H/2/ZOOM + step;
+  const cell=[[32,160],[64,160],[0,160]];
+  for(let u=u0;u<=u1;u+=step)for(let v=v0;v<=v1;v+=step){
+    const h=hash(u/step|0,v/step|0), c=cell[h%3];
+    ctx.drawImage(g,c[0],c[1],32,32, sx(u),sy(v), step*ZOOM+1, step*ZOOM+1);
+  }
+}
+function propsInView(){
+  const out=[]; const step=5;
+  const u0=Math.floor((cam.x-W/2/ZOOM)/step)*step-step, u1=cam.x+W/2/ZOOM+step;
+  const v0=Math.floor((cam.y-H/2/ZOOM)/step)*step-step, v1=cam.y+H/2/ZOOM+step;
+  for(let u=u0;u<=u1;u+=step)for(let v=v0;v<=v1;v+=step){
+    const h=hash((u/step|0)+900,(v/step|0)+900);
+    let kind=null; if(h%11===0)kind='pine'; else if(h%11===1)kind='bush'; else if(h%23===5)kind='rock';
+    if(kind) out.push({x:u+ (h%3), y:v+ (h%3), kind, v:(h>>5)&1});
+  }
+  return out;
+}
+function drawProp(pr){
+  const X=sx(pr.x), Y=sy(pr.y);
+  if(pr.kind==='pine') ctx.drawImage(IMG.treetop, pr.v?96:0,96,96,128, X-2.6*ZOOM, Y-3.4*ZOOM, 2.6*ZOOM*2, 3.4*ZOOM*2);
+  else if(pr.kind==='bush') ctx.drawImage(IMG.treetop, pr.v?96:0,0,96,96, X-1.8*ZOOM, Y-2.2*ZOOM, 1.8*ZOOM*2, 2.2*ZOOM*2);
+  else ctx.drawImage(IMG.rock, pr.v?32:0,0,32,32, X-0.9*ZOOM, Y-1.0*ZOOM, 1.8*ZOOM, 1.4*ZOOM);
+}
+
+function drawChar(o,isMe,t){
+  const sheet=sheetFor(o, rowOf(o.dir)); if(!sheet) return;
+  const px=sx(o.rx), py=sy(o.ry);
+  const H0=3.0*ZOOM, dw=H0, dh=H0;
+  const frame=(o.moveState===1)?(1+Math.floor(t*8+(o.id||0))%8):0;
+  shadow(px,py,0.75*ZOOM);
+  ctx.imageSmoothingEnabled=false;
+  ctx.drawImage(sheet, frame*64, 0, 64,64, px-dw/2, py-dh*0.92, dw,dh);
+  // nametag = server's authoritative display char
+  const ny=py-dh*0.92-4, tag=String.fromCharCode(o.disp||63);
+  ctx.font='600 12px '+MONO; ctx.textAlign='center';
+  const nw=ctx.measureText(tag).width+12;
+  ctx.fillStyle=isMe?'rgba(40,90,60,.92)':'rgba(18,26,18,.72)'; rr(px-nw/2,ny-14,nw,15,4); ctx.fill();
+  ctx.fillStyle=isMe?'#bff0c9':'#eaf3e0'; ctx.fillText(tag,px,ny-2.5);
+  if(isMe){ const ay=ny-20+Math.sin(t*3)*3; ctx.fillStyle='#ffd84d'; ctx.strokeStyle='rgba(90,70,0,.5)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(px,ay+9); ctx.lineTo(px-6,ay); ctx.lineTo(px+6,ay); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+  ctx.textAlign='left';
+}
+// 현재 폰트 기준 픽셀 폭에 맞게 말줄임(…) — 한글 폭 때문에 글자수 잘림은 부정확
+function fitText(s, maxW){ s=s||''; if(ctx.measureText(s).width<=maxW) return s;
+  let t=s; while(t.length>1 && ctx.measureText(t+'…').width>maxW) t=t.slice(0,-1); return t+'…'; }
+function drawBubble(o){
+  const a=Math.max(0,Math.min(1,o.chatT/0.6));   // 마지막 0.6초만 페이드아웃
+  const px=sx(o.rx), py=Math.max(30, sy(o.ry)-3.0*ZOOM*0.92-18);
+  ctx.font='13px '+SANS; const txt=fitText(o.chat,230); const w=ctx.measureText(txt).width+20;
+  ctx.globalAlpha=a; ctx.fillStyle='rgba(255,255,255,.96)'; rr(px-w/2,py-24,w,26,8); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(px-6,py+1); ctx.lineTo(px+6,py+1); ctx.lineTo(px,py+9); ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#20301f'; ctx.textAlign='center'; ctx.fillText(txt,px,py-6);
+  ctx.globalAlpha=1; ctx.textAlign='left';
+}
+
+// ---- server-internals overlays ----
+function drawSectorGrid(t){
+  const s=ZONE.sectorSize;
+  const u0=Math.floor((cam.x-W/2/ZOOM)/s)*s, u1=cam.x+W/2/ZOOM+s;
+  const v0=Math.floor((cam.y-H/2/ZOOM)/s)*s, v1=cam.y+H/2/ZOOM+s;
+  // 격자 (약간 더 진하게)
+  ctx.strokeStyle='rgba(55,230,214,.24)'; ctx.lineWidth=1; ctx.beginPath();
+  for(let u=u0;u<=u1;u+=s){ const p=sx(u); ctx.moveTo(p,0); ctx.lineTo(p,H); }
+  for(let v=v0;v<=v1;v+=s){ const p=sy(v); ctx.moveTo(0,p); ctx.lineTo(W,p); }
+  ctx.stroke();
+  // 월드 경계
+  ctx.strokeStyle='rgba(15,35,20,.6)'; ctx.lineWidth=3;
+  ctx.strokeRect(sx(0),sy(0), ZONE.mapWidth*ZOOM, ZONE.mapHeight*ZOOM);
+  if(!self) return;
+  const cs=secIdx(self.x,s,ZONE.mapWidth), rs=secIdx(self.y,s,ZONE.mapHeight);
+  // 유효 섹터: 내 AOI(±1) 중 월드 안에 실제 존재하는 셀만 하이라이트
+  const nx=Math.ceil(ZONE.mapWidth/s), ny=Math.ceil(ZONE.mapHeight/s);
+  aoiValid=0;
+  for(let cc=cs-1;cc<=cs+1;cc++)for(let rr2=rs-1;rr2<=rs+1;rr2++){
+    if(cc<0||rr2<0||cc>=nx||rr2>=ny) continue;
+    aoiValid++;
+    if(cc===cs&&rr2===rs) continue;             // 내 섹터는 아래서 더 밝게
+    ctx.fillStyle='rgba(60,215,205,.09)'; ctx.fillRect(sx(cc*s),sy(rr2*s),s*ZOOM,s*ZOOM);
+    ctx.strokeStyle='rgba(85,228,212,.45)'; ctx.lineWidth=1; ctx.strokeRect(sx(cc*s)+.5,sy(rr2*s)+.5,s*ZOOM-1,s*ZOOM-1);
+  }
+  // AOI 외곽 점선
+  ctx.save(); ctx.setLineDash([8,6]); ctx.strokeStyle='rgba(90,232,214,.5)'; ctx.lineWidth=1.5;
+  ctx.strokeRect(sx((cs-1)*s),sy((rs-1)*s),3*s*ZOOM,3*s*ZOOM); ctx.setLineDash([]); ctx.restore();
+  // 내 섹터 하이라이트 (은은한 펄스 + 밝은 테두리). 라벨은 drawSectorLabels 에서 따로.
+  const pulse=0.16+0.06*Math.sin((t||0)*2.2);
+  ctx.fillStyle='rgba(70,235,215,'+pulse.toFixed(3)+')'; ctx.fillRect(sx(cs*s),sy(rs*s),s*ZOOM,s*ZOOM);
+  ctx.strokeStyle='rgba(125,245,230,.9)'; ctx.lineWidth=2; ctx.strokeRect(sx(cs*s)+1,sy(rs*s)+1,s*ZOOM-2,s*ZOOM-2);
+}
+// 섹터 라벨은 격자·하이라이트(바닥)와 달리 "읽으라고" 띄운 글자다. 바닥과 같이 그리면 나무·캐릭터가
+// 덮어 읽을 수 없어지므로(소나무에 '(AOI ±1)' 이 가려지는 것을 캡처로 확인), 월드 위에 따로 올린다.
+function drawSectorLabels(){
+  const s=ZONE.sectorSize;
+  const u0=Math.floor((cam.x-W/2/ZOOM)/s)*s, u1=cam.x+W/2/ZOOM+s;
+  const v0=Math.floor((cam.y-H/2/ZOOM)/s)*s, v1=cam.y+H/2/ZOOM+s;
+  ctx.fillStyle='rgba(130,205,215,.32)'; ctx.font='10px '+MONO; ctx.textAlign='left';
+  for(let u=u0;u<=u1;u+=s)for(let v=v0;v<=v1;v+=s){
+    if(u<0||v<0||u>=ZONE.mapWidth||v>=ZONE.mapHeight) continue;
+    ctx.fillText((u/s)+','+(v/s), sx(u)+4, sy(v)+13);
+  }
+  if(!self) return;
+  const cs=secIdx(self.x,s,ZONE.mapWidth), rs=secIdx(self.y,s,ZONE.mapHeight);
+  ctx.fillStyle='rgba(160,250,238,.95)'; ctx.font='600 11px '+MONO;
+  ctx.fillText('내 섹터 '+cs+','+rs, sx(cs*s)+6, sy(rs*s)+16);
+  // 화면 밖으로 밀리면 안쪽으로 붙인다 (좁은 창에서 왼쪽이 잘리던 문제)
+  ctx.fillStyle='rgba(120,240,225,.85)'; ctx.font='600 10px '+MONO;
+  ctx.fillText('유효 섹터 '+aoiValid+'개 (AOI ±1)',
+    Math.max(6, sx((cs-1)*s)+6), Math.max(12, sy((rs-1)*s)-6));
+}
+function panel(x,y,w,h){ ctx.fillStyle='rgba(10,16,12,.76)'; rr(x,y,w,h,10); ctx.fill(); ctx.strokeStyle='rgba(150,200,150,.16)'; ctx.lineWidth=1; ctx.stroke(); }
+function drawHUD(){
+  // player banner (top-left)
+  panel(14,14,220,58);
+  ctx.textAlign='left'; ctx.fillStyle='#eaf3e0'; ctx.font='600 15px '+SANS; ctx.fillText('주우진', 26, 36);
+  ctx.fillStyle='rgba(180,210,180,.8)'; ctx.font='11px '+SANS;
+  ctx.fillText('내 캐릭터 '+(self?('· '+String.fromCharCode(self.disp)+' #'+self.id):''), 26, 54);
+  ctx.textAlign='right'; ctx.fillStyle='#8fd6a0'; ctx.font='600 13px '+SANS;
+  ctx.fillText('시야 '+others.size+'명', 220, 36);
+  ctx.fillStyle='rgba(180,210,180,.7)'; ctx.font='11px '+SANS; ctx.fillText('AOI 실시간', 220, 54); ctx.textAlign='left';
+
+  // SERVER INTERNALS panel (top-right, teal = server's-eye)
+  const pw=232, ph=155, px=W-14-pw, py=14;
+  ctx.fillStyle='rgba(6,14,18,.8)'; rr(px,py,pw,ph,10); ctx.fill();
+  ctx.strokeStyle='rgba(55,230,214,.28)'; ctx.lineWidth=1; ctx.stroke();
+  ctx.fillStyle='rgba(150,245,235,.9)'; ctx.font='600 11px '+MONO; ctx.textAlign='left';
+  ctx.fillText('SERVER INTERNALS · LIVE', px+12, py+18);
+  ctx.strokeStyle='rgba(55,230,214,.15)'; ctx.beginPath(); ctx.moveTo(px+12,py+24); ctx.lineTo(px+pw-12,py+24); ctx.stroke();
+  const r=stat.rate||{}, rows=[
+    ['접속', stat.connected?'● 연결됨':'○ 끊김'],
+    ['내 좌표', self?('('+self.x.toFixed(1)+', '+self.y.toFixed(1)+')'):'-'],
+    ['내 섹터', self?sectorOf(self.x,self.y):'-'],
+    ['유효 섹터', self?(aoiValid+'개'):'-'],
+    ['시야 인원', others.size+'명'],
+    ['SECTOR_UPD', (r.S2C_SECTOR_UPDATES||0)+'/s'],
+    ['CREATE/DEL', (r.ENTER||0)+' / '+(r.LEAVE||0)],
+    ['CHAT', (r.S2C_CHAT||0)+'/s'],
+    ['수신', stat.kbps.toFixed(1)+' KB/s'],
+  ];
+  ctx.font='11px '+MONO;
+  rows.forEach((kv,i)=>{ const yy=py+42+i*13.2;
+    ctx.fillStyle='rgba(120,180,200,.65)'; ctx.fillText(kv[0], px+12, yy);
+    ctx.fillStyle= kv[0]==='접속'&&stat.connected?'#5fe6cf':'rgba(200,224,232,.92)';
+    ctx.textAlign='right'; ctx.fillText(String(kv[1]), px+pw-12, yy); ctx.textAlign='left';
+  });
+
+  // 로컬 레이더 (우하단) — 클라는 AOI만 받으므로 "세계지도"가 아니라 내 주변만 (맵핵 방지)
+  const ms=138, mx=W-14-ms, my=H-14-ms;
+  panel(mx,my,ms,ms);
+  ctx.save(); rr(mx+3,my+3,ms-6,ms-6,8); ctx.clip();
+  ctx.fillStyle='#233a2c'; ctx.fillRect(mx+3,my+3,ms-6,ms-6);
+  const cxp=mx+ms/2, cyp=my+ms/2, s=ZONE.sectorSize;
+  const RANGE=s*2.5, sc=(ms-8)/(RANGE*2);          // 표시 반경(월드 단위) → px
+  const ox=self?self.rx:ZONE.mapWidth/2, oy=self?self.ry:ZONE.mapHeight/2;
+  // 로컬 섹터 격자
+  ctx.strokeStyle='rgba(120,220,210,.16)'; ctx.lineWidth=1;
+  for(let gx=Math.ceil((ox-RANGE)/s)*s; gx<=ox+RANGE; gx+=s){ const p=cxp+(gx-ox)*sc; ctx.beginPath(); ctx.moveTo(p,my+3); ctx.lineTo(p,my+ms-3); ctx.stroke(); }
+  for(let gy=Math.ceil((oy-RANGE)/s)*s; gy<=oy+RANGE; gy+=s){ const p=cyp+(gy-oy)*sc; ctx.beginPath(); ctx.moveTo(mx+3,p); ctx.lineTo(mx+ms-3,p); ctx.stroke(); }
+  // 내 섹터
+  if(self){ const cs=secIdx(self.x,s,ZONE.mapWidth), rs=secIdx(self.y,s,ZONE.mapHeight);
+    ctx.fillStyle='rgba(70,235,215,.15)'; ctx.fillRect(cxp+(cs*s-ox)*sc, cyp+(rs*s-oy)*sc, s*sc, s*sc); }
+  // AOI 반경 링
+  ctx.strokeStyle='rgba(90,232,214,.35)'; ctx.setLineDash([4,4]); ctx.lineWidth=1;
+  ctx.beginPath(); ctx.arc(cxp,cyp, s*1.5*sc, 0,7); ctx.stroke(); ctx.setLineDash([]);
+  // 주변 플레이어
+  ctx.fillStyle='#e7d16a';
+  others.forEach(o=>{ const dx=o.rx-ox, dy=o.ry-oy; if(Math.abs(dx)>RANGE||Math.abs(dy)>RANGE) return;
+    ctx.fillRect(cxp+dx*sc-1.5, cyp+dy*sc-1.5, 3,3); });
+  // 나
+  ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(cxp,cyp,3.2,0,7); ctx.fill();
+  ctx.restore();
+  ctx.fillStyle='rgba(200,230,200,.75)'; ctx.font='600 10px '+SANS; ctx.fillText('레이더 · 주변(AOI)', mx+10, my+16);
+
+  // chat box (bottom-left) — real chat (입력창 자리 확보 위해 위로)
+  const bw=400, bh=172, bx=14, by=H-52-bh;
+  panel(bx,by,bw,bh);
+  ctx.fillStyle='rgba(180,225,180,.9)'; ctx.font='600 12px '+SANS; ctx.fillText('전체 채팅', bx+14, by+20);
+  ctx.strokeStyle='rgba(150,200,150,.14)'; ctx.beginPath(); ctx.moveTo(bx+14,by+27); ctx.lineTo(bx+bw-14,by+27); ctx.stroke();
+  ctx.font='13px '+SANS;
+  for(let i=0;i<chatLog.length;i++){ const e=chatLog[i], yy=by+45+i*16;
+    ctx.fillStyle='#8fd6a0'; const nm='['+String.fromCharCode(e.disp)+'] '; ctx.fillText(nm,bx+14,yy);
+    const nmw=ctx.measureText(nm).width;
+    ctx.fillStyle='#dfeadd'; ctx.fillText(fitText(e.msg, bw-28-nmw), bx+14+nmw, yy);
+  }
+
+}
+
+// ---- frame ----
+const dvec=d=> d===1?{x:0,y:-1}: d===2?{x:0,y:1}: d===3?{x:-1,y:0}: d===4?{x:1,y:0}:{x:0,y:0};
+function advance(o,dt,k){
+  // 데드레커닝: 서버 틱 사이를 방향·속도로 이어 그림(끊김 제거).
+  // 서버 위치(o.x,o.y)를 속도로 전진시키고, 렌더(rx,ry)는 그 목표를 부드럽게 추종.
+  // 상한은 서버 CGameServer::IsBlockedByWall 과 같은 mapWidth-1 (mapWidth 를 쓰면 없는 섹터가 잠깐 표시됨).
+  // 서버 CZone::Tick 은 mapWidth 를 넘긴 뒤에야 mapWidth-1 로 되돌리므로, 경계에서 한 틱 정도는 서버가 더 나가 있을 수 있다.
+  if(o.moveState===1){ const v=dvec(o.dir), s=o.speed||30;
+    o.x=Math.max(0,Math.min(ZONE.mapWidth -1, o.x+v.x*s*dt));
+    o.y=Math.max(0,Math.min(ZONE.mapHeight-1, o.y+v.y*s*dt)); }
+  o.rx+=(o.x-o.rx)*k; o.ry+=(o.y-o.ry)*k;
+}
+function step(dt,t){
+  if(self){ advance(self,dt,Math.min(1,dt*20));   // 내 캐릭터는 더 즉각적으로
+    const hw=W/2/ZOOM, hh=H/2/ZOOM;               // 카메라를 맵 경계 안으로 클램프
+    cam.x = ZONE.mapWidth  > hw*2 ? Math.max(hw, Math.min(ZONE.mapWidth -hw, self.rx)) : ZONE.mapWidth/2;
+    cam.y = ZONE.mapHeight > hh*2 ? Math.max(hh, Math.min(ZONE.mapHeight-hh, self.ry)) : ZONE.mapHeight/2;
+  }
+  if(self && self.chat){ self.chatT-=dt; if(self.chatT<=0)self.chat=null; }
+  others.forEach(o=>{ advance(o,dt,Math.min(1,dt*9)); if(o.chat){o.chatT-=dt; if(o.chatT<=0)o.chat=null;} });
+}
+function render(t){
+  ctx.clearRect(0,0,W,H);
+  drawGround();
+  drawSectorGrid(t);
+  // depth-sorted props + players
+  const view=[];
+  propsInView().forEach(pr=>view.push({y:pr.y,kind:'prop',pr}));
+  others.forEach((o,id)=>view.push({y:o.ry,kind:'char',o:Object.assign(o,{id}),isMe:false}));
+  if(self) view.push({y:self.ry,kind:'char',o:self,isMe:true});
+  view.sort((a,b)=>a.y-b.y);
+  for(const it of view){ if(it.kind==='prop') drawProp(it.pr); else drawChar(it.o,it.isMe,t); }
+  others.forEach(o=>{ if(o.chat) drawBubble(o); });
+  if(self && self.chat) drawBubble(self);
+  // AOI vignette
+  const s=ZONE.sectorSize, vg=ctx.createRadialGradient(W/2,H/2,1.4*s*ZOOM,W/2,H/2,2.6*s*ZOOM);
+  vg.addColorStop(0,'rgba(18,33,22,0)'); vg.addColorStop(1,'rgba(10,18,13,.6)');
+  ctx.fillStyle=vg; ctx.fillRect(0,0,W,H);
+  drawSectorLabels();   // 월드 위 (나무·캐릭터에 가리지 않게), 비네트 뒤라 흐려지지도 않게
+  drawHUD();
+}
+
+// ---- networking (live) ----
+let ws=null;
+function setConn(ok,txt){ stat.connected=ok; connEl.textContent=txt; connEl.className='conn '+(ok?'ok':'bad'); }
+function connect(){
+  others.clear(); self=null;   // 재접속 시 유령 엔티티 제거
+  const re=new P.Reassembler(onPacket);
+  ws=new WebSocket(WS_URL); ws.binaryType='arraybuffer';
+  ws.onopen=()=>setConn(true,'● 실서버 연결됨 — '+WS_URL);
+  ws.onmessage=(ev)=>{ const b=ev.data; stat.bytes+=b.byteLength||b.length||0; re.push(new Uint8Array(b)); };
+  ws.onerror=()=>setConn(false,'연결 오류 — 릴레이/서버 확인');
+  ws.onclose=()=>{ setConn(false,'연결 끊김 — 재시도 중…'); setTimeout(connect,1500); };
+}
+const hb=setInterval(()=>{ if(ws&&ws.readyState===1) ws.send(P.enc.heartbeat()); }, 15000);
+
+// ---- boot ----
+function loadAssets(){
+  const load=(dict,store)=>Object.keys(dict||{}).map(n=>new Promise(res=>{const im=new Image();
+    im.onload=()=>{store[n]=im;res();}; im.onerror=()=>{console.warn('[asset] 로드 실패:',n); res();}; im.src=dict[n];}));
+  return Promise.all([...load(window.IMG,IMG), ...load(window.LPC,LAYER)]);   // 타일(IMG) + LPC 레이어(LAYER)
+}
+// 조합이 쓰는 레이어가 실제로 다 실렸는지 확인. 하나라도 없으면 sheetFor 가 조용히 건너뛰어
+// 그 부위가 통째로 안 그려진다(머리 레이어 누락으로 얼굴이 안 보이던 사고와 같은 형태).
+function checkLayers(){
+  const need=[...MBODY,...MHEAD,...MHAIR,...MSHIRT,...MPANTS,...FBODY,...FHEAD,...FHAIR,...FSHIRT,...FPANTS,'b_skeleton'];
+  const miss=need.filter(n=>!LAYER[n]);
+  if(miss.length) console.warn('[asset] 빠진 LPC 레이어:', miss.join(', '));
+}
+async function boot(){
+  resize(); await loadAssets(); checkLayers();
+  if(SNAP){
+    // headless verification: load a real snapshot, render one frame, expose PNG
+    const snap = await fetch('snapshot.json').then(r=>r.json());
+    ZONE = snap.zone || ZONE;
+    if(snap.self){ self={...snap.self, rx:snap.self.x, ry:snap.self.y}; cam.x=self.rx; cam.y=self.ry; }
+    (snap.players||[]).forEach(o=>others.set(o.id,{...o, rx:o.x, ry:o.y, chat:null,chatT:0}));
+    (snap.chats||[]).forEach((c)=>{ chatLog.push({disp:c.disp,msg:c.msg}); const o=others.get(c.id); if(o){o.chat=c.msg;o.chatT=BUBBLE_LIFE;} });
+    stat.connected=true; stat.rate={S2C_SECTOR_UPDATES:24,ENTER:2,LEAVE:1,S2C_CHAT:3}; stat.kbps=6.4;
+    render(1.0);
+    const el=document.createElement('span'); el.setAttribute('data-png', cv.toDataURL()); document.body.appendChild(el);
+    document.documentElement.setAttribute('data-ready','1');
+    return;
+  }
+  connect();
+  let last=0;
+  (function frame(ts){ const t=ts/1000; let dt=last?Math.min(0.05,t-last):0; last=t; step(dt,t); render(t); requestAnimationFrame(frame); })(0);
+}
+window.onerror=(m,s,l,c)=>{ document.documentElement.setAttribute('data-err',(m||'')+' @L'+l+':'+c); };
+if(document.readyState==='complete') boot(); else addEventListener('load',boot);
+})();
+</script>
+</body></html>
