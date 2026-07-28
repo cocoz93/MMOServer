@@ -93,4 +93,9 @@ cd Monitoring
 
 ## 📄 라이선스
 
-MIT — [LICENSE](LICENSE)
+코드는 MIT — [LICENSE](LICENSE)
+
+단, `WebClient/assets/` 의 픽셀 스프라이트·타일은 별도입니다.
+[Universal LPC Spritesheet Character Generator](https://github.com/sanderfrenken/Universal-LPC-Spritesheet-Character-Generator)
+및 LPC(Liberated Pixel Cup) 기여자들의 저작물로 **CC-BY-SA** 이며, 재배포 시 같은 조건을 따라야 합니다.
+개별 크레딧은 `WebClient/assets/*.js` 첫 줄과 [WebClient/README.md](WebClient/README.md) 에 있습니다.
