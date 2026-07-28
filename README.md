@@ -51,3 +51,46 @@ LockFreeConfig.h(45,10): error C1083: 포함 파일을 열 수 없습니다.
 빌드는 **`IOCP_Server/IOCP_Server.sln`** 으로 하세요.
 프로젝트 파일(`.vcxproj`)만 빌드하면 실행 파일이 `Run/bin/` 이 아닌 다른 경로에 생성돼,
 실행 스크립트가 예전 바이너리를 쓰게 됩니다. (x64 전용 — 128비트 CAS를 써서 Win32는 빌드되지 않습니다)
+
+## ▶️ 실행
+
+빌드 산출물은 `Run/bin/` 에 생깁니다. 아래 배치는 모두 `Run/` 폴더에 있습니다.
+
+**1) 그냥 떠 있는지만 보고 싶을 때** — 서버 + 콘솔 클라이언트, 계측 없음
+
+```
+Run\0. simple_test.bat
+```
+
+**2) 부하 + 계측 한 번에** — 서버 · 부하 클라이언트 · Prometheus · Grafana를 순서대로 기동합니다
+
+```
+Run\3. MMO_stress.bat
+```
+
+| 주소 | 무엇 |
+|------|------|
+| http://localhost:3000 | Grafana 대시보드 (프로비저닝 완료 상태로 뜹니다) |
+| http://localhost:9091 | Prometheus UI |
+| http://localhost:9090 | 서버가 직접 노출하는 원본 지표 |
+
+동접 수·워커 수 등은 `Run/bin/IOCP_ServerConfig.ini` 와 `Run/bin/MMOStressConfig.ini` 에서 바꿉니다.
+부하 클라이언트를 **다른 PC**에서 돌리려면 `3-1.`(서버 전용) 과 `3-2.`(클라 전용) 를 나눠 실행하고,
+서버 주소는 `Run/stress_client_ip.txt` 에 적으세요 (`stress_client_ip.txt.example` 참고).
+
+**3) A/B 실측 뽑기** — 부하를 **5분 이상** 돌린 뒤에 수집해야 합니다 (그 전엔 표본이 모자라 빈 결과가 납니다)
+
+```powershell
+cd Monitoring
+.\metrics-collect.ps1 -RunLabel A_baseline     # 변종마다 한 번
+.\metrics-collect.ps1 -RunLabel B_variant
+.\metrics-compare.ps1 -Baseline A_baseline -Variant B_variant
+```
+
+결과 CSV는 `Monitoring/metrics_out/` 에 떨어지고, 비교는 Δ%와 판정을 함께 출력합니다.
+스윕 자동화는 `Run/wtk-sweep.ps1`(워커×송신워커 교차) · `Run/clientcount-sweep.ps1`(동접 천장) ·
+`Run/affinity-ab.ps1`(코어 격리 A/B) 에 있습니다.
+
+## 📄 라이선스
+
+MIT — [LICENSE](LICENSE)
