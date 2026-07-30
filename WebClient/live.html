@@ -356,9 +356,12 @@ function drawHUD(){
   ctx.fillStyle='rgba(200,230,200,.75)'; ctx.font='600 10px '+SANS; ctx.fillText('레이더 · 주변(AOI)', mx+10, my+16);
 
   // chat box (bottom-left) — real chat (입력창 자리 확보 위해 위로)
+  // '주변' 채팅이다 — 서버가 채팅을 존 전체가 아니라 AOI(내 섹터 ±1)로만 뿌린다
+  // (CGameServer::HandleChat → BroadcastAroundSector / RegisterSectorItem). '전체'로 적으면
+  // 5,000명 전원 브로드캐스트로 읽혀 오히려 설계를 깎아먹는다.
   const bw=400, bh=172, bx=14, by=H-52-bh;
   panel(bx,by,bw,bh);
-  ctx.fillStyle='rgba(180,225,180,.9)'; ctx.font='600 12px '+SANS; ctx.fillText('전체 채팅', bx+14, by+20);
+  ctx.fillStyle='rgba(180,225,180,.9)'; ctx.font='600 12px '+SANS; ctx.fillText('주변 채팅', bx+14, by+20);
   ctx.strokeStyle='rgba(150,200,150,.14)'; ctx.beginPath(); ctx.moveTo(bx+14,by+27); ctx.lineTo(bx+bw-14,by+27); ctx.stroke();
   ctx.font='13px '+SANS;
   for(let i=0;i<chatLog.length;i++){ const e=chatLog[i], yy=by+45+i*16;
