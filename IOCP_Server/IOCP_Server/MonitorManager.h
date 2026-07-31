@@ -69,6 +69,11 @@ public:
     alignas(64) volatile LONG _sessionCount = 0;    // 현재 동접 수
     // 이벤트 큐 크기는 ThreadSafeQueue::GetSize()로 직접 조회
 
+    // 완료 수거 방식 실효값 (INI CompletionBatch) — 0=GQCS 1건씩, N>0=GQCSEx 최대 N건.
+    //   수집 스크립트가 아암 라벨과 대조해 "INI 미적용/오라벨"을 잡는다(mmo_transport_rio와 같은 용도).
+    //   IOCPServer::Start가 clamp 후 1회 기록, 이후 불변.
+    volatile LONG _completionBatch = 0;
+
     // ══════════════════════════════════════════════════════════════
     // 게임 루프 전용 카운터 (alignas(64)로 캐시 라인 분리)
     //
@@ -230,7 +235,15 @@ public:
     struct alignas(64) WorkerCounter
     {
         volatile LONG64 completionCount = 0;
+        volatile LONG64 dequeueCalls = 0;         // 완료 수거 호출 횟수 (GQCS / GQCSEx / RIODequeueCompletion)
         volatile HANDLE threadHandle = nullptr;   // CPU 점유율 측정용 복제 핸들 (워커 시작 시 등록)
+
+        // [계측 편향 방지] 위 두 카운터는 소유 워커 하나만 쓴다(RegisterWorkerThread가 슬롯을 전용 배정)
+        //   — 읽는 쪽은 HTTP 스레드뿐이라 원자연산이 필요 없다. 굳이 평문 증가로 통일하는 이유는
+        //   완료 수거 A/B 때문이다: 원자 증가로 두면 계측 비용이 완료 1건당(GQCS) vs 배치당(GQCSEx)으로
+        //   갈려, 하필 가설이 기대하는 방향으로 팔이 유리해진다. x64 정렬 64비트 저장은 찢어지지 않는다.
+        void AddCompletion() { completionCount = completionCount + 1; }
+        void AddDequeue()    { dequeueCalls    = dequeueCalls + 1; }
     };
 
     WorkerCounter _workerCounters[MAX_WORKER_THREADS] = {};

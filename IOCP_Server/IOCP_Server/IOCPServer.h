@@ -228,7 +228,7 @@ class CIOCPServer
 public:
     explicit CIOCPServer(int port, int maxClients, ServerMode mode,
                         CMonitorManager& monitor, int workerThreads = 0, int sendWorkers = 0,
-                        int rioWorkers = 0);
+                        int rioWorkers = 0, int completionBatch = 0);
     virtual ~CIOCPServer();
 
     bool Start();
@@ -280,6 +280,12 @@ private:
     void AcceptThread();
 #if !USE_RIO_TRANSPORT
     void WorkerThread();
+
+    // 완료 1건 처리 — 수거 경로 두 개(GQCS/GQCSEx)가 완전히 같은 판정을 쓰도록 떼어냈다.
+    //   ioFailed = GQCS의 result==FALSE에 해당. GQCSEx는 항목별 성공/실패 BOOL을 주지 않아
+    //   호출자가 OVERLAPPED::Internal(NTSTATUS)로 만들어 넘긴다.
+    void HandleCompletion(OVERLAPPED* overlapped, ULONG_PTR completionKey,
+                          DWORD bytesTransferred, bool ioFailed, int workerIndex);
 #endif
 #if USE_SEND_THREAD && !USE_RIO_TRANSPORT
     void SendWorkerThread(int workerIdx);   // 전용 송신 워커 — 자기 워커의 dirty 배치를 받아 WSASend 수행
@@ -314,6 +320,9 @@ private:
     int _configuredWorkers;   // INI 지정 워커 수 (0=affinity 코어 수로 자동 산정)
     int _configuredSendWorkers;   // INI 지정 송신 워커 수 (0/1=단일)
     int _configuredRioWorkers;    // INI 지정 RIO 워커 수 (0=자동 2, RIO 빌드 전용)
+    int _configuredCompletionBatch;   // INI 지정 완료 수거 방식 (0=GQCS, N>0=GQCSEx 상한; IOCP 빌드 전용)
+    int _completionBatch = 0;         // 위 값을 clamp한 실효값 — Start()가 워커 기동 "전"에 확정, 이후 불변
+    static constexpr int MAX_COMPLETION_BATCH = 256;   // OVERLAPPED_ENTRY 스택 배열 상한 (256×16B=4KB)
     CMonitorManager& _monitor;
     volatile LONG _running;
     volatile LONGLONG _sessionIdCounter;  // 고유 ID용 (하위 48비트)

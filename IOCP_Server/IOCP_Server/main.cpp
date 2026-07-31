@@ -113,7 +113,8 @@ int main()
 
     if (!server.Init(config.mode, config.port, config.maxClients,
                      config.maps.data(), static_cast<int32_t>(config.maps.size()),
-                     config.workerThreads, config.sendWorkers, config.rioWorkers))
+                     config.workerThreads, config.sendWorkers, config.rioWorkers,
+                     config.completionBatch))
     {
         SLOG_ERROR("[Error] Server Init failed");
         return 1;

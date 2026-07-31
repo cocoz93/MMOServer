@@ -12,8 +12,13 @@
 #
 #  -ExpectTransport RIO(기본)|IOCP : 현재 Run\bin 바이너리가 어느 팔(arm)인지 검증에 사용.
 #     (RIO\build-A-iocp.bat / build-B-rio.bat 로 팔을 바꾼 뒤 각각 실행)
+#
+#  -CompletionBatch N : 완료 수거 방식을 INI에 강제하고 서버 로그로 실제 적용을 확인한다.
+#     0=GQCS(완료 1건당 수거) / N>0=GQCSEx(한 번에 최대 N건) / 생략=INI 원본값 그대로(기존 동작).
+#     IOCP 팔 전용 — RIO 빌드는 이 키를 쓰지 않는다.
 # ==========================================================================
-param([ValidateSet('RIO', 'IOCP')] [string]$ExpectTransport = 'RIO')
+param([ValidateSet('RIO', 'IOCP')] [string]$ExpectTransport = 'RIO',
+      [int]$CompletionBatch = -1)
 $ErrorActionPreference = 'Stop'
 $bin     = 'C:\Users\USER\Desktop\MyGit\MMO\Run\bin'
 $srvExe  = Join-Path $bin 'IOCP_Server.exe'
@@ -125,6 +130,8 @@ try {
     Set-IniKey $srvIni 'Mode' 'GameCodiEchoTest'
     Set-IniKey $srvIni 'MaxClients' '2000'          # RIO 슬랩 = 2000 x 128KB = 250MB (원본 10000은 1.25GB)
     Set-IniKey $srvIni 'MonitorEnabled' '0'
+    # 완료 수거 방식 강제 (IOCP 팔 A/B) — 생략(-1)이면 INI 원본을 그대로 둔다.
+    if ($CompletionBatch -ge 0) { Set-IniKey $srvIni 'CompletionBatch' "$CompletionBatch" }
     $srv = Start-Server
 
     # RIO 기동 확인은 T1c 종료 후 로그에서 수행 — 로거가 프로세스 종료 시점에 버퍼를
@@ -168,6 +175,18 @@ try {
     if ($logWin -match 'Server shutdown complete') { Note-Pass 'T1c shutdown log present' }
     else { Note-Fail 'T1c "Server shutdown complete" log missing' }
 
+    # 완료 수거 방식 assert — INI가 실제로 먹었는지 서버 로그로 확인한다.
+    #   같은 바이너리로 팔을 바꾸는 구조라, "INI가 안 먹은 채 돈 런"을 잡을 방법이 이것뿐이다.
+    if ($CompletionBatch -ge 0 -and $ExpectTransport -eq 'IOCP') {
+        if ($CompletionBatch -eq 0) {
+            if ($logWin -match 'Completion harvest = GQCS \(') { Note-Pass 'harvest mode = GQCS (one-at-a-time)' }
+            else { Note-Fail 'expected GQCS harvest log, not found (INI not applied?)' }
+        } else {
+            if ($logWin -match 'Completion harvest = GQCSEx.*?(\d+)') { Note-Pass "harvest mode = GQCSEx (cap $($Matches[1]))" }
+            else { Note-Fail "expected GQCSEx harvest log (cap $CompletionBatch), not found (INI not applied?)" }
+        }
+    }
+
     # ════ T2: EchoStressClient 회귀 (1000클라, 25초, DisconnectTest=1) ════
     Write-Host "`n=== T2: EchoStressClient regression ===" -ForegroundColor Cyan
     Set-IniKey $srvIni 'Mode' 'NetWorkLib_EchoTest'
@@ -188,12 +207,19 @@ try {
         $rep = Get-Content $newResult.FullName -Raw   # ccs=UTF-8(BOM) — Get-Content가 BOM 자동 감지
         Write-Host $rep
         $vals = @{}
-        foreach ($k in 'Connect Total','Connect Fail','Recv Total','Echo Timeout','Packet Error','SendBuf Full') {
+        # 라벨은 EchoStressClient main.cpp 출력과 1:1 (ac06be5에서 Packet Error -> Pad/Order 분리됨).
+        # 라벨을 못 찾으면 -1 -> FAIL: 클라 출력이 또 바뀌면 조용히 통과하지 않고 여기서 걸린다.
+        foreach ($k in 'Connect Total','Connect Fail','Recv Total','Echo Timeout','Pad Error','Order Error','Late Arrival','SendBuf Full') {
             if ($rep -match ([regex]::Escape($k) + '\s*:\s*(-?\d+)')) { $vals[$k] = [int64]$Matches[1] } else { $vals[$k] = -1 }
         }
         if ($vals['Connect Total'] -ge 1000 -and $vals['Connect Fail'] -eq 0) { Note-Pass "T2 connects $($vals['Connect Total'])/fail 0" } else { Note-Fail "T2 connect total=$($vals['Connect Total']) fail=$($vals['Connect Fail'])" }
         if ($vals['Recv Total'] -gt 0) { Note-Pass "T2 recv total $($vals['Recv Total'])" } else { Note-Fail 'T2 recv total 0' }
-        if ($vals['Packet Error'] -eq 0) { Note-Pass 'T2 packet error 0' } else { Note-Fail "T2 packet error $($vals['Packet Error'])" }
+        # 무결성 판정 = pad(페이로드 훼손) + order(에코 값 역전) 둘 다 0. late는 관측치라 표시만.
+        if ($vals['Pad Error'] -eq 0 -and $vals['Order Error'] -eq 0) {
+            Note-Pass "T2 integrity: pad 0 / order 0 (late $($vals['Late Arrival']))"
+        } else {
+            Note-Fail "T2 integrity: pad $($vals['Pad Error']) / order $($vals['Order Error'])"
+        }
         if ($vals['Echo Timeout'] -eq 0) { Note-Pass 'T2 echo timeout 0' } else { Note-Fail "T2 echo timeout $($vals['Echo Timeout'])" }
     }
 

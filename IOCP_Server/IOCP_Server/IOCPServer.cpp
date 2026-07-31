@@ -130,13 +130,15 @@ static int ResolveServerCoreCount()
 }
 
 CIOCPServer::CIOCPServer(int port, int maxClients, ServerMode mode,
-                         CMonitorManager& monitor, int workerThreads, int sendWorkers, int rioWorkers)
+                         CMonitorManager& monitor, int workerThreads, int sendWorkers, int rioWorkers,
+                         int completionBatch)
     : _port(port)
     , _maxClients(maxClients)
     , _serverMode(mode)
     , _configuredWorkers(workerThreads)
     , _configuredSendWorkers(sendWorkers)
     , _configuredRioWorkers(rioWorkers)
+    , _configuredCompletionBatch(completionBatch)
     , _monitor(monitor)
     , _running(FALSE)
     , _sessionIdCounter(1)  // 0은 사용하지 않음
@@ -341,6 +343,20 @@ bool CIOCPServer::Start()
     for (int i = 0; i < _rioWorkerCount; ++i)
         _rioWorkers[i]->thread = std::thread(&CIOCPServer::RioWorkerThread, this, i);
 #else
+    // 완료 수거 방식 확정 — 워커가 읽는 값이라 반드시 기동 "전"에 정하고, 이후 건드리지 않는다.
+    //   0이면 기존 GQCS(완료 1건당 syscall 1회), N>0이면 GQCSEx로 한 번에 최대 N건.
+    //   A/B를 재빌드가 아니라 INI 한 줄로 돌리는 이유는 두 팔이 같은 바이너리여야 빌드 차이가
+    //   변인으로 섞이지 않기 때문이다(증분빌드 오라벨 위험도 함께 사라진다).
+    _completionBatch = (_configuredCompletionBatch > 0)
+                     ? std::clamp(_configuredCompletionBatch, 1, MAX_COMPLETION_BATCH)
+                     : 0;
+    _monitor._completionBatch = _completionBatch;   // 수집 스크립트가 아암 라벨과 대조하는 게이지
+
+    if (_completionBatch == 0)
+        SLOG_INFO("[Network] Completion harvest = GQCS (완료 1건당 1회 수거)");
+    else
+        SLOG_INFO("[Network] Completion harvest = GQCSEx (배치 상한 {})", _completionBatch);
+
     // 워커 스레드 생성 — affinity 가용 코어 수 기준 (INI WorkerThreads로 오버라이드 가능)
     int threadCount = workerCount;
     for (int i = 0; i < threadCount; ++i)
@@ -720,14 +736,74 @@ void CIOCPServer::WorkerThread()
         }
     }
 
+    // 수거 방식은 Start()에서 워커 기동 전에 확정되므로 루프 진입 전에 한 번만 읽는다.
+    const int batchCap = _completionBatch;
+    OVERLAPPED_ENTRY entries[MAX_COMPLETION_BATCH];   // 4KB — batchCap==0이면 건드리지 않는다
+
     while (true)
     {
+        // ── GQCSEx 경로 — 한 번의 수거로 최대 batchCap건 (분기는 배치당 1회라 완료당 비용엔 안 잡힌다) ──
+        if (batchCap > 0)
+        {
+            ULONG removed = 0;
+            const BOOL ok = GetQueuedCompletionStatusEx(_iocpHandle, entries,
+                static_cast<ULONG>(batchCap), &removed, INFINITE, FALSE);
+
+            // [계측] 수거 호출 횟수 — 완료수/호출수가 곧 배치 효율. GQCS 팔의 1.0이 비교 기준선이다.
+            if (workerIndex >= 0 && workerIndex < CMonitorManager::MAX_WORKER_THREADS)
+                _monitor._workerCounters[workerIndex].AddDequeue();
+
+            if (ok == FALSE)
+            {
+                // INFINITE 대기에서의 실패는 포트 핸들이 닫혔다는 뜻 — GQCS 경로가 널 overlapped로
+                // 빠져나가던 자리와 같게 취급한다.
+                if (_running == FALSE)
+                    break;
+                continue;
+            }
+
+            int stopSignals = 0;
+            for (ULONG i = 0; i < removed; ++i)
+            {
+                OVERLAPPED* ov = entries[i].lpOverlapped;
+                if (ov == nullptr)
+                {
+                    ++stopSignals;   // 종료 깨우기 패킷 (PostQueuedCompletionStatus)
+                    continue;
+                }
+
+                // GQCSEx는 항목별 성공/실패를 안 준다. OVERLAPPED::Internal이 그 IO의 NTSTATUS이고,
+                // 최상위 비트가 서면 실패 — GQCS의 result==FALSE와 같은 판정이다.
+                const bool ioFailed = (static_cast<LONG>(ov->Internal) < 0);
+                HandleCompletion(ov, entries[i].lpCompletionKey,
+                                 entries[i].dwNumberOfBytesTransferred, ioFailed, workerIndex);
+            }
+
+            if (stopSignals > 0 && _running == FALSE)
+            {
+                // [셧다운 불변식] 종료 패킷은 "워커 1개당 1개"만 뿌려지는데, 배치 수거는 한 번에
+                //   여러 개를 삼킬 수 있다. 삼킨 채로 나가면 남은 워커가 영영 안 깨어나 join이 행에 걸린다.
+                //   내 몫 1개만 쓰고 나머지는 큐에 되돌려 놓는다 (총량 보존 → 모든 워커가 정확히 1개씩).
+                for (int k = 1; k < stopSignals; ++k)
+                    PostQueuedCompletionStatus(_iocpHandle, 0, 0, nullptr);
+                break;
+            }
+            continue;
+        }
+
+        // ── GQCS 경로 (기존 동작) — 완료 1건당 syscall 1회. 비교 기준선이자 기본값 ──
         DWORD bytesTransferred = 0;
         ULONG_PTR completionKey = 0;
         OVERLAPPED* overlapped = nullptr;
 
         BOOL result = GetQueuedCompletionStatus(_iocpHandle, &bytesTransferred,
             &completionKey, &overlapped, INFINITE);
+
+        // [계측] 완료 수거 호출 횟수 — GQCS는 1콜당 1완료(배치 없음)라 완료수와 같아지는 게 정상이고,
+        //   그 1:1이 GQCSEx 팔의 배치 효율을 재는 기준선이 된다.
+        //   빈 깨어남(종료 통지 등)도 호출은 호출이므로 널 검사보다 앞에서 센다.
+        if (workerIndex >= 0 && workerIndex < CMonitorManager::MAX_WORKER_THREADS)
+            _monitor._workerCounters[workerIndex].AddDequeue();
 
         if (overlapped == nullptr)
         {
@@ -736,42 +812,52 @@ void CIOCPServer::WorkerThread()
             continue;
         }
 
-        auto overlappedEx = reinterpret_cast<CSession::OverlappedEx*>(overlapped);
-        auto session = reinterpret_cast<CSession*>(completionKey);
-
-        // [불변식] overlapped 널은 바로 위에서 걸렀고, completionKey는 BindIOCP가
-        //   _sessions[index].get()(비널)로만 등록한다.
-        assert(overlappedEx != nullptr && session != nullptr);
-
-        IOOperation op = overlappedEx->operation;
-        bool canProcess = (result != FALSE && bytesTransferred != 0 &&
-            session->_disconnecting == FALSE);
-
-        if (canProcess)
-        {
-            switch (op)
-            {
-            case IOOperation::RECV:
-                ProcessRecv(session, bytesTransferred);
-                break;
-            case IOOperation::SEND:
-                ProcessSend(session, bytesTransferred);
-                break;
-            default:
-                break;
-            }
-        }
-        else if (result == FALSE || bytesTransferred == 0)
-        {
-            RequestDisconnectSession(session);
-        }
-
-        IOCountDecrement(session);
-
-        // 워커 스레드별 완료 통지 카운트
-        if (workerIndex >= 0 && workerIndex < CMonitorManager::MAX_WORKER_THREADS)
-            InterlockedIncrement64(&_monitor._workerCounters[workerIndex].completionCount);
+        HandleCompletion(overlapped, completionKey, bytesTransferred,
+                         (result == FALSE), workerIndex);
     }
+}
+
+// 완료 1건 처리 — 두 수거 경로(GQCS/GQCSEx)의 유일한 공통 본체.
+//   여기 한 곳만 두는 이유는 A/B 때문이다: 판정이 두 벌로 갈리면 팔 사이 동작 차이가
+//   측정값에 섞여도 알아채기 어렵다.
+void CIOCPServer::HandleCompletion(OVERLAPPED* overlapped, ULONG_PTR completionKey,
+                                   DWORD bytesTransferred, bool ioFailed, int workerIndex)
+{
+    auto overlappedEx = reinterpret_cast<CSession::OverlappedEx*>(overlapped);
+    auto session = reinterpret_cast<CSession*>(completionKey);
+
+    // [불변식] overlapped 널은 호출자가 걸렀고, completionKey는 BindIOCP가
+    //   _sessions[index].get()(비널)로만 등록한다.
+    assert(overlappedEx != nullptr && session != nullptr);
+
+    IOOperation op = overlappedEx->operation;
+    bool canProcess = (!ioFailed && bytesTransferred != 0 &&
+        session->_disconnecting == FALSE);
+
+    if (canProcess)
+    {
+        switch (op)
+        {
+        case IOOperation::RECV:
+            ProcessRecv(session, bytesTransferred);
+            break;
+        case IOOperation::SEND:
+            ProcessSend(session, bytesTransferred);
+            break;
+        default:
+            break;
+        }
+    }
+    else if (ioFailed || bytesTransferred == 0)
+    {
+        RequestDisconnectSession(session);
+    }
+
+    IOCountDecrement(session);
+
+    // 워커 스레드별 완료 통지 카운트
+    if (workerIndex >= 0 && workerIndex < CMonitorManager::MAX_WORKER_THREADS)
+        _monitor._workerCounters[workerIndex].AddCompletion();
 }
 #endif // !USE_RIO_TRANSPORT
 
@@ -1683,6 +1769,11 @@ int CIOCPServer::RioDrainCompletions(RioWorker& worker, int monitorIndex)
         return -1;   // 도달 불가 (CRASH 미복귀) — 컴파일러용
     }
 
+    // [계측] 수거 호출 횟수 — RIO는 유저모드 링 조회라 syscall이 아니지만, 배치 효율(완료수/호출수)을
+    //   IOCP 팔과 같은 잣대로 읽으려고 같은 카운터에 센다. 빈 조회(n=0)도 호출로 친다.
+    if (monitorIndex >= 0 && monitorIndex < CMonitorManager::MAX_WORKER_THREADS)
+        _monitor._workerCounters[monitorIndex].AddDequeue();
+
     for (ULONG i = 0; i < n; ++i)
     {
         auto session = reinterpret_cast<CSession*>(static_cast<uintptr_t>(results[i].SocketContext));
@@ -1707,7 +1798,7 @@ int CIOCPServer::RioDrainCompletions(RioWorker& worker, int monitorIndex)
         IOCountDecrement(session);   // 이 완료가 들고 있던 pending IO ref 반환
 
         if (monitorIndex >= 0 && monitorIndex < CMonitorManager::MAX_WORKER_THREADS)
-            InterlockedIncrement64(&_monitor._workerCounters[monitorIndex].completionCount);
+            _monitor._workerCounters[monitorIndex].AddCompletion();
     }
     return static_cast<int>(n);
 }

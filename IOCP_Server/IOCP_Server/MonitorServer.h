@@ -205,6 +205,12 @@ private:
         ss << "# TYPE mmo_transport_rio gauge\n";
         ss << "mmo_transport_rio " << (int)(USE_RIO_TRANSPORT) << "\n\n";
 
+        // [완료 수거 A/B assert] 런타임 INI CompletionBatch의 실효값 — 수집 스크립트가 아암 라벨과
+        //   대조해 "INI가 안 먹은 채로 돈 런"을 잡는다. 같은 바이너리로 팔을 바꾸므로 이 대조가 유일한 방어선.
+        ss << "# HELP mmo_completion_batch Completion harvest mode (0=GQCS one-at-a-time, N=GQCSEx batch cap)\n";
+        ss << "# TYPE mmo_completion_batch gauge\n";
+        ss << "mmo_completion_batch " << _monitor._completionBatch << "\n\n";
+
         ss << "# HELP mmo_event_queue_size Network event queue size before dispatch\n";
         ss << "# TYPE mmo_event_queue_size gauge\n";
         ss << "mmo_event_queue_size " << _monitor._gameLoop._eventQueueSize << "\n\n";
@@ -408,6 +414,19 @@ private:
         {
             ss << "mmo_worker_completions_total{worker=\"" << i << "\"} "
                << _monitor._workerCounters[i].completionCount << "\n";
+        }
+        ss << "\n";
+
+        // 완료 수거 호출 횟수 — completions / dequeue_calls = 한 호출에 몇 건을 걷었나(배치 효율).
+        //   GQCS는 1콜=1완료라 비율 1.0이 정상, GQCSEx는 1보다 커야 이득이 생긴다.
+        //   [한계] 우리가 센 건 의도한 호출분이지 커널 진입 총량이 아니다 → 절대값 인용 금지, 양팔 Δ 전용.
+        ss << "# HELP mmo_worker_dequeue_calls_total Completion-harvest calls per worker (GQCS/GQCSEx/RIODequeue)\n";
+        ss << "# TYPE mmo_worker_dequeue_calls_total counter\n";
+
+        for (int i = 0; i < workerCount && i < CMonitorManager::MAX_WORKER_THREADS; ++i)
+        {
+            ss << "mmo_worker_dequeue_calls_total{worker=\"" << i << "\"} "
+               << _monitor._workerCounters[i].dequeueCalls << "\n";
         }
         ss << "\n";
     }
