@@ -144,6 +144,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="IOCPServer.cpp" />
+    <ClCompile Include="Transport_Iocp.cpp" />
+    <ClCompile Include="Transport_Rio.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="CoreAffinity.cpp" />
     <ClCompile Include="SerialBuffer.cpp" />

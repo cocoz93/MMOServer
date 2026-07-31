@@ -12,23 +12,6 @@
 
 extern void SignalProcessShutdown(); // main 쪽에 정의된 종료 알림 함수
 
-#if USE_RIO_TRANSPORT
-namespace
-{
-    // 슬랩 슬라이스 크기 — 기존 링 기본값 65535의 페이지 정렬판 (링 로직은 capacity 임의값 허용)
-    constexpr size_t RIO_RECV_RING_SIZE = 65536;
-    constexpr size_t RIO_SEND_RING_SIZE = 65536;
-    constexpr ULONG  RIO_DEQUEUE_BATCH  = 256;    // CQ 드레인 1회 최대 회수 건수
-
-    // RIORESULT.RequestContext 태그 — 완료가 RECV인지 SEND인지 구분 (세션은 SocketContext)
-    constexpr ULONGLONG RIO_CTX_RECV = 1;
-    constexpr ULONGLONG RIO_CTX_SEND = 2;
-
-    // 이 스레드가 몇 번 RIO 워커인가 (-1 = 워커 아님) — RQ 소유권 판정용
-    thread_local int t_rioWorkerIndex = -1;
-}
-#endif
-
 
 // CSession Implementation
 CSession::CSession()
@@ -36,12 +19,12 @@ CSession::CSession()
     , _disconnecting(FALSE)
     , _socket(INVALID_SOCKET)
     , _sessionId(0)
-    , _sending(FALSE)
+    , _sendSubmitBusy(FALSE)
+    , _sendInFlight(0)
 {
     ZeroMemory(&_recvOverlapped.overlapped, sizeof(OVERLAPPED));
     _recvOverlapped.operation = IOOperation::RECV;
-    ZeroMemory(&_sendOverlapped.overlapped, sizeof(OVERLAPPED));
-    _sendOverlapped.operation = IOOperation::SEND;
+    ResetSendSlots();
 
 #if USE_LOCKFREE_SENDQ
     _pendingSendCount = 0;
@@ -55,7 +38,8 @@ void CSession::Initialize(SOCKET socket, int64_t sessionId)
     _socket = socket;
     _sessionId = sessionId;
     _disconnecting = FALSE;
-    _sending = FALSE;
+    _sendSubmitBusy = FALSE;
+    _sendInFlight = 0;
     _sendDirty = false;
     _queuedForSend = FALSE;
     _recvQ.Clear();
@@ -77,12 +61,9 @@ void CSession::Initialize(SOCKET socket, int64_t sessionId)
     // 세션 고정 Overlapped 방식: IO 요청마다 재사용하므로 요청 전 OVERLAPPED만 초기화한다.
     ZeroMemory(&_recvOverlapped.overlapped, sizeof(OVERLAPPED));
     _recvOverlapped.operation = IOOperation::RECV;
-    ZeroMemory(&_sendOverlapped.overlapped, sizeof(OVERLAPPED));
-    _sendOverlapped.operation = IOOperation::SEND;
+    ResetSendSlots();   // 송신 슬롯 링 전체 리셋 (이전 세션의 in-flight 잔재 제거)
 
-#if USE_RIO_TRANSPORT
-    _rq = RIO_INVALID_RQ;   // 이전 소켓의 RQ 잔재 제거 — 새 RQ는 소유 워커가 NewConn 처리에서 생성
-#endif
+    ResetTransportState();   // 팔별 재사용 리셋 (RIO: 이전 소켓의 RQ 잔재 제거 — 새 RQ는 NewConn에서 생성)
 
     // _ioCount를 마지막에 설정 — 첫 번째 Recv IO의 ref (base ref 아님).
     // InterlockedExchange가 full barrier를 제공하므로 위의 모든 쓰기가 이 시점 전에 완료된다.
@@ -99,7 +80,8 @@ void CSession::Close()
 {
     // 소켓과 세션 상태를 정리한다. 버퍼 등 나머지는 Initialize()에서 초기화한다.
     // IOCount=0 시점에 단일 스레드에서만 호출되므로 Interlocked 불필요.
-    _sending = FALSE;
+    _sendSubmitBusy = FALSE;
+    _sendInFlight = 0;
     _sessionId = 0;
 
     SOCKET socket = _socket;
@@ -112,26 +94,9 @@ void CSession::Close()
 
 // CIOCPServer Implementation
 
-// affinity로 제한된 프로세스의 가용 논리코어 수를 센다 (마스크의 set 비트 수).
-// affinity 미적용이면 시스템 전체 논리코어 수로 폴백.
-// main에서 SetProcessAffinityMask 이후 Start()에서 호출되므로 정확한 값을 반환한다.
-static int ResolveServerCoreCount()
-{
-    DWORD_PTR procMask = 0, sysMask = 0;
-    if (GetProcessAffinityMask(GetCurrentProcess(), &procMask, &sysMask) && procMask != 0)
-    {
-        int count = 0;
-        for (DWORD_PTR m = procMask; m != 0; m &= (m - 1))
-            ++count;
-        if (count > 0)
-            return count;
-    }
-    return static_cast<int>(std::thread::hardware_concurrency());
-}
-
 CIOCPServer::CIOCPServer(int port, int maxClients, ServerMode mode,
                          CMonitorManager& monitor, int workerThreads, int sendWorkers, int rioWorkers,
-                         int completionBatch)
+                         int completionBatch, int sendDepth)
     : _port(port)
     , _maxClients(maxClients)
     , _serverMode(mode)
@@ -139,6 +104,7 @@ CIOCPServer::CIOCPServer(int port, int maxClients, ServerMode mode,
     , _configuredSendWorkers(sendWorkers)
     , _configuredRioWorkers(rioWorkers)
     , _configuredCompletionBatch(completionBatch)
+    , _configuredSendDepth(sendDepth)
     , _monitor(monitor)
     , _running(FALSE)
     , _sessionIdCounter(1)  // 0은 사용하지 않음
@@ -162,7 +128,27 @@ bool CIOCPServer::Start()
         return false;
     }
 
-    // 세션 객체는 서버 시작 시 동접자 수만큼 고정 생성하고 이후 index만 재사용한다.
+    // 송신 깊이 확정 — 뒤따르는 모든 준비물이 이 값을 읽는다(RIO의 요청 큐 깊이·완료 큐 크기,
+    //   워커·완료 처리의 게이트). 그래서 어떤 자원보다 먼저 정하고 이후 불변으로 둔다.
+    //   2의 거듭제곱만 쓰는 이유: 슬롯 인덱스를 head/tail 카운터의 비트마스크로 구하므로
+    //   카운터가 오버플로로 wrap해도 인덱스 관계가 유지돼야 한다. 그 외 값은 아래쪽 거듭제곱으로
+    //   내린다(3→2, 5~7→4, 9↑→8). A/B를 재빌드가 아니라 INI 한 줄로 돌리려고 런타임 값으로 뒀다.
+    {
+        int depth = std::clamp((_configuredSendDepth > 0) ? _configuredSendDepth : 1,
+                               1, CSession::MAX_SEND_DEPTH);
+        int pow2 = 1;
+        while (pow2 * 2 <= depth)
+            pow2 *= 2;
+        _sendDepth = pow2;
+        _sendDepthMask = pow2 - 1;
+
+        _monitor._sendDepth = _sendDepth;   // 수집 스크립트가 아암 라벨과 대조하는 게이지
+
+        if (_sendDepth != _configuredSendDepth)
+            SLOG_INFO("[Network] Send depth = {} (INI {} → 2의 거듭제곱으로 내림)", _sendDepth, _configuredSendDepth);
+        else
+            SLOG_INFO("[Network] Send depth = {} (세션당 동시 송신 제출 상한)", _sendDepth);
+    }
 
     // 세션 객체는 서버 시작 시 동접자 수만큼 고정 생성하고 이후 index만 재사용한다.
     _sessions.resize(_maxClients);
@@ -170,17 +156,12 @@ bool CIOCPServer::Start()
     {
         // INVALID_SOCKET과 0 세션ID로 미리 생성
         _sessions[i] = std::make_unique<CSession>();
-#if !USE_RIO_TRANSPORT   // RIO: 링버퍼는 등록 슬랩의 슬라이스 — 슬랩 등록 후 아래 RIO 준비 블록에서 InitExternal
-#if USE_LOCKFREE_SENDQ
-        if (!_sessions[i]->_recvQ.Init() || !_sessions[i]->_sendQ.Init(256))
-#else
-        if (!_sessions[i]->_recvQ.Init() || !_sessions[i]->_sendQ.Init())
-#endif
+        // 링버퍼 준비는 팔별 — RIO는 등록 슬랩의 슬라이스라 여기서 하지 않는다(TransportPostListen).
+        if (!TransportInitSessionBuffer(_sessions[i].get()))
         {
             LOG_ERROR_STREAM("Failed to init session RingBuffer [index=" << i << "]");
             return false;
         }
-#endif
     }
 
 
@@ -220,109 +201,25 @@ bool CIOCPServer::Start()
         return false;
     }
 
-#if !USE_RIO_TRANSPORT
-    // 워커 수·IOCP concurrency 산정 — affinity로 제한된 가용 코어 수가 단일 기준.
-    // (INI WorkerThreads>0이면 워커 수만 그 값으로 오버라이드, concurrency는 코어 수 유지)
-    const int coreCount = ResolveServerCoreCount();
-    const int workerCount = (_configuredWorkers > 0) ? _configuredWorkers : coreCount;
-
-    // IOCP 핸들 생성 — NumberOfConcurrentThreads = 가용 코어 수 (동시 실행 워커 상한)
-    _iocpHandle = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0,
-                                         static_cast<DWORD>(coreCount));
-    if (_iocpHandle == NULL)
+    // 리슨 소켓 "전" 준비 — IOCP 팔은 완료 포트 핸들이 여기서 필요하다(accept 소켓 바인드 대상).
+    if (!TransportPreListen())
     {
         WSACleanup();
         return false;
     }
-#endif
 
     // Listen 소켓 생성
     if (!CreateListenSocket())
     {
-#if !USE_RIO_TRANSPORT
-        CloseHandle(_iocpHandle);
-#endif
+        TransportPreListenCleanup();
         WSACleanup();
         return false;
     }
 
-#if USE_RIO_TRANSPORT
-    // ── RIO 준비: 함수 테이블 → 슬랩 등록(물리 고정) → 세션 링 슬라이스 → 워커 객체(CQ/이벤트) ──
-    // 스레드 기동 전(pre-_running)에 실패 가능한 자원을 전부 확보한다.
-    {
-        bool rioReady = CRioApi::Load(_listenSocket);
-
-        const size_t perSession = RIO_RECV_RING_SIZE + RIO_SEND_RING_SIZE;
-        if (rioReady && !_rioSlab.Init(perSession * static_cast<size_t>(_maxClients)))
-            rioReady = false;
-
-        if (rioReady)
-        {
-            for (int i = 0; i < _maxClients; ++i)
-            {
-                char* base = _rioSlab.Base() + static_cast<size_t>(i) * perSession;
-                if (!_sessions[i]->_recvQ.InitExternal(base, RIO_RECV_RING_SIZE) ||
-                    !_sessions[i]->_sendQ.InitExternal(base + RIO_RECV_RING_SIZE, RIO_SEND_RING_SIZE))
-                {
-                    rioReady = false;
-                    break;
-                }
-            }
-        }
-
-        if (rioReady)
-        {
-            // INI RioWorkers (0=자동 2) — 상한은 송신 카운터 슬롯 수(flushUs/backlog 노출용)
-            _rioWorkerCount = std::clamp((_configuredRioWorkers > 0) ? _configuredRioWorkers : 2,
-                                         1, CMonitorManager::MAX_SEND_WORKERS);
-            _monitor._sendWorkerCount = _rioWorkerCount;   // FlushSend 배치 계측 노출 루프 상한
-            _rioStop.store(false);
-            _rioWorkers.clear();
-            _rioWorkers.reserve(_rioWorkerCount);
-
-            // CQ 크기 = 2×MaxClients + 여유 — 세션이 한 워커에 몰리는 최악 분배에서도
-            // RIOCreateRequestQueue의 슬롯 예약(세션당 recv1+send1)이 실패하지 않게.
-            const DWORD cqSize = static_cast<DWORD>(_maxClients) * 2 + 16;
-            for (int i = 0; i < _rioWorkerCount && rioReady; ++i)
-            {
-                auto worker = std::make_unique<RioWorker>();
-                worker->cqEvent = CreateEventW(NULL, FALSE, FALSE, NULL);
-                worker->cmdEvent = CreateEventW(NULL, FALSE, FALSE, NULL);
-                if (worker->cqEvent != nullptr && worker->cmdEvent != nullptr)
-                {
-                    RIO_NOTIFICATION_COMPLETION nc = {};
-                    nc.Type = RIO_EVENT_COMPLETION;
-                    nc.Event.EventHandle = worker->cqEvent;
-                    nc.Event.NotifyReset = TRUE;
-                    worker->cq = CRioApi::Rio().RIOCreateCompletionQueue(cqSize, &nc);
-                }
-                if (worker->cq == RIO_INVALID_CQ)
-                    rioReady = false;
-                _rioWorkers.push_back(std::move(worker));
-            }
-        }
-
-        if (!rioReady)
-        {
-            SLOG_ERROR("[RIO] init failed (table/slab/ring/cq) — WSAError: {}", WSAGetLastError());
-            for (auto& worker : _rioWorkers)
-            {
-                if (worker->cq != RIO_INVALID_CQ)
-                    CRioApi::Rio().RIOCloseCompletionQueue(worker->cq);
-                if (worker->cqEvent)
-                    CloseHandle(worker->cqEvent);
-                if (worker->cmdEvent)
-                    CloseHandle(worker->cmdEvent);
-            }
-            _rioWorkers.clear();
-            _rioSlab.Release();
-            closesocket(_listenSocket);
-            _listenSocket = INVALID_SOCKET;
-            WSACleanup();
-            return false;
-        }
-    }
-#endif
+    // 리슨 소켓 "후" 준비 — RIO 팔은 함수 테이블 probe에 소켓이 필요하고, 슬랩 등록·세션 링
+    // 슬라이스·워커 CQ를 여기서 만든다. 실패 시 내부에서 정리하고 false를 돌린다.
+    if (!TransportPostListen())
+        return false;
 
     InterlockedExchange(&_running, TRUE);
 
@@ -338,47 +235,8 @@ bool CIOCPServer::Start()
     }
     _timingWheel->Start(OnSessionTimeout, this);
 
-#if USE_RIO_TRANSPORT
-    // RIO 워커 기동 — CQ/이벤트/슬랩은 위 RIO 준비 블록에서 확보 완료 (WT 풀·SendWorker 풀 대체)
-    for (int i = 0; i < _rioWorkerCount; ++i)
-        _rioWorkers[i]->thread = std::thread(&CIOCPServer::RioWorkerThread, this, i);
-#else
-    // 완료 수거 방식 확정 — 워커가 읽는 값이라 반드시 기동 "전"에 정하고, 이후 건드리지 않는다.
-    //   0이면 기존 GQCS(완료 1건당 syscall 1회), N>0이면 GQCSEx로 한 번에 최대 N건.
-    //   A/B를 재빌드가 아니라 INI 한 줄로 돌리는 이유는 두 팔이 같은 바이너리여야 빌드 차이가
-    //   변인으로 섞이지 않기 때문이다(증분빌드 오라벨 위험도 함께 사라진다).
-    _completionBatch = (_configuredCompletionBatch > 0)
-                     ? std::clamp(_configuredCompletionBatch, 1, MAX_COMPLETION_BATCH)
-                     : 0;
-    _monitor._completionBatch = _completionBatch;   // 수집 스크립트가 아암 라벨과 대조하는 게이지
-
-    if (_completionBatch == 0)
-        SLOG_INFO("[Network] Completion harvest = GQCS (완료 1건당 1회 수거)");
-    else
-        SLOG_INFO("[Network] Completion harvest = GQCSEx (배치 상한 {})", _completionBatch);
-
-    // 워커 스레드 생성 — affinity 가용 코어 수 기준 (INI WorkerThreads로 오버라이드 가능)
-    int threadCount = workerCount;
-    for (int i = 0; i < threadCount; ++i)
-    {
-        _workerThreads.emplace_back(&CIOCPServer::WorkerThread, this);
-    }
-#endif
-
-#if USE_SEND_THREAD && !USE_RIO_TRANSPORT
-    // 전용 송신 워커 풀 생성 — K개 워커(uniqueId%K 분배). 기본 1 = 기존 단일 스레드와 동등(회귀 기준선).
-    //   워커 객체(mutex/cv 참조)를 먼저 전부 생성한 뒤 스레드 시작 → 스레드가 자기 워커 참조 시 존재 보장.
-    const int sendCount = std::clamp((_configuredSendWorkers > 0) ? _configuredSendWorkers : 1,
-                                     1, CMonitorManager::MAX_SEND_WORKERS);
-    _sendWorkerCount = sendCount;
-    _monitor._sendWorkerCount = sendCount;            // 노출 루프 상한
-    _sendWorkers.reserve(sendCount);
-    for (int i = 0; i < sendCount; ++i)
-        _sendWorkers.push_back(std::make_unique<SendWorker>());
-    for (int i = 0; i < sendCount; ++i)
-        _sendWorkers[i]->thread = std::thread(&CIOCPServer::SendWorkerThread, this, i);
-    SLOG_INFO("[Network] Send workers = {} (uniqueId % K 분배)", sendCount);
-#endif
+    // 완료 워커·송신 워커 기동 (팔별) — 워커가 읽는 설정은 기동 "전"에 확정된다.
+    TransportStartWorkers();
 
     // Accept 스레드 생성
     _acceptThread = std::thread(&CIOCPServer::AcceptThread, this);
@@ -390,29 +248,14 @@ bool CIOCPServer::Start()
     case ServerMode::NetWorkLib_EchoTest: modeName = "NetWorkLib_EchoTest"; break;
     case ServerMode::GameServer:          modeName = "GameServer";          break;
     }
-#if USE_RIO_TRANSPORT
-    SLOG_INFO("[Network] Server started — RIO workers={}, slab={}MB, cq={}/worker (Mode: {})",
-              _rioWorkerCount,
-              ((RIO_RECV_RING_SIZE + RIO_SEND_RING_SIZE) * static_cast<size_t>(_maxClients)) >> 20,
-              static_cast<DWORD>(_maxClients) * 2 + 16, modeName);
-#else
-    SLOG_INFO("[Network] Server started — worker threads={}, IOCP concurrency={} (affinity cores={}, Mode: {})",
-              threadCount, coreCount, coreCount, modeName);
-#endif
+    TransportLogStarted(modeName);
     return true;
 }
 
 
 bool CIOCPServer::CreateListenSocket()
 {
-#if USE_RIO_TRANSPORT
-    // 리슨에 REGISTERED_IO 플래그 — accept 소켓이 상속한다 (Phase 0 스모크 실측).
-    // 주의: 상속된 소켓은 RIO 전용 — 일반 WSASend/WSARecv가 거부된다(10038).
-    _listenSocket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0,
-                              WSA_FLAG_REGISTERED_IO | WSA_FLAG_OVERLAPPED);
-#else
-    _listenSocket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, WSA_FLAG_OVERLAPPED);
-#endif
+    _listenSocket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, TransportListenFlags());
     if (_listenSocket == INVALID_SOCKET)
     {
         const int wsaErr = WSAGetLastError();
@@ -470,19 +313,6 @@ bool CIOCPServer::SetSocketOptions(SOCKET socket)
     return true;
 }
 
-#if !USE_RIO_TRANSPORT
-bool CIOCPServer::BindIOCP(SOCKET socket, ULONG_PTR completionKey)
-{
-    auto handle = CreateIoCompletionPort((HANDLE)socket, _iocpHandle, completionKey, 0);
-    if (handle == NULL)
-    {
-        LOG_ERROR_STREAM("BindIOCP failed: " << GetLastError());
-        return false;
-    }
-    return true;
-}
-#endif // !USE_RIO_TRANSPORT
-
 
 // 새 I/O 제출을 막고 pending I/O 완료를 유도한다. 실제 closesocket은 IOCount 0에서 수행한다.
 void CIOCPServer::ShutdownServer()
@@ -504,22 +334,8 @@ void CIOCPServer::ShutdownServer()
         _acceptThread.join();
     }
 
-#if USE_SEND_THREAD && !USE_RIO_TRANSPORT
-    // send 워커 정지·드워커 — 아래 IOCount 0 대기 루프 *이전*에 모든 워커을 멈춰야
-    //      PostSend가 pin한 IOCount 잔존으로 인한 데드락을 막는다(워커이 살아있으면 IOCount가 안 떨어짐).
-    //      게임루프는 CGameServer::Stop에서 이미 join된 상태라 새 handoff는 들어오지 않는다.
-    _sendStop.store(true);
-    for (auto& worker : _sendWorkers)
-    {
-        { std::lock_guard<std::mutex> lk(worker->mutex); }  // 막 wait 진입하는 워커과의 race 방지
-        worker->cv.notify_one();
-    }
-    for (auto& worker : _sendWorkers)
-    {
-        if (worker->thread.joinable())
-            worker->thread.join();
-    }
-#endif
+    // IOCount 드레인 "전" 정지 (팔별) — IOCP는 송신 워커를 먼저 멈춰야 pin한 IOCount가 풀린다.
+    TransportStopBeforeDrain();
 
     // 타이밍 휠 정지 (더 이상 타임아웃 disconnect 발생하지 않음)
     if (_timingWheel)
@@ -549,62 +365,8 @@ void CIOCPServer::ShutdownServer()
         }
     }
 
-    // 4. 모든 IO 정리 완료 — 워커 스레드 종료
-    if (_iocpHandle != NULL)
-    {
-        for (size_t i = 0; i < _workerThreads.size(); ++i)
-        {
-            PostQueuedCompletionStatus(_iocpHandle, 0, 0, nullptr);
-        }
-    }
-
-    for (auto& thread : _workerThreads)
-    {
-        if (thread.joinable())
-        {
-            thread.join();
-        }
-    }
-
-    if (_iocpHandle != NULL)
-    {
-        CloseHandle(_iocpHandle);
-        _iocpHandle = NULL;
-    }
-
-#if USE_RIO_TRANSPORT
-    // RIO 워커 정지 — 반드시 "모든 세션 IOCount==0" 이후여야 한다. 워커가 완료 드레인과
-    // Disconnect(closesocket) 처리의 주체라, 먼저 세우면 pending ref·핸드오프 pin이 영영
-    // 안 풀린다 (SendWorker를 IOCount 대기 "전"에 멈추는 기존 순서와 반대인 이유).
-    _rioStop.store(true);
-    for (auto& worker : _rioWorkers)
-        SetEvent(worker->cmdEvent);
-    for (auto& worker : _rioWorkers)
-    {
-        if (worker->thread.joinable())
-            worker->thread.join();
-    }
-    for (auto& worker : _rioWorkers)
-    {
-        if (worker->cq != RIO_INVALID_CQ)
-        {
-            CRioApi::Rio().RIOCloseCompletionQueue(worker->cq);
-            worker->cq = RIO_INVALID_CQ;
-        }
-        if (worker->cqEvent)
-        {
-            CloseHandle(worker->cqEvent);
-            worker->cqEvent = nullptr;
-        }
-        if (worker->cmdEvent)
-        {
-            CloseHandle(worker->cmdEvent);
-            worker->cmdEvent = nullptr;
-        }
-    }
-    _rioWorkers.clear();
-    _rioSlab.Release();   // 모든 소켓·CQ 정리 후, WSACleanup 전 (등록 해제 → VirtualFree)
-#endif
+    // 4. 모든 IO 정리 완료 — 완료 워커 정지·자원 해제 (팔별)
+    TransportStopAfterDrain();
 
     WSACleanup();
 
@@ -674,9 +436,8 @@ void CIOCPServer::ProcessAccept(SOCKET clientSocket)
     InterlockedIncrement64(&_monitor._sessionCreated);
     InterlockedIncrement(&_monitor._sessionCount);
 
-#if !USE_RIO_TRANSPORT
-    // IOCP의 CompletionKey는 단순 식별자 역할이므로, 세션 소유권을 갖지 않는다.
-    if (!BindIOCP(clientSocket, (ULONG_PTR)_sessions[index].get()))
+    // 완료 통지 연결 (팔별) — IOCP는 소켓을 완료 포트에 붙인다. RIO는 소유 워커가 RQ 생성 시 처리.
+    if (!TransportAttachSession(_sessions[index].get(), clientSocket))
     {
         LOG_ERROR_STREAM("Failed to bind client socket to IOCP");
         // RequestDisconnectSession → ReleaseSession(IOCount→0)으로 정리
@@ -684,7 +445,6 @@ void CIOCPServer::ProcessAccept(SOCKET clientSocket)
         IOCountDecrement(_sessions[index].get());
         return;
     }
-#endif
 
     // 컨텐츠쪽 전달
     switch (_serverMode)
@@ -701,165 +461,9 @@ void CIOCPServer::ProcessAccept(SOCKET clientSocket)
     // 타이밍 휠에 세션 등록 (타임아웃 카운트 시작)
     _timingWheel->RequestRegister(CSession::ExtractIndex(sessionId), sessionId);
 
-#if USE_RIO_TRANSPORT
-    // RQ 생성+첫 Recv는 소유 워커에 위임 — RQ 생성이 CQ 상태를 바꾸는데 RIO는 내부 락이
-    // 없어 소유 워커에서만 만져야 한다. CONNECTED push(위)가 먼저라 이벤트 순서도 보존.
-    // Initialize의 IOCount=1(첫 Recv ref)이 핸드오프 동안 세션 수명을 보장한다.
-    RioCmd cmd;
-    cmd.type = RioCmd::Type::NewConn;
-    cmd.sessionId = sessionId;
-    cmd.socket = clientSocket;
-    cmd.session = _sessions[index].get();
-    RioEnqueueCmd(RioOwnerIndex(sessionId), std::move(cmd));
-#else
-    // 첫 Recv — Initialize의 IOCount=1이 이 IO의 ref. AcquireSession 불필요.
-    PostRecv(_sessions[index].get(), true);
-#endif
+    // 첫 Recv 착수 (팔별) — Initialize의 IOCount=1이 이 IO의 ref. AcquireSession 불필요.
+    TransportStartFirstRecv(_sessions[index].get(), clientSocket, sessionId);
 }
-
-#if !USE_RIO_TRANSPORT
-// 완료 통지 처리. IOCount 감소는 ProcessRecv/ProcessSend 이후에만 수행한다.
-void CIOCPServer::WorkerThread()
-{
-    CoreAffinity::PinIoThread();   // IOCP 워커 → 게임코어 밖으로 (격리 off면 no-op)
-
-    int workerIndex = _monitor.RegisterWorkerThread();
-
-    // CPU 점유율 측정용: 자기 실핸들을 복제해 슬롯에 등록 (HTTP 스레드가 GetThreadTimes로 읽음)
-    if (workerIndex >= 0 && workerIndex < CMonitorManager::MAX_WORKER_THREADS)
-    {
-        HANDLE dup = nullptr;
-        if (DuplicateHandle(GetCurrentProcess(), GetCurrentThread(),
-                            GetCurrentProcess(), &dup, 0, FALSE, DUPLICATE_SAME_ACCESS))
-        {
-            _monitor._workerCounters[workerIndex].threadHandle = dup;
-        }
-    }
-
-    // 수거 방식은 Start()에서 워커 기동 전에 확정되므로 루프 진입 전에 한 번만 읽는다.
-    const int batchCap = _completionBatch;
-    OVERLAPPED_ENTRY entries[MAX_COMPLETION_BATCH];   // 4KB — batchCap==0이면 건드리지 않는다
-
-    while (true)
-    {
-        // ── GQCSEx 경로 — 한 번의 수거로 최대 batchCap건 (분기는 배치당 1회라 완료당 비용엔 안 잡힌다) ──
-        if (batchCap > 0)
-        {
-            ULONG removed = 0;
-            const BOOL ok = GetQueuedCompletionStatusEx(_iocpHandle, entries,
-                static_cast<ULONG>(batchCap), &removed, INFINITE, FALSE);
-
-            // [계측] 수거 호출 횟수 — 완료수/호출수가 곧 배치 효율. GQCS 팔의 1.0이 비교 기준선이다.
-            if (workerIndex >= 0 && workerIndex < CMonitorManager::MAX_WORKER_THREADS)
-                _monitor._workerCounters[workerIndex].AddDequeue();
-
-            if (ok == FALSE)
-            {
-                // INFINITE 대기에서의 실패는 포트 핸들이 닫혔다는 뜻 — GQCS 경로가 널 overlapped로
-                // 빠져나가던 자리와 같게 취급한다.
-                if (_running == FALSE)
-                    break;
-                continue;
-            }
-
-            int stopSignals = 0;
-            for (ULONG i = 0; i < removed; ++i)
-            {
-                OVERLAPPED* ov = entries[i].lpOverlapped;
-                if (ov == nullptr)
-                {
-                    ++stopSignals;   // 종료 깨우기 패킷 (PostQueuedCompletionStatus)
-                    continue;
-                }
-
-                // GQCSEx는 항목별 성공/실패를 안 준다. OVERLAPPED::Internal이 그 IO의 NTSTATUS이고,
-                // 최상위 비트가 서면 실패 — GQCS의 result==FALSE와 같은 판정이다.
-                const bool ioFailed = (static_cast<LONG>(ov->Internal) < 0);
-                HandleCompletion(ov, entries[i].lpCompletionKey,
-                                 entries[i].dwNumberOfBytesTransferred, ioFailed, workerIndex);
-            }
-
-            if (stopSignals > 0 && _running == FALSE)
-            {
-                // [셧다운 불변식] 종료 패킷은 "워커 1개당 1개"만 뿌려지는데, 배치 수거는 한 번에
-                //   여러 개를 삼킬 수 있다. 삼킨 채로 나가면 남은 워커가 영영 안 깨어나 join이 행에 걸린다.
-                //   내 몫 1개만 쓰고 나머지는 큐에 되돌려 놓는다 (총량 보존 → 모든 워커가 정확히 1개씩).
-                for (int k = 1; k < stopSignals; ++k)
-                    PostQueuedCompletionStatus(_iocpHandle, 0, 0, nullptr);
-                break;
-            }
-            continue;
-        }
-
-        // ── GQCS 경로 (기존 동작) — 완료 1건당 syscall 1회. 비교 기준선이자 기본값 ──
-        DWORD bytesTransferred = 0;
-        ULONG_PTR completionKey = 0;
-        OVERLAPPED* overlapped = nullptr;
-
-        BOOL result = GetQueuedCompletionStatus(_iocpHandle, &bytesTransferred,
-            &completionKey, &overlapped, INFINITE);
-
-        // [계측] 완료 수거 호출 횟수 — GQCS는 1콜당 1완료(배치 없음)라 완료수와 같아지는 게 정상이고,
-        //   그 1:1이 GQCSEx 팔의 배치 효율을 재는 기준선이 된다.
-        //   빈 깨어남(종료 통지 등)도 호출은 호출이므로 널 검사보다 앞에서 센다.
-        if (workerIndex >= 0 && workerIndex < CMonitorManager::MAX_WORKER_THREADS)
-            _monitor._workerCounters[workerIndex].AddDequeue();
-
-        if (overlapped == nullptr)
-        {
-            if (_running == FALSE)
-                break;
-            continue;
-        }
-
-        HandleCompletion(overlapped, completionKey, bytesTransferred,
-                         (result == FALSE), workerIndex);
-    }
-}
-
-// 완료 1건 처리 — 두 수거 경로(GQCS/GQCSEx)의 유일한 공통 본체.
-//   여기 한 곳만 두는 이유는 A/B 때문이다: 판정이 두 벌로 갈리면 팔 사이 동작 차이가
-//   측정값에 섞여도 알아채기 어렵다.
-void CIOCPServer::HandleCompletion(OVERLAPPED* overlapped, ULONG_PTR completionKey,
-                                   DWORD bytesTransferred, bool ioFailed, int workerIndex)
-{
-    auto overlappedEx = reinterpret_cast<CSession::OverlappedEx*>(overlapped);
-    auto session = reinterpret_cast<CSession*>(completionKey);
-
-    // [불변식] overlapped 널은 호출자가 걸렀고, completionKey는 BindIOCP가
-    //   _sessions[index].get()(비널)로만 등록한다.
-    assert(overlappedEx != nullptr && session != nullptr);
-
-    IOOperation op = overlappedEx->operation;
-    bool canProcess = (!ioFailed && bytesTransferred != 0 &&
-        session->_disconnecting == FALSE);
-
-    if (canProcess)
-    {
-        switch (op)
-        {
-        case IOOperation::RECV:
-            ProcessRecv(session, bytesTransferred);
-            break;
-        case IOOperation::SEND:
-            ProcessSend(session, bytesTransferred);
-            break;
-        default:
-            break;
-        }
-    }
-    else if (ioFailed || bytesTransferred == 0)
-    {
-        RequestDisconnectSession(session);
-    }
-
-    IOCountDecrement(session);
-
-    // 워커 스레드별 완료 통지 카운트
-    if (workerIndex >= 0 && workerIndex < CMonitorManager::MAX_WORKER_THREADS)
-        _monitor._workerCounters[workerIndex].AddCompletion();
-}
-#endif // !USE_RIO_TRANSPORT
 
 // Recv 완료 통지 처리
 void CIOCPServer::ProcessRecv(CSession* session, DWORD bytesTransferred)
@@ -886,107 +490,10 @@ void CIOCPServer::ProcessRecv(CSession* session, DWORD bytesTransferred)
     ParsePackets(session);
 
     // 다음 Recv 요청
-#if USE_RIO_TRANSPORT
-    RioPostRecv(session);
-#else
     PostRecv(session);
-#endif
 }
 
 
-#if !USE_RIO_TRANSPORT
-// Recv I/O 제출. 제출 전 IOCount로 세션을 pin한다.
-// skipAcquire=true: ProcessAccept에서 첫 Recv 시 Initialize의 IOCount=1을 그대로 사용.
-void CIOCPServer::PostRecv(CSession* session, bool skipAcquire)
-{
-    if (!session)
-        return;
-
-    if (!skipAcquire)
-    {
-        if (!AcquireSession(session))
-            return;
-    }
-
-    const int64_t sessionId = session->_sessionId;
-
-    CSession::OverlappedEx* ex = &session->_recvOverlapped;
-    ZeroMemory(&ex->overlapped, sizeof(OVERLAPPED));
-    ex->operation = IOOperation::RECV;
-
-    // 링버퍼에서 쓰기 가능한 공간 확보
-    char* writePtr = session->_recvQ.GetWritePtr();
-    size_t directWriteSize = session->_recvQ.GetDirectWriteSize();
-
-    WSABUF wsaBuf[2];
-    int bufCount = 0;
-
-    if (directWriteSize > 0)
-    {
-        wsaBuf[bufCount].buf = writePtr;
-        wsaBuf[bufCount].len = static_cast<ULONG>(directWriteSize);
-        bufCount++;
-
-        size_t freeSize = session->_recvQ.GetFreeSize();
-        if (freeSize > directWriteSize)
-        {
-            size_t wrapSize = freeSize - directWriteSize;
-            wsaBuf[bufCount].buf = session->_recvQ._buffer;
-            wsaBuf[bufCount].len = static_cast<ULONG>(wrapSize);
-            bufCount++;
-        }
-    }
-
-    // [불변식] 링이 가득 찰(bufCount==0) 수 없다 — 파싱 후 잔여는 불완전 패킷 조각뿐이라
-    //   MAX_PACKET_SIZE(1458) 미만인데 링 용량은 65535다. 파싱이 disconnect로 끝났다면
-    //   위 AcquireSession이 먼저 실패한다. 이 용량 관계가 어긋나면 여기서 먼저 터진다.
-    assert(bufCount > 0);
-
-    if (session->_disconnecting == TRUE)
-    {
-        // WSABUF 준비 ~ IO 제출 사이에 세션이 disconnect되면 제출하지 않는다.
-        IOCountDecrement(session);
-        return;
-    }
-
-    SOCKET socket = session->_socket;
-    if (socket == INVALID_SOCKET)
-    {
-        RequestDisconnectSession(session);
-        IOCountDecrement(session);
-        return;
-    }
-
-    DWORD flags = 0;
-    DWORD recvBytes = 0;
-
-    InterlockedIncrement64(&_monitor._wsaRecvCalls);
-    int result = WSARecv(socket, wsaBuf, bufCount, &recvBytes, &flags,
-        &ex->overlapped, NULL);
-
-    if (result == SOCKET_ERROR)
-    {
-        const int wsaErr = WSAGetLastError();
-        if (wsaErr != WSA_IO_PENDING)
-        {
-            if (!shared::ShouldIgnoreWsaError(wsaErr))
-            {
-                LOG_WSA_ERROR_STREAM("WSARecv failed - SessionId: " << sessionId << ", WSAError: ", wsaErr);
-            }
-            RequestDisconnectSession(session);
-            IOCountDecrement(session);
-            return;
-        }
-    }
-
-    // Post-check: pre-check ~ WSARecv 사이에 끼어든 disconnect race 회수.
-    // CancelIoEx가 먼저 지나간 뒤 WSARecv가 늦게 걸린 IO를 취소한다.
-    if (session->_disconnecting == TRUE)
-    {
-        CancelIoEx(reinterpret_cast<HANDLE>(socket), &ex->overlapped);
-    }
-}
-#endif // !USE_RIO_TRANSPORT
 
 // ParsePackets: 링버퍼에서 완성된 패킷 추출 → CSerialBuffer에 적재
 void CIOCPServer::ParsePackets(CSession* session)
@@ -1091,7 +598,7 @@ void CIOCPServer::ParsePackets(CSession* session)
 }
 
 // Send 완료 통지 처리
-void CIOCPServer::ProcessSend(CSession* session, DWORD bytesTransferred)
+void CIOCPServer::ProcessSend(CSession* session, DWORD bytesTransferred, int slot)
 {
     if (!session || session->_disconnecting == TRUE)
         return;
@@ -1101,6 +608,7 @@ void CIOCPServer::ProcessSend(CSession* session, DWORD bytesTransferred)
     InterlockedIncrement64(&_monitor._wsaSendCompletions);
 
 #if USE_LOCKFREE_SENDQ
+    (void)slot;   // 락프리 큐 경로는 깊이를 쓰지 않는다 (슬롯 링 미사용)
     if (static_cast<int>(bytesTransferred) == session->_pendingSendBytes)
     {
         // 정상 완료: 전체 해제
@@ -1115,46 +623,122 @@ void CIOCPServer::ProcessSend(CSession* session, DWORD bytesTransferred)
             << ", Transferred: " << bytesTransferred);
         session->ReleasePendingSendBufs();
         RequestDisconnectSession(session);
-        InterlockedExchange(&session->_sending, FALSE);
+        InterlockedExchange(&session->_sendSubmitBusy, FALSE);
         return;
     }
 
-    InterlockedExchange(&session->_sending, FALSE);
+    InterlockedExchange(&session->_sendSubmitBusy, FALSE);
 
-    // Double-check: _sending 해제 직후 큐 확인 (다른 스레드가 Enqueue했을 수 있음)
+    // Double-check: 잠금 해제 직후 큐 확인 (다른 스레드가 Enqueue했을 수 있음)
     if (!session->_sendQ.IsEmpty())
         PostSend(session);
 #else
-    // SendQ에서 송신한 만큼 Consume
-    size_t consumed = session->_sendQ.Consume(bytesTransferred);
-    if (consumed != bytesTransferred)
+    if (slot < 0 || slot >= CSession::MAX_SEND_DEPTH)
     {
-        LOG_ERROR_STREAM("[Error] Send consume mismatch - SessionId: " << session->_sessionId
-            << ", Expected: " << bytesTransferred << ", Consumed: " << consumed);
+        LOG_ERROR_STREAM("[Error] Send completion with bad slot - SessionId: " << session->_sessionId
+            << ", Slot: " << slot);
         RequestDisconnectSession(session);
         return;
     }
 
-    // 플래그 해제 후 PostSend에서 남은 데이터 확인 및 연속 송신
-    InterlockedExchange(&session->_sending, FALSE);
+    CSession::SendSlot& s = session->_sendSlots[slot];
+    const size_t expected = s.bytes;
 
-    // Double-check: 플래그 해제 직후 다시 확인 (다른 스레드가 Enqueue했을 수 있음)
+    // 부분 송신 — 이 제출이 요청한 만큼 다 나가지 않았다.
+    if (static_cast<size_t>(bytesTransferred) < expected)
+    {
+        if (_sendDepth == 1)
+        {
+            // 깊이 1이면 뒤에 떠 있는 제출이 없다 → 잔여를 미제출로 되돌려 재전송한다.
+            //   제출 경계가 없던 1-pending 시절에 readPos만 밀면 자동으로 됐던 동작의 재현.
+            session->_sendQ.ConsumeSubmitted(bytesTransferred);
+            session->_sendQ.RewindSubmitted();
+            s.bytes = 0;
+            InterlockedIncrement(&session->_slotHead);
+            InterlockedDecrement(&session->_sendInFlight);
+
+            if (session->_sendQ.GetUnsubmittedSize() > 0)
+                PostSend(session);
+            return;
+        }
+
+        // 깊이 2 이상이면 이 구간 뒤의 제출이 이미 와이어에 실렸을 수 있어 되돌릴 수 없다 —
+        //   복구되는 척하며 스트림을 망치는 대신 끊는다.
+        InterlockedIncrement64(&_monitor._partialSend);
+        LOG_ERROR_STREAM("[Error] Partial send (depth>1, unrecoverable) - SessionId: " << session->_sessionId
+            << ", Expected: " << expected << ", Transferred: " << bytesTransferred);
+        RequestDisconnectSession(session);
+        return;
+    }
+
+    // 표식만 세우고 링 반환은 head부터 연속으로 — 완료 통지 순서가 제출 순서와 어긋나도
+    //   읽기 포인터는 오래된 구간부터 전진한다.
+    InterlockedExchange(&s.done, TRUE);
+    ReapSendSlots(session);
+
+    // 자리가 비었으니 남은 미제출분을 이어 보낸다 (그사이 다른 스레드가 Enqueue했을 수 있음).
     // RIO: 직선 구간만 보내므로 감긴 꼬리도 이 재확인이 즉시 이어 보낸다.
-    if (session->_sendQ.GetDataSize() > 0)
+    if (session->_sendQ.GetUnsubmittedSize() > 0)
     {
-#if USE_RIO_TRANSPORT
-        RioPostSend(session);
-#else
+        // [계측] 완료 왕복이 끼어 "이어 보낸" 횟수 — 깊이를 올려 이 값이 줄면 깊이가 흡수한 것이다.
+        InterlockedIncrement64(&_monitor._sendFollowUp);
         PostSend(session);
-#endif
     }
 #endif
 }
 
-#if !USE_RIO_TRANSPORT
-// Send는 1회로 제한
-// Send I/O 제출. 제출 전 IOCount로 세션을 pin한다.
-#if USE_LOCKFREE_SENDQ
+#if !USE_LOCKFREE_SENDQ
+// 완료된 슬롯을 head부터 "연속으로" 회수한다 — 링 읽기 포인터는 오래된 구간부터만 전진해야 한다.
+//   IOCP는 완료 워커가 여럿이라 뒤에 제출한 것이 먼저 통지될 수 있다. 그때 바로 링을 밀면
+//   아직 안 나간 앞 구간을 소비해 버리므로, 도착한 슬롯에는 표식만 세우고 여기서 순서를 맞춘다.
+void CIOCPServer::ReapSendSlots(CSession* session)
+{
+    while (true)
+    {
+        // 회수 구간 직렬화 — 못 잡으면 다른 워커가 회수 중이다. done을 먼저 세워 뒀으므로
+        //   그쪽 루프가 내 슬롯까지 함께 가져간다(완료를 흘리지 않는다).
+        if (InterlockedExchange(&session->_sendReapBusy, TRUE) == TRUE)
+            return;
+
+        while (true)
+        {
+            const int head = static_cast<int>(static_cast<ULONG>(session->_slotHead) & _sendDepthMask);
+            CSession::SendSlot& s = session->_sendSlots[head];
+            if (s.done == FALSE)
+                break;                 // 가장 오래된 제출이 아직 안 왔다 — 뒤가 왔어도 기다린다
+
+            const size_t bytes = s.bytes;
+            s.bytes = 0;
+            InterlockedExchange(&s.done, FALSE);
+            InterlockedIncrement(&session->_slotHead);
+
+            if (bytes > 0 && session->_sendQ.ConsumeSubmitted(bytes) != bytes)
+            {
+                LOG_ERROR_STREAM("[Error] Send consume mismatch - SessionId: " << session->_sessionId
+                    << ", Expected: " << bytes);
+                RequestDisconnectSession(session);
+            }
+
+            InterlockedDecrement(&session->_sendInFlight);   // 슬롯이 비었다 = 깊이 게이트 한 칸 열림
+        }
+
+        InterlockedExchange(&session->_sendReapBusy, FALSE);
+
+        // 잠금을 놓은 틈에 도착한 완료를 흘리지 않는다 — head가 done이면 한 번 더 돈다.
+        const int head = static_cast<int>(static_cast<ULONG>(session->_slotHead) & _sendDepthMask);
+        if (session->_sendSlots[head].done == FALSE)
+            return;
+    }
+}
+#endif // !USE_LOCKFREE_SENDQ
+
+#if !USE_LOCKFREE_SENDQ
+// 송신 제출 — 미제출 구간을 깊이 상한(_sendDepth)까지 내보낸다. 팔별 차이는 TransportSubmitSegment 하나뿐.
+//   [게이트 분해] 옛 _sending 하나가 "제출 잠금"과 "in-flight 상한"을 겸했다. 여기서는
+//     _sendSubmitBusy(제출 구간만)와 _sendInFlight(미완료 수)로 나눈다. 깊이 1이면 옛 동작과 같다.
+//   [순서 보장] busy 잠금이 "세그먼트 계산 ~ 제출 호출"을 덮으므로, 제출자가 둘인 IOCP 팔
+//     (송신 워커 + 완료 워커의 이어보내기)에서도 제출 순서가 와이어 순서와 일치한다.
+//   [pin] 제출 전 IOCount로 세션을 pin한다 (기존 PostSend와 동일 계약).
 void CIOCPServer::PostSend(CSession* session)
 {
     if (!session)
@@ -1163,195 +747,82 @@ void CIOCPServer::PostSend(CSession* session)
     if (!AcquireSession(session))
         return;
 
-    const int64_t sessionId = session->_sessionId;
-
-    if (InterlockedExchange(&session->_sending, TRUE) == TRUE)
+    // 이미 다른 스레드가 제출 중이면 물러난다 — 그 스레드가 이번 enqueue분까지 함께 내보내거나,
+    //   못 봤다면 완료 시 double-check가 이어 보낸다 (옛 _sending 경합과 같은 성질).
+    if (InterlockedExchange(&session->_sendSubmitBusy, TRUE) == TRUE)
     {
         InterlockedIncrement64(&_monitor._sendContention);
         IOCountDecrement(session);
         return;
     }
 
-    // Dequeue up to MAX_SEND_BUFS
-    WSABUF wsaBuf[CSession::MAX_SEND_BUFS];
-    int bufCount = 0;
-    int totalBytes = 0;
-    CSerialBuffer* pBuf = nullptr;
+    bool needDisconnect = false;
 
-    while (bufCount < CSession::MAX_SEND_BUFS && session->_sendQ.Dequeue(&pBuf))
+    while (session->_sendInFlight < _sendDepth)
     {
-        session->_pendingSendBufs[bufCount] = pBuf;
-        wsaBuf[bufCount].buf = pBuf->GetReadBufferPtr();
-        wsaBuf[bufCount].len = static_cast<ULONG>(pBuf->GetDataSize());
-        totalBytes += wsaBuf[bufCount].len;
-        bufCount++;
+        if (session->_disconnecting == TRUE)
+            break;
+
+        auto info = session->_sendQ.GetSubmitInfo();
+        if (info.size == 0)
+            break;                     // 미제출 구간 없음
+
+        const SOCKET socket = session->_socket;
+        if (socket == INVALID_SOCKET)
+        {
+            needDisconnect = true;
+            break;
+        }
+
+        // [수명] 제출 1건당 IO ref 1개 — 완료가 IOCountDecrement로 반환한다.
+        //   위에서 잡은 pin은 이 함수가 도는 동안의 수명 보장용이라 따로 잡는다.
+        //   (1-pending 시절에는 pin 하나가 두 역할을 겸해 성공 시 감소시키지 않았다)
+        if (!AcquireSession(session))
+            break;
+
+        // 슬롯 할당 — tail은 제출 잠금 안에서만 움직인다. 게이트(inFlight < depth)를 통과했다면
+        //   tail 슬롯은 [head..tail) 구간 밖이므로 반드시 비어 있다.
+        const int slot = static_cast<int>(static_cast<ULONG>(session->_slotTail) & _sendDepthMask);
+        assert(session->_sendSlots[slot].done == FALSE);
+
+        // [순서] in-flight를 제출 "전"에 올린다 — loopback처럼 완료가 빠르면 제출 호출이
+        //   돌아오기 전에 완료 워커가 회수를 시작한다. 회수가 증가를 앞지르면 카운터가 음수로
+        //   돌아 깊이 게이트가 무너지고(중복 제출) 같은 슬롯을 겹쳐 쓰게 된다.
+        //   슬롯의 bytes는 팔별 제출 함수가 제출 직전에 심는다(제출량이 팔마다 다르다).
+        const int slotsFree = _sendDepth - session->_sendInFlight;
+        InterlockedIncrement(&session->_sendInFlight);
+        ++session->_slotTail;
+
+        size_t submitted = 0;
+        const int slots = TransportSubmitSegment(session, socket, info, slot, slotsFree, &submitted);
+        if (slots <= 0)
+        {
+            --session->_slotTail;                             // 슬롯 반납
+            session->_sendSlots[slot].bytes = 0;
+            InterlockedDecrement(&session->_sendInFlight);     // 올린 것을 되돌린다
+            IOCountDecrement(session);                         // 이 제출 몫의 IO ref 반환
+            needDisconnect = true;                             // 연결 이상 (기존 PostSend와 동일 처리)
+            break;
+        }
+
+        // [현재 계약] 양팔 모두 한 번에 슬롯 1개만 쓴다 (IOCP는 랩까지 한 방, RIO는 직선 한 건).
+        //   깊이>1에서 슬롯 여러 개를 쓰는 팔을 넣을 때는 ref 추가 확보가 실패할 수 있음을
+        //   함께 설계해야 한다 — AcquireSession은 _disconnecting이 서면 실패하고, ref가 완료
+        //   수보다 적으면 IOCount가 먼저 0이 되어 살아 있는 세션이 해제된다.
+        assert(slots == 1);
     }
-    session->_pendingSendCount = bufCount;
-    session->_pendingSendBytes = totalBytes;
 
-    if (bufCount == 0)
-    {
-        InterlockedExchange(&session->_sending, FALSE);
-        IOCountDecrement(session);
-        return;
-    }
-
-    if (session->_disconnecting == TRUE)
-    {
-        session->ReleasePendingSendBufs();
-        InterlockedExchange(&session->_sending, FALSE);
-        IOCountDecrement(session);
-        return;
-    }
-
-    SOCKET socket = session->_socket;
-    if (socket == INVALID_SOCKET)
-    {
-        session->ReleasePendingSendBufs();
-        InterlockedExchange(&session->_sending, FALSE);
+    // 종료 확정은 잠금을 놓기 "전"에 한다 — 놓은 뒤에 하면 그 틈에 다른 제출자가 앞서 간 경계
+    //   뒤부터 보내 와이어에 구멍이 생긴다(제출 실패로 실제로는 나가지 않은 구간을 건너뜀).
+    //   RequestDisconnectSession은 이 잠금을 쓰지 않으므로 보유한 채 불러도 안전하다.
+    if (needDisconnect)
         RequestDisconnectSession(session);
-        IOCountDecrement(session);
-        return;
-    }
 
-    CSession::OverlappedEx* ex = &session->_sendOverlapped;
-    ZeroMemory(&ex->overlapped, sizeof(OVERLAPPED));
-    ex->operation = IOOperation::SEND;
+    InterlockedExchange(&session->_sendSubmitBusy, FALSE);
 
-    DWORD sendBytes = 0;
-    InterlockedIncrement64(&_monitor._wsaSendCalls);
-    int result = WSASend(socket, wsaBuf, bufCount, &sendBytes, 0,
-        &ex->overlapped, NULL);
-
-    if (result == SOCKET_ERROR)
-    {
-        const int wsaErr = WSAGetLastError();
-        if (wsaErr != WSA_IO_PENDING)
-        {
-            if (!shared::ShouldIgnoreWsaError(wsaErr))
-            {
-                LOG_WSA_ERROR_STREAM("WSASend failed - SessionId: " << sessionId
-                    << ", WSAError: ", wsaErr);
-            }
-            session->ReleasePendingSendBufs();
-            InterlockedExchange(&session->_sending, FALSE);
-            RequestDisconnectSession(session);
-            IOCountDecrement(session);
-            return;
-        }
-    }
-
-    // Post-check: pre-check ~ WSASend 사이에 끼어든 disconnect race 회수.
-    if (session->_disconnecting == TRUE)
-    {
-        CancelIoEx(reinterpret_cast<HANDLE>(socket), &ex->overlapped);
-    }
+    IOCountDecrement(session);
 }
-#else
-void CIOCPServer::PostSend(CSession* session)
-{
-    if (!session)
-        return;
-
-    if (!AcquireSession(session))
-        return;
-
-    const int64_t sessionId = session->_sessionId;
-
-    if (InterlockedExchange(&session->_sending, TRUE) == TRUE)
-    {
-        InterlockedIncrement64(&_monitor._sendContention);
-        IOCountDecrement(session);
-        return;
-    }
-
-    // GetSendInfo() 이후 다른 스레드가 Enqueue해도 문제없다.
-    // 이번 WSASend는 캡처 시점의 dataSize만 전송하고,
-    // 나머지는 ProcessSend의 double-check에서 PostSend를 재호출하여 처리한다.
-    auto sendInfo = session->_sendQ.GetSendInfo();
-
-    if (sendInfo.dataSize == 0)
-    {
-        InterlockedExchange(&session->_sending, FALSE);
-        IOCountDecrement(session);
-        return;
-    }
-
-    WSABUF wsaBuf[2];
-    int bufCount = 0;
-
-    if (sendInfo.directReadSize > 0)
-    {
-        wsaBuf[bufCount].buf = sendInfo.readPtr;
-        wsaBuf[bufCount].len = static_cast<ULONG>(sendInfo.directReadSize);
-        bufCount++;
-
-        if (sendInfo.dataSize > sendInfo.directReadSize)
-        {
-            size_t wrapSize = sendInfo.dataSize - sendInfo.directReadSize;
-            wsaBuf[bufCount].buf = session->_sendQ._buffer;
-            wsaBuf[bufCount].len = static_cast<ULONG>(wrapSize);
-            bufCount++;
-        }
-    }
-
-    if (bufCount == 0)
-    {
-        InterlockedExchange(&session->_sending, FALSE);
-        IOCountDecrement(session);
-        return;
-    }
-
-    if (session->_disconnecting == TRUE)
-    {
-        InterlockedExchange(&session->_sending, FALSE);
-        IOCountDecrement(session);
-        return;
-    }
-
-    SOCKET socket = session->_socket;
-    if (socket == INVALID_SOCKET)
-    {
-        InterlockedExchange(&session->_sending, FALSE);
-        RequestDisconnectSession(session);
-        IOCountDecrement(session);
-        return;
-    }
-
-    CSession::OverlappedEx* ex = &session->_sendOverlapped;
-    ZeroMemory(&ex->overlapped, sizeof(OVERLAPPED));
-    ex->operation = IOOperation::SEND;
-
-    DWORD sendBytes = 0;
-    InterlockedIncrement64(&_monitor._wsaSendCalls);
-    int result = WSASend(socket, wsaBuf, bufCount, &sendBytes, 0,
-        &ex->overlapped, NULL);
-
-    if (result == SOCKET_ERROR)
-    {
-        const int wsaErr = WSAGetLastError();
-        if (wsaErr != WSA_IO_PENDING)
-        {
-            if (!shared::ShouldIgnoreWsaError(wsaErr))
-            {
-                LOG_WSA_ERROR_STREAM("WSASend failed - SessionId: " << sessionId
-                    << ", WSAError: ", wsaErr);
-            }
-            InterlockedExchange(&session->_sending, FALSE);
-            RequestDisconnectSession(session);
-            IOCountDecrement(session);
-            return;
-        }
-    }
-
-    // Post-check: pre-check ~ WSASend 사이에 끼어든 disconnect race 회수.
-    if (session->_disconnecting == TRUE)
-    {
-        CancelIoEx(reinterpret_cast<HANDLE>(socket), &ex->overlapped);
-    }
-}
-#endif
-#endif // !USE_RIO_TRANSPORT
+#endif // !USE_LOCKFREE_SENDQ
 
 void CIOCPServer::EchoTestSend(CSession* session, CSerialBuffer* pMsg)
 {
@@ -1430,25 +901,7 @@ bool CIOCPServer::RequestSendMsg(int64_t sessionId, CSerialBuffer* pMsg, [[maybe
 #if USE_SEND_COALESCING
     if (flush == SendFlush::Immediate)
     {
-#if USE_RIO_TRANSPORT
-        // RQ 불변식: 제출은 소유 워커에서만. 소유 워커 위(에코 모드의 recv 처리 중)면 직접,
-        // 비소유 스레드(게임 등)면 FlushSend 핸드오프로 변환 — "즉시"가 µs급 핸드오프로 바뀔 뿐
-        // 계약(가능한 한 빨리 송신)은 유지된다.
-        const int ownerIdx = RioOwnerIndex(sessionId);
-        if (t_rioWorkerIndex == ownerIdx)
-        {
-            RioPostSend(session);
-        }
-        else if (InterlockedExchange(&session->_queuedForSend, TRUE) == FALSE)
-        {
-            RioCmd cmd;
-            cmd.type = RioCmd::Type::FlushSend;
-            cmd.sessionId = sessionId;
-            RioEnqueueCmd(ownerIdx, std::move(cmd));
-        }
-#else
-        PostSend(session);
-#endif
+        TransportSendImmediate(session, sessionId);
     }
     else if (!session->_sendDirty)   // SendFlush::Deferred — 틱 끝 FlushPendingSends에서 묶어 송신
     {
@@ -1508,517 +961,9 @@ bool CIOCPServer::RequestSendRaw(int64_t sessionId, const char* data, int size)
 // PostSend가 내부에서 AcquireSession/_disconnecting을 재검증하므로 dirty 등록 후 세션이 끊겨도 안전.
 void CIOCPServer::FlushPendingSends()
 {
-#if USE_RIO_TRANSPORT
-    // dirty 배치를 소유 워커별 FlushSend 명령으로 핸드오프 — 분배(uniqueId%N)·잔류표식(_queuedForSend)
-    // dedup 로직은 기존 SendWorker 경로 그대로. 워커별 1회 락 + 1회 SetEvent.
-    thread_local std::vector<std::vector<int64_t>> perWorker;
-    if (static_cast<int>(perWorker.size()) != _rioWorkerCount)
-        perWorker.assign(_rioWorkerCount, {});
-    else
-        for (auto& v : perWorker)
-            v.clear();
-
-    for (CSession* session : _dirtySessions)
-    {
-        session->_sendDirty = false;                   // 게임 스레드 단독 접근 → 안전
-        if (InterlockedExchange(&session->_queuedForSend, TRUE) == FALSE)
-        {
-            // sessionId는 exchange "후"에 읽는다 — 읽기~exchange 사이 slot 재사용 시 옛 id를
-            //   push하면 워커가 FindSession으로 새 세션을 못 찾아 _queuedForSend가 TRUE인 채
-            //   안 지워져 그 세션이 송신 mute. exchange 후 읽으면 push id=플래그 세운 세션이라 봉합.
-            const int64_t sessionId = session->_sessionId; // volatile → 일반 복사 후 사용
-            perWorker[RioOwnerIndex(sessionId)].push_back(sessionId);
-        }
-    }
-    _dirtySessions.clear();
-
-    for (int i = 0; i < _rioWorkerCount; ++i)
-    {
-        if (perWorker[i].empty())
-            continue;
-        RioWorker& worker = *_rioWorkers[i];
-        {
-            std::lock_guard<std::mutex> lk(worker.cmdMutex);
-            for (int64_t id : perWorker[i])
-            {
-                RioCmd cmd;
-                cmd.type = RioCmd::Type::FlushSend;
-                cmd.sessionId = id;
-                worker.cmdQueue.push_back(cmd);
-            }
-        }
-        SetEvent(worker.cmdEvent);
-    }
-#elif USE_SEND_THREAD
-    // dirty 배치(sessionId)를 uniqueId%K 워커에 핸드오프. 게임루프는 WSASend(PostSend)를 하지 않는다.
-    //   한 세션은 항상 같은 워커 → FIFO 보장. push마다 락 대신 워커별로 묶어 1회 락(최대 K회).
-    //   분류 버퍼는 게임 스레드 단독 접근이라 무락(thread_local 재사용으로 매틱 할당 회피).
-    thread_local std::vector<std::vector<int64_t>> perWorker;
-    if (static_cast<int>(perWorker.size()) != _sendWorkerCount)
-        perWorker.assign(_sendWorkerCount, {});
-    else
-        for (auto& v : perWorker)
-            v.clear();
-
-    for (CSession* session : _dirtySessions)
-    {
-        session->_sendDirty = false;                   // 게임 스레드 단독 접근 → 안전
-        // 틱을 넘는 중복 방지(_queuedForSend): 이미 큐에 있으면(미처리) 다시 넣지 않는다.
-        //   발산 시 같은 세션이 매 틱 쌓여 큐가 무한 증가하는 것을 막음(처리량 천장은 별개).
-        if (InterlockedExchange(&session->_queuedForSend, TRUE) == FALSE)
-        {
-            // sessionId는 exchange "후"에 읽는다 — 읽기~exchange 사이 slot 재사용 시 옛 id를 push하면
-            //   워커가 FindSession으로 새 세션을 못 찾아 _queuedForSend가 TRUE인 채 안 지워져 송신 mute.
-            // [분배 수정] uniqueId(하위 48비트)로 분배 — raw sessionId%K는 K가 2의 거듭제곱이 아니면
-            //   상위 index 비트가 modulo에 새어든다. index는 스택 재사용으로 카운트다운·uniqueId는 카운트업이라
-            //   (index+uniqueId)가 상수가 돼 K3에서 한 워커로 ~90% 쏠림(실측·시뮬 확인). uniqueId만 쓰면 K 무관 균등·FIFO 보존.
-            const int64_t sessionId = session->_sessionId; // volatile → 일반 복사 후 사용
-            perWorker[CSession::ExtractUniqueId(sessionId) % _sendWorkerCount].push_back(sessionId);  // raw ptr 아닌 id
-        }
-    }
-    _dirtySessions.clear();
-
-    for (int i = 0; i < _sendWorkerCount; ++i)
-    {
-        if (perWorker[i].empty())
-            continue;
-        SendWorker& worker = *_sendWorkers[i];
-        {
-            std::lock_guard<std::mutex> lk(worker.mutex);
-            worker.queue.insert(worker.queue.end(), perWorker[i].begin(), perWorker[i].end());
-        }
-        worker.cv.notify_one();
-    }
-#elif USE_SEND_COALESCING
-    for (CSession* session : _dirtySessions)
-    {
-        session->_sendDirty = false;
-        PostSend(session);
-    }
-    _dirtySessions.clear();
-#endif
+    TransportFlushDirty();
 }
 
-#if USE_SEND_THREAD && !USE_RIO_TRANSPORT
-// 전용 송신 스레드 — 게임루프가 넘긴 dirty 배치를 받아 세션당 1회 WSASend(PostSend)를 수행.
-// sessionId로 받아 FindSession으로 재검증(_sessionId 일치·미종료 = ABA-safe)한 뒤 PostSend를 호출하며,
-// PostSend 내부의 AcquireSession/_sending 가드가 lifetime·세션당 단일 송신을 보장한다.
-void CIOCPServer::SendWorkerThread(int workerIdx)
-{
-    CoreAffinity::PinIoThread();   // 송신 워커 → 게임코어 밖으로 (격리 off면 no-op)
-
-    SendWorker& worker = *_sendWorkers[workerIdx];
-
-    // [계측] CPU 점유율 측정용 — 자기 실핸들을 복제해 모니터 슬롯에 등록 (게임루프/워커와 동일 패턴).
-    //   GetCurrentThread()는 의사핸들(호출 스레드 기준)이라 HTTP 스레드에서 못 씀 → 실핸들로 복제.
-    {
-        HANDLE dup = nullptr;
-        if (DuplicateHandle(GetCurrentProcess(), GetCurrentThread(),
-                            GetCurrentProcess(), &dup, 0, FALSE, DUPLICATE_SAME_ACCESS))
-        {
-            _monitor._sendCounters[workerIdx].threadHandle = dup;
-        }
-    }
-
-    std::vector<int64_t> local;
-    while (true)
-    {
-        {
-            std::unique_lock<std::mutex> lk(worker.mutex);
-            worker.cv.wait(lk, [this, &worker] { return !worker.queue.empty() || _sendStop.load(); });
-            if (worker.queue.empty() && _sendStop.load())
-                break;                       // 정지 요청 + 잔여 배치 드워커 완료 → 종료
-            local.swap(worker.queue);          // 누적분을 통째로 인출 (백로그 시 여러 틱 병합 가능)
-        }
-
-        // [계측] 핸드오프 백로그 — 이번 drain에서 인출한 세션 수 (1틱 dirty 수 초과 = 이 워커이 못 따라감)
-        _monitor._sendCounters[workerIdx].backlog = static_cast<LONG64>(local.size());
-
-        // [계측] 이 워커의 실제 WSASend 시간 — 슬롯당 단독 writer(워커 자신)라 원자 누적.
-        const auto sendT0 = std::chrono::steady_clock::now();
-        for (int64_t sessionId : local)
-        {
-            CSession* session = FindSession(sessionId);  // id 일치·미종료 검증
-            if (session)
-            {
-                // 잔류 표식 해제는 PostSend(_sendQ Dequeue) "전"에 — 처리 도중/직후 도착한
-                // 데이터가 다시 큐에 들어가 누락되지 않게(_sending double-check와 동일 원리).
-                InterlockedExchange(&session->_queuedForSend, FALSE);
-                PostSend(session);
-            }
-        }
-        const auto sendT1 = std::chrono::steady_clock::now();
-        InterlockedExchangeAdd64(&_monitor._sendCounters[workerIdx].flushUs,
-            std::chrono::duration_cast<std::chrono::microseconds>(sendT1 - sendT0).count());
-
-        local.clear();
-    }
-}
-#endif
-
-#if USE_RIO_TRANSPORT
-// ==========================================================================
-// RIO 전송 계층 — 워커·명령·제출 경로
-//
-// 불변식: 한 세션의 RQ 조작(RIOCreateRequestQueue·RIOReceive·RIOSend·closesocket)은
-//         소유 워커(uniqueId % N) 스레드에서만 수행한다. RIO에는 CancelIoEx가 없으므로
-//         "제출과 closesocket의 직렬화"가 취소를 대체한다 (Phase 0 스모크: closesocket 시
-//         pending 요청이 에러 완료로 CQ에 도착 — 이것이 IOCount 수렴 수단).
-// ==========================================================================
-
-// 외부 스레드(게임/accept/타이머)가 소유 워커에 명령을 넘긴다.
-void CIOCPServer::RioEnqueueCmd(int ownerIdx, RioCmd&& cmd)
-{
-    RioWorker& worker = *_rioWorkers[ownerIdx];
-    {
-        std::lock_guard<std::mutex> lk(worker.cmdMutex);
-        worker.cmdQueue.push_back(cmd);
-    }
-    SetEvent(worker.cmdEvent);
-}
-
-// 소유 워커 전용 closesocket — pending RIO 요청을 에러 완료로 밀어내 IOCount 수렴을 유도.
-void CIOCPServer::RioCloseSocketOnOwner(CSession* session)
-{
-    SOCKET socket = session->_socket;
-    session->_socket = INVALID_SOCKET;   // ReleaseSession의 Close()가 이중 close하지 않도록 선마킹
-    if (socket != INVALID_SOCKET)
-        closesocket(socket);
-}
-
-// 명령 1건 처리 (소유 워커 위에서만 호출)
-void CIOCPServer::RioHandleCmd(RioWorker& worker, RioCmd& cmd)
-{
-    switch (cmd.type)
-    {
-    case RioCmd::Type::NewConn:
-    {
-        // Initialize 완료 세션 — IOCount=1(첫 Recv ref)이 수명을 보장한다.
-        CSession* session = cmd.session;
-
-        // [레이스 방어] Disconnect가 NewConn을 추월한 경우 — CONNECTED push~NewConn 핸드오프
-        // 틈에 게임 틱이 끼면 OnConnected 킥(중복접속·채널고갈·존만원)이 Disconnect를 먼저
-        // enqueue할 수 있다. 소유 워커 직렬화로 이미 closesocket됐다면 cmd.socket은 stale
-        // 핸들이고, OS가 그 값을 재사용했다면 "남의 살아있는 소켓"에 유령 RQ를 만들게 된다
-        // (소켓당 RQ 1개 → 무고한 신규 접속의 정당한 RQ 생성까지 실패해 즉사).
-        // 같은 워커에서 직렬화되므로 이 검사에는 레이스가 없다.
-        if (session->_disconnecting == TRUE || session->_socket == INVALID_SOCKET)
-        {
-            IOCountDecrement(session);   // 첫 Recv ref 반환 → (Disconnect pin 소진 후) Release 수렴
-            break;
-        }
-
-        session->_rq = CRioApi::Rio().RIOCreateRequestQueue(cmd.socket, 1, 1, 1, 1,
-                                                            worker.cq, worker.cq, session);
-        if (session->_rq == RIO_INVALID_RQ)
-        {
-            const int wsaErr = WSAGetLastError();
-            SLOG_ERROR("[RIO] RIOCreateRequestQueue failed: {} (sessionId={})", wsaErr, cmd.sessionId);
-            // BindIOCP 실패 경로와 동일 구조 — 종료 유도 + 첫 Recv ref 반환
-            RequestDisconnectSession(session);
-            IOCountDecrement(session);
-            break;
-        }
-        RioPostRecv(session, true);   // 첫 Recv — Initialize의 IOCount=1을 그대로 사용
-        break;
-    }
-    case RioCmd::Type::FlushSend:
-    {
-        CSession* session = FindSession(cmd.sessionId);   // id 일치·미종료 재검증 (기존 SendWorker와 동일)
-        if (session)
-        {
-            // [레이스 방어] NewConn보다 먼저 도착한 FlushSend — ProcessAccept의 CONNECTED push와
-            // NewConn 핸드오프 사이 µs 틈에 게임 틱 경계가 끼면, 생산자가 다르므로(게임 vs accept)
-            // 이 워커 큐에 FlushSend가 먼저 들어올 수 있다. RQ 미생성 상태를 치명으로 처리하면
-            // 신생 세션이 즉사하므로, 자기 큐 꼬리로 재투입해 NewConn 처리 뒤에 송신한다.
-            // (NewConn이 RQ 생성에 실패하면 _disconnecting → FindSession이 걸러 재투입 종료 보장)
-            if (session->_rq == RIO_INVALID_RQ)
-            {
-                RioCmd retry = cmd;
-                RioEnqueueCmd(t_rioWorkerIndex, std::move(retry));
-                break;
-            }
-            // 잔류 표식 해제는 송신 처리 "전" — 처리 도중 도착한 데이터가 다시 큐에 들어가
-            // 누락되지 않게 (기존 SendWorkerThread의 _queuedForSend 주석 로직 그대로).
-            InterlockedExchange(&session->_queuedForSend, FALSE);
-            RioPostSend(session);
-        }
-        break;
-    }
-    case RioCmd::Type::Disconnect:
-    {
-        // 요청 스레드가 pin(IOCount+1)을 잡고 넘긴 포인터 — 재사용(ABA) 불가가 보장된다.
-        RioCloseSocketOnOwner(cmd.session);
-        IOCountDecrement(cmd.session);   // 핸드오프 pin 반환 (0 도달 시 ReleaseSession)
-        break;
-    }
-    }
-}
-
-// CQ 한 배치 처리. 반환: 처리 건수, RIO_CORRUPT_CQ면 -1.
-int CIOCPServer::RioDrainCompletions(RioWorker& worker, int monitorIndex)
-{
-    RIORESULT results[RIO_DEQUEUE_BATCH];
-    const ULONG n = CRioApi::Rio().RIODequeueCompletion(worker.cq, results, RIO_DEQUEUE_BATCH);
-    if (n == RIO_CORRUPT_CQ)
-    {
-        // CQ 오염 = 메모리 오염 시그널. 워커만 죽이면 이 파티션 세션들의 IOCount가 영영 안 풀려
-        // 셧다운 무한 대기(조용한 좀비 서버)가 된다 — 오염 상태 지속보다 즉사+덤프가 낫다.
-        SLOG_ERROR("[RIO] RIODequeueCompletion returned RIO_CORRUPT_CQ — crashing for dump");
-        CRASH("RIO completion queue corrupted (RIO_CORRUPT_CQ)");
-        return -1;   // 도달 불가 (CRASH 미복귀) — 컴파일러용
-    }
-
-    // [계측] 수거 호출 횟수 — RIO는 유저모드 링 조회라 syscall이 아니지만, 배치 효율(완료수/호출수)을
-    //   IOCP 팔과 같은 잣대로 읽으려고 같은 카운터에 센다. 빈 조회(n=0)도 호출로 친다.
-    if (monitorIndex >= 0 && monitorIndex < CMonitorManager::MAX_WORKER_THREADS)
-        _monitor._workerCounters[monitorIndex].AddDequeue();
-
-    for (ULONG i = 0; i < n; ++i)
-    {
-        auto session = reinterpret_cast<CSession*>(static_cast<uintptr_t>(results[i].SocketContext));
-        const bool isRecv = (results[i].RequestContext == RIO_CTX_RECV);
-        const DWORD bytes = results[i].BytesTransferred;
-
-        // 기존 WorkerThread의 완료 판정과 동일: 에러·0바이트·종료 중이면 종료 유도만
-        const bool canProcess = (results[i].Status == NO_ERROR && bytes != 0 &&
-                                 session->_disconnecting == FALSE);
-        if (canProcess)
-        {
-            if (isRecv)
-                ProcessRecv(session, bytes);
-            else
-                ProcessSend(session, bytes);
-        }
-        else
-        {
-            RequestDisconnectSession(session);
-        }
-
-        IOCountDecrement(session);   // 이 완료가 들고 있던 pending IO ref 반환
-
-        if (monitorIndex >= 0 && monitorIndex < CMonitorManager::MAX_WORKER_THREADS)
-            _monitor._workerCounters[monitorIndex].AddCompletion();
-    }
-    return static_cast<int>(n);
-}
-
-// RIO 워커 — 자기 CQ와 소유 세션(uniqueId % N)의 모든 RQ 조작을 전담한다.
-// 루프: 명령 드레인 → CQ 드레인 → (유휴) RIONotify 무장 → 재드레인 → 이벤트 대기.
-// v1은 스핀 없이 notify+대기 — 부하클라 동거 머신에서 코어 소모를 피하고, 실측 후 필요 시 추가.
-void CIOCPServer::RioWorkerThread(int workerIdx)
-{
-    CoreAffinity::PinIoThread();   // RIO 워커도 I/O — 게임코어 밖으로 (현 빌드 USE_RIO_TRANSPORT=0라 미컴파일)
-
-    RioWorker& worker = *_rioWorkers[workerIdx];
-    t_rioWorkerIndex = workerIdx;
-
-    // [계측] CPU 점유율 측정용 — 기존 IOCP 워커와 동일 패턴 (슬롯 등록 + 실핸들 복제)
-    const int monitorIndex = _monitor.RegisterWorkerThread();
-    if (monitorIndex >= 0 && monitorIndex < CMonitorManager::MAX_WORKER_THREADS)
-    {
-        HANDLE dup = nullptr;
-        if (DuplicateHandle(GetCurrentProcess(), GetCurrentThread(),
-                            GetCurrentProcess(), &dup, 0, FALSE, DUPLICATE_SAME_ACCESS))
-        {
-            _monitor._workerCounters[monitorIndex].threadHandle = dup;
-        }
-    }
-
-    std::vector<RioCmd> localCmds;
-    HANDLE waitHandles[2] = { worker.cqEvent, worker.cmdEvent };
-
-    while (true)
-    {
-        bool didWork = false;
-
-        // ── 1) 명령 드레인 (게임/accept/타이머 → 이 워커) ──
-        {
-            std::lock_guard<std::mutex> lk(worker.cmdMutex);
-            localCmds.swap(worker.cmdQueue);
-        }
-        if (!localCmds.empty())
-        {
-            didWork = true;
-
-            // [계측] FlushSend 배치 처리 시간·건수 — 기존 SendWorker의 flushUs/backlog 의미 승계.
-            //   슬롯당 단독 writer(이 워커). NewConn/Disconnect가 섞이면 근사치지만 지배 항목은 FlushSend.
-            LONG64 flushCount = 0;
-            for (const RioCmd& cmd : localCmds)
-            {
-                if (cmd.type == RioCmd::Type::FlushSend)
-                    ++flushCount;
-            }
-            const auto cmdT0 = std::chrono::steady_clock::now();
-
-            for (RioCmd& cmd : localCmds)
-                RioHandleCmd(worker, cmd);
-
-            const auto cmdT1 = std::chrono::steady_clock::now();
-            if (workerIdx >= 0 && workerIdx < CMonitorManager::MAX_SEND_WORKERS)
-            {
-                _monitor._sendCounters[workerIdx].backlog = flushCount;
-                InterlockedExchangeAdd64(&_monitor._sendCounters[workerIdx].flushUs,
-                    std::chrono::duration_cast<std::chrono::microseconds>(cmdT1 - cmdT0).count());
-            }
-            localCmds.clear();
-        }
-
-        // ── 2) CQ 드레인 — 유저모드 공유 링에서 완료 회수 (시스콜 없음) ──
-        int drained = RioDrainCompletions(worker, monitorIndex);
-        if (drained < 0)
-            break;                    // CQ 손상 — 복구 불가
-        if (drained > 0)
-            didWork = true;
-
-        if (didWork)
-            continue;                 // 일감이 있었다 — 대기 없이 재순회
-
-        // ── 3) 유휴 — 정지 확인 → notify 무장 → 재드레인(무장 전 도착분 회수) → 대기 ──
-        // 셧다운은 모든 세션 IOCount==0 이후에만 정지시키므로, 여기 도달 시 잔여 작업이 없다.
-        if (_rioStop.load())
-            break;
-
-        (void)CRioApi::Rio().RIONotify(worker.cq);   // 중복 무장 안전 (Phase 0 실측 — 0 반환)
-        drained = RioDrainCompletions(worker, monitorIndex);
-        if (drained < 0)
-            break;
-        if (drained > 0)
-            continue;
-        WaitForMultipleObjects(2, waitHandles, FALSE, INFINITE);
-    }
-}
-
-// Recv I/O 제출 (RIO 판) — 링버퍼 "직선 구간"만 제출한다.
-// RIO는 요청당 버퍼가 1개(WSABUF 스캐터 불가)라 감긴 꼬리는 다음 완료 후 제출이 잇는다.
-// skipAcquire=true: NewConn 처리의 첫 Recv — Initialize의 IOCount=1을 그대로 사용.
-void CIOCPServer::RioPostRecv(CSession* session, bool skipAcquire)
-{
-    if (!session)
-        return;
-
-    if (!skipAcquire)
-    {
-        if (!AcquireSession(session))
-            return;
-    }
-
-    const int64_t sessionId = session->_sessionId;
-
-    char* writePtr = session->_recvQ.GetWritePtr();
-    size_t directWriteSize = session->_recvQ.GetDirectWriteSize();
-
-    if (directWriteSize == 0)
-    {
-        // 직선 0 ⇔ 링 가득 (GetDirectWriteSize 정의상 동치) — 기존과 동일한 overflow 정책
-        InterlockedIncrement64(&_monitor._recvBufferOverflow);
-        LOG_ERROR_STREAM("[Error] Recv buffer full - SessionId: " << sessionId);
-        RequestDisconnectSession(session);
-        IOCountDecrement(session);
-        return;
-    }
-
-    if (session->_disconnecting == TRUE)
-    {
-        // 소유 워커 직렬화로 "닫힌 RQ에 제출" 레이스는 없지만, 불필요한 제출은 걸러낸다.
-        IOCountDecrement(session);
-        return;
-    }
-
-    if (session->_rq == RIO_INVALID_RQ)
-    {
-        RequestDisconnectSession(session);
-        IOCountDecrement(session);
-        return;
-    }
-
-    RIO_BUF buf;
-    buf.BufferId = _rioSlab.BufferId();
-    buf.Offset = _rioSlab.OffsetOf(writePtr);
-    buf.Length = static_cast<ULONG>(directWriteSize);
-
-    InterlockedIncrement64(&_monitor._wsaRecvCalls);
-    if (!CRioApi::Rio().RIOReceive(session->_rq, &buf, 1, 0,
-                                   reinterpret_cast<void*>(static_cast<uintptr_t>(RIO_CTX_RECV))))
-    {
-        const int wsaErr = WSAGetLastError();
-        if (!shared::ShouldIgnoreWsaError(wsaErr))
-        {
-            LOG_WSA_ERROR_STREAM("RIOReceive failed - SessionId: " << sessionId << ", WSAError: ", wsaErr);
-        }
-        RequestDisconnectSession(session);
-        IOCountDecrement(session);
-        return;
-    }
-    // post-check(CancelIoEx) 불필요 — 제출과 closesocket이 같은 소유 워커에서 직렬화된다.
-}
-
-// Send I/O 제출 (RIO 판) — 1-pending(_sending)·소유권 계약은 기존 PostSend와 동일.
-// 직선 구간만 송신하고, 감긴 꼬리는 ProcessSend의 double-check가 즉시 이어 보낸다.
-void CIOCPServer::RioPostSend(CSession* session)
-{
-    if (!session)
-        return;
-
-    if (!AcquireSession(session))
-        return;
-
-    const int64_t sessionId = session->_sessionId;
-
-    if (InterlockedExchange(&session->_sending, TRUE) == TRUE)
-    {
-        InterlockedIncrement64(&_monitor._sendContention);
-        IOCountDecrement(session);
-        return;
-    }
-
-    // 캡처 시점의 직선 구간만 전송 — 이후 enqueue분은 완료 double-check가 처리 (기존과 동일 원리)
-    auto sendInfo = session->_sendQ.GetSendInfo();
-
-    if (sendInfo.dataSize == 0)
-    {
-        InterlockedExchange(&session->_sending, FALSE);
-        IOCountDecrement(session);
-        return;
-    }
-
-    if (session->_disconnecting == TRUE)
-    {
-        InterlockedExchange(&session->_sending, FALSE);
-        IOCountDecrement(session);
-        return;
-    }
-
-    if (session->_rq == RIO_INVALID_RQ)
-    {
-        InterlockedExchange(&session->_sending, FALSE);
-        RequestDisconnectSession(session);
-        IOCountDecrement(session);
-        return;
-    }
-
-    RIO_BUF buf;
-    buf.BufferId = _rioSlab.BufferId();
-    buf.Offset = _rioSlab.OffsetOf(sendInfo.readPtr);
-    buf.Length = static_cast<ULONG>(sendInfo.directReadSize);
-
-    InterlockedIncrement64(&_monitor._wsaSendCalls);
-    if (!CRioApi::Rio().RIOSend(session->_rq, &buf, 1, 0,
-                                reinterpret_cast<void*>(static_cast<uintptr_t>(RIO_CTX_SEND))))
-    {
-        const int wsaErr = WSAGetLastError();
-        if (!shared::ShouldIgnoreWsaError(wsaErr))
-        {
-            LOG_WSA_ERROR_STREAM("RIOSend failed - SessionId: " << sessionId << ", WSAError: ", wsaErr);
-        }
-        InterlockedExchange(&session->_sending, FALSE);
-        RequestDisconnectSession(session);
-        IOCountDecrement(session);
-        return;
-    }
-    // post-check(CancelIoEx) 불필요 — 소유 워커 직렬화가 대체 (RioPostRecv와 동일)
-}
-#endif // USE_RIO_TRANSPORT
 
 // ParsePackets 쪽에서 호출
 void CIOCPServer::PushNetworkEvent(NetworkEvent&& event)
@@ -2049,47 +994,7 @@ bool CIOCPServer::RequestDisconnectSession(CSession* session)
     if (!session)
         return false;
 
-#if USE_RIO_TRANSPORT
-    // pin을 "먼저" 확보 — _disconnecting을 먼저 세우면 AcquireSession이 스스로 실패한다.
-    // 이 pin이 세션 재사용(ABA)을 막은 채로 Disconnect 명령에 실려 소유 워커까지 간다.
-    // (sessionId 재조회 방식은 FindSession이 _disconnecting 세션을 숨겨 closesocket이
-    //  누락되고 pending recv의 IOCount가 영영 안 풀린다 — 그래서 포인터+pin 핸드오프)
-    if (!AcquireSession(session))
-        return false;   // 이미 해제(IOCount 0)·해제 진행 중 — 종료 유도 불필요
-
-    if (InterlockedExchange(&session->_disconnecting, TRUE) == TRUE)
-    {
-        IOCountDecrement(session);   // 다른 스레드가 이미 종료 처리 중
-        return false;
-    }
-
-    const int64_t sessionId = session->_sessionId;   // pin 보유 중 → 유효
-    const int ownerIdx = RioOwnerIndex(sessionId);
-    if (t_rioWorkerIndex == ownerIdx)
-    {
-        RioCloseSocketOnOwner(session);   // 소유 워커 자신 — 즉시 닫기
-        IOCountDecrement(session);
-    }
-    else
-    {
-        RioCmd cmd;
-        cmd.type = RioCmd::Type::Disconnect;
-        cmd.sessionId = sessionId;
-        cmd.session = session;
-        RioEnqueueCmd(ownerIdx, std::move(cmd));
-    }
-    return true;
-#else
-    // 다른스레드에서 이미 처리중인 경우
-    if (InterlockedExchange(&session->_disconnecting, TRUE) == TRUE)
-        return false;
-
-    // CancelIoEx로 pending IO를 즉시 완료(에러)시켜 IOCount가 0으로 수렴하게 한다.
-    // INVALID_SOCKET이면 ERROR_INVALID_HANDLE로 실패할 뿐, 부작용 없음.
-    CancelIoEx(reinterpret_cast<HANDLE>(session->_socket), nullptr);
-
-    return true;
-#endif
+    return TransportRequestDisconnect(session);
 }
 
 // 세션 포인터의 lifetime만 pin한다. SessionID 검증은 외부 진입점에서 별도로 수행한다.

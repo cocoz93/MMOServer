@@ -47,6 +47,7 @@ struct ServerConfig
     int         sendWorkers   = 0;         // 전용 송신 워커 수 (0/1=단일, 2+=sessionId%K 워커 풀; A/B 실험용)
     int         rioWorkers    = 0;         // RIO 전송 워커 수 (USE_RIO_TRANSPORT=1 빌드 전용, 0=자동 2)
     int         completionBatch = 0;       // 완료 수거 방식 (0=GQCS 1건씩[기본], N>0=GQCSEx 최대 N건; IOCP 빌드 전용)
+    int         sendDepth     = 1;         // 세션당 동시 송신 제출 상한 (1=기존 1-pending[기본], 2/4/8; 양팔 공통)
 
     // 게임스레드 코어 격리 (실험용) — GameCore INI에서 도출. 빈값/부적합이면 gameCore=-1, 마스크 0(=off).
     int                gameCore     = -1;  // 게임루프 전용 물리코어 (-1=격리 off). ServerCores 안의 코어여야 함.
@@ -138,6 +139,10 @@ struct ServerConfig
         //   0 = GetQueuedCompletionStatus — 완료 1건마다 syscall 1회 (기존 동작, 기본값)
         //   N>0 = GetQueuedCompletionStatusEx — 한 번에 최대 N건 수거 (상한은 IOCPServer::Start에서 clamp)
         completionBatch = GetPrivateProfileIntW(L"Server", L"CompletionBatch", 0, path);
+
+        // SendDepth: 세션당 동시 송신 제출 상한 A/B (양팔 공통, 재빌드 없이 깊이 전환)
+        //   1=기존 1-pending. 2의 거듭제곱만 유효하고(1/2/4/8) 그 외 값은 서버가 아래쪽으로 내린다.
+        sendDepth = GetPrivateProfileIntW(L"Server", L"SendDepth", 1, path);
 
         // [DB] 섹션 — DB 저장 파이프라인 (문자열은 기존 WtoA로 std::string 변환)
         wchar_t dbBuf[256];
@@ -290,6 +295,7 @@ private:
         SLOG_INFO("  SendWkr     : {} (0/1=single)", sendWorkers);
         SLOG_INFO("  RioWkr      : {} (0=auto 2, RIO build only)", rioWorkers);
         SLOG_INFO("  ComplBatch  : {} (0=GQCS one-at-a-time, N=GQCSEx cap)", completionBatch);
+        SLOG_INFO("  SendDepth   : {} (1=1-pending, pow2 only: 1/2/4/8)", sendDepth);
         if (gameCore >= 0)
             SLOG_INFO("  CoreIso     : ON GameCore={} game=0x{:X} io=0x{:X}", gameCore, gameCoreMask, ioCoreMask);
         else

@@ -150,7 +150,12 @@ private:
         WriteCounter(ss, "mmo_zone_change_total",
                      "Total zone changes", _monitor._gameLoop._zoneChangeCount);
         WriteCounter(ss, "mmo_send_contention_total",
-                     "Total PostSend contentions (skipped due to sending flag)", _monitor._sendContention);
+                     "Total PostSend contentions (backed off because another thread was submitting)", _monitor._sendContention);
+        WriteCounter(ss, "mmo_send_followup_total",
+                     "Total follow-up submits after waiting for a completion (lower = depth absorbed more per round)",
+                     _monitor._sendFollowUp);
+        WriteCounter(ss, "mmo_send_wrap_splits_total",
+                     "Total sends that carried only the straight run because the ring wrapped", _monitor._sendWrapSplits);
         WriteCounter(ss, "mmo_wsa_recv_calls_total",
                      "Total WSARecv system calls", _monitor._wsaRecvCalls);
         WriteCounter(ss, "mmo_wsa_send_calls_total",
@@ -210,6 +215,12 @@ private:
         ss << "# HELP mmo_completion_batch Completion harvest mode (0=GQCS one-at-a-time, N=GQCSEx batch cap)\n";
         ss << "# TYPE mmo_completion_batch gauge\n";
         ss << "mmo_completion_batch " << _monitor._completionBatch << "\n\n";
+
+        // [송신 깊이 A/B assert] 런타임 INI SendDepth의 실효값 — 위와 같은 용도.
+        //   1=기존 1-pending. 2 이상이면 세션당 그 수만큼 동시 제출이 뜬다.
+        ss << "# HELP mmo_send_depth Max in-flight sends per session (1=single-pending baseline)\n";
+        ss << "# TYPE mmo_send_depth gauge\n";
+        ss << "mmo_send_depth " << _monitor._sendDepth << "\n\n";
 
         ss << "# HELP mmo_event_queue_size Network event queue size before dispatch\n";
         ss << "# TYPE mmo_event_queue_size gauge\n";

@@ -43,6 +43,12 @@
     <ClCompile Include="IOCPServer.cpp">
       <Filter>소스 파일\ServerLib</Filter>
     </ClCompile>
+    <ClCompile Include="Transport_Iocp.cpp">
+      <Filter>소스 파일\ServerLib</Filter>
+    </ClCompile>
+    <ClCompile Include="Transport_Rio.cpp">
+      <Filter>소스 파일\ServerLib</Filter>
+    </ClCompile>
     <ClCompile Include="main.cpp">
       <Filter>소스 파일\ServerLib</Filter>
     </ClCompile>

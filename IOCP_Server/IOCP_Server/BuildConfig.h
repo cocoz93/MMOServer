@@ -22,7 +22,7 @@
 //   목적: WSASend 호출비용 중 "커널 송신버퍼 복사(③)"가 실제로 미미한지 실측 검증.
 //   0: 기존 OS 기본값 [권장]
 //   1: SO_SNDBUF=0 (zero-copy, 송신은 ACK까지 pending) 
-//   주의: 세션당 _sending 직렬화와 겹쳐 flush_send가 호출수 감소로 줄 수 있음 →
+//   주의: 세션당 송신 제출 직렬화와 겹쳐 flush_send가 호출수 감소로 줄 수 있음 →
 //         mmo_wsa_send_calls_total(틱당 호출수)을 반드시 함께 봐야 해석 가능.
 #define USE_ZERO_SNDBUF 0
 

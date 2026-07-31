@@ -42,7 +42,15 @@ public:
     volatile LONG64 _wsaSendCalls = 0;               // WSASend 시스템 콜 횟수
     volatile LONG64 _wsaSendCompletions = 0;         // WSASend 완료 횟수 (ProcessSend IOCP 콜백)
     volatile LONG64 _sendEnqueuedBytes = 0;          // SendQ Enqueue 바이트 누적 (_sendBytes와의 차이 = 체류량)
-    volatile LONG64 _sendContention = 0;             // PostSend 경합 (이미 송신 중이라 건너뛴 횟수)
+    volatile LONG64 _sendContention = 0;             // PostSend 경합 — 다른 스레드가 제출 중이라 물러난 횟수
+    volatile LONG64 _sendFollowUp = 0;               // [다중 pending] 완료를 기다려 "이어 보낸" 횟수 —
+                                                     //   한 번에 다 못 보내 완료 왕복이 끼었다는 뜻. 깊이를 올려
+                                                     //   이 값이 줄어드는지가 곧 깊이의 효과다.
+                                                     //   [계측 비용 0] 이미 미제출량을 확인하는 자리에서 센다 —
+                                                     //   포화 여부를 따로 확인하면 정상 경로에 링 락이 붙어
+                                                     //   깊이 1 팔만 불리해진다(A/B 편향).
+    volatile LONG64 _sendWrapSplits = 0;             // [다중 pending] 링 랩 때문에 직선 구간만 보낸 횟수.
+                                                     //   RIO 팔의 "꼬리는 완료 후 재제출" 왕복 빈도 = 배치 제출(DEFER) 도입 판단 근거.
 
     // ── 세션/에러 카운터 (per-session 또는 rare, 낮은 빈도) ──
     alignas(64) volatile LONG64 _sessionCreated = 0;    // 세션 생성 누적
@@ -73,6 +81,11 @@ public:
     //   수집 스크립트가 아암 라벨과 대조해 "INI 미적용/오라벨"을 잡는다(mmo_transport_rio와 같은 용도).
     //   IOCPServer::Start가 clamp 후 1회 기록, 이후 불변.
     volatile LONG _completionBatch = 0;
+
+    // 송신 깊이 실효값 (INI SendDepth) — 1=기존 1-pending, 2/4/8=다중 pending.
+    //   수집 스크립트가 아암 라벨과 대조해 "INI 미적용/오라벨"을 잡는다(_completionBatch와 같은 용도).
+    //   IOCPServer::Start가 2의 거듭제곱으로 내린 뒤 1회 기록, 이후 불변.
+    volatile LONG _sendDepth = 0;
 
     // ══════════════════════════════════════════════════════════════
     // 게임 루프 전용 카운터 (alignas(64)로 캐시 라인 분리)

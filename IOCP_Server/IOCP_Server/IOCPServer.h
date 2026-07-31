@@ -55,6 +55,7 @@ public:
     {
         OVERLAPPED overlapped;      // 반드시 첫 번째 멤버
         IOOperation operation;      // I/O 타입 (RECV, SEND, ACCEPT 등)
+        int slot = -1;              // [다중 pending 송신] SEND일 때 몇 번 슬롯인가 (RECV는 -1)
     };
 
     explicit CSession();
@@ -90,9 +91,16 @@ public:
     volatile LONG _disconnecting;   // 종료 진행 플래그. InterlockedExchange로 1회만 설정
     volatile SOCKET _socket;
     volatile int64_t _sessionId;    // Initialize에서 설정, IOCount>0 동안 유효
-    volatile LONG _sending;         // 송신 중 플래그 (InterlockedExchange 사용) — 완료 워커가 고빈도 갱신
+    // [다중 pending 송신] 1-pending 시절의 _sending 하나를 두 역할로 나눈 것 —
+    //   _sendSubmitBusy : 제출 구간만 잠근다(세그먼트 계산~제출 호출). 제출자가 둘인 IOCP 팔
+    //                     (송신 워커 + 완료 워커의 이어보내기)에서 제출 순서=와이어 순서를 지킨다.
+    //   _sendInFlight   : 미완료 제출 수. 완료가 감소시키며, 상한이 곧 송신 깊이(_sendDepth).
+    //   깊이 1이면 두 역할이 다시 겹쳐 옛 _sending과 같은 동작이 된다.
+    //   (USE_LOCKFREE_SENDQ 경로는 깊이를 쓰지 않고 _sendSubmitBusy만 옛 _sending처럼 쓴다)
+    volatile LONG _sendSubmitBusy;  // InterlockedExchange 사용 — 완료 워커가 고빈도 갱신
+    volatile LONG _sendInFlight;
 
-    // 게임 스레드가 만지는 송신 표식 묶음 — 위쪽 _sending(완료 워커 고빈도 갱신)과
+    // 게임 스레드가 만지는 송신 표식 묶음 — 위쪽 송신 게이트(완료 워커 고빈도 갱신)와
     // 캐시라인 분리하여 false sharing 방지. (_queuedForSend는 송신 스레드도 clear)
     alignas(64) bool _sendDirty = false;   // [coalescing] 틱 내 송신 대기 표식 (게임 스레드 전용, Initialize에서 리셋)
     volatile LONG _queuedForSend = FALSE;  // [send-worker] 워커 queue 잔류 표식 — 틱을 넘는 중복 push 방지.
@@ -129,12 +137,55 @@ public:
 
     // IOCount가 0이 되어 세션이 재사용되기 전까지 OVERLAPPED 주소는 유지된다.
     OverlappedEx _recvOverlapped;
-    OverlappedEx _sendOverlapped;
+
+    // [다중 pending 송신] 세션당 in-flight 슬롯 링.
+    //   제출마다 슬롯 하나를 쓰고 완료가 그 슬롯을 비운다. 깊이 1이면 슬롯 0만 돌려쓰므로
+    //   옛 단일 _sendOverlapped와 동작이 같다.
+    //   [왜 done 플래그가 필요한가] IOCP는 완료 워커가 여럿이라 완료 통지 순서가 제출 순서와
+    //     어긋날 수 있다. 링 읽기 포인터는 반드시 오래된 구간부터 전진해야 하므로,
+    //     도착한 슬롯에 표식만 남기고 head부터 "연속으로 done인 구간"만 반환한다.
+    //     (RIO는 단일 CQ를 소유 워커가 단독 드레인해 항상 순서대로 오지만 같은 코드를 쓴다)
+    static constexpr int MAX_SEND_DEPTH = 8;
+
+    struct SendSlot
+    {
+        OverlappedEx  ov;                // IOCP 제출용 (RIO는 세션 RQ에 제출하므로 미사용)
+        size_t        bytes = 0;         // 이 제출의 크기 — 부분 송신 판정·링 반환량
+        volatile LONG done = FALSE;      // 완료 도착 표식
+    };
+    SendSlot      _sendSlots[MAX_SEND_DEPTH];
+    ULONG         _slotTail = 0;         // 다음 제출이 쓸 슬롯 — 제출 잠금(_sendSubmitBusy) 안에서만.
+                                         //   unsigned인 이유: 오버플로 wrap이 정의된 동작이어야 한다
+                                         //   (signed는 표준상 UB). 마스크 인덱싱이 wrap을 넘어도 성립.
+    volatile LONG _slotHead = 0;         // 가장 오래된 미완료 슬롯 — 수거자가 전진
+    volatile LONG _sendReapBusy = FALSE; // 링 반환 구간 직렬화 (완료 워커가 여럿이라 필요)
+
+    // 슬롯 링 초기화 — 생성 시와 세션 재사용(Initialize) 시 모두 호출한다.
+    //   ov.slot은 고정 인덱스라 여기서 한 번만 심으면 완료 통지가 자기 슬롯을 알 수 있다.
+    void ResetSendSlots()
+    {
+        for (int i = 0; i < MAX_SEND_DEPTH; ++i)
+        {
+            ZeroMemory(&_sendSlots[i].ov.overlapped, sizeof(OVERLAPPED));
+            _sendSlots[i].ov.operation = IOOperation::SEND;
+            _sendSlots[i].ov.slot = i;
+            _sendSlots[i].bytes = 0;
+            _sendSlots[i].done = FALSE;
+        }
+        _slotTail = 0;
+        _slotHead = 0;
+        _sendReapBusy = FALSE;
+    }
 
 #if USE_RIO_TRANSPORT
     // RIO 요청 큐 — 생성·제출·closesocket 전부 소유 워커 스레드에서만 접근 (불변식).
     // 소켓 수명을 따르므로 별도 해제 API 없음. 세션 재사용 시 NewConn 처리에서 재생성.
     RIO_RQ _rq = RIO_INVALID_RQ;
+
+    // 재사용 리셋의 팔별 부분 — Initialize가 호출한다 (.cpp에서 전송 계층 #if를 없애기 위한 위임).
+    void ResetTransportState() { _rq = RIO_INVALID_RQ; }
+#else
+    void ResetTransportState() {}
 #endif
 };
 
@@ -228,7 +279,7 @@ class CIOCPServer
 public:
     explicit CIOCPServer(int port, int maxClients, ServerMode mode,
                         CMonitorManager& monitor, int workerThreads = 0, int sendWorkers = 0,
-                        int rioWorkers = 0, int completionBatch = 0);
+                        int rioWorkers = 0, int completionBatch = 0, int sendDepth = 1);
     virtual ~CIOCPServer();
 
     bool Start();
@@ -299,12 +350,45 @@ private:
 
     void ProcessAccept(SOCKET clientSocket);
     void ProcessRecv(CSession* session, DWORD bytesTransferred);
-    void ProcessSend(CSession* session, DWORD bytesTransferred);
+    // slot = 이 완료가 쓴 in-flight 슬롯 (IOCP는 OverlappedEx.slot, RIO는 RequestContext에서 얻는다)
+    void ProcessSend(CSession* session, DWORD bytesTransferred, int slot);
 
-#if !USE_RIO_TRANSPORT
+    // 전송 계층 제출 — 선언은 공통, 구현은 팔별 파일(Transport_Iocp.cpp / Transport_Rio.cpp).
+    //   RIO 판은 요청당 버퍼가 1개라 링버퍼의 직선 구간만 제출한다 — 나머지 계약은 동일.
     void PostRecv(CSession* session, bool skipAcquire = false);
     void PostSend(CSession* session);
+
+#if !USE_LOCKFREE_SENDQ
+    // 미제출 구간 한 덩이를 실제로 내보낸다 (팔별). 반환 = 소비한 in-flight 슬롯 수(0 = 제출 실패).
+    //   IOCP: 직선+랩을 WSABUF 2개로 한 번에 (슬롯 1)
+    //   RIO : 요청당 버퍼가 1개라 직선 구간만 (슬롯 1)
+    //   *submittedBytes 에 실제 제출한 바이트를 돌려준다.
+    int TransportSubmitSegment(CSession* session, SOCKET socket,
+                               const CRingBufferMT::SubmitInfo& info,
+                               int slot, int slotsAvailable, size_t* submittedBytes);
+
+    // 완료된 슬롯을 head부터 "연속으로" 회수한다 — 링 읽기 포인터는 오래된 구간부터만 전진해야 하고,
+    //   IOCP는 완료 통지 순서가 제출 순서와 어긋날 수 있어 표식(done)과 회수를 분리한다.
+    void ReapSendSlots(CSession* session);
 #endif
+
+    // ── 전송 계층 경계 — 공통 골격이 팔(arm)을 모르게 하는 위임 지점 ──────────────
+    //    구현은 Transport_Iocp.cpp(완료 포트)와 Transport_Rio.cpp(RIO) 중 하나만 컴파일된다.
+    bool  TransportInitSessionBuffer(CSession* session);   // 세션 링버퍼 준비 (RIO는 슬랩 슬라이스라 no-op)
+    bool  TransportPreListen();                            // 리슨 소켓 "전" 준비 (IOCP: 완료 포트 생성)
+    void  TransportPreListenCleanup();                     // 리슨 실패 시 위 준비물 되돌리기
+    bool  TransportPostListen();                           // 리슨 소켓 "후" 준비 (RIO: 테이블·슬랩·CQ)
+    DWORD TransportListenFlags() const;                    // WSASocket 플래그 (RIO: REGISTERED_IO 추가)
+    void  TransportStartWorkers();                         // 완료 워커·송신 워커 기동
+    void  TransportLogStarted(const char* modeName) const; // 기동 로그 (스모크가 이 문구로 팔 판정)
+    void  TransportStopBeforeDrain();                      // IOCount 드레인 "전" 정지 (IOCP: 송신 워커)
+    void  TransportStopAfterDrain();                       // IOCount 드레인 "후" 정지 (워커 join·자원 해제)
+    bool  TransportAttachSession(CSession* session, SOCKET clientSocket);   // 완료 통지 연결 (IOCP: BindIOCP)
+    void  TransportStartFirstRecv(CSession* session, SOCKET clientSocket, int64_t sessionId);  // 첫 Recv 착수
+    void  TransportSendImmediate(CSession* session, int64_t sessionId);     // SendFlush::Immediate 경로
+    void  TransportFlushDirty();                           // 틱 끝 dirty 배치 → 송신 (팔별 핸드오프)
+    bool  TransportRequestDisconnect(CSession* session);    // 종료 유도 (IOCP: CancelIoEx / RIO: 소유 워커 close)
+
     void ParsePackets(CSession* session);
 
     CSession* FindSession(int64_t sessionId);
@@ -321,8 +405,16 @@ private:
     int _configuredSendWorkers;   // INI 지정 송신 워커 수 (0/1=단일)
     int _configuredRioWorkers;    // INI 지정 RIO 워커 수 (0=자동 2, RIO 빌드 전용)
     int _configuredCompletionBatch;   // INI 지정 완료 수거 방식 (0=GQCS, N>0=GQCSEx 상한; IOCP 빌드 전용)
+    int _configuredSendDepth;         // INI 지정 송신 깊이 (Start가 2의 거듭제곱으로 내려 _sendDepth 확정)
     int _completionBatch = 0;         // 위 값을 clamp한 실효값 — Start()가 워커 기동 "전"에 확정, 이후 불변
     static constexpr int MAX_COMPLETION_BATCH = 256;   // OVERLAPPED_ENTRY 스택 배열 상한 (256×16B=4KB)
+    int _sendDepth = 1;               // 세션당 동시 송신 제출 상한 — 1 = 기존 1-pending 동작 (INI 배선은 후속 단계)
+    int _sendDepthMask = 0;           // _sendDepth-1. 깊이를 2의 거듭제곱(1/2/4/8)으로만 허용하는 이유:
+                                      //   슬롯 인덱스를 head/tail 카운터의 나머지로 구하는데, 카운터가
+                                      //   오버플로로 wrap할 때 2의 거듭제곱이 아니면 head와 tail의 인덱스
+                                      //   관계가 어긋난다(엉뚱한 슬롯을 회수). 마스크면 wrap에도 일관하다.
+    int _coreCount = 0;               // affinity 가용 코어 수 — TransportPreListen이 산정 (concurrency·로그 공용)
+    int _workerThreadCount = 0;       // 실제 기동한 완료 워커 수 (IOCP 팔) — 기동 로그가 읽는다
     CMonitorManager& _monitor;
     volatile LONG _running;
     volatile LONGLONG _sessionIdCounter;  // 고유 ID용 (하위 48비트)
@@ -391,8 +483,6 @@ private:
     void RioHandleCmd(RioWorker& worker, RioCmd& cmd);               // 명령 1건 처리 (소유 워커 위)
     int  RioDrainCompletions(RioWorker& worker, int monitorIndex);   // CQ 한 배치 처리 (−1 = CQ 손상)
     void RioCloseSocketOnOwner(CSession* session);                   // 소유 워커 전용 closesocket (CancelIoEx 대체)
-    void RioPostRecv(CSession* session, bool skipAcquire = false);   // PostRecv의 RIO 판 — 직선 구간만 제출
-    void RioPostSend(CSession* session);                             // PostSend의 RIO 판 — 1-pending 동일
     void RioEnqueueCmd(int ownerIdx, RioCmd&& cmd);                  // 명령 push + cmdEvent Set
     int  RioOwnerIndex(int64_t sessionId) const                      // uniqueId 분배 (48비트 마스크 → 음수 없음)
     {
