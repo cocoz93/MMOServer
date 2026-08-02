@@ -118,6 +118,10 @@ LanServer_StressT12est_20191125.exe
 !Monitoring/
 Monitoring/*
 !Monitoring/config/
+# A/B 수집·비교 스크립트와 그 문서는 트래킹 (바이너리 트리만 제외)
+!Monitoring/*.ps1
+!Monitoring/*.json
+!Monitoring/README.md
 ThirdParty/
 
 
