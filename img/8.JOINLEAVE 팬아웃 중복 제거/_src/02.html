@@ -11,151 +11,143 @@
     --red:#d7263d; --deep:#b3122a; --blue:#3a78b8; --blue-ink:#2b6aa8; --slate:#566072;
   }
   *{box-sizing:border-box}
-  html,body{margin:0;width:1200px;height:700px;overflow:hidden;background:var(--bg);
+  html,body{margin:0;width:1200px;height:640px;overflow:hidden;background:var(--bg);
     font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
-  .card{position:absolute;top:24px;left:24px;width:1152px;height:652px;background:var(--card);
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:592px;background:var(--card);
     border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
-    padding:32px 56px 0}
+    padding:34px 56px 0}
 
   .title{font-size:37px;font-weight:800;color:var(--ink);letter-spacing:-.8px;line-height:1.08}
   .title .r{color:var(--red)}
-  .uline{width:66px;height:6px;border-radius:3px;background:var(--red);margin-top:13px}
-  .sub{margin-top:12px;font-size:19px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .title .b{color:var(--blue-ink)}
+  .uline{width:66px;height:6px;border-radius:3px;background:var(--red);margin-top:14px}
+  .sub{margin-top:13px;font-size:19px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
   .sub b{color:#3a4254;font-weight:700}
 
-  .panels{margin-top:20px;display:flex;flex-direction:column;gap:16px}
-  .panel{height:218px;border-radius:20px;padding:14px 30px;display:flex;flex-direction:column;
-    border:1.5px solid #e7ebf1;overflow:hidden}
-  .panel.out{background:#f1f6fb}
-  .panel.in{background:#fbeef1}
+  .panels{margin-top:18px;display:grid;grid-template-columns:1fr 1fr;column-gap:26px}
+  .panel{border-radius:22px;border:1.5px solid #e7ebf1;padding:16px 18px 14px;
+    display:flex;flex-direction:column;align-items:center}
+  .panel.out{background:#f2f6fb}
+  .panel.in{background:#fbeff2}
 
-  .phead{display:flex;align-items:center;gap:12px;height:30px;flex:0 0 auto}
-  .ptag{font-size:15px;font-weight:800;letter-spacing:.2px;padding:5px 15px;border-radius:999px}
-  .panel.out .ptag{background:#e2eef9;color:var(--blue-ink)}
-  .panel.in  .ptag{background:#fbdfe4;color:var(--red)}
-  .pdir{font-size:16.5px;font-weight:700;color:#6a7488;letter-spacing:-.2px}
-  .pdir b{color:var(--ink);font-weight:800}
+  .ph{display:flex;align-items:center;gap:11px;height:32px}
+  .tag{font-size:16px;font-weight:800;padding:5px 15px;border-radius:999px}
+  .panel.out .tag{background:#dfebf8;color:var(--blue-ink)}
+  .panel.in  .tag{background:#fadde3;color:var(--red)}
+  .dir{font-size:17px;font-weight:700;color:#6a7488;letter-spacing:-.2px}
+  .dir b{color:var(--ink);font-weight:800}
 
-  .pbody{flex:1;display:flex;align-items:center}
+  .viz{width:100%;height:262px;margin-top:2px}
 
-  /* mover node */
-  .me{width:112px;height:112px;border-radius:22px;flex:0 0 auto;
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:#fff;
-    box-shadow:0 6px 16px rgba(30,40,70,.08)}
-  .panel.out .me{background:var(--blue)}
-  .panel.in  .me{background:var(--red)}
-  .me .big{font-size:32px;font-weight:800;letter-spacing:-1px}
-  .me .sm{font-size:13.5px;font-weight:700;opacity:.85}
+  .say{font-size:22px;font-weight:800;color:var(--ink);letter-spacing:-.5px;text-align:center;margin-top:2px}
+  .panel.out .say em{color:var(--blue-ink);font-style:normal}
+  .panel.in  .say em{color:var(--red);font-style:normal}
+  .say .q{display:block;margin-top:6px;font-size:15.5px;font-weight:600;color:#8a93a5;letter-spacing:-.2px}
 
-  /* fan wires */
-  .fan{flex:0 0 auto;width:186px;height:150px}
-
-  /* peer cluster */
-  .peers{flex:0 0 auto;width:146px;height:150px;display:flex;flex-direction:column;justify-content:space-between}
-  .peer{height:26px;border-radius:8px;display:flex;align-items:center;padding-left:13px;
-    font-size:14px;font-weight:700;color:#5b6474;background:#fff;border:1.4px solid #e2e7ee}
-  .peer .pk{width:14px;height:14px;border-radius:4px;margin-right:9px;flex:0 0 auto}
-
-  .mid{flex:0 0 auto;width:146px;text-align:center;padding:0 8px}
-  .mid .k{font-size:20px;font-weight:800;color:var(--ink);letter-spacing:-.4px;line-height:1.2}
-  .panel.out .mid .k .accent{color:var(--blue-ink)}
-  .panel.in  .mid .k .accent{color:var(--red)}
-  .mid .d{margin-top:7px;font-size:14.5px;font-weight:600;color:#8a93a5;letter-spacing:-.2px;line-height:1.35}
-
-  .concl{flex:1 1 auto;margin-left:22px;border-radius:16px;padding:18px 24px;
-    display:flex;flex-direction:column;gap:7px;background:#fff}
-  .panel.out .concl{border:1.5px solid #cfe0f1}
-  .panel.in  .concl{border:1.5px solid #f4ccd3}
-  .concl .cp{font-size:16px;font-weight:800;letter-spacing:-.2px;display:inline-flex;align-items:center;gap:9px}
-  .concl .cp .badge{font-size:16px;font-weight:800;color:#fff;padding:3px 13px;border-radius:8px}
-  .panel.out .concl .cp{color:var(--blue-ink)} .panel.out .concl .cp .badge{background:var(--blue)}
-  .panel.in  .concl .cp{color:var(--red)}      .panel.in  .concl .cp .badge{background:var(--red)}
-  .concl .ct{font-size:20px;font-weight:800;color:var(--ink);letter-spacing:-.4px;line-height:1.25}
-
-  .foot{position:absolute;left:56px;right:56px;bottom:15px;padding-top:11px;border-top:1px solid #eef0f3;
+  .foot{position:absolute;left:56px;right:56px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
     font-size:15.5px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
   .foot b{color:#6b7484;font-weight:700}
 </style>
 </head>
 <body>
   <div class="card">
-    <div class="title">경계를 넘을 때마다 — <span class="r">두 방향</span>으로 쏟아진다</div>
+    <div class="title">한 발 움직이면 — 패킷이 <span class="b">나가고</span> <span class="r">들어온다</span></div>
     <div class="uline"></div>
-    <div class="sub">mover가 섹터를 넘으면 주변과 Join/Leave 교환 · <b>방향마다 특성이 달라 처리도 둘로</b> (통일 불가)</div>
+    <div class="sub">mover가 섹터 경계를 넘는 순간 · <b>나가는 건 전부 같은 내용, 들어오는 건 전부 다른 내용</b></div>
 
     <div class="panels">
-      <!-- OUTBOUND -->
+
+      <!-- OUTBOUND : 나에서 밖으로 퍼진다 -->
       <div class="panel out">
-        <div class="phead"><span class="ptag">아웃바운드</span><span class="pdir"><b>나</b> → 상대 N명</span></div>
-        <div class="pbody">
-          <div class="me"><span class="big">나</span><span class="sm">mover</span></div>
-          <svg class="fan" viewBox="0 0 186 150">
-            <g stroke="#3a78b8" stroke-width="3" fill="none" opacity=".85">
-              <line x1="4" y1="75" x2="182" y2="13"/>
-              <line x1="4" y1="75" x2="182" y2="44"/>
-              <line x1="4" y1="75" x2="182" y2="75"/>
-              <line x1="4" y1="75" x2="182" y2="106"/>
-              <line x1="4" y1="75" x2="182" y2="137"/>
-            </g>
-          </svg>
-          <div class="peers">
-            <div class="peer"><span class="pk" style="background:#3a78b8"></span>상대 1</div>
-            <div class="peer"><span class="pk" style="background:#3a78b8"></span>상대 2</div>
-            <div class="peer"><span class="pk" style="background:#3a78b8"></span>상대 3</div>
-            <div class="peer"><span class="pk" style="background:#3a78b8"></span>상대 4</div>
-            <div class="peer"><span class="pk" style="background:#3a78b8"></span>상대 N</div>
-          </div>
-          <div class="mid">
-            <div class="k">내용 <span class="accent">동일</span></div>
-            <div class="d">모두 같은 바이트<br>(mover 정보)</div>
-          </div>
-          <div class="concl">
-            <div class="cp"><span class="badge">P1</span> 아웃바운드 팬아웃</div>
-            <div class="ct">1버퍼를 만들어 N명이 공유</div>
-          </div>
+        <div class="ph"><span class="tag">아웃바운드</span><span class="dir"><b>나</b> → 상대 N명</span></div>
+        <svg class="viz" viewBox="0 25 460 240">
+          <defs>
+            <marker id="ahB" markerUnits="userSpaceOnUse" markerWidth="13" markerHeight="13"
+                    refX="11" refY="6.5" orient="auto">
+              <path d="M0,0 L13,6.5 L0,13 Z" fill="#3a78b8"></path>
+            </marker>
+          </defs>
+
+          <!-- 상대 -->
+          <g fill="#ffffff" stroke="#c3cedb" stroke-width="2.5">
+            <circle cx="415" cy="233" r="20"></circle>
+            <circle cx="45"  cy="233" r="20"></circle>
+            <circle cx="45"  cy="57"  r="20"></circle>
+            <circle cx="415" cy="57"  r="20"></circle>
+          </g>
+
+          <!-- 나 -> 상대 : 네 갈래 모두 같은 굵기·같은 색 -->
+          <g stroke="#3a78b8" stroke-width="3" opacity=".9" marker-end="url(#ahB)">
+            <line x1="284.2" y1="170.8" x2="389.7" y2="221.0"></line>
+            <line x1="175.8" y1="170.8" x2="70.3"  y2="221.0"></line>
+            <line x1="175.8" y1="119.2" x2="70.3"  y2="69.0"></line>
+            <line x1="284.2" y1="119.2" x2="389.7" y2="69.0"></line>
+          </g>
+
+          <!-- 패킷 : 넷 다 같은 색·같은 크기 = 같은 내용 -->
+          <g fill="#3a78b8">
+            <rect x="-15" y="-11" width="30" height="22" rx="6" transform="translate(336.5,195.7) rotate(25.4)"></rect>
+            <rect x="-15" y="-11" width="30" height="22" rx="6" transform="translate(123.5,195.7) rotate(154.6)"></rect>
+            <rect x="-15" y="-11" width="30" height="22" rx="6" transform="translate(123.5,94.3) rotate(205.4)"></rect>
+            <rect x="-15" y="-11" width="30" height="22" rx="6" transform="translate(336.5,94.3) rotate(-25.4)"></rect>
+          </g>
+
+          <!-- 나 -->
+          <circle cx="230" cy="145" r="48" fill="#3a78b8"></circle>
+          <text x="230" y="145" text-anchor="middle" dominant-baseline="central"
+                font-family="Pretendard" font-size="31" font-weight="800" fill="#ffffff">나</text>
+        </svg>
+        <div class="say">보내는 내용이 <em>전부 같다</em>
+          <span class="q">누구에게 보내든 "내 정보" 하나</span>
         </div>
       </div>
 
-      <!-- INBOUND -->
+      <!-- INBOUND : 밖에서 나에게 모인다 -->
       <div class="panel in">
-        <div class="phead"><span class="ptag">인바운드</span><span class="pdir">상대 N명 → <b>나</b></span></div>
-        <div class="pbody">
-          <div class="peers">
-            <div class="peer"><span class="pk" style="background:#d7263d"></span>상대 1</div>
-            <div class="peer"><span class="pk" style="background:#94a3b8"></span>상대 2</div>
-            <div class="peer"><span class="pk" style="background:#6c7a90"></span>상대 3</div>
-            <div class="peer"><span class="pk" style="background:#b4bdca"></span>상대 4</div>
-            <div class="peer"><span class="pk" style="background:#54637c"></span>상대 N</div>
-          </div>
-          <svg class="fan" viewBox="0 0 186 150">
-            <g fill="none" opacity=".95">
-              <!-- 5선 모두 mover(나) 좌측 모서리 한 점(180,75)으로 수렴. 굵기·실선/점선은 '내용 제각각'을 유지 -->
-              <line x1="4" y1="13"  x2="180" y2="75" stroke="#d7263d" stroke-width="3.4"/>
-              <line x1="4" y1="44"  x2="180" y2="75" stroke="#94a3b8" stroke-width="2" stroke-dasharray="7 5"/>
-              <line x1="4" y1="75"  x2="180" y2="75" stroke="#6c7a90" stroke-width="4"/>
-              <line x1="4" y1="106" x2="180" y2="75" stroke="#b4bdca" stroke-width="2.4" stroke-dasharray="2 4"/>
-              <line x1="4" y1="137" x2="180" y2="75" stroke="#54637c" stroke-width="3"/>
-              <!-- 점선·도트 선이 dash 간격 때문에 수렴점 직전에서 끊겨 보이는 것 방지: 각 선 색으로 짧은 실선 꼬리를 수렴점에 겹침 -->
-              <line x1="162" y1="71.8" x2="180" y2="75" stroke="#94a3b8" stroke-width="2"/>
-              <line x1="162" y1="78.2" x2="180" y2="75" stroke="#b4bdca" stroke-width="2.4"/>
-              <!-- 수렴점 노드: 5선이 한 점에 모임을 명확히 -->
-              <circle cx="180" cy="75" r="3.4" fill="#54637c"/>
-            </g>
-          </svg>
-          <div class="me"><span class="big">나</span><span class="sm">mover</span></div>
-          <div class="mid">
-            <div class="k">내용 <span class="accent">제각각</span></div>
-            <div class="d">수신자는 나 1명<br>(각자 정보)</div>
-          </div>
-          <div class="concl">
-            <div class="cp"><span class="badge">P2</span> 인바운드 묶음</div>
-            <div class="ct">N패킷을 1패킷으로 접음</div>
-          </div>
+        <div class="ph"><span class="tag">인바운드</span><span class="dir">상대 N명 → <b>나</b></span></div>
+        <svg class="viz" viewBox="0 25 460 240">
+          <defs>
+            <marker id="ahR" markerUnits="userSpaceOnUse" markerWidth="13" markerHeight="13"
+                    refX="11" refY="6.5" orient="auto">
+              <path d="M0,0 L13,6.5 L0,13 Z" fill="#8d94a3"></path>
+            </marker>
+          </defs>
+
+          <g fill="#ffffff" stroke="#dfc3ca" stroke-width="2.5">
+            <circle cx="415" cy="233" r="20"></circle>
+            <circle cx="45"  cy="233" r="20"></circle>
+            <circle cx="45"  cy="57"  r="20"></circle>
+            <circle cx="415" cy="57"  r="20"></circle>
+          </g>
+
+          <!-- 상대 -> 나 : 굵기가 제각각 -->
+          <g stroke="#8d94a3" opacity=".9" marker-end="url(#ahR)">
+            <line x1="389.7" y1="221.0" x2="286.9" y2="172.1" stroke-width="3.6"></line>
+            <line x1="70.3"  y1="221.0" x2="173.1" y2="172.1" stroke-width="2.2"></line>
+            <line x1="70.3"  y1="69.0"  x2="173.1" y2="117.9" stroke-width="4"></line>
+            <line x1="389.7" y1="69.0"  x2="286.9" y2="117.9" stroke-width="2.7"></line>
+          </g>
+
+          <!-- 패킷 : 색·크기가 제각각 = 제각각인 내용 -->
+          <g>
+            <rect x="-16" y="-12" width="32" height="24" rx="6" fill="#d7263d" transform="translate(347.4,200.8) rotate(25.4)"></rect>
+            <rect x="-12" y="-9"  width="24" height="18" rx="5" fill="#94a3b8" transform="translate(112.6,200.8) rotate(154.6)"></rect>
+            <rect x="-17" y="-13" width="34" height="26" rx="7" fill="#566072" transform="translate(112.6,89.2) rotate(205.4)"></rect>
+            <rect x="-13" y="-10" width="26" height="20" rx="5" fill="#b3122a" transform="translate(347.4,89.2) rotate(-25.4)"></rect>
+          </g>
+
+          <circle cx="230" cy="145" r="48" fill="#d7263d"></circle>
+          <text x="230" y="145" text-anchor="middle" dominant-baseline="central"
+                font-family="Pretendard" font-size="31" font-weight="800" fill="#ffffff">나</text>
+        </svg>
+        <div class="say">받는 내용이 <em>전부 다르다</em>
+          <span class="q">상대 한 명 한 명이 서로 다른 정보</span>
         </div>
       </div>
+
     </div>
 
-    <div class="foot">원래 로직은 <b>수신자 수만큼 패킷을 매번 새로 생성</b>(Alloc+직렬화) → 밀도가 높을수록 생성 반복이 곱으로 증가</div>
+    <div class="foot">같은 내용은 <b>한 번만 만들면 되고</b>(P1), 다른 내용은 <b>한 봉투에 담으면 된다</b>(P2) — 그래서 처리도 둘로 나뉜다</div>
   </div>
 </body>
 </html>

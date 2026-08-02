@@ -1,12 +1,12 @@
-# Rebuild infographic PNGs from the HTML sources (PowerShell).
+﻿# Rebuild infographic PNGs from the HTML sources (PowerShell).
 # Usage:  powershell -ExecutionPolicy Bypass -File build.ps1
 #
 # logical size x DSF4 = final resolution (Pretendard embedded, PPT quality):
 #   01 : 1200x600 -> 4800x2400   (01_bottleneck_54pct.png)
-#   02 : 1200x700 -> 4800x2800   (02_two_directions.png)
-#   03 : 1200x660 -> 4800x2640   (03_p1_outbound_fanout.png)
-#   04 : 1200x640 -> 4800x2560   (04_p2_inbound_bundle.png)
-#   05 : 1200x660 -> 4800x2640   (05_result_68pct.png)
+#   02 : 1200x640 -> 4800x2560   (02_two_directions.png)
+#   03 : 1200x642 -> 4800x2568   (03_p1_outbound_fanout.png)
+#   04 : 1200x642 -> 4800x2568   (04_p2_inbound_bundle.png)
+#   05 : 1200x620 -> 4800x2480   (05_result_68pct.png)
 $dir = $PSScriptRoot
 
 $chrome = "C:\Program Files\Google\Chrome\Application\chrome.exe"
@@ -41,10 +41,10 @@ function Render($name, $w, $h, $out) {
 
 Write-Host "[build] using: $chrome"
 Render "01" 1200 600 "01_bottleneck_54pct.png"
-Render "02" 1200 700 "02_two_directions.png"
-Render "03" 1200 660 "03_p1_outbound_fanout.png"
-Render "04" 1200 640 "04_p2_inbound_bundle.png"
-Render "05" 1200 660 "05_result_68pct.png"
+Render "02" 1200 640 "02_two_directions.png"
+Render "03" 1200 642 "03_p1_outbound_fanout.png"
+Render "04" 1200 642 "04_p2_inbound_bundle.png"
+Render "05" 1200 620 "05_result_68pct.png"
 Remove-Item $render -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item $profileDir -Recurse -Force -ErrorAction SilentlyContinue
 Write-Host "[build] done."
