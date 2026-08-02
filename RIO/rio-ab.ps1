@@ -99,6 +99,7 @@ try {
   Set-Ini $SrvIni "GameCore"      ""
   Set-Ini $CliIni "ServerIp"      "127.0.0.1"
   Set-Ini $CliIni "ClientCount"   $ClientCount
+  Set-Ini $CliIni "ClientsPerThread" ([string][int][math]::Ceiling($ClientCount/4.0))  # keep 4 client threads (ClientCores 6-9) -> no client oversubscription
 
   # ---- 2) monitoring stack (once for the whole sweep) ----
   & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Mon "config\setup.ps1") -StressClientIp localhost
@@ -133,6 +134,10 @@ try {
         & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Mon "metrics-collect.ps1") `
             -RunLabel $label -WindowMin $WindowMin -QueriesFile (Join-Path $Mon "queries.json") -OutDir $OutDir
         if($LASTEXITCODE -ne 0){ Write-Warning "collect failed: $label (continue)" }
+        # transport A/B assert: binary must match the arm we think we built (incremental-build mislabel guard)
+        $expTr = if($cfg.rio){1}else{0}
+        $gotTr = (Import-Csv $Csv | Where-Object { $_.RunLabel -eq $label -and $_.Metric -eq 'transport_rio' } | Select-Object -Last 1).Value
+        if($null -ne $gotTr -and [int]$gotTr -ne $expTr){ throw "TRANSPORT MISLABEL: $label expected rio=$expTr but binary reports $gotTr -- arm/binary mismatch, aborting to avoid corrupt data" }
       } else { Write-Warning "server died during load -> skip collect: $label" }
 
       Stop-Procs; Start-Sleep 60   # TIME_WAIT / socket drain rest
@@ -145,7 +150,7 @@ try {
   if(Test-Path $Csv){
     $rows = Import-Csv $Csv
     function Avg($tag,$metric){
-      $vals = for($r=1;$r -le $Reps;$r++){ ToNum (($rows | Where-Object { $_.RunLabel -eq ("{0}_{1}_r{2}" -f $LabelPrefix,$tag,$r) -and $_.Metric -eq $metric } | Select-Object -Last 1).Value) }
+      $vals = for($r=1;$r -le $Reps;$r++){ ToNum (($rows | Where-Object { $_.RunLabel -eq ("{0}_{1}_r{2}" -f $LabelPrefix,$tag,$r) -and $_.Metric -eq $metric -and [int]$_.WindowMin -eq $WindowMin } | Select-Object -Last 1).Value) }
       $vals = @($vals | Where-Object { $_ -ne $null })
       if($vals.Count){ ($vals | Measure-Object -Average).Average } else { $null }
     }
@@ -153,8 +158,8 @@ try {
     $tbl = foreach($cfg in $configs){
       $o = [ordered]@{ Config=$cfg.tag }
       foreach($k in $keys){ $v=Avg $cfg.tag $k; $o[$k]= if($v -ne $null){[math]::Round($v,4)}else{"NA"} }
-      $bf=Avg $cfg.tag "dummy_send_buffer_full_rate"; $tp=Avg $cfg.tag "tick_p99_ms"
-      $o["GATE"]= if(($bf -ne $null -and $bf -eq 0) -and ($tp -ne $null -and $tp -lt 40)){"PASS"}else{"FAIL"}
+      $bf=Avg $cfg.tag "dummy_send_buffer_full_rate"; $tp=Avg $cfg.tag "tick_p99_ms"; $sc=Avg $cfg.tag "session_count"
+      $o["GATE"]= if(($bf -ne $null -and $bf -eq 0) -and ($tp -ne $null -and $tp -lt 40) -and ($sc -ne $null -and $sc -ge $ClientCount*0.98)){"PASS"}else{"FAIL"}
       [pscustomobject]$o
     }
     $tbl | Format-Table Config,net_cpu_total,net_kernel_cpu_total,worker_cpu_total,sendworker_cpu_total,tick_p99_ms,dummy_send_buffer_full_rate,dummy_send_pps,session_count,GATE -AutoSize
@@ -171,7 +176,10 @@ try {
       Write-Host ("VERDICT: best RIO = {0}" -f $best.Config) -ForegroundColor Cyan
       Write-Host ("  net CPU     IOCP {0,-8} -> RIO {1,-8}  ({2:+0.0;-0.0}%)" -f $ic,$rc,$pc)
       Write-Host ("  net KERNEL  IOCP {0,-8} -> RIO {1,-8}  ({2:+0.0;-0.0}%)  <- syscall burden recovered" -f $ik,$rk,$pk)
-      Write-Host ("  (negative % = RIO cheaper. throughput/sessions must match for a valid compare.)")
+      $ip=[double]$iocp.dummy_send_pps; $rp=[double]$best.dummy_send_pps
+      $pp= if($ip -ne 0){ ($rp-$ip)/$ip*100 } else {0}
+      Write-Host ("  load(pps)   IOCP {0,-8} -> RIO {1,-8}  ({2:+0.0;-0.0}%)  <- load asymmetry; if |%|>3 quote net_cpu_per_kpps, not raw" -f $ip,$rp,$pp)
+      Write-Host ("  (negative net % = RIO cheaper. load-normalized: net_cpu_per_kpps / net_cpu_per_mmemb.)")
     } else { Write-Warning "verdict skipped (IOCP gate fail or no gate-passing RIO config)" }
     Write-Host "raw metrics: $Csv" -ForegroundColor DarkGray
   } else { Write-Warning "no CSV produced (collection never succeeded)" }
