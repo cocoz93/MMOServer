@@ -28,6 +28,7 @@ bld/
 # ======================
 build/
 build_*/
+build-*/
 cmake-build-*/
 CMakeUserPresets.json
 

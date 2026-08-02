@@ -23,8 +23,12 @@ if(WIN32)
 # ─────────────────────────────────────────────────────────────
 add_executable(IOCP_Server
     ${SRV_DIR}/IOCPServer.cpp
+    ${SRV_DIR}/Transport_Iocp.cpp   # 완료포트 팔 (RIO 빌드에서는 빈 번역단위)
+    ${SRV_DIR}/Transport_Rio.cpp    # RIO 팔 (IOCP 빌드에서는 빈 번역단위)
     ${SRV_DIR}/main.cpp
+    ${SRV_DIR}/CoreAffinity.cpp
     ${SRV_DIR}/SerialBuffer.cpp
+    ${SRV_DIR}/LockFreeConfig.cpp
     ${SRV_DIR}/Player.cpp
     ${SRV_DIR}/SectorManager.cpp
     ${SRV_DIR}/Zone.cpp
