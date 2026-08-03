@@ -189,7 +189,12 @@ public:
     // 재사용 리셋의 팔별 부분 — Initialize가 호출한다 (.cpp에서 전송 계층 #if를 없애기 위한 위임).
     void ResetTransportState() { _rq = RIO_INVALID_RQ; }
 #else
-    void ResetTransportState() {}
+    void ResetTransportState() { _epollWantWrite = false; }
+#endif
+#ifndef _WIN32
+    // EPOLLOUT을 지금 걸어 두었는가 — 같은 상태로 epoll_ctl을 반복 호출하지 않기 위한 표식.
+    //   제출 잠금(_sendSubmitBusy) 안에서만 갱신되므로 별도 원자화가 필요 없다.
+    bool _epollWantWrite = false;
 #endif
 };
 
@@ -349,6 +354,8 @@ private:
     // epoll 워커 — 준비 통지(EPOLLIN/EPOLLOUT)를 받아 처리한다. IOCP의 WorkerThread에 대응.
     void EpollWorkerThread(int workerIndex);
     void EpollHandleReadable(CSession* session);   // EPOLLIN — 직접 읽어 ProcessRecv로 넘긴다
+    void EpollSendSession(CSession* session);      // 미전송 구간을 writev로 내보낸다 (즉시 완료)
+    void EpollUpdateWriteInterest(CSession* session, bool wantWrite);   // EPOLLOUT 등록/해제
 #endif
 #if USE_SEND_THREAD && !USE_RIO_TRANSPORT
     void SendWorkerThread(int workerIdx);   // 전용 송신 워커 — 자기 워커의 dirty 배치를 받아 WSASend 수행

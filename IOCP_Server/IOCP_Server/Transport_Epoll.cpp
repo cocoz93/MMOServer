@@ -21,6 +21,7 @@
 #include <sys/epoll.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/uio.h>   // writev (링이 감긴 두 조각을 한 번에)
 #include <chrono>
 #include <algorithm>
 
@@ -162,16 +163,146 @@ void CIOCPServer::TransportStartFirstRecv(CSession* session, Platform::NetSocket
     (void)sessionId;
 }
 
-// SendFlush::Immediate — 4-G에서 채운다.
-void CIOCPServer::TransportSendImmediate(CSession* session, int64_t sessionId)
+// 세션의 미전송 구간을 커널에 넘긴다 — epoll 송신의 본체.
+//
+//   [IOCP와 다른 점] IOCP는 WSASend를 "걸어두고" 완료 통지를 기다렸다. 여기서는 writev가
+//   그 자리에서 보낸 바이트를 돌려주므로 제출과 완료가 한 호출에서 끝난다. 그래서 골격의
+//   슬롯 링·_sendInFlight(다중 pending 장부)를 쓰지 않는다 — 이미 끝난 일을 적을 곳이 없다.
+//
+//   [부분 전송] 커널 송신 버퍼가 차면 writev가 요청보다 적게 보내거나 EAGAIN을 준다.
+//   그때만 EPOLLOUT을 걸어 "보낼 수 있게 되면 알려 달라"고 부탁하고, 다 보내면 즉시 해제한다.
+//   평시에 EPOLLOUT을 걸어 두면 보낼 것이 없어도 통지가 계속 와 워커가 헛돈다.
+void CIOCPServer::EpollSendSession(CSession* session)
 {
-    (void)session;
-    (void)sessionId;
+    if (!AcquireSession(session))
+        return;
+
+    // 제출 구간 계산과 실제 전송을 한 스레드로 직렬화한다.
+    //   게임 스레드(flush)와 epoll 워커(EPOLLOUT)가 같은 세션을 동시에 만질 수 있어,
+    //   이 잠금이 없으면 두 writev가 링의 같은 구간을 겹쳐 보낼 수 있다(순서 붕괴).
+    if (InterlockedExchange(&session->_sendSubmitBusy, TRUE) == TRUE)
+    {
+        _monitor._sendContention.Inc();
+        IOCountDecrement(session);
+        return;
+    }
+
+    bool wantMore = false;      // 아직 남았다 → EPOLLOUT 유지/등록
+    bool disconnect = false;
+
+    while (true)
+    {
+        if (session->_disconnecting == TRUE)
+            break;
+
+        auto info = session->_sendQ.GetSubmitInfo();
+        if (info.size == 0)
+            break;                                  // 보낼 것 없음
+
+        const Platform::NetSocket sock = session->_socket;
+        if (sock == Platform::kInvalidSocket)
+        {
+            disconnect = true;
+            break;
+        }
+
+        // 링이 감긴 경우 두 조각을 한 번의 syscall로 보낸다 (IOCP가 WSABUF 2개를 쓰던 것과 같은 이유).
+        iovec iov[2];
+        int iovCount = 0;
+        iov[0].iov_base = info.submitPtr;
+        iov[0].iov_len  = info.directSize;
+        iovCount = 1;
+        if (info.size > info.directSize)
+        {
+            iov[1].iov_base = session->_sendQ._buffer;          // 링 시작으로 감긴 뒷부분
+            iov[1].iov_len  = info.size - info.directSize;
+            iovCount = 2;
+        }
+
+        const ssize_t n = ::writev(sock, iov, iovCount);
+
+        if (n > 0)
+        {
+            _monitor._wsaSendCalls.Inc();
+            _monitor._sendBytes.Add(static_cast<LONG64>(n));
+
+            // 제출 경계와 읽기 위치를 함께 전진 — 즉시 완료 모델이라 두 단계가 붙어 있다.
+            session->_sendQ.MarkSubmitted(static_cast<size_t>(n));
+            session->_sendQ.ConsumeSubmitted(static_cast<size_t>(n));
+
+            if (static_cast<size_t>(n) < info.size)
+            {
+                wantMore = true;                    // 커널 버퍼가 찼다 — 나머지는 EPOLLOUT 뒤에
+                break;
+            }
+            continue;                               // 다 보냈다 — 그 사이 더 쌓였을 수 있다
+        }
+
+        if (n < 0)
+        {
+            const int err = Platform::LastSocketError();
+            if (Platform::WouldBlock(err))
+            {
+                wantMore = true;                    // 지금은 못 보낸다 — 정상
+                break;
+            }
+            if (err == EINTR)
+                continue;
+
+            SLOG_ERROR("[Network] writev failed: {}", err);
+            disconnect = true;
+            break;
+        }
+
+        break;                                      // n == 0 — 보낼 것이 없었다
+    }
+
+    InterlockedExchange(&session->_sendSubmitBusy, FALSE);
+
+    if (!disconnect)
+        EpollUpdateWriteInterest(session, wantMore);
+
+    IOCountDecrement(session);
+
+    if (disconnect)
+        RequestDisconnectSession(session);
 }
 
-// 틱 끝 dirty 배치 → 송신 — 4-G에서 채운다.
+// EPOLLOUT 관심 등록/해제 — 보낼 것이 남았을 때만 켠다.
+void CIOCPServer::EpollUpdateWriteInterest(CSession* session, bool wantWrite)
+{
+    if (session->_epollWantWrite == wantWrite)
+        return;                                     // 상태가 같으면 syscall을 아낀다
+
+    const Platform::NetSocket sock = session->_socket;
+    if (sock == Platform::kInvalidSocket)
+        return;
+
+    epoll_event ev{};
+    ev.events   = EPOLLIN | EPOLLRDHUP | (wantWrite ? EPOLLOUT : 0u);
+    ev.data.ptr = session;
+
+    if (::epoll_ctl(_epollFd, EPOLL_CTL_MOD, sock, &ev) == 0)
+        session->_epollWantWrite = wantWrite;
+}
+
+// SendFlush::Immediate — 호출 스레드에서 곧바로 내보낸다.
+void CIOCPServer::TransportSendImmediate(CSession* session, int64_t sessionId)
+{
+    (void)sessionId;
+    EpollSendSession(session);
+}
+
+// 틱 끝 dirty 배치 → 송신 (게임 스레드 단독 호출)
+//   [코얼레싱] 틱 동안 쌓인 것을 세션당 한 번의 writev로 내보낸다. 이 묶음이 syscall 수를
+//   결정하므로, 모델이 IOCP든 epoll이든 유지할 가치가 있는 구조다.
 void CIOCPServer::TransportFlushDirty()
 {
+    for (CSession* session : _dirtySessions)
+    {
+        session->_sendDirty = false;                // 게임 스레드 단독 접근
+        EpollSendSession(session);
+    }
     _dirtySessions.clear();
 }
 
@@ -242,7 +373,9 @@ void CIOCPServer::EpollWorkerThread(int workerIndex)
             if (flags & EPOLLIN)
                 EpollHandleReadable(session);
 
-            // 쓰기 준비(EPOLLOUT) — 4-G에서 송신 경로를 채운다.
+            // 쓰기 준비 — 커널 송신 버퍼에 자리가 생겼다. 남은 구간을 이어서 보낸다.
+            if (flags & EPOLLOUT)
+                EpollSendSession(session);
         }
 
         if (monitorIndex >= 0 && monitorIndex < CMonitorManager::MAX_WORKER_THREADS)
