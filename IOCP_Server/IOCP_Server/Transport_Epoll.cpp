@@ -179,12 +179,24 @@ void CIOCPServer::TransportFlushDirty()
 //   등록을 빼고 shutdown으로 상대에게 알리면, 남은 통지는 워커가 정리한다.
 bool CIOCPServer::TransportRequestDisconnect(CSession* session)
 {
-    const Platform::NetSocket sock = session->_socket;
-    if (sock == Platform::kInvalidSocket)
+    // 다른 스레드가 이미 처리 중이면 여기서 멈춘다 (IOCP 팔과 같은 게이트).
+    if (InterlockedExchange(&session->_disconnecting, TRUE) == TRUE)
         return false;
 
-    ::epoll_ctl(_epollFd, EPOLL_CTL_DEL, sock, nullptr);   // 더 이상 통지받지 않는다
-    ::shutdown(sock, SHUT_RDWR);
+    const Platform::NetSocket sock = session->_socket;
+    if (sock != Platform::kInvalidSocket)
+    {
+        ::epoll_ctl(_epollFd, EPOLL_CTL_DEL, sock, nullptr);   // 더 이상 통지받지 않는다
+        ::shutdown(sock, SHUT_RDWR);                           // 상대에게 종료를 알린다
+    }
+
+    // [IOCP와 결정적으로 다른 곳]
+    //   IOCP는 CancelIoEx가 걸려 있던 I/O를 실패로 완료시키고, 그 완료를 받은 워커가
+    //   IOCountDecrement를 불러 IOCount를 0으로 수렴시킨다 — 즉 "완료 통지"가 ref를 놓는다.
+    //   epoll에는 걸린 I/O가 없어 그런 통지가 영영 오지 않는다. 세션을 만들 때 세운
+    //   IOCount=1은 여기서는 "epoll에 등록되어 있다"는 뜻이므로, 등록을 빼는 이 자리에서
+    //   직접 놓아 준다. 위의 _disconnecting 게이트가 이 경로를 한 번만 통과시킨다.
+    IOCountDecrement(session);
     return true;
 }
 

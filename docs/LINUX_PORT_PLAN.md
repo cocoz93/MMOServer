@@ -415,8 +415,28 @@ Windows IOCP 서버를 리눅스로 옮기는 작업의 남은 순서.
   - 남김(스텁): `PostRecv`(4-F), `TransportSubmitSegment`·`TransportSendImmediate`·`TransportFlushDirty`(4-G)
   - **IOCP와 다른 점 하나**: 종료 시 IOCP는 `PostQueuedCompletionStatus`로 워커를 깨웠지만 epoll엔 그런 "가짜 완료"가 없다. `epoll_wait`에 100ms 타임아웃을 줘 주기적으로 `_running`을 확인하게 했다
 
-- [ ] **4-E** 세션 관리 이식 — 인덱스 스택·uniqueId·refcount. 대부분 그대로 옮겨진다
-  - **판정** → 붙었다 끊기를 반복해도 세션 슬롯이 새지 않음(생성/소멸 카운트 일치)
+- [x] **4-E** 세션 관리 이식 — **완료 (2026-08-03)**
+  - **판정 결과**: 슬롯 누수 없음
+
+    | 시나리오 | created | destroyed | count | accept_failed |
+    |---|---|---|---|---|
+    | 접속·해제 **100회 반복** | 100 | 100 | **0** | 0 |
+    | **동시 20개** 접속 중 | 20 | 0 | 20 | 0 |
+    | 동시 20개 해제 후 | 20 | 20 | **0** | 0 |
+
+  - 세션 관리 코드(인덱스 스택·uniqueId·refcount)는 골격에 있어 **한 줄도 옮기지 않았다**. 대신 수명의 마지막 고리 하나가 빠져 있었고, 그걸 찾아 채운 것이 이번 페이즈다
+
+  > **결함: 끊어도 세션이 반환되지 않았다 (created 1 / destroyed 0 / count 1)**
+  >
+  > 4-D 뼈대는 클라가 붙는 것까지만 봤는데, 지표를 보니 **끊어도 슬롯이 그대로 남았다**. 100명이 들락날락하면 슬롯이 말라 접속을 못 받게 되는 결함이다.
+  >
+  > 원인은 두 모델의 ref 반환 주체가 다르다는 데 있었다.
+  > - **IOCP**: `CancelIoEx`가 걸려 있던 I/O를 실패로 완료시키고, 그 **완료 통지를 받은 워커**가 `IOCountDecrement`를 부른다 → IOCount가 0으로 수렴 → `ReleaseSession`
+  > - **epoll**: 걸린 I/O가 없으니 그런 통지가 **영영 오지 않는다**. `Initialize`가 세운 `IOCount=1`을 아무도 놓지 않아 세션이 영구히 사용 중으로 남는다
+  >
+  > epoll에서 `IOCount=1`의 의미는 "pending I/O 하나"가 아니라 **"epoll에 등록되어 있다"**다. 그래서 등록을 빼는 `TransportRequestDisconnect`에서 직접 `IOCountDecrement`를 부르도록 했다. `InterlockedExchange(_disconnecting)` 게이트가 이 경로를 한 번만 통과시킨다(IOCP 팔과 같은 방식).
+  >
+  > **이 차이는 4-F·4-G에도 그대로 적용된다** — epoll 경로에서는 "완료가 ref를 놓는다"는 IOCP의 전제를 쓸 수 없다. 수신·송신을 채울 때 ref 증감의 짝을 각 자리에서 명시적으로 맞춰야 한다.
 
 - [ ] **4-F** 수신 경로 — 링버퍼 + 패킷 분해
   - **판정** → 클라가 보낸 패킷이 게임 로직까지 도달(에코 모드로 확인)
