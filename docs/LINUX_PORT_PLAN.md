@@ -78,7 +78,7 @@ Windows IOCP 서버를 리눅스로 옮기는 작업의 남은 순서.
 
 ---
 
-## 1. LockFree 포팅
+## 1. LockFree 포팅 — ✅ 완료 (2026-08-03)
 
 브랜치 코드가 리눅스에서 **컴파일되게** 만드는 단계. 동작 검증은 2단계에서 한다.
 
@@ -176,8 +176,19 @@ Windows IOCP 서버를 리눅스로 옮기는 작업의 남은 순서.
   > 새 타겟이 `LockFreeConfig.cpp`를 통해 `CrashDump.h`를 끌어오면서, 시그널 핸들러의 `::write()` 반환값 무시가 `warn_unused_result` 경고로 드러났다. 3단계 대상 파일이지만 지금 처리했다 — 경고가 쌓이면 정작 봐야 할 새 경고가 묻힌다.
   > 핸들러 안에서는 write 실패를 복구할 길이 없으므로 `WriteRaw()` 헬퍼로 감싸 "의도적으로 버린다"를 코드로 남겼다. Windows 경로(`#ifdef _WIN32`)는 건드리지 않았다.
 
-- [ ] **1-F** Windows 회귀 확인 `[회귀빌드]`
-  - **판정** → `IOCP_Server.sln` Release 재빌드 **경고0 오류0 불변** (IOCP 팔·RIO 팔 양쪽)
+- [x] **1-F** Windows 회귀 확인 `[회귀빌드]` — **완료 (2026-08-03). 1단계 졸업**
+  - **판정 결과**: Release 전체 재빌드 **IOCP 팔 경고0 오류0 / RIO 팔 경고0 오류0**. `BuildConfig.h` 원복 확인
+  - 판정 범위 밖이지만 **실제 기동까지 확인**했다 — LockFree는 서버가 뜰 때 메모리 풀을 잡는 자리(`CSerialBuffer::_TlsMsgFreeList->Init(maxClients*2)` = 12,000노드 사전 할당)라, 빌드만으로는 이식이 멀쩡한지 알 수 없다. 초기화 실패 로그 없이 `Server started`까지 도달
+  - Windows 쪽에서 실제로 바뀐 것은 include 경로 한 줄(`InternalFreeList.h`)뿐이고, 빌드가 통과했다는 것 자체가 `LockFreeCompat.h`가 제대로 끼어들어 `windows.h`/`intrin.h`를 공급했다는 증거다(안 끼었으면 `HANDLE`·`Interlocked*`를 못 찾아 깨진다)
+
+---
+
+### 1단계 결산 — LockFree 포팅 완료 (2026-08-03)
+
+- 자료구조 코드는 **한 줄도 고치지 않았다**. 바뀐 것은 `InternalFreeList.h`의 include 한 줄과, 새로 만든 `LockFreeCompat.h` 하나뿐
+- 어댑터가 덮은 범위: 원자연산 5종 / 힙 API 5종 / 정렬 할당 2종 / TLS 5종 / 스레드 양보 1종 / 타입 별칭 9개 / 컴파일러 지시자 4개
+- **가장 큰 소득은 `__atomic` → `__sync` 전환**이다. 그냥 갔으면 16바이트 CAS가 libatomic 호출로 내려가 핫패스마다 PLT를 타면서도 아무도 몰랐을 것이다. 6단계 비교에서 리눅스만 불리해진 채 "epoll이 느리다"는 잘못된 결론이 나올 뻔했다
+- **조사 방식의 교훈**: 심볼 grep은 4회 연속 누락을 냈고 컴파일러가 한 번에 다 잡았다. 4-A에서 반복하지 말 것
 
 ---
 
