@@ -82,30 +82,61 @@ Windows IOCP 서버를 리눅스로 옮기는 작업의 남은 순서.
 
 브랜치 코드가 리눅스에서 **컴파일되게** 만드는 단계. 동작 검증은 2단계에서 한다.
 
-- [ ] **1-A** 남은 Windows 심볼 전수 조사 — `Interlocked*` / `__forceinline` / `INT64`·`LONG64` / `windows.h`
-  - 실측 사전조사 (2026-08-03, `MyGit/LockFree/LockFree_Test/LockFree/`):
-    - `windows.h` **직접 include는 `InternalFreeList.h:8` 한 곳뿐**. 나머지 3개 헤더는 이걸 타고 들어온다
-    - 그러나 **Interlocked 호출은 4개 헤더에 20개** — `CompareExchange128` 8 / `IncrementPointer` 계열(`CompareExchangePointer`) 2 / `Increment64` 5 / `Decrement64` 3 / **`Decrement16` 2**
-    - CAS128 분포: `LockFreeQueue.h` 6 / `LockFreeStack.h:219` 1 / `InternalFreeList.h:284` 1
-    - 여기에 `INT64`·`LONG64` 타입과 `__forceinline`이 네 헤더 전반에 흩어져 있다
-  - 조사에서 확인할 것: 위 수치가 지금도 맞는지, `Decrement16`이 걸린 필드의 실제 타입(16비트 원자연산이라 어댑터가 따로 필요)
-  - **판정** → 심볼별 위치·개수 목록이 이 문서에 기록됨 (조사만, 코드 수정 없음)
+- [x] **1-A** 남은 Windows 심볼 전수 조사 — **완료 (2026-08-03)**. 아래가 조사 결과이자 1-B~1-D의 작업 목록이다
 
-- [ ] **1-B** `LockFreeCompat.h` 신설 — 어댑터 **5종** + 타입 별칭 + `__forceinline` 매크로
+  대상: `MyGit/LockFree/LockFree_Test/LockFree/` 헤더 4개 (`InternalFreeList.h` / `ExternalTlsFreeList.h` / `LockFreeQueue.h` / `LockFreeStack.h`)
+
+  **① `windows.h` 직접 include — 1곳**: `InternalFreeList.h:8`. 나머지 3개 헤더는 이걸 타고 들어온다
+
+  **② Interlocked 호출 — 18곳** (텍스트 등장은 20곳이지만 2곳이 코드가 아니다: `ExternalTlsFreeList.h:75` 주석, `LockFreeQueue.h:166-167` assert 메시지 문자열)
+
+  | 종류 | 호출 | 위치 |
+  |---|---|---|
+  | `CompareExchange128` | **7** | `Queue` 318·343·352·429·452 / `Stack` 219 / `InternalFreeList` 284 |
+  | `Increment64` | 5 | `ExternalTls` 57 / `InternalFreeList` 230·252 / `Queue` 368 / `Stack` 185 |
+  | `Decrement64` | 3 | `InternalFreeList` 310 / `Queue` 476 / `Stack` 242 |
+  | `CompareExchangePointer` | 2 | `InternalFreeList` 210 / `Stack` 167 |
+  | `Decrement16` | **1** | `ExternalTls` 255 |
+
+  - **정정 2건**: 이전 기록의 "Interlocked 20곳"과 "CAS128 8곳, Queue 6"은 둘 다 텍스트 등장을 센 것이다. `LockFreeQueue.h:166-167`은 호출이 아니라 **정렬 검사 assert의 메시지 문자열**이고, `ExternalTlsFreeList.h:75`는 주석이다. 실제 호출은 **총 18곳, CAS128 7곳(Queue 5)**
+  - `Decrement16` 대상 필드는 `ExternalTlsFreeList.h:71`의 **`alignas(64) volatile SHORT FreeCount`** — 16비트 부호있는 정수다
+
+  **③ Windows 힙 API — 6곳, `InternalFreeList.h`에 집중** ← *어댑터로 못 덮는다. 1-C 참조*
+  - `HeapCreate` 120 / `HeapSetInformation`(저단편화 힙 켜기) 130 / `HeapAlloc` 242 / `HeapFree` 166 / `HeapDestroy` 170 / `HANDLE hHeap` 331
+
+  **④ 기타 Windows 전용 매크로·함수**
+  - `__fastfail(FAST_FAIL_INVALID_ARG)` 3곳 — `ExternalTls` 247·250 / `InternalFreeList` 188 → `__builtin_trap()`
+  - `YieldProcessor()` 2곳 — `InternalFreeList` 77 / `Queue` 90 → `__builtin_ia32_pause()`
+  - `__declspec(noinline)` 1곳 — `InternalFreeList` 236 → `__attribute__((noinline))`
+  - `UINT_PTR` 1곳 — `Queue` 166 → `uintptr_t`
+
+  **⑤ 스칼라 타입** — `INT64` 43회(`Queue` 25 / `InternalFreeList` 9 / `Stack` 7 / `ExternalTls` 2), `LONG64` 9회(`ExternalTls` 6 / `InternalFreeList` 3), `SHORT` 2회, `__forceinline` 5회
+
+- [ ] **1-B** `LockFreeCompat.h` 신설 — 원자연산 어댑터 5종 + 타입 별칭 + 매크로
   - 어댑터로 감싸는 이유는 호출부를 안 고치기 위해서다. CAS128은 MSVC판이 128비트를 `high`/`low` 64비트 둘로 쪼개 받고 GCC판은 128비트 값 하나로 받는데, `__atomic_compare_exchange_n`이 expected를 in/out으로 받아 시맨틱은 그대로 맞는다
-  - **주의**: 어댑터는 CAS128 하나가 아니다. `CompareExchangePointer` / `Increment64` / `Decrement64` / **`Decrement16`(16비트)** 까지 다섯 종류이고, `INT64`·`LONG64` 별칭과 `__forceinline`(→ `__attribute__((always_inline)) inline`)도 함께 필요하다
-  - 16바이트 정렬 요건은 이미 코드에 있다 (`LockFreeQueue.h:69` `alignas(16)`)
+  - 어댑터 5종: `CompareExchange128`(7곳) / `Increment64`(5) / `Decrement64`(3) / `CompareExchangePointer`(2) / **`Decrement16`(1, `volatile SHORT` 대상)**
+  - 함께 필요한 것: `INT64`·`LONG64`·`SHORT`·`UINT_PTR` 별칭, `__forceinline`·`__declspec(noinline)` 매크로, `__fastfail`·`YieldProcessor` 대체
+  - 16바이트 정렬 요건은 이미 코드에 있다 (`LockFreeQueue.h:69` `alignas(16)`), 검사 assert도 이미 있다 (`:166`)
   - **함정**: `-mcx16`이 없으면 GCC가 `cmpxchg16b` 대신 libatomic **뮤텍스 폴백**으로 조용히 내려간다. 락프리인 줄 알고 락을 쓰게 된다 → `static_assert(__atomic_always_lock_free(16, 0))`로 컴파일 단계에서 막을 것
   - **판정** → 헤더 단독 컴파일 통과 + `-mcx16` 뺀 빌드에서 static_assert가 실제로 걸리는지 확인
 
-- [ ] **1-C** `InternalFreeList.h:8`의 `windows.h` 제거 + 4개 헤더의 Windows 심볼을 어댑터로 치환
+- [ ] **1-C** Windows 힙 API 대체 ← **설계 선택이 필요하다. 혼자 정하지 말 것**
+  - `CInternalFreeList`는 **전용 힙**(`HeapCreate`)을 만들어 노드를 거기서만 할당한다. 리눅스엔 "프로세스 안에 격리된 힙"이라는 개념이 없어 1:1 치환이 안 된다
+  - 게다가 `HeapSetInformation(..., HeapCompatibilityInformation, 2)`는 **저단편화 힙(LFH)을 켜는 코드**라 성능 의도가 실려 있다. 단순 `malloc` 치환은 할당 성능이 달라질 수 있고, 그러면 6단계 IOCP vs epoll 비교에 변인이 하나 섞인다
+  - 선택지 (실제 착수 시 사용자에게 확인):
+    - **(a) `malloc`/`free` 단순 치환** — 가장 짧다. glibc malloc도 스레드별 아레나가 있어 실용상 충분할 수 있으나, 성능 동등성은 측정 전엔 모른다
+    - **(b) 리눅스에서도 전용 아레나 유지** — `mmap` 기반 청크 할당기를 직접 둔다. Windows 동작에 가깝지만 새 코드가 늘고, 그 코드 자체가 검증 대상이 된다
+    - **(c) 힙 계층을 아예 걷어내고 상위 풀에 맡김** — 이 자료구조가 이미 프리리스트 풀이라 중복일 수 있다. 다만 Windows 동작도 함께 바뀌므로 회귀 위험이 가장 크다
+  - **판정** → 선택한 방식으로 리눅스 컴파일 통과 + Windows 경로 **무변경**(`#ifdef`로 기존 힙 코드 보존)
+
+- [ ] **1-D** `InternalFreeList.h:8`의 `windows.h` 제거 + 4개 헤더의 Windows 심볼을 어댑터로 치환
   - `SerialBuffer.h`가 `LockFreeConfig.h`(`:39~42`)를 타고 이 헤더들을 끌어오므로, 여기가 막히면 서버 본체도 리눅스에서 안 열린다
   - **판정** → 리눅스에서 LockFree 헤더 4개 컴파일 통과
 
-- [ ] **1-D** CMake에 LockFree 경로·`-mcx16` 반영 (UNIX 분기)
+- [ ] **1-E** CMake에 LockFree 경로·`-mcx16` 반영 (UNIX 분기)
   - **판정** → `cmake --build` 로 LockFree를 쓰는 TU가 컴파일됨
 
-- [ ] **1-E** Windows 회귀 확인 `[회귀빌드]`
+- [ ] **1-F** Windows 회귀 확인 `[회귀빌드]`
   - **판정** → `IOCP_Server.sln` Release 재빌드 **경고0 오류0 불변** (IOCP 팔·RIO 팔 양쪽)
 
 ---
