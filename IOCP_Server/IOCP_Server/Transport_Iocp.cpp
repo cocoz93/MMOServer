@@ -13,23 +13,7 @@
 #include <cassert>
 
 #include "CoreAffinity.h"
-
-// affinity로 제한된 프로세스의 가용 논리코어 수를 센다 (마스크의 set 비트 수).
-// affinity 미적용이면 시스템 전체 논리코어 수로 폴백.
-// main에서 SetProcessAffinityMask 이후 Start()에서 호출되므로 정확한 값을 반환한다.
-static int ResolveServerCoreCount()
-{
-    DWORD_PTR procMask = 0, sysMask = 0;
-    if (GetProcessAffinityMask(GetCurrentProcess(), &procMask, &sysMask) && procMask != 0)
-    {
-        int count = 0;
-        for (DWORD_PTR m = procMask; m != 0; m &= (m - 1))
-            ++count;
-        if (count > 0)
-            return count;
-    }
-    return static_cast<int>(std::thread::hardware_concurrency());
-}
+#include "Platform/Platform.h"   // 코어 수 산정·스레드 CPU 측정 (OS별 구현은 이 경계 뒤)
 
 // ============================================================================
 // 전송 계층 경계 — 공통 골격이 위임하는 지점 (선언은 IOCPServer.h)
@@ -50,7 +34,8 @@ bool CIOCPServer::TransportPreListen()
 {
     // 워커 수·IOCP concurrency 산정 — affinity로 제한된 가용 코어 수가 단일 기준.
     // (INI WorkerThreads>0이면 워커 수만 그 값으로 오버라이드, concurrency는 코어 수 유지)
-    _coreCount = ResolveServerCoreCount();
+    // main에서 프로세스 affinity를 건 "뒤"에 호출되므로 제한된 코어 수가 정확히 잡힌다.
+    _coreCount = Platform::GetAvailableCoreCount();
     _workerThreadCount = (_configuredWorkers > 0) ? _configuredWorkers : _coreCount;
 
     // IOCP 핸들 생성 — NumberOfConcurrentThreads = 가용 코어 수 (동시 실행 워커 상한)
