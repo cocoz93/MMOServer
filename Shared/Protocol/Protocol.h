@@ -203,13 +203,18 @@ struct MSG_S2C_DELETE_PLAYER
 // 채팅
 //==================================================
 
-constexpr int32_t CHAT_MSG_MAX_LEN = 512; // wchar_t 기준 글자 수 (1024바이트)
+// 채팅 문자 타입 — 폭이 OS마다 달라지면 안 되므로 char16_t로 고정한다.
+//   wchar_t는 Windows 2바이트 / 리눅스 4바이트라, 그대로 쓰면 같은 구조체가 OS마다
+//   다른 크기가 되어 와이어 포맷이 어긋난다(Windows 클라 ↔ 리눅스 서버가 깨진다).
+//   Windows에서는 원래 2바이트였으므로 이 교체로 와이어 포맷은 바뀌지 않는다.
+using ChatChar = char16_t;
+constexpr int32_t CHAT_MSG_MAX_LEN = 512; // ChatChar 기준 글자 수 (1024바이트, 양 OS 동일)
 
 // C2S: 채팅 메시지
 struct MSG_C2S_CHAT
 {
     MsgHeader header;
-    wchar_t message[CHAT_MSG_MAX_LEN];
+    ChatChar message[CHAT_MSG_MAX_LEN];
 };
 
 // S2C: 채팅 메시지 (발신자 정보 포함)
@@ -220,7 +225,7 @@ struct MSG_S2C_CHAT
     int32_t playerId;     // 발신자
     uint8_t displayChar;  // 발신자 표시 문자
     uint8_t colorIndex;   // 발신자 색상 인덱스
-    wchar_t message[CHAT_MSG_MAX_LEN];
+    ChatChar message[CHAT_MSG_MAX_LEN];
 
     MSG_S2C_CHAT() : header{ sizeof(*this), TYPE }, playerId(0), displayChar('A'), colorIndex(0), message{} {}
 };

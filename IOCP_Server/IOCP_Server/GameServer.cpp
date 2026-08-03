@@ -184,7 +184,7 @@ namespace
 
     // 가변 길이 — message는 고정배열/문자열이라 SetData(raw). msgLen은 null 제외 글자 수.
     CSerialBuffer* MakeChat(int32_t playerId, uint8_t displayChar, uint8_t colorIndex,
-                             wchar_t* message, uint16_t msgLen)
+                             ChatChar* message, uint16_t msgLen)
     {
         CSerialBuffer* buf = CSerialBuffer::Alloc();
         BeginPacket(buf, MSG_S2C_CHAT::TYPE);
@@ -192,10 +192,10 @@ namespace
         *buf << static_cast<uint8_t>(displayChar);
         *buf << static_cast<uint8_t>(colorIndex);
         buf->SetData(reinterpret_cast<char*>(message),
-            (msgLen + 1) * sizeof(wchar_t));               // message (가변, null 포함, raw)
+            (msgLen + 1) * sizeof(ChatChar));              // message (가변, null 포함, raw)
         FinalizePacket(buf);
         assert(buf->GetDataSize() ==
-            offsetof(MSG_S2C_CHAT, message) + (msgLen + 1) * sizeof(wchar_t));
+            offsetof(MSG_S2C_CHAT, message) + (msgLen + 1) * sizeof(ChatChar));
         return buf;
     }
 
@@ -847,7 +847,7 @@ uint16_t CGameServer::GetExpectedSize(MsgType type)
     {
     case MsgType::C2S_MOVE_START:   return sizeof(MSG_C2S_MOVE_START);
     case MsgType::C2S_MOVE_STOP:    return sizeof(MSG_C2S_MOVE_STOP);
-    case MsgType::C2S_CHAT:         return sizeof(MsgHeader) + sizeof(wchar_t); // 가변 길이: 최소 1글자
+    case MsgType::C2S_CHAT:         return sizeof(MsgHeader) + sizeof(ChatChar); // 가변 길이: 최소 1글자
     case MsgType::C2S_ZONE_CHANGE:  return sizeof(MSG_C2S_ZONE_CHANGE);
     case MsgType::C2S_HEARTBEAT:    return sizeof(MSG_C2S_HEARTBEAT);
     case MsgType::C2S_ADMIN_LOGIN:  return sizeof(MSG_C2S_ADMIN_LOGIN);
@@ -1040,8 +1040,8 @@ void CGameServer::RecvChat(CPlayer* player, CSerialBuffer* pMsg)
 
     // 메시지 길이 계산 (바이트 → wchar_t 글자 수)
     uint16_t msgBytes = recvSize - sizeof(MsgHeader);
-    msgBytes -= msgBytes % sizeof(wchar_t);  // wchar_t 경계 정렬 (홀수 바이트 방어)
-    uint16_t msgLen = msgBytes / sizeof(wchar_t);
+    msgBytes -= msgBytes % sizeof(ChatChar);  // 문자 경계 정렬 (홀수 바이트 방어)
+    uint16_t msgLen = msgBytes / sizeof(ChatChar);
     if (msgLen > CHAT_MSG_MAX_LEN - 1)
         msgLen = CHAT_MSG_MAX_LEN - 1;
     recvMsg.message[msgLen] = L'\0';  // null 종단 보장
