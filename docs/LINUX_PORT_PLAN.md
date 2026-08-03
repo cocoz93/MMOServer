@@ -112,13 +112,27 @@ Windows IOCP 서버를 리눅스로 옮기는 작업의 남은 순서.
 
   **⑤ 스칼라 타입** — `INT64` 43회(`Queue` 25 / `InternalFreeList` 9 / `Stack` 7 / `ExternalTls` 2), `LONG64` 9회(`ExternalTls` 6 / `InternalFreeList` 3), `SHORT` 2회, `__forceinline` 5회
 
-- [ ] **1-B** `LockFreeCompat.h` 신설 — 원자연산 어댑터 5종 + 타입 별칭 + 매크로
-  - 어댑터로 감싸는 이유는 호출부를 안 고치기 위해서다. CAS128은 MSVC판이 128비트를 `high`/`low` 64비트 둘로 쪼개 받고 GCC판은 128비트 값 하나로 받는데, `__atomic_compare_exchange_n`이 expected를 in/out으로 받아 시맨틱은 그대로 맞는다
-  - 어댑터 5종: `CompareExchange128`(7곳) / `Increment64`(5) / `Decrement64`(3) / `CompareExchangePointer`(2) / **`Decrement16`(1, `volatile SHORT` 대상)**
-  - 함께 필요한 것: `INT64`·`LONG64`·`SHORT`·`UINT_PTR` 별칭, `__forceinline`·`__declspec(noinline)` 매크로, `__fastfail`·`YieldProcessor` 대체
-  - 16바이트 정렬 요건은 이미 코드에 있다 (`LockFreeQueue.h:69` `alignas(16)`), 검사 assert도 이미 있다 (`:166`)
-  - **함정**: `-mcx16`이 없으면 GCC가 `cmpxchg16b` 대신 libatomic **뮤텍스 폴백**으로 조용히 내려간다. 락프리인 줄 알고 락을 쓰게 된다 → `static_assert(__atomic_always_lock_free(16, 0))`로 컴파일 단계에서 막을 것
-  - **판정** → 헤더 단독 컴파일 통과 + `-mcx16` 뺀 빌드에서 static_assert가 실제로 걸리는지 확인
+- [x] **1-B** `LockFreeCompat.h` 신설 — **완료 (2026-08-03)**. `LockFree_Test/LockFree/LockFreeCompat.h`
+  - **판정 결과**: `-mcx16` 있음 → `-Wall -Wextra` 경고0 컴파일 통과 / `-mcx16` 없음 → `#error`로 차단(exit 1).
+    추가로 시맨틱 단위테스트 **15/15 PASS**(CAS128 성공·실패 양쪽의 반환값과 comparand 갱신, 포인터 CAS의 "교환 전 값" 반환, 증감의 "연산 후 값" 반환, `Decrement16` 16비트 래핑),
+    생성 코드에 **인라인 `lock cmpxchg16b` 2개 / libatomic 호출 0** 확인
+  - 구성: 어댑터 5종(`CompareExchange128` 7곳 / `Increment64` 5 / `Decrement64` 3 / `CompareExchangePointer` 2 / `Decrement16` 1),
+    타입 별칭(`INT64`·`LONG64`·`SHORT`·`PVOID`·`UINT_PTR`, `NULL`·`FALSE`·`TRUE`), 매크로(`__forceinline`·`__declspec`·`__fastfail`·`YieldProcessor`)
+  - **1-A에서 놓친 타입 발견**: `PVOID` 6회(포인터 CAS 인자). 별칭에 포함시켰다
+
+  > **실측으로 뒤집힌 전제 — 16바이트만 `__sync`를 써야 한다** (g++ 13.3, 2026-08-03)
+  >
+  > 원래 계획은 "`__atomic_compare_exchange_n`이 expected를 in/out으로 받아 시맨틱이 맞으니 그걸 쓰고, `-mcx16`으로 뮤텍스 폴백만 막자"였다. 실제 코드 생성을 확인해보니 **틀렸다**.
+  >
+  > | 빌트인 | `-mcx16` 있음 | 없음 |
+  > |---|---|---|
+  > | `__atomic_compare_exchange_n` (16B) | `call __atomic_compare_exchange_16@PLT` | 〃 |
+  > | `__sync_val_compare_and_swap` (16B) | **`lock cmpxchg16b` 인라인** | `call __sync_val_compare_and_swap_16@PLT` |
+  >
+  > - `__atomic_*`는 **`-mcx16`을 줘도 libatomic 함수 호출**이다. 락프리이긴 하지만(libatomic이 내부에서 cmpxchg16b를 쓴다) 핫패스마다 PLT 경유 호출이 붙는다
+  > - 방어막도 `__atomic_always_lock_free(16, 0)`으로는 못 세운다 — GCC가 16바이트를 인라인 처리하지 않아 **`-mcx16` 유무와 무관하게 항상 false**다. 처음 이걸로 짰다가 `-mcx16`을 줬는데도 assert가 걸려서 발각됐다
+  > - 올바른 판별자는 **`__GCC_HAVE_SYNC_COMPARE_AND_SWAP_16`** — `-mcx16`일 때만 정의된다
+  > - 8바이트·16비트·포인터는 `-mcx16` 없이도 `__atomic_*`가 인라인(`lock xaddq`/`lock xaddw`/`lock cmpxchgq`)이라 그대로 뒀다. **16바이트만 예외**다
 
 - [ ] **1-C** Windows 힙 API 대체 ← **설계 선택이 필요하다. 혼자 정하지 말 것**
   - `CInternalFreeList`는 **전용 힙**(`HeapCreate`)을 만들어 노드를 거기서만 할당한다. 리눅스엔 "프로세스 안에 격리된 힙"이라는 개념이 없어 1:1 치환이 안 된다
@@ -134,6 +148,8 @@ Windows IOCP 서버를 리눅스로 옮기는 작업의 남은 순서.
   - **판정** → 리눅스에서 LockFree 헤더 4개 컴파일 통과
 
 - [ ] **1-E** CMake에 LockFree 경로·`-mcx16` 반영 (UNIX 분기)
+  - `-mcx16`은 선택이 아니라 **필수**다. 없으면 `LockFreeCompat.h`가 `#error`로 빌드를 멈춘다(1-B 참조)
+  - libatomic 링크(`-latomic`)는 필요 없다 — 16바이트가 `__sync` 인라인으로 나가므로 외부 호출이 남지 않는다
   - **판정** → `cmake --build` 로 LockFree를 쓰는 TU가 컴파일됨
 
 - [ ] **1-F** Windows 회귀 확인 `[회귀빌드]`
