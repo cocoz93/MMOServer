@@ -348,6 +348,7 @@ private:
 #ifndef _WIN32
     // epoll 워커 — 준비 통지(EPOLLIN/EPOLLOUT)를 받아 처리한다. IOCP의 WorkerThread에 대응.
     void EpollWorkerThread(int workerIndex);
+    void EpollHandleReadable(CSession* session);   // EPOLLIN — 직접 읽어 ProcessRecv로 넘긴다
 #endif
 #if USE_SEND_THREAD && !USE_RIO_TRANSPORT
     void SendWorkerThread(int workerIdx);   // 전용 송신 워커 — 자기 워커의 dirty 배치를 받아 WSASend 수행

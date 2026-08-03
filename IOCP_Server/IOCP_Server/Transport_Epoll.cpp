@@ -239,7 +239,9 @@ void CIOCPServer::EpollWorkerThread(int workerIndex)
                 continue;
             }
 
-            // 읽기 준비 — 4-F에서 수신 경로를 채운다.
+            if (flags & EPOLLIN)
+                EpollHandleReadable(session);
+
             // 쓰기 준비(EPOLLOUT) — 4-G에서 송신 경로를 채운다.
         }
 
@@ -251,11 +253,64 @@ void CIOCPServer::EpollWorkerThread(int workerIndex)
 // ── 4-F/4-G에서 채울 자리 ──
 //   지금은 링크만 되게 두고, 준비 통지를 실제 read/write로 잇는 일은 다음 페이즈에서 한다.
 
-// 수신 착수 — epoll에서는 "걸어두는" 것이 없다. EPOLLIN 통지를 받은 워커가 직접 read를 부른다.
+// 수신 착수 — epoll에는 "걸어두는" 것이 없다. EPOLLIN 통지를 받은 워커가 직접 읽으므로
+//   골격이 이 함수를 불러도 할 일이 없다(IOCP 팔의 재제출에 대응하는 자리).
 void CIOCPServer::PostRecv(CSession* session, bool skipAcquire)
 {
     (void)session;
     (void)skipAcquire;
+}
+
+// EPOLLIN 처리 — 준비된 소켓에서 직접 읽어 골격의 ProcessRecv로 넘긴다.
+//   ProcessRecv가 링버퍼 쓰기 위치 이동과 패킷 분해를 모두 하므로, 여기서는 "몇 바이트 읽었나"만 넘기면 된다.
+void CIOCPServer::EpollHandleReadable(CSession* session)
+{
+    // 처리 중 세션이 반환되지 않도록 pin한다.
+    //   4-E에서 확인했듯 epoll에는 ref를 놓아 주는 완료 통지가 없으므로, 잡고 놓는 짝을
+    //   이 함수가 직접 맞춘다. AcquireSession이 실패하면 이미 정리 중인 세션이다.
+    if (!AcquireSession(session))
+        return;
+
+    while (true)
+    {
+        char* writePtr = session->_recvQ.GetWritePtr();
+        const size_t writable = session->_recvQ.GetDirectWriteSize();
+        if (writable == 0)
+            break;   // 링이 찼다 — 게임 스레드가 비우면 다음 통지에서 이어 읽는다
+
+        const ssize_t n = ::recv(session->_socket, writePtr, writable, 0);
+
+        if (n > 0)
+        {
+            _monitor._wsaRecvCalls.Inc();          // 지표 이름은 양 팔 공용(수신 syscall 횟수)
+            ProcessRecv(session, static_cast<DWORD>(n));
+
+            if (session->_disconnecting == TRUE)
+                break;                              // 파싱이 종료를 유도한 경우
+
+            if (static_cast<size_t>(n) < writable)
+                break;                              // 커널 버퍼를 다 비웠다
+            continue;                               // 꽉 채워 읽었으면 더 남았을 수 있다
+        }
+
+        if (n == 0)
+        {
+            RequestDisconnectSession(session);      // 상대의 우아한 종료(FIN)
+            break;
+        }
+
+        const int err = Platform::LastSocketError();
+        if (Platform::WouldBlock(err))
+            break;                                  // 더 읽을 것이 없다 — 정상 종료 조건
+        if (err == EINTR)
+            continue;                               // 시그널로 끊긴 호출은 재시도
+
+        SLOG_ERROR("[Network] recv failed: {}", err);
+        RequestDisconnectSession(session);
+        break;
+    }
+
+    IOCountDecrement(session);
 }
 
 // 세그먼트 제출 — 4-G에서 write + EPOLLOUT 재등록으로 채운다.
