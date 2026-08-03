@@ -31,7 +31,17 @@
 
 ## V1. 환경·툴체인 (0단계)
 
-- [ ] **V1** 재확인
+- [x] **V1** 재확인 — **통과 (2026-08-04). 회귀 없음**
+
+  | 항목 | 결과 |
+  |---|---|
+  | 툴체인 | g++ 13.3.0 / cmake 3.28.3 / ninja 1.11.1 / libmysqlclient 8.0.46 — 0단계와 동일 |
+  | 형제 배치 | LockFree 헤더 5개 전부 제자리 (`LockFreeCompat.h` 포함) |
+  | configure | 통과 |
+  | **전체 3개 타겟 빌드** | **exit 0, 경고 0, 에러 0** (`mmo_server` 1,424,632B / `lockfree_headers_check` 62,528B / `epoll_echo_poc` 17,496B) |
+  | 근거 대조 | 계획서 0-C의 `LockFreeConfig.h:39` — 실제 39행이 첫 형제경로 include, 정확 |
+
+  0단계를 닫을 때는 타겟이 `epoll_echo_poc` 하나뿐이었는데 지금 3개다. **전부 깨끗하게 빌드된다.**
   - `cmake -S . -B build-linux -G Ninja -DCMAKE_CXX_COMPILER=g++-13` configure 통과
   - g++ 13.3 / cmake 3.28.3 / ninja / libmysqlclient 존재
   - `/mnt/c/.../MyGit` 아래 **LockFree·MMO 형제 배치** (`LockFreeConfig.h`의 상대경로 전제)
