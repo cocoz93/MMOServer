@@ -586,7 +586,7 @@ void CIOCPServer::PostSend(CSession* session)
 #else
 // 미제출 구간을 WSASend 한 번으로 내보낸다 — 랩이 있으면 WSABUF 2개로 함께 보내므로
 //   in-flight 슬롯은 항상 1개만 쓴다 (요청당 버퍼가 1개인 RIO 판과 갈리는 지점).
-int CIOCPServer::TransportSubmitSegment(CSession* session, SOCKET socket,
+int CIOCPServer::TransportSubmitSegment(CSession* session, Platform::NetSocket socket,
                                         const CRingBufferMT::SubmitInfo& info,
                                         int slot, int slotsAvailable, size_t* submittedBytes)
 {

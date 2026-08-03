@@ -448,7 +448,7 @@ void CIOCPServer::EpollHandleReadable(CSession* session)
 
 // 세그먼트 제출 — 4-G에서 write + EPOLLOUT 재등록으로 채운다.
 //   반환값 규약은 IOCP 팔과 같다(제출 바이트 수, 실패는 음수).
-int CIOCPServer::TransportSubmitSegment(CSession* session, SOCKET socket,
+int CIOCPServer::TransportSubmitSegment(CSession* session, Platform::NetSocket socket,
                                         const CRingBufferMT::SubmitInfo& info,
                                         int slot, int slotsAvailable, size_t* submittedBytes)
 {

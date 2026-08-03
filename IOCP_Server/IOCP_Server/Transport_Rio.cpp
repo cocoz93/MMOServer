@@ -624,7 +624,7 @@ void CIOCPServer::PostRecv(CSession* session, bool skipAcquire)
 
 // 미제출 구간의 직선 부분만 내보낸다 — RIO는 요청당 버퍼가 1개다(WSABUF 스캐터 불가).
 //   감긴 꼬리는 완료 후 double-check가 이어 보낸다 (in-flight 슬롯 1개 소비).
-int CIOCPServer::TransportSubmitSegment(CSession* session, SOCKET socket,
+int CIOCPServer::TransportSubmitSegment(CSession* session, Platform::NetSocket socket,
                                         const CRingBufferMT::SubmitInfo& info,
                                         int slot, int slotsAvailable, size_t* submittedBytes)
 {

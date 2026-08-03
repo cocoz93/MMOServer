@@ -395,7 +395,7 @@ private:
     //   IOCP: 직선+랩을 WSABUF 2개로 한 번에 (슬롯 1)
     //   RIO : 요청당 버퍼가 1개라 직선 구간만 (슬롯 1)
     //   *submittedBytes 에 실제 제출한 바이트를 돌려준다.
-    int TransportSubmitSegment(CSession* session, SOCKET socket,
+    int TransportSubmitSegment(CSession* session, Platform::NetSocket socket,
                                const CRingBufferMT::SubmitInfo& info,
                                int slot, int slotsAvailable, size_t* submittedBytes);
 
