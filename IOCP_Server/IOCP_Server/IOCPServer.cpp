@@ -21,7 +21,9 @@ CSession::CSession()
     , _sendSubmitBusy(FALSE)
     , _sendInFlight(0)
 {
+#ifdef _WIN32
     ZeroMemory(&_recvOverlapped.overlapped, sizeof(OVERLAPPED));
+#endif
     _recvOverlapped.operation = IOOperation::RECV;
     ResetSendSlots();
 
@@ -58,7 +60,9 @@ void CSession::Initialize(SOCKET socket, int64_t sessionId)
 #endif
 
     // 세션 고정 Overlapped 방식: IO 요청마다 재사용하므로 요청 전 OVERLAPPED만 초기화한다.
+#ifdef _WIN32
     ZeroMemory(&_recvOverlapped.overlapped, sizeof(OVERLAPPED));
+#endif
     _recvOverlapped.operation = IOOperation::RECV;
     ResetSendSlots();   // 송신 슬롯 링 전체 리셋 (이전 세션의 in-flight 잔재 제거)
 
@@ -87,7 +91,7 @@ void CSession::Close()
     _socket = INVALID_SOCKET;
     if (socket != INVALID_SOCKET)
     {
-        closesocket(socket);
+        Platform::CloseSocket(socket);
     }
 }
 
@@ -193,17 +197,16 @@ bool CIOCPServer::Start()
         _availableIndices.Push(i);
     }
 
-    WSADATA wsaData;
-    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+    if (!Platform::SocketStartup())
     {
-        LOG_ERROR_STREAM("WSAStartup failed");
+        LOG_ERROR_STREAM("Socket library startup failed");
         return false;
     }
 
     // 리슨 소켓 "전" 준비 — IOCP 팔은 완료 포트 핸들이 여기서 필요하다(accept 소켓 바인드 대상).
     if (!TransportPreListen())
     {
-        WSACleanup();
+        Platform::SocketCleanup();
         return false;
     }
 
@@ -211,7 +214,7 @@ bool CIOCPServer::Start()
     if (!CreateListenSocket())
     {
         TransportPreListenCleanup();
-        WSACleanup();
+        Platform::SocketCleanup();
         return false;
     }
 
@@ -254,10 +257,17 @@ bool CIOCPServer::Start()
 
 bool CIOCPServer::CreateListenSocket()
 {
+#ifdef _WIN32
     _listenSocket = WSASocket(AF_INET, SOCK_STREAM, IPPROTO_TCP, NULL, 0, TransportListenFlags());
+#else
+    // 리눅스에는 WSASocket의 플래그(OVERLAPPED/REGISTERED_IO) 개념이 없다.
+    //   비동기 성격은 소켓이 아니라 이벤트 루프(epoll) 쪽에서 정해진다.
+    (void)TransportListenFlags();
+    _listenSocket = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+#endif
     if (_listenSocket == INVALID_SOCKET)
     {
-        const int wsaErr = WSAGetLastError();
+        const int wsaErr = Platform::LastSocketError();
         SLOG_ERROR("WSASocket failed: {}", wsaErr);
         return false;
     }
@@ -270,17 +280,17 @@ bool CIOCPServer::CreateListenSocket()
 
     if (bind(_listenSocket, (SOCKADDR*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR)
     {
-        const int wsaErr = WSAGetLastError();
+        const int wsaErr = Platform::LastSocketError();
         SLOG_ERROR("bind failed: {}", wsaErr);
-        closesocket(_listenSocket);
+        Platform::CloseSocket(_listenSocket);
         return false;
     }
 
     if (listen(_listenSocket, SOMAXCONN_HINT(1024)) == SOCKET_ERROR)
     {
-        const int wsaErr = WSAGetLastError();
+        const int wsaErr = Platform::LastSocketError();
         SLOG_ERROR("listen failed: {}", wsaErr);
-        closesocket(_listenSocket);
+        Platform::CloseSocket(_listenSocket);
         return false;
     }
 
@@ -324,7 +334,7 @@ void CIOCPServer::ShutdownServer()
     // 1. Listen 소켓 닫기 — 새 연결 차단 (AcceptThread 깨움)
     if (_listenSocket != INVALID_SOCKET)
     {
-        closesocket(_listenSocket);
+        Platform::CloseSocket(_listenSocket);
         _listenSocket = INVALID_SOCKET;
     }
 
@@ -367,7 +377,7 @@ void CIOCPServer::ShutdownServer()
     // 4. 모든 IO 정리 완료 — 완료 워커 정지·자원 해제 (팔별)
     TransportStopAfterDrain();
 
-    WSACleanup();
+    Platform::SocketCleanup();
 
     // 타이머 해상도 복원
     Platform::SetHighResolutionTimer(false);
@@ -387,7 +397,11 @@ void CIOCPServer::AcceptThread()
     while (_running == TRUE)
     {
         SOCKADDR_IN clientAddr;
+#ifdef _WIN32
         int addrLen = sizeof(clientAddr);
+#else
+        socklen_t addrLen = sizeof(clientAddr);   // POSIX accept는 socklen_t*를 받는다
+#endif
 
         SOCKET clientSocket = accept(_listenSocket, (SOCKADDR*)&clientAddr, &addrLen);
 
@@ -396,7 +410,7 @@ void CIOCPServer::AcceptThread()
         {
             if (_running == TRUE)
             {
-                const int wsaErr = WSAGetLastError();
+                const int wsaErr = Platform::LastSocketError();
                 LOG_WSA_ERROR_STREAM("accept failed: ", wsaErr);
             }
             continue;
@@ -415,7 +429,7 @@ void CIOCPServer::ProcessAccept(SOCKET clientSocket)
     {
         LOG_ERROR_STREAM("[Error] No free session index available");
         _monitor._acceptFailed.Inc();
-        closesocket(clientSocket);
+        Platform::CloseSocket(clientSocket);
         return;
     }
 

@@ -28,9 +28,90 @@
 #include <atomic>                        // 종료 플래그 (양쪽 공용)
 
 #ifdef _WIN32
+    // WinSock2는 Windows.h보다 먼저 와야 한다(구버전 winsock.h가 딸려와 충돌).
+    //   이 순서를 여기 한 곳에 가두어, 이 헤더를 쓰는 쪽은 순서를 신경 쓰지 않게 한다.
+    #include <WinSock2.h>
+    #include <WS2tcpip.h>
     #include <Windows.h>
     #pragma comment(lib, "winmm.lib")   // timeBeginPeriod / timeEndPeriod
 #else
+    #include <sys/socket.h>              // socket / bind / listen / accept / setsockopt
+    #include <netinet/in.h>              // sockaddr_in / htons
+    #include <netinet/tcp.h>             // TCP_NODELAY
+    #include <arpa/inet.h>               // inet_ntop
+    #include <cerrno>                    // errno (소켓 오류 코드)
+    #include <cstring>                   // memset (ZeroMemory 대체)
+
+    // ── Windows 스칼라 타입·매크로 ──
+    //   서버 코드가 이 이름들로 쓰여 있어(volatile LONG _ioCount 등) 호출부를 고치는 대신 별칭을 준다.
+    //   폭은 Windows 정의를 그대로 따른다 — LONG은 64비트 리눅스에서도 32비트다(LP64의 long과 다름).
+    using LONG      = std::int32_t;
+    using LONGLONG  = long long;   // LockFreeCompat의 LONG64와 같은 타입이어야 한다(LP64에서 int64_t는 long)
+    using BOOL      = int;
+    using ULONG_PTR = std::uintptr_t;
+    using SOCKADDR    = struct sockaddr;
+    using SOCKADDR_IN = struct sockaddr_in;
+    using LINGER      = struct linger;
+
+    // ── 32비트 원자연산 ──
+    //   LockFreeCompat.h는 64비트·16비트만 덮는다(락프리 자료구조가 그 폭만 쓴다).
+    //   서버 골격은 `volatile LONG`(32비트) 상태 플래그를 Interlocked로 다루므로 여기서 채운다.
+    //   전부 "연산 후 값"을 돌려주는 Windows 계열 시맨틱이고, Exchange만 "이전 값"이다.
+    inline LONG InterlockedIncrement(volatile LONG* p)
+    {
+        return __atomic_add_fetch(p, 1, __ATOMIC_SEQ_CST);
+    }
+    inline LONG InterlockedDecrement(volatile LONG* p)
+    {
+        return __atomic_sub_fetch(p, 1, __ATOMIC_SEQ_CST);
+    }
+    inline LONG InterlockedExchange(volatile LONG* p, LONG value)
+    {
+        return __atomic_exchange_n(p, value, __ATOMIC_SEQ_CST);   // 반환은 교환 "전" 값
+    }
+    inline LONG InterlockedCompareExchange(volatile LONG* p, LONG exchange, LONG comparand)
+    {
+        LONG expected = comparand;
+        __atomic_compare_exchange_n(p, &expected, exchange, false,
+                                    __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+        return expected;   // 성공이면 comparand, 실패면 관측된 실제 값 (Windows와 동일)
+    }
+
+    // 밀리초 대기 — Windows Sleep 대체
+    #ifndef Sleep
+        #define Sleep(ms) std::this_thread::sleep_for(std::chrono::milliseconds(ms))
+    #endif
+
+    // listen 백로그 힌트 — Windows 전용 매크로. 리눅스는 값을 그대로 쓴다.
+    #ifndef SOMAXCONN_HINT
+        #define SOMAXCONN_HINT(n) (n)
+    #endif
+    // ULONG/DWORD는 LockFreeCompat.h도 같은 폭(uint32_t)으로 정의한다.
+    //   동일 타입 재선언은 합법이므로 어느 쪽이 먼저 include돼도 문제없다.
+    using ULONG = std::uint32_t;
+    using DWORD = std::uint32_t;
+
+    // 소켓 핸들의 Windows 이름 — 서버 코드가 `SOCKET`으로 쓰여 있어 호출부를 그대로 둔다.
+    //   실체는 Platform::NetSocket과 같은 fd다.
+    using SOCKET = int;
+    #ifndef INVALID_SOCKET
+        #define INVALID_SOCKET (-1)
+    #endif
+    #ifndef SOCKET_ERROR
+        #define SOCKET_ERROR (-1)
+    #endif
+
+    #ifndef TRUE
+        #define TRUE  1
+    #endif
+    #ifndef FALSE
+        #define FALSE 0
+    #endif
+
+    // 메모리 0 채우기 — Windows 매크로 대체
+    #ifndef ZeroMemory
+        #define ZeroMemory(dst, len) std::memset((dst), 0, (len))
+    #endif
     #include <unistd.h>                  // readlink (/proc/self/exe)
     #include <sched.h>                   // sched_setaffinity / CPU_SET
     #include <csignal>                   // sigaction (종료 시그널)
@@ -56,6 +137,57 @@ namespace Platform
     using NetSocket = int;
     inline constexpr NetSocket kInvalidSocket = -1;
 #endif
+
+    // ── 소켓 API ──
+    //   Windows는 WSAStartup/WSACleanup 쌍이 필요하고, 리눅스는 아무것도 필요 없다.
+    inline bool SocketStartup()
+    {
+#ifdef _WIN32
+        WSADATA wsaData;
+        return WSAStartup(MAKEWORD(2, 2), &wsaData) == 0;
+#else
+        return true;
+#endif
+    }
+
+    inline void SocketCleanup()
+    {
+#ifdef _WIN32
+        WSACleanup();
+#endif
+    }
+
+    // 소켓 닫기 — Windows closesocket / 리눅스 close.
+    inline void CloseSocket(NetSocket s)
+    {
+#ifdef _WIN32
+        closesocket(s);
+#else
+        ::close(s);
+#endif
+    }
+
+    // 마지막 소켓 오류 코드. 값 자체는 OS별로 다르므로 "로그에 남기는 용도"로만 쓴다.
+    //   두 OS의 상수를 맞추려 들면 의미가 어긋난다(WSAEWOULDBLOCK vs EAGAIN 등) — 분기가 필요한
+    //   자리는 아래 WouldBlock() 같은 판정 함수를 따로 두는 쪽이 안전하다.
+    inline int LastSocketError()
+    {
+#ifdef _WIN32
+        return WSAGetLastError();
+#else
+        return errno;
+#endif
+    }
+
+    // "지금은 보낼/받을 수 없다"는 뜻인가 — 논블로킹 경로의 정상 상태다.
+    inline bool WouldBlock(int err)
+    {
+#ifdef _WIN32
+        return err == WSAEWOULDBLOCK;
+#else
+        return err == EAGAIN || err == EWOULDBLOCK;
+#endif
+    }
 
     // 시스템 타이머 해상도를 1ms로 올리거나(enable=true) 되돌린다(false).
     //   Windows: timeBeginPeriod/timeEndPeriod(1) — Sleep·대기 정밀도 ~15ms → 1ms.

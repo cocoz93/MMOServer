@@ -366,8 +366,27 @@ Windows IOCP 서버를 리눅스로 옮기는 작업의 남은 순서.
 
   - **다음 단계에서 주의할 점**: 두 OS에서 `NetSocket`의 **크기와 부호가 다르다**(Windows `UINT_PTR` 8바이트 부호없음 / 리눅스 `int` 4바이트 부호있음). 실패 판정도 다르다 — Windows는 `INVALID_SOCKET`(최대값), 리눅스는 `-1`. `sock < 0` 같은 비교를 쓰면 Windows에서 영원히 거짓이 되므로, 판정은 반드시 `kInvalidSocket`과의 등가 비교로 할 것
 
-- [ ] **4-C** `[회귀빌드]` 골격에서 Windows 전용 코드 밀어내기 — `IOCPServer.cpp`가 리눅스에서도 컴파일되는 상태로
-  - **판정** → 리눅스에서 골격 TU 컴파일 통과(링크는 아직 실패해도 됨) + Windows 재빌드 불변
+- [x] **4-C** `[회귀빌드]` 골격에서 Windows 전용 코드 밀어내기 — **완료 (2026-08-03)**
+  - **판정 결과**: 리눅스에서 `IOCPServer.cpp` **컴파일 에러 0**, Windows Release 재빌드 **IOCP 팔·RIO 팔 경고0 오류0**, `BuildConfig.h` 원복 확인
+  - 에러가 줄어든 경과: **148 → 88 → 61 → 46 → 44 → 3 → 0**
+
+  **Platform에 들인 것** (4-A 분류의 ①에 해당)
+  - 소켓 헤더 분기 — `<WinSock2.h>`/`<WS2tcpip.h>`/`<Windows.h>` ↔ `<sys/socket.h>` 계열. **WinSock2가 Windows.h보다 먼저여야 하는 순서 제약을 이 한 곳에 가뒀다**
+  - 소켓 API 4종 — `SocketStartup`/`SocketCleanup`/`CloseSocket`/`LastSocketError`, 그리고 논블로킹 판정용 `WouldBlock`
+  - 스칼라 타입·매크로 — `LONG`/`LONGLONG`/`BOOL`/`ULONG_PTR`/`SOCKADDR(_IN)`/`LINGER`/`SOCKET`, `TRUE`/`FALSE`/`ZeroMemory`/`Sleep`/`SOMAXCONN_HINT`/`INVALID_SOCKET`/`SOCKET_ERROR`
+  - **32비트 원자연산 4종** — `InterlockedIncrement`/`Decrement`/`Exchange`/`CompareExchange`. LockFreeCompat이 64·16비트만 덮어서(락프리 자료구조가 그 폭만 쓴다) 골격의 `volatile LONG` 상태 플래그용으로 새로 필요했다
+
+  **플랫폼 분기로 남긴 것** (②에 해당 — 개념 자체가 없는 것들)
+  - `OverlappedEx`의 `OVERLAPPED` 멤버 — epoll은 "제출하고 완료를 돌려받는" 모델이 아니라 "fd가 준비됐다"는 통지라 대응물이 없다. `operation`/`slot`은 양쪽 공통이라 남겼다
+  - `HandleCompletion` 선언, `WSASocket`(플래그 개념이 리눅스에 없음 → `::socket`), `accept`의 `addrLen`(POSIX는 `socklen_t*`)
+
+  > **버그 하나를 덤으로 잡았다 — `LockFreeCompat.h`의 `ULONG`/`DWORD` 폭**
+  >
+  > `unsigned long`으로 정의돼 있었는데 **리눅스 LP64에서는 64비트**다(Windows는 32비트). 1단계에서는 그 타입이 힙 어댑터 인자로만 쓰여 드러나지 않았지만, 골격이 같은 이름을 쓰면서 `conflicting declaration`으로 터졌다. 양쪽을 `uint32_t`로 통일했다 — Windows 폭과 일치한다.
+  > `LONGLONG`도 처음 `int64_t`로 뒀다가 `LONG64`(=`long long`)와 충돌했다. LP64에서 `int64_t`는 `long`이라 `long long`과 다른 타입이다.
+
+  > **전처리기 분기를 넣다 기존 `#if`를 깨뜨렸다**
+  > `HandleCompletion` 앞에 `#ifdef _WIN32`를 넣었더니, 그 뒤의 `#endif`가 바깥 `#if !USE_RIO_TRANSPORT`를 닫던 것이라 `unterminated #if`가 났다. 조건부 컴파일 안에 또 조건부를 넣을 때는 **닫는 짝을 눈으로 세어볼 것**.
 
 - [ ] **4-D** `Transport_Epoll.cpp` 뼈대 — 리스너 + 워커 스레드 + `epoll_wait` 루프. 연결 수락/해제까지만
   - **판정** → 리눅스에서 서버가 뜨고 클라 1개가 붙었다 끊김 (데이터 교환 없음)

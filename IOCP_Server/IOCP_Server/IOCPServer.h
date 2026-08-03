@@ -2,9 +2,7 @@
 
 #include "BuildConfig.h"  // USE_LOCKFREE_SENDQ 등 빌드 토글 (가장 먼저 include)
 
-#include <WinSock2.h>
-#include <WS2tcpip.h>
-#include <Windows.h>
+#include "Platform/Platform.h"   // 소켓 헤더·핸들 타입·소켓 API 경계 (WinSock2/Windows.h 순서도 여기서 가둔다)
 #include <vector>
 #include <memory>
 #include <thread>
@@ -16,7 +14,6 @@
 #include <array>
 #include <atomic>
 
-#include "Platform/Platform.h"    // Platform::NetSocket — 전송 경계의 소켓 핸들 타입
 #include "../../Shared/RingBuffer.h"
 #include "SerialBuffer.h"
 #include "../../Shared/Protocol/Protocol.h"
@@ -54,10 +51,14 @@ public:
     // 세션에 고정 보관되는 OVERLAPPED 확장 구조체
     struct OverlappedEx
     {
-        OVERLAPPED overlapped;      // 반드시 첫 번째 멤버
+#ifdef _WIN32
+        OVERLAPPED overlapped;      // 반드시 첫 번째 멤버 (완료 통지가 이 주소를 돌려준다)
+#endif
         IOOperation operation;      // I/O 타입 (RECV, SEND, ACCEPT 등)
         int slot = -1;              // [다중 pending 송신] SEND일 때 몇 번 슬롯인가 (RECV는 -1)
     };
+    // epoll은 "제출하고 완료를 돌려받는" 모델이 아니라 "fd가 준비됐다"는 통지라
+    //   OVERLAPPED에 해당하는 것이 없다. 나머지 필드(operation/slot)는 양쪽 공통이다.
 
     explicit CSession();
     virtual ~CSession();
@@ -167,7 +168,9 @@ public:
     {
         for (int i = 0; i < MAX_SEND_DEPTH; ++i)
         {
+#ifdef _WIN32
             ZeroMemory(&_sendSlots[i].ov.overlapped, sizeof(OVERLAPPED));
+#endif
             _sendSlots[i].ov.operation = IOOperation::SEND;
             _sendSlots[i].ov.slot = i;
             _sendSlots[i].bytes = 0;
@@ -336,9 +339,12 @@ private:
     // 완료 1건 처리 — 수거 경로 두 개(GQCS/GQCSEx)가 완전히 같은 판정을 쓰도록 떼어냈다.
     //   ioFailed = GQCS의 result==FALSE에 해당. GQCSEx는 항목별 성공/실패 BOOL을 주지 않아
     //   호출자가 OVERLAPPED::Internal(NTSTATUS)로 만들어 넘긴다.
+#ifdef _WIN32
+    // 완료 통지를 돌려받는 모델은 IOCP뿐이라 Windows 전용이다 (epoll은 4-D에서 별도 경로).
     void HandleCompletion(OVERLAPPED* overlapped, ULONG_PTR completionKey,
                           DWORD bytesTransferred, bool ioFailed, int workerIndex);
-#endif
+#endif  // _WIN32
+#endif  // !USE_RIO_TRANSPORT
 #if USE_SEND_THREAD && !USE_RIO_TRANSPORT
     void SendWorkerThread(int workerIdx);   // 전용 송신 워커 — 자기 워커의 dirty 배치를 받아 WSASend 수행
 #endif
