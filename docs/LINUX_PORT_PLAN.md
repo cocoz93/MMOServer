@@ -457,11 +457,33 @@ Windows IOCP 서버를 리눅스로 옮기는 작업의 남은 순서.
   > **첫 시도는 실패했고, 그게 오히려 경로를 증명했다**
   > 프로토콜을 모른 채 임의 바이트를 보냈더니 `Invalid packet size: 0`으로 거부되고 `packet_errors 2`가 찍혔다. **거부됐다는 것 자체가 read → 링버퍼 → 파서까지 도달했다는 증거**였다. 이후 실제 헤더 형식(`MsgHeader{uint16 size, uint16 type}`, size는 헤더 포함 전체 크기)으로 맞추니 에러 0으로 통과했다.
 
-- [ ] **4-G** 송신 경로 ← **IOCP와 가장 다른 곳**
+- [ ] **4-G** 송신 경로 ← **IOCP와 가장 다른 곳. 설계 선택 필요 — 사용자 확인 대기**
   - IOCP는 "보내달라고 걸어두면 완료를 통지"하는데, epoll은 "보낼 수 있게 되면 알려줌"이다
   - Send Coalescing과 SendWorker 풀을 `EPOLLOUT` 등록/해제 방식으로 재설계해야 한다
   - 기존 자산: Send Coalescing(syscall −94%), SendThread 분리, SendWorker Pool(K3, uniqueId%K 분배)
   - **판정** → 대량 송신에서 데이터 유실·순서 뒤바뀜 없음
+
+  > **착수 전 조사 (2026-08-03) — 골격이 팔에 요구하는 것은 `TransportSubmitSegment` 하나뿐이다**
+  >
+  > 골격 `PostSend`(`IOCPServer.cpp:757`)가 이미 공통 부분을 다 갖고 있다: 세션 pin, 제출 잠금(`_sendSubmitBusy`), 깊이 게이트(`_sendInFlight < _sendDepth`), 링버퍼 미제출 구간 계산(`GetSubmitInfo`), 슬롯 할당. 팔은 `TransportSubmitSegment(session, socket, info, slot, slotsFree, &submitted)` 만 채우면 된다.
+  >
+  > **문제는 그 계약이 "제출과 완료가 분리된다"는 IOCP 전제 위에 서 있다는 것이다.**
+  > - IOCP: `WSASend` 제출 → 나중에 완료 통지 → 그때 슬롯 반환·`IOCountDecrement`·링버퍼 소비
+  > - epoll: `write()`가 **그 자리에서** 보낸 바이트를 돌려준다. 기다릴 완료가 없다
+  >
+  > 즉 골격의 슬롯 링·`_sendInFlight`·done 플래그는 epoll에서 "이미 끝난 일을 기록하는 장부"가 된다. 그대로 쓸 수도, 걷어낼 수도 있는데 그 선택이 성능 자산(코얼레싱·SendWorker 풀)과 코드 공유량을 좌우한다.
+
+  **선택지 (착수 시 사용자 확인)**
+
+  - **(a) 즉시 완료** — `TransportSubmitSegment`에서 `writev()`를 부르고 그 자리에서 완료 처리(슬롯 반환·ref 감소·링 소비)까지 끝낸다. 부분 전송/`EAGAIN`일 때만 `EPOLLOUT`을 걸고 이어서 보낸다.
+    - 장점: epoll 본성에 맞고 코드가 짧다. 완료 통지를 기다리는 왕복이 없어 지연이 낮다
+    - 단점: `_sendDepth`(다중 pending)가 의미를 잃는다 — 리눅스는 항상 깊이 1처럼 동작. RIO에서 얻은 깊이 실험 자산을 6단계 비교에 쓸 수 없다
+  - **(b) 지연 완료** — `write()` 결과를 슬롯에 적어두고 완료 처리는 epoll 워커가 별도로 수행. 골격의 슬롯 링·깊이 게이트를 그대로 굴린다.
+    - 장점: 세 팔(IOCP/RIO/epoll)이 같은 골격 코드를 최대한 공유. 깊이 개념이 살아 6단계 비교 축이 유지된다
+    - 단점: epoll엔 없는 개념을 흉내내는 것이라 코드가 늘고, "완료를 만들어내는" 자리가 생겨 버그 여지가 커진다
+  - **(c) 송신 워커 유지 + 즉시 write** — 기존 SendWorker 풀(K3, uniqueId%K)을 그대로 두고, 워커가 `TransportFlushDirty` 핸드오프를 받아 직접 `writev`. 부분 전송만 `EPOLLOUT`으로 넘긴다.
+    - 장점: **Send Coalescing과 워커 분배가 그대로 살아난다**(syscall −94%, tick p99 개선이 이 구조에서 나왔다). 6단계 비교의 공정성도 높다
+    - 단점: (a)보다 손댈 곳이 많고, 워커 스레드와 epoll 워커가 같은 세션을 만질 때의 직렬화를 다시 검토해야 한다
 
 - [ ] **4-H** TimingWheel·타임아웃 연동
   - **판정** → 무응답 클라가 타임아웃으로 정리됨
