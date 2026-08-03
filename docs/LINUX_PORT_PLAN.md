@@ -134,14 +134,20 @@ Windows IOCP 서버를 리눅스로 옮기는 작업의 남은 순서.
   > - 올바른 판별자는 **`__GCC_HAVE_SYNC_COMPARE_AND_SWAP_16`** — `-mcx16`일 때만 정의된다
   > - 8바이트·16비트·포인터는 `-mcx16` 없이도 `__atomic_*`가 인라인(`lock xaddq`/`lock xaddw`/`lock cmpxchgq`)이라 그대로 뒀다. **16바이트만 예외**다
 
-- [ ] **1-C** Windows 힙 API 대체 ← **설계 선택이 필요하다. 혼자 정하지 말 것**
-  - `CInternalFreeList`는 **전용 힙**(`HeapCreate`)을 만들어 노드를 거기서만 할당한다. 리눅스엔 "프로세스 안에 격리된 힙"이라는 개념이 없어 1:1 치환이 안 된다
-  - 게다가 `HeapSetInformation(..., HeapCompatibilityInformation, 2)`는 **저단편화 힙(LFH)을 켜는 코드**라 성능 의도가 실려 있다. 단순 `malloc` 치환은 할당 성능이 달라질 수 있고, 그러면 6단계 IOCP vs epoll 비교에 변인이 하나 섞인다
-  - 선택지 (실제 착수 시 사용자에게 확인):
-    - **(a) `malloc`/`free` 단순 치환** — 가장 짧다. glibc malloc도 스레드별 아레나가 있어 실용상 충분할 수 있으나, 성능 동등성은 측정 전엔 모른다
-    - **(b) 리눅스에서도 전용 아레나 유지** — `mmap` 기반 청크 할당기를 직접 둔다. Windows 동작에 가깝지만 새 코드가 늘고, 그 코드 자체가 검증 대상이 된다
-    - **(c) 힙 계층을 아예 걷어내고 상위 풀에 맡김** — 이 자료구조가 이미 프리리스트 풀이라 중복일 수 있다. 다만 Windows 동작도 함께 바뀌므로 회귀 위험이 가장 크다
-  - **판정** → 선택한 방식으로 리눅스 컴파일 통과 + Windows 경로 **무변경**(`#ifdef`로 기존 힙 코드 보존)
+- [x] **1-C** Windows 힙 API 대체 — **완료 (2026-08-03). (a) 표준 할당자 치환으로 진행**
+  - **판정 결과**: 어댑터 동작 테스트 **10/10 PASS**(전용 힙 생성·할당·해제, 정렬 할당의 실제 정렬값), `-Wall -Wextra` **경고 0**. Windows 경로는 `#ifdef _WIN32` 안이 `<windows.h>` include뿐이라 무변경(최종 확인은 1-F)
+  - 추가한 어댑터: `HeapCreate` / `HeapSetInformation` / `HeapAlloc` / `HeapFree` / `HeapDestroy` / `_aligned_malloc` / `_aligned_free`
+  - **1-A에서 또 놓친 것**: `_aligned_malloc` 4곳·`_aligned_free` 8곳 (`InternalFreeList` 1/2, `LockFreeQueue` 2/5, `LockFreeStack` 1/1). Windows CRT 함수라 `Interlocked*` 패턴 검색에 안 걸렸다
+
+  > **선택지 3안 중 (a)로 간 근거 — 성능 우려가 조사로 해소됐다**
+  >
+  > 착수 전엔 "LFH 설정에 성능 의도가 실려 있어 `malloc` 치환이 6단계 비교의 변인이 될 수 있다"고 봤는데, 실제 호출 경로를 보니 **힙 API가 전부 cold path**였다.
+  > - `HeapAlloc`은 `AllocNewNode()` 안에서만 불리고, 이 함수엔 **`__declspec(noinline)`**이 붙어 있다 — 프리리스트가 비었을 때만 도는 경로다. 운영 중에는 `Init(사전적재)`로 채워두므로 거의 안 불린다 (MMO 본체도 `Init(_maxClients * 2)`로 미리 채운다)
+  > - `HeapFree`는 소멸자의 정리 루프에서만, `HeapDestroy`는 소멸자 끝에 1회
+  >
+  > 핫패스에 닿지 않으므로 (b) mmap 아레나는 과잉이고, (c) 힙 계층 제거는 Windows 회귀 위험만 크다.
+  >
+  > **다만 Windows와 달라지는 점 하나**: `HeapDestroy`는 힙을 통째로 반환해 "아직 Free되지 않은(사용 중) 노드"의 메모리까지 회수하지만, `malloc` 경로엔 그런 일괄 회수가 없다. 소멸자는 프로세스 생애 1회라 실질 영향은 없으나(OS가 회수) **ASan/valgrind에는 누수로 잡힌다** — 2-D에서 그렇게 보이면 이것이 원인이다. 원본도 같은 자리에서 "T 소멸자 미호출"을 이미 인정하고 주석에 남겨 두었다.
 
 - [ ] **1-D** `InternalFreeList.h:8`의 `windows.h` 제거 + 4개 헤더의 Windows 심볼을 어댑터로 치환
   - `SerialBuffer.h`가 `LockFreeConfig.h`(`:39~42`)를 타고 이 헤더들을 끌어오므로, 여기가 막히면 서버 본체도 리눅스에서 안 열린다
@@ -171,6 +177,7 @@ Windows IOCP 서버를 리눅스로 옮기는 작업의 남은 순서.
   - **판정** → 증폭 상태에서도 자료구조 불변식이 깨지지 않음
 
 - [ ] **2-D** `-fsanitize=thread` 빌드 (선택 — 2-C가 깨끗하면 건너뛸 수 있음)
+  - **예상되는 누수 보고 1건**: 소멸 시점에 사용 중이던 노드는 해제되지 않는다. Windows의 `HeapDestroy` 일괄 회수를 표준 할당자로 옮기면서 사라진 동작이다(1-C 참조) — 결함이 아니라 알려진 차이로 기록할 것
   - **판정** → TSan 경고 0, 또는 "이건 오탐"이라는 근거와 함께 기록
 
 ---
