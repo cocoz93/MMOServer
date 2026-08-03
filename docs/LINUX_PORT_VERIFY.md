@@ -91,7 +91,18 @@
 
 ## V4. CrashDump (3단계)
 
-- [ ] **V4** 재확인
+- [x] **V4** 재확인 — **통과 (2026-08-04). 회귀 없음**
+
+  | 항목 | 결과 |
+  |---|---|
+  | `-rdynamic` | `build.ninja`에 **3회**(타겟 3개 전부) |
+  | 동적 심볼 | `mmo_server` **1,936개**, CrashDump 관련 **3개** export |
+  | 실제 크래시 | 종료코드 **134(SIGABRT)**, 덤프에 `signal 6` + `Reason` 기록 |
+  | 이름 표시 | `CCrashDump::SignalHandler(int, siginfo_t*, void*)` · `ExternProbe_Outer()` (demangle 확인) |
+  | **Windows 무영향** | `CrashDump.h`는 `main` 대비 **115줄 추가만, 삭제 0** — 기존 Windows 경로 무변경 |
+
+  - 3-A 당시 동적 심볼은 검증 타겟 하나에서 100개였는데, 지금은 **서버 본체에서 1,936개**다. `add_link_options` 전역 적용이 새 타겟까지 덮고 있다는 뜻이다
+  - 4-C에서 넣은 `WriteRaw` 헬퍼는 **리눅스 분기(302행 `#else`) 안쪽 360행**에 있다. Windows 경로 밖이라 회귀 여지가 없다
   - `-rdynamic`이 링크 옵션에 남아 있고 동적 심볼이 export되는지
   - 실제 크래시에서 **함수명 포함 스택**이 나오는지 (가볍다 — 프로세스 하나 죽이는 정도)
   - **회귀 관점**: 4-C에서 `CrashDump.h`에 `WriteRaw` 헬퍼를 넣었다. Windows 경로는 안 건드렸는지
