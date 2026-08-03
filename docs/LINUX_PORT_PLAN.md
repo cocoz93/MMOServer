@@ -323,11 +323,37 @@ Windows IOCP 서버를 리눅스로 옮기는 작업의 남은 순서.
 `Transport_Iocp.cpp` / `Transport_Rio.cpp`로 이미 갈라놨다. epoll은 **세 번째 팔(`Transport_Epoll.cpp`)** 로 얹는다.
 확장점이 이미 뚫려 있어 오히려 유리하다 — 경계 함수 14개(`IOCPServer.h:377-390`)를 구현하면 된다.
 
-- [ ] **4-A** 경계 조사 — 전송 경계 14개 함수의 시그니처에 박힌 Windows 타입, 그리고 골격(`IOCPServer.cpp` 1,167줄)에 남은 Windows 심볼을 분류
-  - 실측 사전조사 (2026-08-03): `SOCKET` 20 / `InterlockedExchange` 14 / `closesocket` 7 / `WSAGetLastError` 4 / `InterlockedDecrement` 4 / `ZeroMemory`·`WSACleanup`·`OVERLAPPED`·`InterlockedIncrement`·`CancelIoEx` 각 3 / `WSAStartup`·`WSASocket`·`WSASend`·`DWORD` 각 2
-  - **`WSASend`가 골격에 2곳 남아 있다** — 전송계층으로 다 갔을 줄 알았던 자리라, 어느 `#if` 분기에 걸려 있는지부터 확인할 것
-  - 분류 축: ① Platform으로 밀 것 ② Transport 경계 뒤로 밀 것 ③ 타입 별칭으로 해결될 것
-  - **판정** → 분류 결과가 이 문서에 기록됨 (조사만, 코드 수정 없음)
+- [x] **4-A** 경계 조사 — **완료 (2026-08-03)**. 아래가 4-B·4-C의 작업 목록이다
+
+  **① 전송 경계 14개 — Windows 타입이 박힌 것은 3개뿐이다**
+
+  | 함수 | 문제 |
+  |---|---|
+  | `DWORD TransportListenFlags() const` | 반환형 `DWORD` |
+  | `TransportAttachSession(CSession*, SOCKET)` | 인자 `SOCKET` |
+  | `TransportStartFirstRecv(CSession*, SOCKET, int64_t)` | 인자 `SOCKET` |
+
+  나머지 11개는 이미 `bool`/`void`/`const char*`/`int64_t`로 **중립**이다. 경계 설계가 잘 돼 있어 4-B가 가벼워진다.
+
+  **② 골격의 Windows 심볼 — 주석·문자열 제외 실측**
+
+  | 분류 | 건수 | 심볼 |
+  |---|---|---|
+  | **③ 타입 별칭으로 해결** | **약 95** | `TRUE/FALSE` 38 · `Interlocked*` 22 · `SOCKET` 16 · `INVALID_SOCKET` 10 · `DWORD` 6 · `ZeroMemory` 4 · `SOCKET_ERROR` 2 |
+  | **① Platform으로 밀 것** | 약 14 | `closesocket` 5 · `WSAGetLastError` 4 · `WSACleanup` 3 · `WSAStartup` 1 · `WSADATA` 1 |
+  | **② Transport 뒤로 밀 것** | 약 9 | `OVERLAPPED` 5 · `HANDLE` 3 · `ULONG_PTR` 2 · `WSASocket` 1 |
+  | 표준 그대로 (POSIX 동일) | 6 | `bind`/`listen`/`accept` 3 · `setsockopt` 2 · `htons` 1 |
+
+  합계: `IOCPServer.cpp` 100건 + `IOCPServer.h` 29건
+
+  - **압도적 다수가 ③(타입 별칭)이다.** 실제 구조를 옮겨야 하는 ②는 9건뿐이고, 그것도 `OVERLAPPED`·`ULONG_PTR`은 IOCP 완료 통지 전용이라 `CSession`의 IOCP 분기에 몰려 있다
+  - `bind`/`listen`/`accept`/`setsockopt`/`htons`는 Winsock과 POSIX가 **같은 이름**이라 손댈 필요가 없다
+
+  > **계획서에 적어둔 "`WSASend`가 골격에 2곳 남아 있다"는 틀렸다**
+  >
+  > 실제로 보니 **둘 다 주석**이었다(`IOCPServer.cpp:305` `#if USE_ZERO_SNDBUF` 안의 설명, `:1095` 집계 설명). 코드상 `WSASend`·`WSARecv`는 골격에 **0건**이고 전부 Transport로 이사한 상태다.
+  > 1-A와 **똑같은 실수**를 반복했다 — grep이 주석을 셌다. 이번엔 계획서 경고대로 주석·문자열을 걷어내고 다시 셌고, 위 표는 그 결과다.
+  > 그래도 이 표를 완전한 목록으로 믿지 말 것 — **4-C에서 실제로 컴파일해보면 여기 없는 것이 더 나온다**(1단계가 네 번 그랬다).
 
 - [ ] **4-B** `[회귀빌드]` 경계 타입 중립화 — 소켓 핸들 등 경계 시그니처를 플랫폼 중립 별칭으로
   - **판정** → Windows Release 재빌드 경고0 오류0 **불변** (동작 불변 리팩터링)
