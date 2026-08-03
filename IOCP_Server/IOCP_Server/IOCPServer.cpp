@@ -112,7 +112,9 @@ CIOCPServer::CIOCPServer(int port, int maxClients, ServerMode mode,
     , _running(FALSE)
     , _sessionIdCounter(1)  // 0은 사용하지 않음
     , _listenSocket(INVALID_SOCKET)
+#ifdef _WIN32
     , _iocpHandle(NULL)
+#endif
 {
     // 멤버 변수만 초기화
 }

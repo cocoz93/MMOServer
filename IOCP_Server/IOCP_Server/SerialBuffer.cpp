@@ -3,6 +3,7 @@
 //////////////////////////////////////////////////////////////////////////
 
 #include "SerialBuffer.h"
+#include "Platform/Platform.h"   // memcpy_s·wcslen 등 CRT 차이 흡수
 
 //CFreeList<CSerialBuffer> CSerialBuffer::_MsgFreeList;
 //CLockFree_FreeList<CSerialBuffer>* CSerialBuffer::_MsgFreeList;

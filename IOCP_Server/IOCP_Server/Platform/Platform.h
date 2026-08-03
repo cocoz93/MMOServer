@@ -40,13 +40,15 @@
     #include <netinet/tcp.h>             // TCP_NODELAY
     #include <arpa/inet.h>               // inet_ntop
     #include <cerrno>                    // errno (소켓 오류 코드)
-    #include <cstring>                   // memset (ZeroMemory 대체)
+    #include <cstring>                   // memset / memcpy (ZeroMemory·memcpy_s 대체)
+    #include <cwchar>                    // wcslen
 
     // ── Windows 스칼라 타입·매크로 ──
     //   서버 코드가 이 이름들로 쓰여 있어(volatile LONG _ioCount 등) 호출부를 고치는 대신 별칭을 준다.
     //   폭은 Windows 정의를 그대로 따른다 — LONG은 64비트 리눅스에서도 32비트다(LP64의 long과 다름).
     using LONG      = std::int32_t;
     using LONGLONG  = long long;   // LockFreeCompat의 LONG64와 같은 타입이어야 한다(LP64에서 int64_t는 long)
+    using LONG64    = long long;   // 〃 (모니터 카운터가 이 이름을 쓴다)
     using BOOL      = int;
     using ULONG_PTR = std::uintptr_t;
     using SOCKADDR    = struct sockaddr;
@@ -111,6 +113,14 @@
     // 메모리 0 채우기 — Windows 매크로 대체
     #ifndef ZeroMemory
         #define ZeroMemory(dst, len) std::memset((dst), 0, (len))
+    #endif
+
+    // memcpy_s — MS 확장(대상 크기를 받아 넘침을 런타임에 잡는다). 리눅스엔 대응물이 없어
+    //   크기 인자를 버리고 memcpy로 간다. 즉 "리눅스 빌드에서는 그 검사가 없다".
+    //   호출부가 이미 범위를 계산해 넘기는 자리들이라 동작은 같지만, 방어 한 겹이 빠진다는
+    //   사실은 남겨 둔다(넘침이 의심되면 ASan 빌드로 잡을 것).
+    #ifndef memcpy_s
+        #define memcpy_s(dst, dstSize, src, count) (std::memcpy((dst), (src), (count)), 0)
     #endif
     #include <unistd.h>                  // readlink (/proc/self/exe)
     #include <sched.h>                   // sched_setaffinity / CPU_SET
@@ -243,6 +253,22 @@ namespace Platform
             if (mask & (1ull << i))
                 CPU_SET(i, &set);
         return sched_setaffinity(0, sizeof(set), &set) == 0;
+#endif
+    }
+
+    // 호출 스레드를 지정한 논리코어 비트마스크에 고정.
+    //   Windows: SetThreadAffinityMask(의사핸들이면 자기 자신) / Linux: pthread_setaffinity_np
+    inline void SetCurrentThreadAffinity(uint64_t mask)
+    {
+#ifdef _WIN32
+        SetThreadAffinityMask(GetCurrentThread(), static_cast<DWORD_PTR>(mask));
+#else
+        cpu_set_t set;
+        CPU_ZERO(&set);
+        for (int i = 0; i < 64; ++i)
+            if (mask & (1ull << i))
+                CPU_SET(i, &set);
+        pthread_setaffinity_np(pthread_self(), sizeof(set), &set);
 #endif
     }
 

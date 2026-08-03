@@ -99,7 +99,9 @@
 //   목적: 전량 저장 부담을 dirty flag로 줄이고, 저장 I/O를 게임 틱 임계경로에서 떼어낸다.
 //   1: DB 워커 활성 (MySQL 필요, 지표 mmo_db_*) [실험]
 //   0: DB 없이 기존 동작 그대로 (회귀 기준선) [기본]
+#ifndef USE_DB_WORKER            // 빌드 시스템이 먼저 정하면 그 값을 따른다(리눅스 검증용)
 #define USE_DB_WORKER 1
+#endif
 
 // RIO 전송 계층 실험 — WSARecv/WSASend/GQCS(IOCP)를 Registered I/O로 교체.
 //   전송 계층만 교체하고 상위(세션 수명·링버퍼·coalescing·digest·게임루프)는 불변.

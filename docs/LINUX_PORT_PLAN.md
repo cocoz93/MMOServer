@@ -388,8 +388,32 @@ Windows IOCP 서버를 리눅스로 옮기는 작업의 남은 순서.
   > **전처리기 분기를 넣다 기존 `#if`를 깨뜨렸다**
   > `HandleCompletion` 앞에 `#ifdef _WIN32`를 넣었더니, 그 뒤의 `#endif`가 바깥 `#if !USE_RIO_TRANSPORT`를 닫던 것이라 `unterminated #if`가 났다. 조건부 컴파일 안에 또 조건부를 넣을 때는 **닫는 짝을 눈으로 세어볼 것**.
 
-- [ ] **4-D** `Transport_Epoll.cpp` 뼈대 — 리스너 + 워커 스레드 + `epoll_wait` 루프. 연결 수락/해제까지만
-  - **판정** → 리눅스에서 서버가 뜨고 클라 1개가 붙었다 끊김 (데이터 교환 없음)
+- [x] **4-D** `Transport_Epoll.cpp` 뼈대 — **완료 (2026-08-03). 리눅스에서 서버가 뜬다**
+  - **판정 결과**:
+    ```
+    [main.cpp:72] Network I/O model: epoll
+    [Transport_Epoll.cpp:106] [Network] Server started — epoll workers=4 (affinity cores=12, Mode: GameServer)
+    [GameServer.cpp:347] [GameServer] Started - Mode: GameServer
+    [MonitorServer.h:92] [MonitorServer] Listening on port 9090
+    ```
+    포트 6000 `LISTEN` 확인, 클라 1개 **TCP 연결 성공** 후 해제까지 정상
+  - **서버 전체 12개 TU가 리눅스에서 컴파일·링크된다.** 4-C에서 골격만 열었는데, 나머지 11개는 대부분 그대로 통과했고 아래만 손봤다
+    - `SerialBuffer.cpp` — `memcpy_s` 4곳·`wcslen`. `memcpy_s`는 MS 확장이라 **대상 크기 검사가 리눅스에서 사라진다**(호출부가 이미 범위를 계산해 넘기는 자리들이지만, 방어 한 겹이 빠진다는 사실은 Platform 주석에 남겼다)
+    - `CoreAffinity.cpp` — `SetThreadAffinityMask` → `Platform::SetCurrentThreadAffinity`(pthread) 신설
+    - `main.cpp` — `LoggerGuard`가 `USE_SPDLOG_LOGGER` 안에 있어 정의 필요
+    - `MonitorManager.h` — `LONG64` 별칭 누락
+    - `NetIoModel.h` — **계획서가 지적한 낡은 전제를 정리했다**(아래)
+
+  > **`NetIoModel.h`를 현재 구조에 맞게 다시 썼다**
+  >
+  > 옛 설계는 OS마다 서버 클래스를 따로 두고(`CEpollServer` 등) 이 헤더에서 고르는 것이었다. 그 사이 전송 계층이 `Transport_*.cpp`로 분리되면서 **클래스를 나눌 이유가 사라졌다** — 갈리는 것은 "제출·수거 방식"뿐이고 세션 관리·패킷 분해는 공통이다. 그래서 `using NetIoModel = CIOCPServer` 하나로 두고, 이름표(`kNetIoModelName`)만 IOCP/RIO/epoll로 고른다.
+
+  - **DB 워커를 빌드 옵션으로 뺐다** — WSL 안에 MySQL이 없어 서버가 `DB init failed`로 죽었다. 네트워크 뼈대 검증에 DB는 불필요하므로 `option(MMO_USE_DB OFF)`로 기본 비활성. 5단계 실동작에서 `-DMMO_USE_DB=ON`으로 켠다. `BuildConfig.h`의 `USE_DB_WORKER`에 `#ifndef` 가드를 둬 빌드 시스템이 이길 수 있게 했다
+
+  **이번 페이즈에서 채운 것 / 남긴 것**
+  - 채움: epoll 인스턴스 생성·해제, 워커 스레드(`epoll_wait` 루프), accept 소켓 등록(`EPOLLIN|EPOLLRDHUP` + 논블로킹 전환), 끊김·오류 처리, 종료 유도(`EPOLL_CTL_DEL` + `shutdown`)
+  - 남김(스텁): `PostRecv`(4-F), `TransportSubmitSegment`·`TransportSendImmediate`·`TransportFlushDirty`(4-G)
+  - **IOCP와 다른 점 하나**: 종료 시 IOCP는 `PostQueuedCompletionStatus`로 워커를 깨웠지만 epoll엔 그런 "가짜 완료"가 없다. `epoll_wait`에 100ms 타임아웃을 줘 주기적으로 `_running`을 확인하게 했다
 
 - [ ] **4-E** 세션 관리 이식 — 인덱스 스택·uniqueId·refcount. 대부분 그대로 옮겨진다
   - **판정** → 붙었다 끊기를 반복해도 세션 슬롯이 새지 않음(생성/소멸 카운트 일치)

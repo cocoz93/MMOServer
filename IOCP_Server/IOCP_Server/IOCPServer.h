@@ -345,6 +345,10 @@ private:
                           DWORD bytesTransferred, bool ioFailed, int workerIndex);
 #endif  // _WIN32
 #endif  // !USE_RIO_TRANSPORT
+#ifndef _WIN32
+    // epoll 워커 — 준비 통지(EPOLLIN/EPOLLOUT)를 받아 처리한다. IOCP의 WorkerThread에 대응.
+    void EpollWorkerThread(int workerIndex);
+#endif
 #if USE_SEND_THREAD && !USE_RIO_TRANSPORT
     void SendWorkerThread(int workerIdx);   // 전용 송신 워커 — 자기 워커의 dirty 배치를 받아 WSASend 수행
 #endif
@@ -427,7 +431,13 @@ private:
     volatile LONGLONG _sessionIdCounter;  // 고유 ID용 (하위 48비트)
 
     SOCKET _listenSocket;
+#ifdef _WIN32
     HANDLE _iocpHandle;
+#else
+    // epoll 인스턴스 — IOCP의 완료 포트에 대응하는 자리다. 다만 성격이 다르다:
+    //   완료 포트는 "끝난 I/O"를 돌려주고, epoll은 "할 수 있게 된 fd"를 알려준다.
+    int _epollFd = -1;
+#endif
 
     std::vector<std::thread> _workerThreads;
     std::thread _acceptThread;

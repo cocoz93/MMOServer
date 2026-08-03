@@ -93,6 +93,42 @@ if(UNIX)
     set_target_properties(epoll_echo_poc PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Run/bin)
 
+    # ─────────────────────────────────────────────────────────────
+    #  MMO 서버 (Linux) — 전송 계층은 Transport_Epoll.cpp
+    #    Windows 타겟(IOCP_Server)과 같은 소스를 쓰되 팔만 다르다.
+    # ─────────────────────────────────────────────────────────────
+    add_executable(mmo_server
+        ${SRV_DIR}/IOCPServer.cpp
+        ${SRV_DIR}/Transport_Epoll.cpp
+        ${SRV_DIR}/main.cpp
+        ${SRV_DIR}/CoreAffinity.cpp
+        ${SRV_DIR}/SerialBuffer.cpp
+        ${SRV_DIR}/LockFreeConfig.cpp
+        ${SRV_DIR}/Player.cpp
+        ${SRV_DIR}/SectorManager.cpp
+        ${SRV_DIR}/Zone.cpp
+        ${SRV_DIR}/MapManager.cpp
+        ${SRV_DIR}/GameServer.cpp
+        ${SRV_DIR}/DB/DBWorker.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/Shared/Common/Logger.cpp
+    )
+    target_include_directories(mmo_server PRIVATE
+        ${SRV_DIR}
+        ${SRV_DIR}/ThirdParty
+        /usr/include/mysql
+    )
+    # DB 워커는 MySQL 서버가 있어야 뜬다. 4단계(네트워크 뼈대) 검증에는 불필요하므로
+    #   리눅스 타겟에서는 기본 꺼 둔다. 5단계 실동작에서 -DMMO_USE_DB=ON으로 켠다.
+    option(MMO_USE_DB "리눅스 서버에서 DB 워커 사용" OFF)
+    target_compile_definitions(mmo_server PRIVATE
+        USE_SPDLOG_LOGGER
+        $<$<NOT:$<BOOL:${MMO_USE_DB}>>:USE_DB_WORKER=0>
+    )
+    target_compile_features(mmo_server PRIVATE cxx_std_17)
+    target_link_libraries(mmo_server PRIVATE pthread mysqlclient)
+    set_target_properties(mmo_server PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Run/bin)
+
     # LockFree 헤더 리눅스 컴파일 검증 — 서버 본체가 리눅스에서 열리기 전(4단계)까지
     #   이식 상태를 지키는 회귀 방지 타겟. 헤더는 형제 저장소를 본다(LockFreeConfig.h).
     add_executable(lockfree_headers_check

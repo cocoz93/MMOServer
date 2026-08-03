@@ -1,5 +1,5 @@
 ﻿#include "CoreAffinity.h"
-#include <Windows.h>
+#include "Platform/Platform.h"   // OS별 affinity·타입 경계
 
 // windows.h를 이 TU에만 가둔다(헤더는 clean). WinSock2 include 순서 문제와 무관.
 
@@ -20,7 +20,7 @@ namespace CoreAffinity
             // GetCurrentThread()는 "호출 스레드 자신"을 가리키는 의사핸들 —
             // 같은 스레드에서 SetThreadAffinityMask에 쓰기엔 유효하다(다른 스레드에서 읽을 때만 실핸들 필요).
             // mask는 항상 프로세스 affinity의 부분집합이라(ServerCores에서 도출) 실패하지 않는다.
-            SetThreadAffinityMask(GetCurrentThread(), static_cast<DWORD_PTR>(mask));
+            Platform::SetCurrentThreadAffinity(mask);
         }
     }
 
