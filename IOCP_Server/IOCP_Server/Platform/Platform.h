@@ -28,12 +28,17 @@
 #include <atomic>                        // 종료 플래그 (양쪽 공용)
 
 #ifdef _WIN32
-    // WinSock2는 Windows.h보다 먼저 와야 한다(구버전 winsock.h가 딸려와 충돌).
+    // WinSock2는 Windows.h보다 먼저 와야 한다(구버전 winsock.h가 딸려와 sockaddr이 재정의된다).
     //   이 순서를 여기 한 곳에 가두어, 이 헤더를 쓰는 쪽은 순서를 신경 쓰지 않게 한다.
-    #include <WinSock2.h>
-    #include <WS2tcpip.h>
+    //   WIN32_LEAN_AND_MEAN까지 함께 세우는 이유: 다른 TU가 이 헤더보다 먼저 <Windows.h>를
+    //   들이면 그쪽에서 winsock.h가 딸려와 순서 보장이 무너진다. 아예 안 끌려오게 막는다.
+    //   [주의] 여기서 WinSock2를 include하지 않는다. 이 헤더는 여러 곳에서 쓰이는데,
+    //   그중 하나라도 <Windows.h>를 먼저 들인 TU가 있으면 구버전 winsock.h가 딸려와
+    //   sockaddr이 재정의된다. Windows의 소켓 헤더 순서는 IOCPServer.h가 책임진다.
     #include <Windows.h>
-    #pragma comment(lib, "winmm.lib")   // timeBeginPeriod / timeEndPeriod
+    #include <timeapi.h>                 // timeBeginPeriod/timeEndPeriod
+                                         //   WIN32_LEAN_AND_MEAN이 mmsystem.h를 빼므로 직접 들인다
+    #pragma comment(lib, "winmm.lib")
 #else
     #include <sys/socket.h>              // socket / bind / listen / accept / setsockopt
     #include <netinet/in.h>              // sockaddr_in / htons

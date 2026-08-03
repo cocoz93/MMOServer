@@ -2,7 +2,13 @@
 
 #include "BuildConfig.h"  // USE_LOCKFREE_SENDQ 등 빌드 토글 (가장 먼저 include)
 
-#include "Platform/Platform.h"   // 소켓 헤더·핸들 타입·소켓 API 경계 (WinSock2/Windows.h 순서도 여기서 가둔다)
+#ifdef _WIN32
+// WinSock2는 Windows.h보다 먼저 와야 한다(구버전 winsock.h가 딸려와 sockaddr이 재정의된다).
+//   Platform.h가 Windows.h를 들이므로 그보다 앞에 둔다. 리눅스 소켓 헤더는 Platform.h가 제공한다.
+#include <WinSock2.h>
+#include <WS2tcpip.h>
+#endif
+#include "Platform/Platform.h"   // 소켓 핸들 타입·소켓 API 경계 (리눅스는 소켓 헤더까지)
 #include <vector>
 #include <memory>
 #include <thread>
@@ -189,7 +195,14 @@ public:
     // 재사용 리셋의 팔별 부분 — Initialize가 호출한다 (.cpp에서 전송 계층 #if를 없애기 위한 위임).
     void ResetTransportState() { _rq = RIO_INVALID_RQ; }
 #else
-    void ResetTransportState() { _epollWantWrite = false; }
+    // RIO가 아닌 팔(IOCP·epoll)의 재사용 리셋.
+    //   epoll 표식은 리눅스에만 있으므로 조건부로 만진다 — Windows IOCP 빌드도 이 분기를 탄다.
+    void ResetTransportState()
+    {
+#ifndef _WIN32
+        _epollWantWrite = false;
+#endif
+    }
 #endif
 #ifndef _WIN32
     // EPOLLOUT을 지금 걸어 두었는가 — 같은 상태로 epoll_ctl을 반복 호출하지 않기 위한 표식.
