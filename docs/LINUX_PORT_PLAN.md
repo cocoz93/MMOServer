@@ -166,10 +166,15 @@ Windows IOCP 서버를 리눅스로 옮기는 작업의 남은 순서.
   > 앞선 두 번(1-B의 `PVOID`, 1-C의 `_aligned_malloc` 계열)까지 합치면 패턴 검색은 **네 번 연속 불완전**했다. 원인은 단순하다 — `Interlocked*`·`__forceinline` 같은 "아는 이름"만 찾았고, Windows CRT·TLS·스레드 API처럼 이름이 다른 계열은 걸리지 않았다.
   > **남은 단계에서는 조사 결과를 완전한 목록으로 신뢰하지 말고, 컴파일러가 뱉는 에러를 정본으로 삼을 것.** 특히 4-A(골격 Windows 심볼 분류)가 같은 함정을 안고 있다.
 
-- [ ] **1-E** CMake에 LockFree 경로·`-mcx16` 반영 (UNIX 분기)
-  - `-mcx16`은 선택이 아니라 **필수**다. 없으면 `LockFreeCompat.h`가 `#error`로 빌드를 멈춘다(1-B 참조)
-  - libatomic 링크(`-latomic`)는 필요 없다 — 16바이트가 `__sync` 인라인으로 나가므로 외부 호출이 남지 않는다
-  - **판정** → `cmake --build` 로 LockFree를 쓰는 TU가 컴파일됨
+- [x] **1-E** CMake에 LockFree 경로·`-mcx16` 반영 — **완료 (2026-08-03)**
+  - **판정 결과**: `cmake --build build-linux` 전체 성공, **경고 0**. 산출물 `lockfree_headers_check`에 **인라인 `cmpxchg16b` 19개 / 외부 CAS 호출 0**, 실행 exit 0
+  - `add_compile_options(-mcx16)`을 UNIX 분기 **전역**에 걸었다. 타겟마다 붙이면 앞으로 추가될 타겟(epoll 백엔드)이 빠뜨릴 수 있는데, 빠뜨려도 `LockFreeCompat.h`의 `#error`가 잡긴 하지만 그건 사고를 늦게 아는 방식이다
+  - **`lockfree_headers_check` 타겟 신설** (`poc/lockfree_headers_check.cpp` + `LockFreeConfig.cpp`) — 4단계 전까지 서버 본체가 리눅스에서 안 열리므로, 그동안 이 타겟이 LockFree 이식 상태를 지킨다. 1-D에서 쓰던 임시 검증을 빌드에 상주시킨 것이다
+  - libatomic 링크는 실제로 불필요했다 — `-latomic` 없이 링크 성공
+
+  > **부수 수정 — `CrashDump.h` 리눅스 경로 경고 6건 제거**
+  > 새 타겟이 `LockFreeConfig.cpp`를 통해 `CrashDump.h`를 끌어오면서, 시그널 핸들러의 `::write()` 반환값 무시가 `warn_unused_result` 경고로 드러났다. 3단계 대상 파일이지만 지금 처리했다 — 경고가 쌓이면 정작 봐야 할 새 경고가 묻힌다.
+  > 핸들러 안에서는 write 실패를 복구할 길이 없으므로 `WriteRaw()` 헬퍼로 감싸 "의도적으로 버린다"를 코드로 남겼다. Windows 경로(`#ifdef _WIN32`)는 건드리지 않았다.
 
 - [ ] **1-F** Windows 회귀 확인 `[회귀빌드]`
   - **판정** → `IOCP_Server.sln` Release 재빌드 **경고0 오류0 불변** (IOCP 팔·RIO 팔 양쪽)

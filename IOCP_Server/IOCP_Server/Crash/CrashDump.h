@@ -354,13 +354,22 @@ private:
         ::raise(sig);
     }
 
+    // 시그널 핸들러 안이라 write 실패를 복구할 길이 없다 — 반환값을 의도적으로 버린다.
+    //   그냥 두면 glibc의 warn_unused_result 때문에 호출마다 경고가 쌓여, 정작 봐야 할
+    //   새 경고가 묻힌다. 버린다는 뜻을 코드로 남긴다.
+    static void WriteRaw(int fd, const void* buf, size_t len)
+    {
+        const ssize_t written = ::write(fd, buf, len);
+        (void)written;
+    }
+
     // async-signal-safe 범위(write / backtrace_symbols_fd / 수동 정수변환)만 사용
     static void WriteReport(int fd, int sig, void* const* frames, int n)
     {
-        ::write(fd, "\n!!! Crash: signal ", 19);
+        WriteRaw(fd, "\n!!! Crash: signal ", 19);
         char num[16];
-        ::write(fd, num, IntToStr(sig, num));
-        ::write(fd, " !!!\n", 5);
+        WriteRaw(fd, num, IntToStr(sig, num));
+        WriteRaw(fd, " !!!\n", 5);
 
         if (_CrashReason)
         {
@@ -368,9 +377,9 @@ private:
             int i = 0;
             for (; _CrashReason[i] && i < 255; ++i)
                 rbuf[i] = static_cast<char>(_CrashReason[i]);   // ASCII 사유 가정
-            ::write(fd, "Reason: ", 8);
-            ::write(fd, rbuf, i);
-            ::write(fd, "\n", 1);
+            WriteRaw(fd, "Reason: ", 8);
+            WriteRaw(fd, rbuf, i);
+            WriteRaw(fd, "\n", 1);
         }
 
         backtrace_symbols_fd(frames, n, fd);

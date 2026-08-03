@@ -75,10 +75,30 @@ endif()  # WIN32
 #  게임서버 본체와 무관한 독립 실행파일 (LockFree 포팅 전 단계)
 # ─────────────────────────────────────────────────────────────
 if(UNIX)
+    # 16바이트 CAS(cmpxchg16b) — LockFree의 128비트 CAS는 이 플래그가 없으면 인라인되지 않고
+    #   libatomic 호출로 내려간다. LockFreeCompat.h가 #error로 막아 두긴 했지만, 여기서
+    #   전역으로 걸어야 앞으로 추가될 타겟(epoll 백엔드 등)이 빠뜨릴 일이 없다.
+    #   (libatomic 링크는 불필요 — __sync 경로가 인라인이라 외부 호출이 남지 않는다)
+    add_compile_options(-mcx16)
+
     add_executable(epoll_echo_poc
         ${SRV_DIR}/poc/epoll_echo_main.cpp
     )
     target_compile_features(epoll_echo_poc PRIVATE cxx_std_17)
     set_target_properties(epoll_echo_poc PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Run/bin)
+
+    # LockFree 헤더 리눅스 컴파일 검증 — 서버 본체가 리눅스에서 열리기 전(4단계)까지
+    #   이식 상태를 지키는 회귀 방지 타겟. 헤더는 형제 저장소를 본다(LockFreeConfig.h).
+    add_executable(lockfree_headers_check
+        ${SRV_DIR}/poc/lockfree_headers_check.cpp
+        ${SRV_DIR}/LockFreeConfig.cpp
+    )
+    target_include_directories(lockfree_headers_check PRIVATE
+        ${SRV_DIR}
+        ${SRV_DIR}/ThirdParty
+    )
+    target_compile_features(lockfree_headers_check PRIVATE cxx_std_17)
+    set_target_properties(lockfree_headers_check PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Run/bin)
 endif()
