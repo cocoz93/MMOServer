@@ -196,8 +196,16 @@ Windows IOCP 서버를 리눅스로 옮기는 작업의 남은 순서.
 
 컴파일이 아니라 **동작**을 본다. 락프리 자료구조는 컴파일만으로는 아무것도 보장하지 않는다.
 
-- [ ] **2-A** `LockFree_Test`를 리눅스에서 빌드 (`TestCode.cpp`의 Windows 의존 1곳 정리)
-  - **판정** → 테스트 실행 파일이 만들어짐
+- [x] **2-A** `LockFree_Test` 리눅스 빌드 — **완료 (2026-08-03)**
+  - **판정 결과**: 컴파일 exit 0, **경고 0 / 에러 0**, 산출물 283,808 bytes. 바이너리에 **인라인 `cmpxchg16b` 54개**. Windows(`LockFree_Test.sln` Release Rebuild)도 정상 — 2-B의 대조 기준선이 살아 있다
+  - 빌드 명령 (2-B에서 재사용):
+    ```
+    cd LockFree_Test
+    g++-13 -std=c++17 -mcx16 -O2 -DNDEBUG -Wall -Wextra -I. -ILockFree TestCode.cpp -o /tmp/lockfree_test -pthread
+    ```
+  - **예상과 달리 코드 수정이 거의 없었다.** `TestCode.cpp`에는 이미 `#ifdef _WIN32` 분기가 12곳 있었다(`system("cls")`/`system("clear")`) — 원저자가 이식성을 어느 정도 고려해 둔 상태였고, 그래서 **에러는 처음부터 0**이었다
+  - 대신 리눅스에서만 나는 **경고 24건**(glibc `system()`의 `warn_unused_result`)을 `ClearScreen()` 헬퍼로 정리했다. 12개 `#ifdef` 블록이 헬퍼 한 곳으로 모여 중복도 함께 줄었다. 화면 지우기라 테스트 로직과 무관하므로 2-B 대조에 영향 없다
+  - 계획서가 말한 "Windows 의존 1곳"은 `USE_RACE_HOOK` 빌드의 `windows.h`다 — 일반 빌드에는 안 들어오므로 **2-C에서 처리**한다
 
 - [ ] **2-B** 기존 테스트 전량 실행 + Windows 결과와 대조
   - **판정** → Windows에서 통과하던 항목이 리눅스에서 **동일하게** 통과 (항목 수까지 대조)
