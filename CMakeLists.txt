@@ -81,6 +81,11 @@ if(UNIX)
     #   (libatomic 링크는 불필요 — __sync 경로가 인라인이라 외부 호출이 남지 않는다)
     add_compile_options(-mcx16)
 
+    # backtrace_symbols_fd가 함수명을 찍으려면 실행 파일의 심볼이 동적 심볼 테이블에 있어야 한다.
+    #   기본 링크는 실행 파일 심볼을 export하지 않아, 크래시 로그가 주소만 남고 이름이 사라진다.
+    #   (Windows는 PDB를 읽어 해결하므로 대응하는 설정이 없다)
+    add_link_options(-rdynamic)
+
     add_executable(epoll_echo_poc
         ${SRV_DIR}/poc/epoll_echo_main.cpp
     )
