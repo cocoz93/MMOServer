@@ -16,6 +16,7 @@
 #include <array>
 #include <atomic>
 
+#include "Platform/Platform.h"    // Platform::NetSocket — 전송 경계의 소켓 핸들 타입
 #include "../../Shared/RingBuffer.h"
 #include "SerialBuffer.h"
 #include "../../Shared/Protocol/Protocol.h"
@@ -378,13 +379,13 @@ private:
     bool  TransportPreListen();                            // 리슨 소켓 "전" 준비 (IOCP: 완료 포트 생성)
     void  TransportPreListenCleanup();                     // 리슨 실패 시 위 준비물 되돌리기
     bool  TransportPostListen();                           // 리슨 소켓 "후" 준비 (RIO: 테이블·슬랩·CQ)
-    DWORD TransportListenFlags() const;                    // WSASocket 플래그 (RIO: REGISTERED_IO 추가)
+    uint32_t TransportListenFlags() const;                 // 소켓 생성 플래그 (RIO: REGISTERED_IO 추가)
     void  TransportStartWorkers();                         // 완료 워커·송신 워커 기동
     void  TransportLogStarted(const char* modeName) const; // 기동 로그 (스모크가 이 문구로 팔 판정)
     void  TransportStopBeforeDrain();                      // IOCount 드레인 "전" 정지 (IOCP: 송신 워커)
     void  TransportStopAfterDrain();                       // IOCount 드레인 "후" 정지 (워커 join·자원 해제)
-    bool  TransportAttachSession(CSession* session, SOCKET clientSocket);   // 완료 통지 연결 (IOCP: BindIOCP)
-    void  TransportStartFirstRecv(CSession* session, SOCKET clientSocket, int64_t sessionId);  // 첫 Recv 착수
+    bool  TransportAttachSession(CSession* session, Platform::NetSocket clientSocket);   // 완료 통지 연결 (IOCP: BindIOCP)
+    void  TransportStartFirstRecv(CSession* session, Platform::NetSocket clientSocket, int64_t sessionId);  // 첫 Recv 착수
     void  TransportSendImmediate(CSession* session, int64_t sessionId);     // SendFlush::Immediate 경로
     void  TransportFlushDirty();                           // 틱 끝 dirty 배치 → 송신 (팔별 핸드오프)
     bool  TransportRequestDisconnect(CSession* session);    // 종료 유도 (IOCP: CancelIoEx / RIO: 소유 워커 close)

@@ -57,7 +57,7 @@ bool CIOCPServer::TransportPostListen()
 }
 
 // WSASocket 플래그 — RIO 팔은 여기에 REGISTERED_IO를 더한다.
-DWORD CIOCPServer::TransportListenFlags() const
+uint32_t CIOCPServer::TransportListenFlags() const
 {
     return WSA_FLAG_OVERLAPPED;
 }
@@ -156,13 +156,13 @@ void CIOCPServer::TransportStopAfterDrain()
 }
 
 // 완료 통지 연결 — IOCP의 CompletionKey는 단순 식별자 역할이므로 세션 소유권을 갖지 않는다.
-bool CIOCPServer::TransportAttachSession(CSession* session, SOCKET clientSocket)
+bool CIOCPServer::TransportAttachSession(CSession* session, Platform::NetSocket clientSocket)
 {
     return BindIOCP(clientSocket, reinterpret_cast<ULONG_PTR>(session));
 }
 
 // 첫 Recv 착수 — Initialize의 IOCount=1이 이 IO의 ref. AcquireSession 불필요.
-void CIOCPServer::TransportStartFirstRecv(CSession* session, SOCKET clientSocket, int64_t sessionId)
+void CIOCPServer::TransportStartFirstRecv(CSession* session, Platform::NetSocket clientSocket, int64_t sessionId)
 {
     (void)clientSocket;
     (void)sessionId;

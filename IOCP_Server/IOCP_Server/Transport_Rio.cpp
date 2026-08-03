@@ -136,7 +136,7 @@ bool CIOCPServer::TransportPostListen()
 
 // WSASocket 플래그 — accept 소켓이 REGISTERED_IO를 상속한다 (Phase 0 스모크 실측).
 // 주의: 상속된 소켓은 RIO 전용 — 일반 WSASend/WSARecv가 거부된다(10038).
-DWORD CIOCPServer::TransportListenFlags() const
+uint32_t CIOCPServer::TransportListenFlags() const
 {
     return WSA_FLAG_REGISTERED_IO | WSA_FLAG_OVERLAPPED;
 }
@@ -200,7 +200,7 @@ void CIOCPServer::TransportStopAfterDrain()
 }
 
 // 완료 통지 연결 — RIO는 소유 워커가 RQ를 만들 때 CQ에 묶는다 (여기서 할 일 없음).
-bool CIOCPServer::TransportAttachSession(CSession* session, SOCKET clientSocket)
+bool CIOCPServer::TransportAttachSession(CSession* session, Platform::NetSocket clientSocket)
 {
     (void)session;
     (void)clientSocket;
@@ -208,7 +208,7 @@ bool CIOCPServer::TransportAttachSession(CSession* session, SOCKET clientSocket)
 }
 
 // 첫 Recv 착수 — RQ 생성까지 소유 워커에 위임한다.
-void CIOCPServer::TransportStartFirstRecv(CSession* session, SOCKET clientSocket, int64_t sessionId)
+void CIOCPServer::TransportStartFirstRecv(CSession* session, Platform::NetSocket clientSocket, int64_t sessionId)
 {
     // RQ 생성+첫 Recv는 소유 워커에 위임 — RQ 생성이 CQ 상태를 바꾸는데 RIO는 내부 락이
     // 없어 소유 워커에서만 만져야 한다. CONNECTED push(호출부)가 먼저라 이벤트 순서도 보존.

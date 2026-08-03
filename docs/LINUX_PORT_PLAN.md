@@ -355,8 +355,16 @@ Windows IOCP 서버를 리눅스로 옮기는 작업의 남은 순서.
   > 1-A와 **똑같은 실수**를 반복했다 — grep이 주석을 셌다. 이번엔 계획서 경고대로 주석·문자열을 걷어내고 다시 셌고, 위 표는 그 결과다.
   > 그래도 이 표를 완전한 목록으로 믿지 말 것 — **4-C에서 실제로 컴파일해보면 여기 없는 것이 더 나온다**(1단계가 네 번 그랬다).
 
-- [ ] **4-B** `[회귀빌드]` 경계 타입 중립화 — 소켓 핸들 등 경계 시그니처를 플랫폼 중립 별칭으로
-  - **판정** → Windows Release 재빌드 경고0 오류0 **불변** (동작 불변 리팩터링)
+- [x] **4-B** `[회귀빌드]` 경계 타입 중립화 — **완료 (2026-08-03)**
+  - **판정 결과**: Windows Release 전체 재빌드 **IOCP 팔 경고0 오류0 / RIO 팔 경고0 오류0**, `BuildConfig.h` 원복 확인. 리눅스에서는 `static_assert`로 별칭 성립 검증(`NetSocket`=`int` 4바이트, `kInvalidSocket`=-1)
+  - 바꾼 것은 4-A가 짚은 **경계 3개**뿐이다 — `DWORD TransportListenFlags()` → `uint32_t`, `TransportAttachSession/StartFirstRecv`의 `SOCKET` → `Platform::NetSocket`. 선언 1곳 + 구현 2팔 × 3 = 7곳
+  - `Platform.h`에 `NetSocket`/`kInvalidSocket` 별칭 신설, `IOCPServer.h`에 include 추가
+
+  > **Windows 쪽을 `SOCKET`이 아니라 `UINT_PTR`로 정의한 이유**
+  >
+  > `SOCKET`은 `<WinSock2.h>`에 있는데 그 헤더는 `<Windows.h>`보다 먼저 와야 한다는 순서 제약이 있다. `Platform.h`가 그 제약을 자기를 include하는 모든 파일에 퍼뜨리지 않도록, 같은 타입인 `UINT_PTR`(`<Windows.h>` 제공)로 정의했다. winsock2.h 원문이 `typedef UINT_PTR SOCKET`이라 타입은 정확히 일치하고, **빌드 통과 자체가 그 증거다** — 골격이 `SOCKET` 변수를 그대로 넘기는데 타입이 달랐으면 깨진다.
+
+  - **다음 단계에서 주의할 점**: 두 OS에서 `NetSocket`의 **크기와 부호가 다르다**(Windows `UINT_PTR` 8바이트 부호없음 / 리눅스 `int` 4바이트 부호있음). 실패 판정도 다르다 — Windows는 `INVALID_SOCKET`(최대값), 리눅스는 `-1`. `sock < 0` 같은 비교를 쓰면 Windows에서 영원히 거짓이 되므로, 판정은 반드시 `kInvalidSocket`과의 등가 비교로 할 것
 
 - [ ] **4-C** `[회귀빌드]` 골격에서 Windows 전용 코드 밀어내기 — `IOCPServer.cpp`가 리눅스에서도 컴파일되는 상태로
   - **판정** → 리눅스에서 골격 TU 컴파일 통과(링크는 아직 실패해도 됨) + Windows 재빌드 불변

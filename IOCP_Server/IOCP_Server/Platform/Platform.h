@@ -41,6 +41,22 @@
 
 namespace Platform
 {
+    // ── 소켓 핸들 ──
+    //   Windows의 SOCKET은 UINT_PTR(부호 없는 포인터 크기), 리눅스는 파일 디스크립터(int)다.
+    //   크기도 부호도 달라서 경계 시그니처에 그대로 두면 한쪽에서 반드시 깨진다.
+    //
+    //   Windows 쪽을 `SOCKET`이 아니라 `UINT_PTR`로 쓰는 이유: `SOCKET`은 <WinSock2.h>에 있는데
+    //   그 헤더는 <Windows.h>보다 먼저 와야 한다는 순서 제약이 있다. 이 파일이 그 제약을
+    //   퍼뜨리지 않도록, 같은 타입인 UINT_PTR(<Windows.h> 제공)로 정의한다.
+    //   (winsock2.h 원문: typedef UINT_PTR SOCKET)
+#ifdef _WIN32
+    using NetSocket = UINT_PTR;
+    inline constexpr NetSocket kInvalidSocket = static_cast<NetSocket>(~0);   // = INVALID_SOCKET
+#else
+    using NetSocket = int;
+    inline constexpr NetSocket kInvalidSocket = -1;
+#endif
+
     // 시스템 타이머 해상도를 1ms로 올리거나(enable=true) 되돌린다(false).
     //   Windows: timeBeginPeriod/timeEndPeriod(1) — Sleep·대기 정밀도 ~15ms → 1ms.
     //   Linux  : nanosleep 계열이 이미 고해상도라 불필요 → no-op.
