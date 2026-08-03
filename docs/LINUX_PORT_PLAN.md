@@ -149,9 +149,22 @@ Windows IOCP 서버를 리눅스로 옮기는 작업의 남은 순서.
   >
   > **다만 Windows와 달라지는 점 하나**: `HeapDestroy`는 힙을 통째로 반환해 "아직 Free되지 않은(사용 중) 노드"의 메모리까지 회수하지만, `malloc` 경로엔 그런 일괄 회수가 없다. 소멸자는 프로세스 생애 1회라 실질 영향은 없으나(OS가 회수) **ASan/valgrind에는 누수로 잡힌다** — 2-D에서 그렇게 보이면 이것이 원인이다. 원본도 같은 자리에서 "T 소멸자 미호출"을 이미 인정하고 주석에 남겨 두었다.
 
-- [ ] **1-D** `InternalFreeList.h:8`의 `windows.h` 제거 + 4개 헤더의 Windows 심볼을 어댑터로 치환
-  - `SerialBuffer.h`가 `LockFreeConfig.h`(`:39~42`)를 타고 이 헤더들을 끌어오므로, 여기가 막히면 서버 본체도 리눅스에서 안 열린다
-  - **판정** → 리눅스에서 LockFree 헤더 4개 컴파일 통과
+- [x] **1-D** `windows.h` 제거 + 어댑터 치환 — **완료 (2026-08-03)**
+  - **판정 결과**: 헤더 4개의 **모든 멤버 함수를 명시적 인스턴스화**(템플릿 파라미터 조합 포함)해 컴파일 + **링크 + 실행까지 성공**, `-Wall -Wextra` 경고 0.
+    산출 바이너리에 **인라인 `cmpxchg16b` 15개 / 외부 CAS 호출 0** 확인
+  - 고친 곳은 `InternalFreeList.h`의 include 한 줄뿐이다 — `<windows.h>`·`<intrin.h>` → `"LockFreeCompat.h"`. 나머지 3개 헤더는 이걸 타고 받으므로 **자료구조 코드는 한 줄도 안 건드렸다**
+  - 처음엔 객체 생성만으로 판정하려 했는데, 그러면 실제 호출된 멤버만 인스턴스화돼 검증이 헐거워진다. 명시적 인스턴스화로 바꾸면서 `CLockFreeQueue`가 `PlacementNew=true`를 static_assert로 막고 있다는 것도 확인했다(설계 의도, 노드 Tag 보존)
+
+  > **1-A 조사가 세 번째로 보완됐다 — 심볼 grep은 정본이 아니다**
+  >
+  > 컴파일러를 돌리자 패턴 검색이 놓친 것이 한꺼번에 나왔다.
+  > - `SwitchToThread()` 3곳 (`InternalFreeList` 81 / `Queue` 95 / `Stack` 53) → `sched_yield()`
+  > - **TLS API 5종** (`ExternalTlsFreeList`) — `TlsAlloc`/`TlsFree`/`TlsGetValue`/`TlsSetValue`/`TLS_OUT_OF_INDEXES` → pthread key 매핑. 호출부가 인덱스를 `int TlsIndex`로 들고 있어 무효값을 `-1`로 맞췄다
+  > - `offsetof` — `<cstddef>`가 필요했다(Windows에선 `windows.h`가 끌어오던 것)
+  > - `<intrin.h>` — MSVC 전용 헤더
+  >
+  > 앞선 두 번(1-B의 `PVOID`, 1-C의 `_aligned_malloc` 계열)까지 합치면 패턴 검색은 **네 번 연속 불완전**했다. 원인은 단순하다 — `Interlocked*`·`__forceinline` 같은 "아는 이름"만 찾았고, Windows CRT·TLS·스레드 API처럼 이름이 다른 계열은 걸리지 않았다.
+  > **남은 단계에서는 조사 결과를 완전한 목록으로 신뢰하지 말고, 컴파일러가 뱉는 에러를 정본으로 삼을 것.** 특히 4-A(골격 Windows 심볼 분류)가 같은 함정을 안고 있다.
 
 - [ ] **1-E** CMake에 LockFree 경로·`-mcx16` 반영 (UNIX 분기)
   - `-mcx16`은 선택이 아니라 **필수**다. 없으면 `LockFreeCompat.h`가 `#error`로 빌드를 멈춘다(1-B 참조)
