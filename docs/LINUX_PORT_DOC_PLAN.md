@@ -151,14 +151,33 @@
 
 ## D2. 락프리를 리눅스로
 
-- [ ] **D2** 작성하고 검증한다
+- [x] **D2** 작성하고 검증한다 — **통과 (2026-08-04)**
+  https://app.notion.com/p/3b216a0b9f5981e9b81fe8a20bd89ad3
   - 중심: **자료구조 코드를 한 줄도 안 고쳤다.** 어댑터 헤더 하나(`LockFreeCompat.h`)로 끝났다
   - 깊게 팔 것은 **16바이트 CAS 한 건**:
     `__atomic_compare_exchange_n`은 `-mcx16`을 줘도 libatomic 호출을 낸다 → `__sync`로 갈아탔다.
     방어막도 `__atomic_always_lock_free(16,0)`은 못 쓰고 `__GCC_HAVE_SYNC_COMPARE_AND_SWAP_16`으로 판별
   - 나머지(Windows 전용 힙 · TLS · 정렬 할당)는 **표 한 줄씩**. `_aligned_malloc` 인자 순서가 반대인 것만 각주
-  - **판정**: `__sync` 선택의 근거가 **objdump 결과**로 제시됐는가(추측이 아니라 실측).
-    어댑터 개수·CAS 호출 개수가 실제 코드와 일치하는가
+  - **판정**: `__sync` 선택의 근거가 **objdump 결과**로 제시됐는가 → **WSL에서 재현해 실물을 넣었다**
+
+    | 함수 | 나온 코드 |
+    |---|---|
+    | `__sync_val_compare_and_swap` | `lock cmpxchg16b (%r9)` — 인라인 |
+    | `__atomic_compare_exchange_n` | `call` → 재배치 `R_X86_64_PLT32 __atomic_compare_exchange_16` |
+
+    방어막 매크로도 실측했다 — `-mcx16` 있으면 `#define __GCC_HAVE_SYNC_COMPARE_AND_SWAP_16 1`, 없으면 정의 자체가 없다
+  - **판정**: 어댑터 개수·CAS 호출 개수가 실제 코드와 일치하는가 → **일치**.
+    어댑터 함수 **17개**(`__forceinline` 정의 수) = 원자연산5 + 힙5 + 정렬2 + TLS4 + 양보1.
+    `Interlocked*` 호출 **18곳**(CAS128 7 · 포인터CAS 2 · Inc64 5 · Dec64 3 · Dec16 1)
+  - **자가검증에서 나온 것 — 세는 방법이 틀리면 숫자가 틀린다**
+    첫 집계에서 **CAS128 7곳이 통째로 안 잡혔다.** 호출부가 이렇게 생겼기 때문이다:
+    ```c++
+    if (false == InterlockedCompareExchange128
+    (
+    ```
+    함수명 다음 **줄바꿈 뒤에 여는 괄호**가 온다. `이름\s*\(` 패턴은 한 줄 단위 검색에서 이걸 못 넘는다.
+    D0-A의 "증분 빌드로는 경고를 못 본다"와 같은 계열이다 — **집계 결과가 기대와 다르면 대상보다 도구를 먼저 의심할 것**
+  - 렌더 확인: D1-B에서 겪은 표 셀 ` + ` 깨짐은 재발하지 않았다(표에 안 썼다)
 
 ## D3. 두 모델 차이가 터진 곳 ← 핵심
 
