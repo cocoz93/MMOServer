@@ -243,12 +243,30 @@
 
 ## D4. 네트워크 밖의 Windows 의존
 
-- [ ] **D4-A** 뼈대 — Platform 격리와 전송 경계
+- [x] **D4-A** 뼈대 — Platform 격리와 전송 경계 — **통과 (2026-08-04)**
+  https://app.notion.com/p/3b216a0b9f598154a7d8fcc62d1b4219 (1~3장)
   - `Platform.h`가 무엇을 가렸는지(타이머·경로·affinity·시그널·소켓·원자연산)
   - 전송 경계 **15개**의 타입 중립화
-  - **정직하게 적을 것**: 리눅스만 얹은 게 아니라 **기존 Windows 팔(`Transport_Iocp`·`Transport_Rio`)도 고쳤다.**
-    그래서 회귀빌드가 필수였다 → 5번으로 이어진다
-  - **판정**: 경계 15개가 실제 코드와 일치하는가 (V5에서 하나 빠졌던 이력이 있다)
+  - **정직하게 적을 것**: 리눅스만 얹은 게 아니라 **기존 Windows 팔도 고쳤다** → 5번으로 이어진다
+  - **판정**: 경계 15개가 실제 코드와 일치하는가 → **일치.**
+    선언 15개(`IOCPServer.h`), 구현도 **세 팔 각각 15개**(`Transport_Iocp`·`Transport_Rio`·`Transport_Epoll`).
+    갈래로 묶으면 준비·정리 5 / 워커 수명 4 / 세션 연결 3 / 송신 3
+  - **V5에서 빠졌던 이유가 구조로 확인됐다** — `TransportSubmitSegment`만 `:398`에 있고
+    나머지 열넷은 `:409-422`에 몰려 있다. **블록만 보면 14로 세게 되는 배치**다.
+    이 대목을 페이지에 함정으로 남겼다(별칭이 받아줘서 빌드는 통과했다는 것까지)
+  - **가둔 갈래는 9개** — 타이머·경로·affinity·종료 시그널·스레드 CPU 시간·32비트 원자연산·
+    설정 파일·로그 시각·크래시 덤프
+  - **자가검증**: D3-B 교훈대로 이름을 전부 실물 대조했다.
+    `mmo_thread_kernel_ratio`(`MonitorServer.h:490`) 실존 확인,
+    `timeBeginPeriod`·`GetModuleFileNameA`·`/proc/self/exe`·`clock_gettime`·
+    `sched_getaffinity`·`sched_setaffinity`·`SetThreadAffinityMask`·`sigaction` 전부 `Platform.h`에 있다
+  - **이번 장의 값진 이야기 둘**
+    ① **"한곳에 가둔다"가 항상 옳지는 않다** — 소켓 헤더까지 `Platform.h`에 넣으려다
+       `sockaddr` 재정의로 빌드가 깨졌다. `WIN32_LEAN_AND_MEAN`으로도 못 막았다(그 매크로가 **없는**
+       파일들이 문제였다). 헤더 포함 순서처럼 번역 단위 전체에 걸리는 제약은 한곳에 몰 수 있는 종류가 아니다
+    ② **리눅스에서 못 재는 지표가 있다** — `GetThreadTimes`는 커널/유저를 나눠 주지만
+       리눅스 per-thread 시계는 합계만 준다 → `mmo_thread_kernel_ratio`는 리눅스에서 **0 고정**.
+       지어내지 않고 "못 재는 것"으로 남겼다
 
 - [ ] **D4-B** 하이라이트 — 크래시 덤프 · 잔가지 표
   - 크래시 덤프: 두 OS가 **죽는 방식 자체가 다르다**(미니덤프 vs `sigaction`+`backtrace`).
