@@ -99,7 +99,7 @@
 
 ## A4. 사실 검증 — 서술이 맞는가
 
-- [ ] **A4** 개념·동작 설명이 실제로 맞는지 본다. **가장 조심할 렌즈다**
+- [x] **A4** 개념·동작 설명이 실제로 맞는지 본다. **가장 조심할 렌즈다**
   - 근거를 댈 수 있는 것만 판정한다: `man` 페이지 · 표준 문구 · 코드 동작 · 실측
   - 특히 볼 것:
     · epoll 페이지의 LT/ET 설명 — `man epoll` 원문과 어긋나지 않는가
@@ -309,3 +309,58 @@ rc는 재보지 않고 원본 기록을 믿었다. 잴 수 있는 것은 예외 
 
 **범위 확인(③)** — `grep -c '^```bash'`로 블록 수를 세어 18개를 확정하고 전부 실행했다.
 curl 두 개는 서버 기동이 필요해 미루기 쉬운 자리였는데, 실제로 띄워서 지표 이름까지 확인했다.
+
+### A4 — 사실 검증 (2026-08-04)
+
+계획서가 **"기억으로 쓴 대비가 위험하다"**고 짚은 대로, "IOCP는 이랬다"는 서술을
+`Transport_Iocp.cpp`와 하나씩 맞댔다.
+
+**사실과 다른 것 — 1건 (중대, 두 페이지 다섯 곳) ★**
+
+epoll 6장과 p3 5장이 **`_sendSubmitBusy`를 "epoll 때문에 생긴 새 잠금"으로 서술**했다.
+> "`_sendSubmitBusy`는 그걸 막는 잠금이고, **IOCP 팔에는 없던 것이다** — 거기서는
+> "세션당 송신 1개만 진행"(`_sending`)이 같은 역할을 하되 완료 통지 위에서 돌았다."
+
+**반대다.** 근거는 셋.
+
+1. `git show main:…/Transport_Iocp.cpp | grep -c _sendSubmitBusy` → **6**.
+   포팅 브랜치가 갈라지기 전부터 IOCP 팔에 있었다 (도입 커밋 `1becb0f 송신 다중 pending 실험`)
+2. **`_sending`은 지금 코드에 선언이 없다.** `IOCPServer.h:102`가 "1-pending 시절의 `_sending`
+   하나를 두 역할로 나눈 것"이라고 **과거형으로** 부른다 — `_sendSubmitBusy`(제출 잠금) +
+   `_sendInFlight`(미완료 수)로 갈렸다
+3. `IOCPServer.h:103`이 못을 박는다 — *"제출자가 둘인 **IOCP 팔**(송신 워커 + 완료 워커의
+   이어보내기)에서 제출 순서=와이어 순서를 지킨다"*
+
+즉 이 잠금은 **IOCP 팔을 위해 먼저 만들어졌고 epoll이 물려받은 것**이다. 바뀌는 것은
+**제출자가 누구인가**(IOCP: 송신 워커+완료 워커 / epoll: 게임 스레드+epoll 워커)뿐이다.
+p3 5장 제목("그래서 생긴 새 잠금")·도입부·본문, 6장 소스 지도의 "새 잠금", epoll 6장 콜아웃까지
+다섯 곳을 고쳤다.
+
+*이 문서군의 값어치는 "무엇이 진짜로 갈렸는가"에 있는데, 안 갈린 것을 갈렸다고 적으면
+그 값어치가 깎인다. 그래서 중대로 본다.*
+
+**경미 — 1건 (고침)** — epoll 3장 대응표가 IOCP 쪽을 `BindIoCompletionCallback`으로 적었다.
+표의 다른 행(`WSARecv`·`GetQueuedCompletionStatus`·`CancelIoEx`·`PostQueuedCompletionStatus`)은
+전부 우리 코드에 실재하는데 **이 행만 우리가 안 쓰는 API**다. 실제는
+`CreateIoCompletionPort((HANDLE)socket, _iocpHandle, …)`(`Transport_Iocp.cpp:252`) — 그렇게 고쳤다.
+
+**맞은 것 — 나머지 전부**
+
+| 서술 | 근거 |
+|---|---|
+| LT/ET 설명 | `man epoll` 원문 대조 (A3에서 확인) |
+| `CancelIoEx`가 실패 완료를 만들고 **워커가** `IOCountDecrement`를 부른다 | `Transport_Iocp.cpp:232` 주석이 같은 말, `HandleCompletion` → `:391` |
+| IOCP의 `TransportRequestDisconnect`는 참조를 **직접 안 놓는다** (문서의 핵심 대비) | `:232-245`에 `IOCountDecrement`가 없다. epoll은 `:330`에서 직접 부른다 |
+| 커널이 concurrency를 조절한다 | `CreateIoCompletionPort(…, _coreCount)` — 4번째 인자가 동시 실행 상한 |
+| `WSARecv`에 버퍼를 넘긴다 · `OVERLAPPED`가 요청마다 · `CompletionKey`로 세션을 찾는다 | `:464`, `OverlappedEx`, `HandleCompletion`의 `reinterpret_cast<CSession*>(completionKey)` |
+| 슬롯 링·`_sendInFlight`·`_sendDepth`를 epoll이 안 쓴다 | `Transport_Epoll.cpp:170` 주석이 같은 말 |
+| `__sync`/`__atomic` objdump 해석, in/out 규약 | A3 실측 + `LockFreeCompat.h:112-120` |
+| 리눅스에서 `mmo_thread_kernel_ratio`가 **0으로 고정** | `Platform.h:462` `outKernelNs = 0;` |
+
+**지적하지 않은 것 (관측)** — p4의 "`char16_t`는 표준이 **정확히** 16비트를 보장한다".
+엄밀히 표준은 `uint_least16_t`와 같은 크기라고만 해서 "최소 16비트"가 정확하다.
+다만 대상 플랫폼에서 전부 16비트이고 문서가 **실측(1028/1034)으로 확인**했으므로 오도하지 않는다.
+
+**범위 확인(③)** — IOCP 대비 서술을 페이지별로 훑어 **10개 주장**을 뽑고 전부 코드로 확인했다.
+`_sending`처럼 **"코드에 아직 있는 줄 알았던 이름"**은 선언 검색으로만 잡히므로,
+서술을 읽고 넘기지 않고 심볼 존재부터 확인한 것이 이번 발견의 열쇠였다.
