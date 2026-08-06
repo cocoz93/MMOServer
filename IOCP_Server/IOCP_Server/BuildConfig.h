@@ -102,7 +102,7 @@
 //   (CREATE가 그 대상의 이동 번들보다 먼저 도착 보장 — 클라 파싱 순서 의미 불변).
 //   1: 아웃바운드 직송 digest 합류 [실험]
 //   0: 기존 — FanoutToSectors 개별 송신 (P1+P2+P3 채택 상태 = baseline)
-#define USE_MEMBERSHIP_DIGEST 0
+#define USE_MEMBERSHIP_DIGEST 1
 
 //   의존: 수신섹터 digest 파이프라인(연접·배포·해제) + 아웃바운드 1회 빌드(점프 폴백이 FanoutToSectors 사용).
 #if USE_MEMBERSHIP_DIGEST && (!USE_BROADCAST_BUNDLE || !USE_MEMBERSHIP_FANOUT_DEDUP)

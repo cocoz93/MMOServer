@@ -149,6 +149,12 @@ private:
     void FanoutToSectors(CZone* zone,
                          const CSectorManager::SectorPos* sectors, int32_t sectorCount,
                          CSerialBuffer* pMsg, CPlayer* exclude);
+#if USE_MEMBERSHIP_DIGEST
+    // [Phase 4] 아웃바운드 멤버십을 직송 보류로 등록 (+자기 섹터 점프 폴백). 버퍼 소유권 1을 소비.
+    void RegisterOutboundToSectors(CZone* zone, int32_t zoneId,
+                                   const CSectorManager::SectorPos* sectors, int32_t sectorCount,
+                                   CSerialBuffer* pMsg, CPlayer* exclude);
+#endif
 #endif
 
     // 패킷별 전송 함수 (Fill + Send)

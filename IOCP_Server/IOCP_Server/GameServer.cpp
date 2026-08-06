@@ -1732,8 +1732,15 @@ void CGameServer::ProcessSectorChange(CZone* zone, CPlayer* player,
     // 이탈 섹터 — 상호 DELETE
     if (removedCount > 0)
     {
+#if USE_MEMBERSHIP_DIGEST
+        // [Phase 4] 아웃바운드: "나를 삭제" 1개 빌드 → 이탈 섹터들에 직송 등록 (주민 열람 없음, 배포는 틱 끝 digest)
+        //           player는 이탈 섹터에 없어(현재 섹터는 새 AOI 소속) exclude 불필요 = 폴백 경로 없음
+        RegisterOutboundToSectors(zone, player->_zoneId, removed, removedCount,
+                                  MakeDeletePlayer(player->_playerId), nullptr);
+#else
         // 아웃바운드: "나를 삭제" 1개 빌드 → 이탈 섹터 전원에게 팬아웃 (player는 이탈 섹터에 없어 exclude 불필요)
         FanoutToSectors(zone, removed, removedCount, MakeDeletePlayer(player->_playerId), nullptr);
+#endif
 
 #if USE_MEMBERSHIP_INBOUND_BUNDLE
         // [Phase 2] 인바운드: 수신자가 mover 1명 → 상대들을 배치 패킷(상한 초과 시 청크 분할)으로 접음.
@@ -1761,8 +1768,15 @@ void CGameServer::ProcessSectorChange(CZone* zone, CPlayer* player,
     // 진입 섹터 — 상호 CREATE
     if (addedCount > 0)
     {
+#if USE_MEMBERSHIP_DIGEST
+        // [Phase 4] 아웃바운드: "나를 생성" 1개 빌드 → 진입 섹터들에 직송 등록.
+        //           1칸 이동은 진입 섹터에 자신이 없고, 멀티섹터 점프로 자기 현재 섹터가 끼면 그 섹터만 개별 폴백
+        RegisterOutboundToSectors(zone, player->_zoneId, added, addedCount,
+                                  MakeCreateOtherPlayer(player, SpawnReason::NORMAL), player);
+#else
         // 아웃바운드: "나를 생성" 1개 빌드 → 진입 섹터 전원에게 팬아웃 (자기 자신 제외)
         FanoutToSectors(zone, added, addedCount, MakeCreateOtherPlayer(player, SpawnReason::NORMAL), player);
+#endif
 
 #if USE_MEMBERSHIP_INBOUND_BUNDLE
         // [Phase 2] 인바운드: 상대들을 배치 패킷(상한 초과 시 청크 분할)으로 — 자기 자신 제외는 OFF와 동일.
@@ -1872,6 +1886,33 @@ void CGameServer::FanoutToSectors(CZone* zone,
 
     pMsg->SubRef();   // 빌더가 넘긴 소유권 1 회수 (타겟 0명이어도 안전)
 }
+
+#if USE_MEMBERSHIP_DIGEST
+// [Phase 4] 아웃바운드 멤버십을 직송 보류로 등록 — 섹터당 등록 1건(주민 열람 없음), 배포·회수는 틱 끝 digest.
+// 소유권: 소비자(직송 등록·폴백 팬아웃)마다 AddRef로 +1씩 공급하고, 끝에서 빌더 몫 1을 회수.
+// exclude 처리: 직송은 공유 버퍼라 수신자별 제외가 불가 → exclude가 그 섹터의 주민인 경우
+// (멀티섹터 점프로 진입 목록에 자기 현재 섹터가 포함될 때뿐 — 1칸 이동은 진입 섹터에 자신이 없음)만
+// 그 1개 섹터를 기존 FanoutToSectors(개별 송신, exclude 지원)로 폴백해 와이어 내용을 보존한다.
+void CGameServer::RegisterOutboundToSectors(CZone* zone, int32_t zoneId,
+                                            const CSectorManager::SectorPos* sectors, int32_t sectorCount,
+                                            CSerialBuffer* pMsg, CPlayer* exclude)
+{
+    for (int32_t i = 0; i < sectorCount; ++i)
+    {
+        if (exclude != nullptr &&
+            sectors[i].x == exclude->_sectorX && sectors[i].y == exclude->_sectorY)
+        {
+            // 점프 폴백 — FanoutToSectors가 빌더 몫 1을 소비하므로 AddRef로 별도 소유권 공급
+            pMsg->AddRef();
+            FanoutToSectors(zone, &sectors[i], 1, pMsg, exclude);
+            continue;
+        }
+        pMsg->AddRef();   // 직송 등록 1건당 소유권 1 — FlushSectorSends 4)에서 회수
+        RegisterSectorDirectItem(zone, zoneId, sectors[i].x, sectors[i].y, pMsg);
+    }
+    pMsg->SubRef();   // 빌더가 넘긴 소유권 1 회수 (등록 0건이어도 안전)
+}
+#endif // USE_MEMBERSHIP_DIGEST
 #endif // USE_MEMBERSHIP_FANOUT_DEDUP
 
 #if USE_SECTOR_AGGREGATION
