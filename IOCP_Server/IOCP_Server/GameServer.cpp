@@ -2002,6 +2002,22 @@ void CGameServer::BroadcastSectorPacket(CZone* zone, int32_t sectorX, int32_t se
 //            와이어 바이트·논리 패킷 수·순서 의미 불변 (coalescing이 이미 틱 끝 연접 송신이라 클라 무변경).
 // ==========================================================================
 
+// 존 최초 등록 — 그리드 크기 확정 (맵 크기는 부팅 후 불변). 방송(items)/직송(directItems)
+// 어느 쪽이 먼저 등록해도 1회만 초기화 (countX==0 센티널 — items.empty()는 직송 선행 시 오판).
+void CGameServer::EnsureZonePending(CZone* zone, SectorOutbox::ZonePending& zp)
+{
+    if (zp.countX != 0)
+        return;
+    zp.countX = zone->GetSectorManager().GetSectorCountX();
+    zp.countY = zone->GetSectorManager().GetSectorCountY();
+    const size_t total = static_cast<size_t>(zp.countX) * zp.countY;
+    zp.items.resize(total);
+    zp.recvEpoch.assign(total, 0);
+#if USE_MEMBERSHIP_DIGEST
+    zp.directItems.resize(total);
+#endif
+}
+
 // 보류 등록 — (zoneId, 섹터)에 버퍼 적재. 버퍼 소유권 1은 FlushSectorSends 4)에서 회수.
 // _broadcastCalls는 소스 아이템 단위로 집계 (기존 per-청크/per-채팅 호출 카운트와 동일 의미 → A/B 비교 가능).
 // → 배출: 틱 끝 FlushSectorSends에서 _sectorOutbox.pendingByZone을 수신섹터 digest로 연접·배포.
@@ -2009,13 +2025,7 @@ void CGameServer::RegisterSectorItem(CZone* zone, int32_t zoneId, int32_t sector
                                      CSerialBuffer* pMsg)
 {
     auto& zp = _sectorOutbox.pendingByZone[zoneId];
-    if (zp.items.empty())   // 존 최초 등록 — 그리드 크기 확정 (맵 크기는 부팅 후 불변)
-    {
-        zp.countX = zone->GetSectorManager().GetSectorCountX();
-        zp.countY = zone->GetSectorManager().GetSectorCountY();
-        zp.items.resize(static_cast<size_t>(zp.countX) * zp.countY);
-        zp.recvEpoch.assign(static_cast<size_t>(zp.countX) * zp.countY, 0);
-    }
+    EnsureZonePending(zone, zp);
     const int32_t idx = sectorY * zp.countX + sectorX;
     if (zp.items[idx].empty())
         _sectorOutbox.touchedSectors.emplace_back(zoneId, idx);
@@ -2023,11 +2033,32 @@ void CGameServer::RegisterSectorItem(CZone* zone, int32_t zoneId, int32_t sector
     InterlockedIncrement64(&_monitor._gameLoop._broadcastCalls);
 }
 
+#if USE_MEMBERSHIP_DIGEST
+// [Phase 4] 직송 보류 등록 — (zoneId, 섹터)에 "그 섹터 주민에게만" 전달할 버퍼 적재 (멤버십 CREATE/DELETE 전용).
+// 버퍼 소유권 1은 FlushSectorSends 4)에서 회수. _broadcastCalls는 안 늘린다(방송 지표 오염 방지) —
+// 멤버십 횟수는 배포 시점에 _tickMembershipSends로 승계 (OFF의 타겟당 1 집계와 동일 산식).
+void CGameServer::RegisterSectorDirectItem(CZone* zone, int32_t zoneId, int32_t sectorX, int32_t sectorY,
+                                           CSerialBuffer* pMsg)
+{
+    auto& zp = _sectorOutbox.pendingByZone[zoneId];
+    EnsureZonePending(zone, zp);
+    const int32_t idx = sectorY * zp.countX + sectorX;
+    if (zp.directItems[idx].empty())
+        _sectorOutbox.touchedDirectSectors.emplace_back(zoneId, idx);
+    zp.directItems[idx].push_back(pMsg);
+}
+#endif
+
 // 틱 끝: ① 이동 dirty → 섹터별 번들 빌드·보류 ② 수신섹터 후보 수집 ③ 연접·배포 ④ 일괄 해제.
-// ← 생산: MarkMoveDirty(_sectorOutbox.dirtyMovers) + RegisterSectorItem(_sectorOutbox.pendingByZone).
+// ← 생산: MarkMoveDirty(_sectorOutbox.dirtyMovers) + RegisterSectorItem(_sectorOutbox.pendingByZone)
+//         + RegisterSectorDirectItem(직송, USE_MEMBERSHIP_DIGEST).
 void CGameServer::FlushSectorSends()
 {
-    if (_sectorOutbox.dirtyMovers.empty() && _sectorOutbox.touchedSectors.empty())
+    if (_sectorOutbox.dirtyMovers.empty() && _sectorOutbox.touchedSectors.empty()
+#if USE_MEMBERSHIP_DIGEST
+        && _sectorOutbox.touchedDirectSectors.empty()
+#endif
+        )
         return;
 
     // [계측] 빌드+연접+배포 전체를 enqueue 축에 합산 — OFF의 FlushSectorUpdates·채팅 enqueue와
@@ -2104,6 +2135,20 @@ void CGameServer::FlushSectorSends()
         }
     }
 
+#if USE_MEMBERSHIP_DIGEST
+    // [Phase 4] 직송 섹터 자체도 수신 후보 — removed 섹터는 mover의 새 3×3 밖이라
+    // 위 방송 union에 안 잡힌다 (여기 없으면 DELETE가 통째로 증발).
+    for (const auto& t : _sectorOutbox.touchedDirectSectors)
+    {
+        auto& zp = _sectorOutbox.pendingByZone[t.first];
+        if (zp.recvEpoch[t.second] != _sectorOutbox.flushEpoch)
+        {
+            zp.recvEpoch[t.second] = _sectorOutbox.flushEpoch;
+            _sectorOutbox.receiverSectors.emplace_back(t.first, t.second);
+        }
+    }
+#endif
+
     // ── 3) 각 수신섹터: 이웃 9섹터 보류물 연접(digest) → 주민당 RequestSendRaw 1회 ──
     int64_t sentPkts = 0, sentBytes = 0, targets = 0;
     _sectorOutbox.concatBuf.reserve(16384);   // 최초 1회만 실할당 (동접 5000 기준 digest ~5KB)
@@ -2122,6 +2167,17 @@ void CGameServer::FlushSectorSends()
 
         _sectorOutbox.concatBuf.clear();
         int32_t itemCount = 0;
+#if USE_MEMBERSHIP_DIGEST
+        // [Phase 4] 직송 선연접 — CREATE가 같은 digest 안의 이동 번들(방송 구간)보다 앞서도록 순서 보장
+        int32_t directCount = 0;
+        for (CSerialBuffer* buf : zp.directItems[r.second])
+        {
+            const char* p = buf->GetReadBufferPtr();
+            _sectorOutbox.concatBuf.insert(_sectorOutbox.concatBuf.end(), p, p + buf->GetDataSize());
+            ++directCount;
+        }
+        itemCount += directCount;
+#endif
         const int32_t y0 = (std::max)(ry - 1, 0), y1 = (std::min)(ry + 1, zp.countY - 1);
         const int32_t x0 = (std::max)(rx - 1, 0), x1 = (std::min)(rx + 1, zp.countX - 1);
         for (int32_t ny = y0; ny <= y1; ++ny)
@@ -2141,7 +2197,15 @@ void CGameServer::FlushSectorSends()
 
         const int concatSize = static_cast<int>(_sectorOutbox.concatBuf.size());
         // targets = (아이템 × 주민) 전달 쌍 수 — 기존 Σ(호출별 gather 인원)과 재배열만 다르고 총량 동일
+#if USE_MEMBERSHIP_DIGEST
+        // [Phase 4] 직송(멤버십)은 방송 지표에서 제외 — OFF의 FanoutToSectors도 _broadcastTargets를 안 늘렸다.
+        // 대신 멤버십 횟수를 OFF의 타겟당 1 집계(세션 무효 포함, FanoutToSectors 2패스와 동일 산식)로 승계
+        // → membership_sends_rate가 A/B 등가 통제지표로 유지된다.
+        targets += static_cast<int64_t>(residents.size()) * (itemCount - directCount);
+        _tickMembershipSends += static_cast<int64_t>(residents.size()) * directCount;
+#else
         targets += static_cast<int64_t>(residents.size()) * itemCount;
+#endif
         for (CPlayer* other : residents)
         {
             if (other->_sessionId == -1)
@@ -2163,6 +2227,18 @@ void CGameServer::FlushSectorSends()
         zp.items[t.second].clear();
     }
     _sectorOutbox.touchedSectors.clear();
+
+#if USE_MEMBERSHIP_DIGEST
+    // [Phase 4] 직송 보류물도 동일 규칙으로 일괄 해제 (등록 1건당 소유권 1)
+    for (const auto& t : _sectorOutbox.touchedDirectSectors)
+    {
+        auto& zp = _sectorOutbox.pendingByZone[t.first];
+        for (CSerialBuffer* buf : zp.directItems[t.second])
+            buf->SubRef();
+        zp.directItems[t.second].clear();
+    }
+    _sectorOutbox.touchedDirectSectors.clear();
+#endif
 
     // 송신 메트릭 배치 반영 (기존 BroadcastSectorPacket의 원자연산 N→1 패턴과 동일)
     if (targets > 0)
