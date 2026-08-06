@@ -45,7 +45,7 @@ struct ServerConfig
     bool        monitorEnabled = false;
     unsigned long long affinityMask = 0;   // 프로세스를 묶을 CPU 코어 마스크 (0=미적용)
     int         workerThreads = 0;         // IOCP 워커 스레드 수 (0=서버 affinity 코어 수로 자동 산정)
-    int         sendWorkers   = 0;         // 전용 송신 워커 수 (0/1=단일, 2+=sessionId%K 워커 풀; A/B 실험용)
+    int         sendWorkers   = 0;         // 전용 송신 워커 수 (0/1=단일, 2+=uniqueId%K 워커 풀; A/B 실험용)
     int         rioWorkers    = 0;         // RIO 전송 워커 수 (USE_RIO_TRANSPORT=1 빌드 전용, 0=자동 2)
     int         completionBatch = 0;       // 완료 수거 방식 (0=GQCS 1건씩[기본], N>0=GQCSEx 최대 N건; IOCP 빌드 전용)
     int         sendDepth     = 1;         // 세션당 동시 송신 제출 상한 (1=기존 1-pending[기본], 2/4/8; 양팔 공통)
@@ -115,7 +115,8 @@ struct ServerConfig
         // WorkerThreads: IOCP 워커 스레드 수 (0=서버 affinity 코어 수로 자동)
         workerThreads = ini.GetInt("Server", "WorkerThreads", 0);
 
-        // SendWorkers: 전용 송신 워커 수 (0/1=단일 스레드, 2+=sessionId%K 워커 풀)
+        // SendWorkers: 전용 송신 워커 수 (0/1=단일 스레드, 2+=uniqueId%K 워커 풀)
+        //   분배 키가 sessionId 였을 때는 인덱스 비트가 쏠려 워커 한쪽만 일했다 — uniqueId 로 고쳤다.
         sendWorkers = ini.GetInt("Server", "SendWorkers", 0);
 
         // RioWorkers: RIO 전송 워커 수 (USE_RIO_TRANSPORT=1 빌드에서만 사용, 0=자동 2)

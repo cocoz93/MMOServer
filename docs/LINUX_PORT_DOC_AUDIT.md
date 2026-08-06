@@ -196,7 +196,8 @@ p4 2장의 호출부 예시가 종료 대기 시간을 **3000**으로 썼는데,
   (`TransportPreListen:64` … `TransportRequestDisconnect:311`)도 전부 그 함수의 정의 줄이다
 - `IOCPServer.h:398` + `:409-422` — 세어 보면 **1 + 14 = 15개**로 문서의 "전송 경계 15개"와 맞고,
   `Transport_Iocp/Rio/Epoll.cpp`가 각각 15개씩 구현하는 것도 확인했다
-- `IOCPServer.cpp:314`(주석 처리된 TCP_NODELAY) · `NetIoModel.h:18` · `Protocol.h:210` ·
+- `IOCPServer.cpp:314`(주석 처리된 TCP_NODELAY — **2026-08-05 그 주석 자체를 삭제했다.
+  지금은 이 줄이 없다**) · `NetIoModel.h:18` · `Protocol.h:210` ·
   `CrashDump.h:302/321/330` · `Logger.cpp:45-47` · `IniFile.h` 119줄 — 전부 그 줄이 그 내용
 - LockFree 쪽 — `InternalFreeList.h:8/283` · `LockFreeCompat.h:85-87/97-121` ·
   **CAS128 호출부 7곳**(`LockFreeQueue.h:318,343,352,429,452` 포함) 전량 일치

@@ -549,7 +549,10 @@ Windows IOCP 서버를 리눅스로 옮기는 작업의 남은 순서.
     - **엣지 트리거(`EPOLLET`)** — 통지 수가 준다. 대신 "`EAGAIN`이 날 때까지 읽는다"는 규칙을 어기면 조용히 멈춘다
     - **`EPOLLEXCLUSIVE`** — 다중 워커가 같은 리슨 소켓을 기다릴 때 thundering herd 방지
     - **`SO_REUSEPORT`** — 워커별 리슨 소켓을 따로 두어 accept 경합 자체를 없앤다
-    - **`TCP_NODELAY`** — 이미 켜져 있는지부터 확인(골격에 주석 처리된 자리가 있다)
+    - **`TCP_NODELAY`** — 서버는 안 켠다(Nagle 켜진 기본 상태). 켜는 곳은 부하 클라뿐이다
+      (`StressTest/2. Custom_echo_stress/EchoStressClient/DummyClient.cpp:105`,
+      `StressTest/3. MMO_stress/MMOStressClient/DummyClient.cpp:96`).
+      골격에 주석 처리로 남아 있던 자리는 2026-08-05 에 지웠다 — 켜려면 새로 넣어야 한다
     - **`MSG_MORE` / `TCP_CORK`** — 코얼레싱 보조. 애플리케이션 묶음과 중복이면 이득이 없을 수 있다
   - **판정** → 항목별로 A/B 수치와 채택/기각 근거를 남긴다 (기각도 자산이다)
 

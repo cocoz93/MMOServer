@@ -122,7 +122,7 @@
   | 5. `EPOLLOUT`을 평소에 꺼두는 이유 | `EpollUpdateWriteInterest` `:271-287` + 주석 `:174` ("보낼 것이 없어도 통지가 계속 와 워커가 헛돈다"), 상태 비교로 syscall 절약 `:274` |
   | 6. 스레드 모델이 왜 따라 바뀌는가 | `:66-68`(동시 실행 상한 개념이 없다) · 워커 전원이 같은 `_epollFd`를 `epoll_wait` `:337-349` · 중복 진입 방어 `AcquireSession` `:404`, `_sendSubmitBusy` `:183` |
   | 7. 소스 지도 | 경계 함수 15개 + `EpollWorkerThread`·`EpollHandleReadable`·`EpollSendSession` |
-  | 8. 아직 안 쓴 것 | `EPOLLET`·`EPOLLEXCLUSIVE`·`SO_REUSEPORT` 전부 미사용, `TCP_NODELAY`는 **주석 처리**(`IOCPServer.cpp:314`, 양 팔 공통) → 4-J 튜닝 후보 |
+  | 8. 아직 안 쓴 것 | `EPOLLET`·`EPOLLEXCLUSIVE`·`SO_REUSEPORT` 전부 미사용, `TCP_NODELAY`는 서버에 **설정하지 않음**(Nagle 켜진 기본 상태, 양 팔 공통 — 켜는 곳은 부하 클라뿐). 주석으로 남아 있던 자리는 2026-08-05 삭제 → 4-J 튜닝 후보 |
 
   - ★ **4절의 핵심을 찾았다 — "LT를 골랐다"가 아니라 "지금 구조가 LT를 전제한다"가 맞다.**
     `EpollHandleReadable`은 링에 빈 자리가 없으면 **덜 읽고 나온다**(`:409-412`).

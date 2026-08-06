@@ -309,15 +309,30 @@ bool CIOCPServer::SetSocketOptions(SOCKET socket)
     lingerOpt.l_linger = 0;
     setsockopt(socket, SOL_SOCKET, SO_LINGER, reinterpret_cast<char*>(&lingerOpt), sizeof(lingerOpt));
 
-    // TCP_NODELAY 옵션: Nagle 알고리즘 비활성화 (지연 없이 송신)
-    //int flag = 1;
-    //setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
-
 #if USE_ZERO_SNDBUF
     // [실험] 커널 송신버퍼 0 → WSASend 시 커널 복사(③) 제거, 유저버퍼에서 직접 송신(zero-copy).
     //        ③가 미미하다는 가정의 실측 검증용 (BuildConfig.h 토글).
+    //   커널이 요청을 받아들였는지 반드시 되읽어 확인한다 — setsockopt이 성공을 돌려줘도 스택이
+    //   값을 그대로 쓴다는 보장은 없다. 확인 없이 재면 실험 팔이 안 걸린 A/A 를 A/B 로 착각한다.
     int sndBufSize = 0;
-    setsockopt(socket, SOL_SOCKET, SO_SNDBUF, reinterpret_cast<char*>(&sndBufSize), sizeof(sndBufSize));
+    if (setsockopt(socket, SOL_SOCKET, SO_SNDBUF, reinterpret_cast<char*>(&sndBufSize), sizeof(sndBufSize)) == SOCKET_ERROR)
+    {
+        LOG_ERROR_STREAM("[Experiment] SO_SNDBUF=0 설정 실패. WSA=" << WSAGetLastError());
+    }
+    else
+    {
+        // 세션마다 찍으면 로그가 폭주하므로 첫 소켓 한 번만 남긴다.
+        static std::atomic<bool> sndBufReported{ false };
+        if (!sndBufReported.exchange(true))
+        {
+            int applied = -1;
+            int appliedLen = sizeof(applied);
+            if (getsockopt(socket, SOL_SOCKET, SO_SNDBUF, reinterpret_cast<char*>(&applied), &appliedLen) == 0)
+                SLOG_INFO("[Experiment] SO_SNDBUF=0 요청 → 커널 적용값 {} (0이 아니면 실험이 안 걸린 것)", applied);
+            else
+                LOG_ERROR_STREAM("[Experiment] SO_SNDBUF 적용값 확인 실패. WSA=" << WSAGetLastError());
+        }
+    }
 #endif
 
     // 필요시 추가 옵션 설정 가능

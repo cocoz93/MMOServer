@@ -17,7 +17,7 @@ struct Config
     int         testDurationSec = 0;             // 테스트 지속 시간(초). 0이면 수동 종료까지 무한 실행
     int         monitorPort     = 9092;          // Prometheus 메트릭 HTTP 포트
     int         minPacketSize   = 12;            // 에코 패킷 최소 크기(B). 하한 12 (헤더4+echoValue8)
-    int         maxPacketSize   = 256;           // 에코 패킷 최대 크기(B). 상한 4096 (서버 MAX_PACKET_SIZE)
+    int         maxPacketSize   = 256;           // 에코 패킷 최대 크기(B). 서버 MAX_PACKET_SIZE 는 1458 (그 위로 잡으면 서버가 크기 검증에서 세션을 끊는다)
     int         rampUpIntervalMs = 0;            // 점진 접속 간격(ms). 0이면 전체 동시 접속, >0이면 해당 간격마다 1명씩 추가
     int         attackMode       = 0;            // 0=정상 에코, 1=비정상 패킷 크기, 2=패킷 폭주, 3=idle(타임아웃), 4=sendQ 압박
     int         attackClientCount = 5;           // 0=전원 공격, N=앞에서 N명만 공격 (나머지 정상 에코)
