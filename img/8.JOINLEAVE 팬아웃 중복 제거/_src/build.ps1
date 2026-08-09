@@ -2,11 +2,9 @@
 # Usage:  powershell -ExecutionPolicy Bypass -File build.ps1
 #
 # logical size x DSF4 = final resolution (Pretendard embedded, PPT quality):
-#   01 : 1200x600 -> 4800x2400   (01_bottleneck_54pct.png)
-#   02 : 1200x640 -> 4800x2560   (02_two_directions.png)
-#   03 : 1200x642 -> 4800x2568   (03_p1_outbound_fanout.png)
-#   04 : 1200x642 -> 4800x2568   (04_p2_inbound_bundle.png)
-#   05 : 1200x620 -> 4800x2480   (05_result_68pct.png)
+#   s1 : 1200x660 -> 4800x2640   (01_sector_stage.png)
+#   s2 : 1200x660 -> 4800x2640   (02_fold_p1_p2.png)
+# The earlier 5-slide set (01..05.html) was dropped -- kept on disk but no longer built.
 $dir = $PSScriptRoot
 
 $chrome = "C:\Program Files\Google\Chrome\Application\chrome.exe"
@@ -40,11 +38,10 @@ function Render($name, $w, $h, $out) {
 }
 
 Write-Host "[build] using: $chrome"
-Render "01" 1200 600 "01_bottleneck_54pct.png"
-Render "02" 1200 640 "02_two_directions.png"
-Render "03" 1200 642 "03_p1_outbound_fanout.png"
-Render "04" 1200 642 "04_p2_inbound_bundle.png"
-Render "05" 1200 620 "05_result_68pct.png"
+Render "s1" 1200 660 "01_sector_stage.png"
+Render "s2" 1200 660 "02_fold_p1_p2.png"
+Render "s3" 1200 620 "03_outbound.png"
+Render "s4" 1200 620 "04_inbound.png"
 Remove-Item $render -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item $profileDir -Recurse -Force -ErrorAction SilentlyContinue
 Write-Host "[build] done."

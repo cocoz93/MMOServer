@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --blue:#3a78b8; --blue-ink:#2b6aa8;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:620px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:572px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:34px 56px 0}
+
+  .title{font-size:37px;font-weight:800;color:var(--ink);letter-spacing:-.8px;line-height:1.08}
+  .title .b{color:var(--blue-ink)}
+  .uline{width:66px;height:6px;border-radius:3px;background:var(--blue);margin-top:14px}
+  .sub{margin-top:13px;font-size:19px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .viz{display:block;width:100%;height:auto;margin-top:8px}
+
+  .foot{position:absolute;left:56px;right:56px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
+    font-size:15.5px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">아웃바운드 — 내 정보를 <span class="b">새 섹터 전원에게 뿌린다</span></div>
+    <div class="uline"></div>
+    <div class="sub">섹터를 옮기면 <b>새로 보이게 된 N명 모두에게</b> "나"를 알려야 한다 · 보낼 내용은 전부 같다</div>
+
+    <svg class="viz" viewBox="0 0 1040 380">
+      <defs>
+        <marker id="ob" markerUnits="userSpaceOnUse" markerWidth="13" markerHeight="13" refX="11" refY="6.5" orient="auto">
+          <path d="M0,0 L13,6.5 L0,13 Z" fill="#3a78b8"></path>
+        </marker>
+        <marker id="mv" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+          <path d="M0,0 L12,6 L0,12 Z" fill="#1f2330"></path>
+        </marker>
+        <marker id="big" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="16" refX="13" refY="8" orient="auto">
+          <path d="M0,0 L16,8 L0,16 Z" fill="#c3cedb"></path>
+        </marker>
+        <marker id="sm" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
+          <path d="M0,0 L9,4.5 L0,9 Z" fill="#3a78b8"></path>
+        </marker>
+        <g id="d4"><circle cx="16" cy="20" r="4"></circle><circle cx="46" cy="16" r="4"></circle>
+                   <circle cx="24" cy="50" r="4"></circle><circle cx="52" cy="56" r="4"></circle></g>
+        <g id="d4c"><circle cx="14" cy="18" r="4"></circle><circle cx="56" cy="20" r="4"></circle>
+                    <circle cx="16" cy="62" r="4"></circle><circle cx="54" cy="64" r="4"></circle></g>
+      </defs>
+
+      <!-- ① 섹터 이동 (아웃/인 공통 장면) -->
+      <text x="167" y="26" text-anchor="middle" font-family="Pretendard"
+            font-size="17" font-weight="800" fill="#3a4254">① 섹터를 옮긴다</text>
+
+      <g stroke="#e3e8ef" stroke-width="1.5">
+        <rect x="20"  y="56"  width="70" height="80" rx="7" fill="#f4f6f9"></rect>
+        <rect x="20"  y="141" width="70" height="80" rx="7" fill="#f4f6f9"></rect>
+        <rect x="20"  y="226" width="70" height="80" rx="7" fill="#f4f6f9"></rect>
+        <rect x="95"  y="56"  width="70" height="80" rx="7" fill="#ffffff"></rect>
+        <rect x="95"  y="141" width="70" height="80" rx="7" fill="#ffffff"></rect>
+        <rect x="95"  y="226" width="70" height="80" rx="7" fill="#ffffff"></rect>
+        <rect x="170" y="56"  width="70" height="80" rx="7" fill="#ffffff"></rect>
+        <rect x="170" y="141" width="70" height="80" rx="7" fill="#ffffff"></rect>
+        <rect x="170" y="226" width="70" height="80" rx="7" fill="#ffffff"></rect>
+      </g>
+      <g fill="#ffffff" stroke="#1f2330" stroke-width="2.5">
+        <rect x="245" y="56"  width="70" height="80" rx="7"></rect>
+        <rect x="245" y="141" width="70" height="80" rx="7"></rect>
+        <rect x="245" y="226" width="70" height="80" rx="7"></rect>
+      </g>
+
+      <g fill="#ccd5e0"><use href="#d4" x="20" y="56"/><use href="#d4" x="20" y="141"/><use href="#d4" x="20" y="226"/></g>
+      <g fill="#aab5c4">
+        <use href="#d4"  x="170" y="56"/><use href="#d4"  x="170" y="226"/>
+        <use href="#d4c" x="95"  y="56"/><use href="#d4c" x="95"  y="226"/>
+        <use href="#d4c" x="95"  y="141"/><use href="#d4c" x="170" y="141"/>
+      </g>
+      <g fill="#1f2330"><use href="#d4" x="245" y="56"/><use href="#d4" x="245" y="141"/><use href="#d4" x="245" y="226"/></g>
+
+      <circle cx="130" cy="181" r="12" fill="#ffffff" stroke="#aab5c4" stroke-width="2.5" stroke-dasharray="4 3"></circle>
+      <line x1="148" y1="181" x2="186" y2="181" stroke="#1f2330" stroke-width="3" marker-end="url(#mv)"></line>
+      <!-- 새 섹터 쪽으로 나가는 방향 -->
+      <g stroke="#3a78b8" stroke-width="2.5" opacity=".9" marker-end="url(#sm)">
+        <line x1="211.7" y1="167.6" x2="241" y2="109"></line>
+        <line x1="220"   y1="181"   x2="241" y2="181"></line>
+        <line x1="211.7" y1="194.4" x2="241" y2="253"></line>
+      </g>
+      <circle cx="205" cy="181" r="15" fill="#3a78b8"></circle>
+      <text x="205" y="181" text-anchor="middle" dominant-baseline="central"
+            font-family="Pretendard" font-size="12.5" font-weight="800" fill="#ffffff">나</text>
+
+      <text x="280" y="46" text-anchor="middle" font-family="Pretendard"
+            font-size="14.5" font-weight="800" fill="#1f2330">새로 보이는 섹터</text>
+      <text x="167" y="332" text-anchor="middle" font-family="Pretendard"
+            font-size="14.5" font-weight="700" fill="#9aa3b2">왼쪽 3섹터가 빠지고 · 오른쪽 3섹터가 새로 보인다</text>
+
+      <line x1="332" y1="181" x2="398" y2="181" stroke="#c3cedb" stroke-width="5" marker-end="url(#big)"></line>
+
+      <!-- ② 그 안의 전원에게 내 정보를 뿌린다 -->
+      <text x="730" y="26" text-anchor="middle" font-family="Pretendard"
+            font-size="17" font-weight="800" fill="#2b6aa8">② 그 안의 전원에게 내 정보를 보낸다</text>
+
+      <!-- 왼쪽 격자의 "새로 보이는 3섹터"를 그대로 확대 : 객체도 왼쪽과 같은 검은 점 -->
+      <g fill="#ffffff" stroke="#1f2330" stroke-width="2.5">
+        <rect x="810" y="40"  width="200" height="80" rx="9"></rect>
+        <rect x="810" y="144" width="200" height="80" rx="9"></rect>
+        <rect x="810" y="248" width="200" height="80" rx="9"></rect>
+      </g>
+      <g stroke="#3a78b8" stroke-width="3" opacity=".85" marker-end="url(#ob)">
+        <line x1="510.9" y1="171.4" x2="886.4" y2="83.2"></line>
+        <line x1="512.0" y1="179.6" x2="848.0" y2="168.5"></line>
+        <line x1="512.0" y1="182.6" x2="944.0" y2="199.5"></line>
+        <line x1="510.8" y1="191.1" x2="886.4" y2="284.6"></line>
+      </g>
+      <g fill="#1f2330">
+        <circle cx="900" cy="80"  r="10"></circle>
+        <circle cx="862" cy="168" r="10"></circle>
+        <circle cx="958" cy="200" r="10"></circle>
+        <circle cx="900" cy="288" r="10"></circle>
+      </g>
+      <circle cx="470" cy="181" r="42" fill="#3a78b8"></circle>
+      <text x="470" y="181" text-anchor="middle" dominant-baseline="central"
+            font-family="Pretendard" font-size="24" font-weight="800" fill="#ffffff">나</text>
+      <text x="470" y="250" text-anchor="middle" font-family="Pretendard"
+            font-size="16" font-weight="800" fill="#2b6aa8">내 정보 하나</text>
+      <text x="910" y="352" text-anchor="middle" font-family="Pretendard"
+            font-size="15.5" font-weight="800" fill="#8a93a5">새로 보이는 3섹터 안의 객체 N개</text>
+      <text x="680" y="300" text-anchor="middle" font-family="Pretendard"
+            font-size="15.5" font-weight="800" fill="#8a93a5">같은 내용을 N번</text>
+    </svg>
+
+    <div class="foot">내용이 같으니 <b>하나만 만들어 N명이 나눠 쓴다</b>(P1) — 보내는 횟수는 그대로 N회라 줄어드는 건 만드는 비용뿐</div>
+  </div>
+</body>
+</html>

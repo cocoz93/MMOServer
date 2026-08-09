@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --gray-fill:#b9c2cf; --light-fill:#e7ebf0;
+    --slate:#566072; --track:#eef1f5;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:920px;height:580px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:872px;height:532px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:34px 48px 0}
+
+  .title{font-size:38px;font-weight:800;color:var(--ink);letter-spacing:-.8px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:74px;height:6px;border-radius:3px;background:var(--red);margin-top:13px}
+  .sub{margin-top:13px;font-size:20px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .stage{margin-top:26px;display:grid;grid-template-columns:262px 1fr;column-gap:34px;align-items:center}
+
+  .donutwrap{position:relative;width:248px;height:248px;justify-self:center}
+  .donut{position:absolute;inset:0;border-radius:50%;
+    background:conic-gradient(from 0deg,#e8455a,var(--deep) 234deg,var(--gray-fill) 234deg 349deg,var(--light-fill) 349deg 360deg);
+    -webkit-mask:radial-gradient(circle at center,transparent 58%,#000 59%);
+            mask:radial-gradient(circle at center,transparent 58%,#000 59%);
+    filter:drop-shadow(0 8px 20px rgba(215,38,61,.18))}
+  .dlbl{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
+  .dlbl .n{font-size:62px;font-weight:800;color:var(--ink);letter-spacing:-3px}
+  .dlbl .c{font-size:15px;font-weight:700;color:var(--red);margin-top:12px;letter-spacing:-.2px}
+
+  .legend{display:flex;flex-direction:column;gap:22px;padding-right:2px}
+  .row .rt{display:flex;align-items:center;gap:10px}
+  .dot{width:13px;height:13px;border-radius:50%;flex:0 0 auto}
+  .dot.r{background:var(--red)} .dot.g{background:var(--gray-fill)} .dot.l{background:#d4dae2}
+  .name{font-size:20px;font-weight:800;color:var(--ink);letter-spacing:-.4px}
+  .name .mut{color:var(--muted);font-weight:700;font-size:17px}
+  .val{margin-top:7px;font-size:17px;font-weight:800;letter-spacing:-.3px;white-space:nowrap}
+  .val.r{color:var(--red)} .val.g{color:#6b7484}
+  .bar{margin-top:8px;height:11px;border-radius:6px;background:var(--track);overflow:hidden}
+  .fill{height:100%;border-radius:6px}
+  .fill.r{background:linear-gradient(90deg,#e23f53,var(--red))}
+  .fill.g{background:#cfd6e0}
+  .fill.l{background:#dde2e9}
+  .note{margin-top:8px;font-size:15.5px;font-weight:600;color:var(--muted);letter-spacing:-.2px}
+  .note b{color:var(--red);font-weight:800}
+
+  .foot{position:absolute;left:48px;right:48px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
+    font-size:15.5px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">tick의 <span class="r">65%</span>가 broadcast copy</div>
+    <div class="uline"></div>
+    <div class="sub">동접 5000 &middot; tick 평균 <b>42.9 ms</b>(예산 40)는 어디에 쓰였나</div>
+
+    <div class="stage">
+      <div class="donutwrap">
+        <div class="donut"></div>
+        <div class="dlbl">
+          <span class="n">65%</span>
+          <span class="c">broadcast copy</span>
+        </div>
+      </div>
+
+      <div class="legend">
+        <div class="row">
+          <div class="rt"><span class="dot r"></span><span class="name">broadcast copy <span class="mut">(수신자마다 SendQ 넣기)</span></span></div>
+          <div class="val r">27.5 ms &middot; 65% &larr; 병목</div>
+          <div class="bar"><div class="fill r" style="width:65%"></div></div>
+          <div class="note">실체 = 복사 2 ms + <b>27만 회/tick</b> 호출 고정비(세션 찾기&middot;검증)</div>
+        </div>
+        <div class="row">
+          <div class="rt"><span class="dot g"></span><span class="name">membership <span class="mut">(시야 입장&middot;퇴장 통지)</span></span></div>
+          <div class="val g">13.6 ms &middot; 32%</div>
+          <div class="bar"><div class="fill g" style="width:32%"></div></div>
+        </div>
+        <div class="row">
+          <div class="rt"><span class="dot l"></span><span class="name">기타 로직</span></div>
+          <div class="val g">&asymp;1.8 ms</div>
+          <div class="bar"><div class="fill l" style="width:4%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="foot">27만 회/tick = broadcast <b>295콜</b> &times; 평균 수신 <b>923명</b> | 호출마다 FindSession + 원자연산 2회 &mdash; 90 B 복사 자체는 2 ms뿐</div>
+  </div>
+</body>
+</html>
