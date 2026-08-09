@@ -57,7 +57,7 @@
         <div class="khero">왕복 p99</div>
         <div class="kval">187<span class="u">ms</span></div>
         <div class="krow"><div style="display:flex;justify-content:space-between"><span class="krl">워커 최대 CPU</span><span class="krv">1.00</span></div><div class="kbar"><div class="kfill" style="width:100%;background:var(--red)"></div></div></div>
-        <div class="krow"><div style="display:flex;justify-content:space-between"><span class="krl">WSASend</span><span class="krv">99k /s</span></div></div>
+        <div class="krow"><div style="display:flex;justify-content:space-between"><span class="krl">WSASend</span><span class="krv">100k /s</span></div></div>
         <div class="ktag warn">두 워커 포화 → 송신 밀림</div>
       </div>
 
@@ -76,16 +76,16 @@
         <div class="kval">171<span class="u">ms</span></div>
         <div class="krow"><div style="display:flex;justify-content:space-between"><span class="krl">워커 최대 CPU</span><span class="krv">0.65</span></div><div class="kbar"><div class="kfill" style="width:65%;background:#cfd6e0"></div></div></div>
         <div class="krow"><div style="display:flex;justify-content:space-between"><span class="krl">WSASend</span><span class="krv">122k /s</span></div></div>
-        <div class="ktag over">오버섭스크립션 → 재악화</div>
+        <div class="ktag over">이득 없음 · 왕복 재악화</div>
       </div>
     </div>
 
     <div class="insight">
       <span class="k">해석</span>
-      <span class="t">포화는 풀려도(<b>1.00→0.65</b>) 배칭↓로 <b>syscall 99k→122k</b>·캐시간섭↑. K4는 일꾼만 늘려 왕복 재악화 — <b>K3가 균형점</b></span>
+      <span class="t">포화는 풀려도(<b>1.00→0.65</b>) 배칭↓로 <b>syscall 100k→122k</b>·캐시간섭↑. K4는 일꾼만 늘려 왕복 재악화 — <b>K3가 균형점</b></span>
     </div>
 
-    <div class="foot">동접 5000 · WT4 · 3rep 중앙값 | 틱 p99는 K2·K3·K4 셋 다 ~39.7ms(예산 40 내) · backlog=세션/K로 균등</div>
+    <div class="foot">동접 5000 · WT4 · 3rep 중앙값 | 틱 p99는 K2·K3·K4 셋 다 ~39.7ms(예산 40 내) · 워커당 담당 세션=세션/K로 균등</div>
   </div>
 </body>
 </html>
