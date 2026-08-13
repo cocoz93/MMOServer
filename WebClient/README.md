@@ -43,7 +43,8 @@ WS↔TCP 릴레이(`relay.js`, Node)를 두어 서버의 TCP 프로토콜을 그
 ## 프로토콜 메모 (재구현 근거)
 - 헤더 4B = `size(u16, 헤더포함)` + `type(u16, MsgType)`. 로그인/인증 패킷 없음 — TCP 접속 즉시
   서버가 `S2C_ZONE_INFO` → `S2C_CREATE_MY_PLAYER` → 주변 `CREATE_OTHER`를 밀어준다.
-- 위치 스트림: `S2C_SECTOR_UPDATES`(가변, entry 14B). 시야 진입/이탈: `CREATE/DELETE_PLAYER(_BATCH)`.
+- 위치 스트림: `S2C_SECTOR_UPDATES`(가변, entry 9B — 좌표는 1/512타일 눈금의 u16, 방향·이동상태는 한 바이트에 니블로).
+  시야 진입/이탈: `CREATE/DELETE_PLAYER(_BATCH)`.
   채팅: `S2C_CHAT`(UTF-16LE, 널종단). 좌표 보정: `S2C_SYNC_POSITION`.
 - 살아있으려면 60초 세션 타임아웃 전에 아무 패킷(가장 간단히 `C2S_HEARTBEAT`)을 주기 송신 → 클라는 15초마다 보낸다.
 - 월드 120×120, 섹터 20 (`Run\bin\IOCP_ServerConfig.ini`).

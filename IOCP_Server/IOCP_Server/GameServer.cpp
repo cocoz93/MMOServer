@@ -202,6 +202,7 @@ namespace
 #if USE_SECTOR_AGGREGATION
     // 섹터 묶음 — dirty 플레이어 [0,count)의 최종 상태(위치·방향·이동상태)를 직렬화.
     // 스칼라 시퀀스(<<)라 SetData 불필요. count는 선기록(백패치 불필요).
+    // 좌표는 float 그대로가 아니라 눈금(QuantizePos)으로 싣는다 — 필드 순서는 SectorUpdateEntry와 같아야 한다.
     CSerialBuffer* MakeSectorUpdates(CPlayer** players, int count)
     {
         CSerialBuffer* buf = CSerialBuffer::Alloc();
@@ -211,10 +212,10 @@ namespace
         {
             CPlayer* p = players[i];
             *buf << static_cast<int>(p->_playerId);
-            *buf << static_cast<BYTE>(p->_direction);
-            *buf << static_cast<BYTE>(p->_moveState);
-            *buf << p->_x;
-            *buf << p->_y;
+            *buf << static_cast<WORD>(QuantizePos(p->_x));
+            *buf << static_cast<WORD>(QuantizePos(p->_y));
+            *buf << static_cast<BYTE>(PackDirState(static_cast<uint8_t>(p->_direction),
+                                                   static_cast<uint8_t>(p->_moveState)));
         }
         FinalizePacket(buf);
         // (정정) GetDataSize는 BeginPacket이 쓴 MsgHeader 4B를 포함 — offsetof 기준이 맞는 식
