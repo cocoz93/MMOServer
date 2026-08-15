@@ -135,3 +135,6 @@ Run/stress_client_ip.txt
 
 
 
+
+# 리눅스 CMake/ninja 빌드 산출물
+build-linux/
