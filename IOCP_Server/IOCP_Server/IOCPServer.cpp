@@ -299,6 +299,8 @@ bool CIOCPServer::SetSocketOptions(SOCKET socket)
     setsockopt(socket, SOL_SOCKET, SO_LINGER, reinterpret_cast<char*>(&lingerOpt), sizeof(lingerOpt));
 
     // TCP_NODELAY 옵션: Nagle 알고리즘 비활성화 (지연 없이 송신)
+    // 2026-08-14 실측으로 ❌기각 — 켜면 끊김 35.6배(0.35→12.4/s)·RTT p99 +26%·송신워커 98.6% 포화.
+    // Nagle이 세그먼트를 묶어 커널 비용을 아껴주고 있었다. 되살리지 말 것.
     //int flag = 1;
     //setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
 
