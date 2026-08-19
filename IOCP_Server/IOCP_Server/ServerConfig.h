@@ -50,8 +50,10 @@ struct ServerConfig
     int         sendDepth     = 1;         // 세션당 동시 송신 제출 상한 (1=기존 1-pending[기본], 2/4/8; 양팔 공통)
 
     // 게임 이벤트 큐(Worker→Game)가 이 길이를 넘으면 신규 accept 거절 (0=끄기).
-    //   기본 50,000 = 항목당 CSerialBuffer 1,460B → 약 73MB. 정상 구간엔 매 틱 비워져 닿지 않는다.
-    int         eventQueueAcceptLimit = 50000;
+    //   기본 60,000 = 한 틱 유입 추정 3,000의 20배 ≈ 게임 루프가 20틱(0.8초) 밀린 상태(메모리 약 88MB).
+    //   순간 버스트로 몇 틱 밀리는 건 정상이라 그 위로 잡았다.
+    //   ※ 기준 3,000은 추정 — 정상 큐 길이 미측정. mmo_event_queue_size 관측 후 재설정할 것.
+    int         eventQueueAcceptLimit = 60000;
 
     // 게임스레드 코어 격리 (실험용) — GameCore INI에서 도출. 빈값/부적합이면 gameCore=-1, 마스크 0(=off).
     int                gameCore     = -1;  // 게임루프 전용 물리코어 (-1=격리 off). ServerCores 안의 코어여야 함.
@@ -149,7 +151,7 @@ struct ServerConfig
         sendDepth = GetPrivateProfileIntW(L"Server", L"SendDepth", 1, path);
 
         // EventQueueAcceptLimit: 게임 이벤트 큐 과부하 시 신규 accept 차단 임계 (0=끄기)
-        eventQueueAcceptLimit = GetPrivateProfileIntW(L"Server", L"EventQueueAcceptLimit", 50000, path);
+        eventQueueAcceptLimit = GetPrivateProfileIntW(L"Server", L"EventQueueAcceptLimit", 60000, path);
         if (eventQueueAcceptLimit < 0)
             eventQueueAcceptLimit = 0;
 
