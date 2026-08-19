@@ -49,6 +49,10 @@ struct ServerConfig
     int         completionBatch = 0;       // 완료 수거 방식 (0=GQCS 1건씩[기본], N>0=GQCSEx 최대 N건; IOCP 빌드 전용)
     int         sendDepth     = 1;         // 세션당 동시 송신 제출 상한 (1=기존 1-pending[기본], 2/4/8; 양팔 공통)
 
+    // 게임 이벤트 큐(Worker→Game)가 이 길이를 넘으면 신규 accept 거절 (0=끄기).
+    //   기본 50,000 = 항목당 CSerialBuffer 1,460B → 약 73MB. 정상 구간엔 매 틱 비워져 닿지 않는다.
+    int         eventQueueAcceptLimit = 50000;
+
     // 게임스레드 코어 격리 (실험용) — GameCore INI에서 도출. 빈값/부적합이면 gameCore=-1, 마스크 0(=off).
     int                gameCore     = -1;  // 게임루프 전용 물리코어 (-1=격리 off). ServerCores 안의 코어여야 함.
     unsigned long long gameCoreMask = 0;   // 게임코어 HT 논리쌍 마스크
@@ -143,6 +147,11 @@ struct ServerConfig
         // SendDepth: 세션당 동시 송신 제출 상한 A/B (양팔 공통, 재빌드 없이 깊이 전환)
         //   1=기존 1-pending. 2의 거듭제곱만 유효하고(1/2/4/8) 그 외 값은 서버가 아래쪽으로 내린다.
         sendDepth = GetPrivateProfileIntW(L"Server", L"SendDepth", 1, path);
+
+        // EventQueueAcceptLimit: 게임 이벤트 큐 과부하 시 신규 accept 차단 임계 (0=끄기)
+        eventQueueAcceptLimit = GetPrivateProfileIntW(L"Server", L"EventQueueAcceptLimit", 50000, path);
+        if (eventQueueAcceptLimit < 0)
+            eventQueueAcceptLimit = 0;
 
         // [DB] 섹션 — DB 저장 파이프라인 (문자열은 기존 WtoA로 std::string 변환)
         wchar_t dbBuf[256];
@@ -296,6 +305,7 @@ private:
         SLOG_INFO("  RioWkr      : {} (0=auto 2, RIO build only)", rioWorkers);
         SLOG_INFO("  ComplBatch  : {} (0=GQCS one-at-a-time, N=GQCSEx cap)", completionBatch);
         SLOG_INFO("  SendDepth   : {} (1=1-pending, pow2 only: 1/2/4/8)", sendDepth);
+        SLOG_INFO("  EvtQAccept  : {} (0=off, 넘으면 신규 accept 거절)", eventQueueAcceptLimit);
         if (gameCore >= 0)
             SLOG_INFO("  CoreIso     : ON GameCore={} game=0x{:X} io=0x{:X}", gameCore, gameCoreMask, ioCoreMask);
         else

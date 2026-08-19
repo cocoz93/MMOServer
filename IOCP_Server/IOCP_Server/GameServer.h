@@ -52,6 +52,13 @@ public:
     // DB 저장 파이프라인 초기화 (USE_DB_WORKER=0이면 no-op). Start() 전에 호출.
     bool InitDB(const DBConfig& dbConfig, int savePeriodSec, int workerCount, int queueMax);
 
+    // 이벤트 큐 과부하 시 신규 accept 차단 임계 (0=끄기). Init() 뒤, Start() 전에 호출.
+    void SetEventQueueAcceptLimit(int limit)
+    {
+        if (_network)
+            _network->SetEventQueueAcceptLimit(limit);
+    }
+
     // 서버 시작/종료
     bool Start();
     void Stop();

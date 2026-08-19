@@ -56,6 +56,7 @@ public:
     alignas(64) volatile LONG64 _sessionCreated = 0;    // 세션 생성 누적
     volatile LONG64 _sessionDestroyed = 0;               // 세션 소멸 누적
     volatile LONG64 _acceptFailed = 0;                   // Accept 거부 (인덱스 부족)
+    volatile LONG64 _acceptRejectedByQueue = 0;          // Accept 거부 (게임 이벤트 큐 과부하)
     volatile LONG64 _sessionTimedOut = 0;                // 타이밍 휠 타임아웃 킥
     volatile LONG64 _packetErrors = 0;                   // 패킷 에러 (크기 검증 실패, 알 수 없는 타입)
     volatile LONG64 _sendQueueOverflow = 0;              // SendQ 오버플로 (Enqueue 실패)

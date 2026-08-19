@@ -412,6 +412,17 @@ void CIOCPServer::AcceptThread()
 
 void CIOCPServer::ProcessAccept(SOCKET clientSocket)
 {
+    // 과부하 차단 — 게임 스레드가 유입을 못 따라가면 새 접속을 받지 않는다.
+    //   드롭(이동 패킷 유실)도 워커 정지(전 세션 수신 멎음)도 못 쓰니 남는 수단은 이것뿐이다.
+    //   값은 게임루프가 매 틱 갱신하는 스냅샷이라 락 없이 읽고, 로그 대신 카운터만 올린다.
+    if (_eventQueueAcceptLimit > 0 &&
+        _monitor._gameLoop._eventQueueSize >= _eventQueueAcceptLimit)
+    {
+        InterlockedIncrement64(&_monitor._acceptRejectedByQueue);
+        closesocket(clientSocket);
+        return;
+    }
+
     // 빈 인덱스 확인 (여유가 없다면 동접 max)
     uint16_t index = 0;
     if (!_availableIndices.Pop(&index))
