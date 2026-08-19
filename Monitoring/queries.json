@@ -40,6 +40,8 @@
   { "name": "flush_backlog_max",    "unit": "",     "role": "control", "lower_is_better": true, "promql": "max(max_over_time(mmo_send_flush_backlog[$W]))" },
 
   { "name": "session_count",            "unit": "",        "role": "control", "lower_is_better": false, "promql": "avg_over_time(mmo_session_count[$W])" },
+  { "name": "event_queue_avg",          "unit": "",        "role": "control", "lower_is_better": true,  "promql": "avg_over_time(mmo_event_queue_size[$W])" },
+  { "name": "event_queue_max",          "unit": "",        "role": "control", "lower_is_better": true,  "promql": "max_over_time(mmo_event_queue_size[$W])" },
   { "name": "broadcast_targets_per_call","unit": "tgt/call","role": "control", "lower_is_better": false, "promql": "rate(mmo_broadcast_targets_total[$W]) / rate(mmo_broadcast_calls_total[$W])" },
   { "name": "broadcast_calls_rate",      "unit": "/s",       "role": "kpi",     "lower_is_better": true,  "promql": "rate(mmo_broadcast_calls_total[$W])" },
 
