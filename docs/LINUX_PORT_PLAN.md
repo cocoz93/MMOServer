@@ -16,7 +16,7 @@ Windows IOCP 서버를 리눅스로 옮기는 작업의 남은 순서.
    *범위는 이번 페이즈에서 새로 주장한 것까지다 — 문서 전체를 매번 재감사하지 않는다*
 4. **기록** — `- [ ]` → `- [x]`로 바꾸고 판정 결과를 한 줄로 적는다(확인 가능한 형태로: 수치·명령 결과·경고 개수 등)
 5. **커밋** — 판정을 통과했으면 커밋한다. 메시지는 **개조식**(명사형 종결), `Co-Authored-By` 같은 트레일러는 넣지 않는다.
-   **push는 하지 않는다** — 사용자가 직접 한다 (지금 브랜치는 리베이스로 히스토리가 갈려 force가 필요한 상태)
+   **push는 하지 않는다** — 사용자가 직접 한다 (~~리베이스로 갈려 force 필요~~ → 2026-08-21 실측: origin이 이미 리베이스본과 일치, **main·브랜치 모두 일반 push로 된다**)
 
 ### 막혔을 때
 
@@ -62,7 +62,7 @@ Windows IOCP 서버를 리눅스로 옮기는 작업의 남은 순서.
 **main 병합 완료 (2026-08-21, `33af014`)** — 브랜치를 main에 올려 하나로 합쳤다. 이제 main의 최적화가 리눅스 쪽에도 그대로 반영된다.
 
 - 병합한 것: 멤버십 digest · 좌표 양자화 14B→9B · 이벤트 큐 accept 차단 · DB 주기 60초 · 계측 2건
-- 충돌 **7곳**. 전부 "택일"이 아니라 **브랜치의 리눅스 중립화 위에 main의 기능을 다시 얹는** 자리였다
+- 손댄 곳 **7곳**(git이 충돌로 표시한 5 + auto-merge를 통과했으나 빌드가 깨진 2). 전부 "택일"이 아니라 **브랜치의 리눅스 중립화 위에 main의 기능을 다시 얹는** 자리였다
   - `GameServer.cpp` — 9B 양자화 유지 + 캐스트만 중립화(`WORD`/`BYTE` → `uint16_t`/`uint8_t`). `QuantizePos`·`PackDirState`는 이미 고정폭 반환이라 헬퍼는 손댈 것이 없었다
   - `MonitorManager.h`·`IOCPServer.cpp` — `_acceptRejectedByQueue`를 `Counter`로 이관(`InterlockedIncrement64` → `.Inc()`)
   - `ServerConfig.h` — `EventQueueAcceptLimit`을 `CIniFile` 파서 호출로 이관
