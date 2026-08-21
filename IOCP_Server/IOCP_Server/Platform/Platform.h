@@ -47,6 +47,7 @@
     #include <cerrno>                    // errno (소켓 오류 코드)
     #include <cstring>                   // memset / memcpy (ZeroMemory·memcpy_s 대체)
     #include <cwchar>                    // wcslen
+    #include <csignal>                   // SIGPIPE 무시 (SocketStartup)
 
     // ── Windows 스칼라 타입·매크로 ──
     //   서버 코드가 이 이름들로 쓰여 있어(volatile LONG _ioCount 등) 호출부를 고치는 대신 별칭을 준다.
@@ -154,13 +155,20 @@ namespace Platform
 #endif
 
     // ── 소켓 API ──
-    //   Windows는 WSAStartup/WSACleanup 쌍이 필요하고, 리눅스는 아무것도 필요 없다.
+    //   Windows는 WSAStartup/WSACleanup 쌍이 필요하고, 리눅스는 SIGPIPE를 꺼야 한다.
     inline bool SocketStartup()
     {
 #ifdef _WIN32
         WSADATA wsaData;
         return WSAStartup(MAKEWORD(2, 2), &wsaData) == 0;
 #else
+        // 상대가 끊은 소켓에 writev하면 SIGPIPE가 뜨고 기본 동작이 프로세스 종료다 —
+        // 세션 하나 때문에 서버 전체가 로그 없이 사라진다. 무시로 바꾸면 writev가 EPIPE를
+        // 반환하고, 그 처리는 이미 있다(Transport_Epoll.cpp의 writev 실패 경로 → 세션 종료).
+        //   Windows에는 이 신호가 없다. 끊긴 소켓 송신은 WSAECONNRESET 같은 오류 코드로 온다.
+        //   ⚠ 지금까지는 httplib(모니터 서버)의 Server 생성자가 같은 설정을 해줘서 우연히
+        //      막혀 있었다. MonitorEnabled=0이면 그 방어가 통째로 사라진다 — 그래서 여기로 옮긴다.
+        ::signal(SIGPIPE, SIG_IGN);
         return true;
 #endif
     }
