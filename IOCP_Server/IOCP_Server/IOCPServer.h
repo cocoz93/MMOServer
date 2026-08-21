@@ -201,6 +201,7 @@ public:
     {
 #ifndef _WIN32
         _epollWantWrite = false;
+        _epollRegistered = FALSE;
 #endif
     }
 #endif
@@ -208,6 +209,13 @@ public:
     // EPOLLOUT을 지금 걸어 두었는가 — 같은 상태로 epoll_ctl을 반복 호출하지 않기 위한 표식.
     //   제출 잠금(_sendSubmitBusy) 안에서만 갱신되므로 별도 원자화가 필요 없다.
     bool _epollWantWrite = false;
+
+    // epoll에 등록되어 있는가 — "IOCount=1(등록 ref)을 놓아 줄 사람이 아직 남았다"는 뜻이다.
+    //   등록한 적 없는 세션(attach 실패분·종료 루프가 훑는 미접속 세션)에서 감소가 일어나
+    //   0→−1이 되는 것을 막는다. TransportRequestDisconnect가 집어내며 지우므로 감소는 한 번뿐.
+    //   ※ 선언부에서 초기화하는 이유 — 미접속 세션은 Initialize(=ResetTransportState)를 한 번도
+    //     타지 않는다. 리셋에만 맡기면 그 세션의 값이 초기화되지 않은 채 판정에 쓰인다.
+    volatile LONG _epollRegistered = FALSE;
 #endif
 };
 

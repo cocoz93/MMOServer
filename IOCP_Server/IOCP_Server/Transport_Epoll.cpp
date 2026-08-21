@@ -146,9 +146,16 @@ bool CIOCPServer::TransportAttachSession(CSession* session, Platform::NetSocket 
     ev.events   = EPOLLIN | EPOLLRDHUP;   // 읽기 준비 + 상대 종료
     ev.data.ptr = session;                // 통지에서 세션을 바로 찾는다 (IOCP의 CompletionKey와 같은 역할)
 
+    // 등록 표식은 ADD "전"에 세운다 — ADD가 성공한 순간부터 통지가 올 수 있는데, 그 통지로
+    //   먼저 종료에 들어간 워커가 표식을 아직 못 보면 등록 ref를 놓지 않아 IOCount가 1에 갇힌다
+    //   (세션 인덱스·소켓이 영영 안 돌아옴). 실패 시 되돌리는 것은 안전하다 — 등록 전에는
+    //   통지가 없고, 컨텐츠 통보·타이밍 휠 등록도 attach 뒤라 이 창을 볼 스레드가 없다.
+    InterlockedExchange(&session->_epollRegistered, TRUE);
+
     if (::epoll_ctl(_epollFd, EPOLL_CTL_ADD, clientSocket, &ev) != 0)
     {
         SLOG_ERROR("[Network] epoll_ctl(ADD) failed: {}", Platform::LastSocketError());
+        InterlockedExchange(&session->_epollRegistered, FALSE);
         return false;
     }
     return true;
@@ -327,7 +334,12 @@ bool CIOCPServer::TransportRequestDisconnect(CSession* session)
     //   epoll에는 걸린 I/O가 없어 그런 통지가 영영 오지 않는다. 세션을 만들 때 세운
     //   IOCount=1은 여기서는 "epoll에 등록되어 있다"는 뜻이므로, 등록을 빼는 이 자리에서
     //   직접 놓아 준다. 위의 _disconnecting 게이트가 이 경로를 한 번만 통과시킨다.
-    IOCountDecrement(session);
+    //
+    //   단, 등록한 적 없는 세션에는 놓아 줄 ref가 없다 — attach 실패분은 골격(ProcessAccept)이
+    //   직접 감소시키고, 종료 루프가 훑는 미접속 세션은 IOCount가 애초에 0이다. 표식을 집어내며
+    //   지워, 등록된 세션만 정확히 한 번 감소시킨다(그냥 감소시키면 0→−1로 언더플로).
+    if (InterlockedExchange(&session->_epollRegistered, FALSE) == TRUE)
+        IOCountDecrement(session);
     return true;
 }
 
