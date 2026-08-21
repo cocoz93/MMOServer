@@ -354,17 +354,37 @@ void CIOCPServer::ShutdownServer()
         return;
     }
 
-    // 1. Listen 소켓 닫기 — 새 연결 차단 (AcceptThread 깨움)
+    // 1. Listen 소켓 정지 — 새 연결 차단 + AcceptThread 깨우기
+    //    윈도우: closesocket이 블록된 accept를 실패로 깨운다.
+    //    리눅스: close는 못 깨운다 — 진행 중인 accept가 파일 객체를 붙들고 있어 fd 테이블에서
+    //            빼도 대기자에게 통지가 가지 않는다(영원히 블록). shutdown이 리슨 소켓 상태를
+    //            바꿔 accept를 EINVAL로 깨우므로 이쪽을 쓴다.
+    //            close를 join 뒤로 미루는 이유 — accept 스레드가 _running 검사를 통과한 직후
+    //            멈췄다가 나중에 accept를 부를 수 있다. fd가 살아 있으면 EINVAL로 즉시 돌아오지만,
+    //            닫아 두면 그사이 재사용된 fd 번호를 덮친다.
     if (_listenSocket != INVALID_SOCKET)
     {
+#ifdef _WIN32
         Platform::CloseSocket(_listenSocket);
         _listenSocket = INVALID_SOCKET;
+#else
+        ::shutdown(_listenSocket, SHUT_RDWR);
+#endif
     }
 
     if (_acceptThread.joinable())
     {
         _acceptThread.join();
     }
+
+#ifndef _WIN32
+    // accept 스레드가 나간 뒤에야 실제로 닫는다 (위의 fd 재사용 이유).
+    if (_listenSocket != INVALID_SOCKET)
+    {
+        Platform::CloseSocket(_listenSocket);
+        _listenSocket = INVALID_SOCKET;
+    }
+#endif
 
     // IOCount 드레인 "전" 정지 (팔별) — IOCP는 송신 워커를 먼저 멈춰야 pin한 IOCount가 풀린다.
     TransportStopBeforeDrain();
@@ -411,8 +431,8 @@ void CIOCPServer::ShutdownServer()
 
 
 
-// 윈도우 accept에는 timeout 기능이 없음.
-// listen socket close로 accept를 깨운다.
+// accept에는 timeout 기능이 없음. 종료 시 ShutdownServer가 리슨 소켓을 정지시켜 깨운다
+// (윈도우는 closesocket, 리눅스는 shutdown — 리눅스 close는 블록된 accept를 못 깨운다).
 void CIOCPServer::AcceptThread()
 {
     CoreAffinity::PinIoThread();   // Accept 스레드 → 게임코어 밖으로 (격리 off면 no-op)
