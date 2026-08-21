@@ -71,6 +71,8 @@ Windows IOCP 서버를 리눅스로 옮기는 작업의 남은 순서.
   - `.gitignore` — 양쪽 항목 병존
 - ⚠ **auto-merge를 통과하고도 빌드가 깨지는 자리가 있었다.** `closesocket`·`InterlockedIncrement64`가 그것으로, git은 조용히 합쳐 준다. **main이 새로 추가한 줄에서 Windows 심볼을 전수로 훑는 절차가 병합의 본체다** (이번 건은 총 7건)
 - 검증: Windows Release IOCP·RIO **경고0 오류0** / 리눅스 클린 빌드 **경고 2건**(기준선 `-Winvalid-offsetof`) / 10명 접속 왕복 `mmo_session_count=10`·패킷 에러 0·accept 거부 0
+- 추가 검증(엄격 통과분): main 전용 58파일이 병합본에서 **전부 main과 동일**(잃은 것 0) · 채팅 경로는 8/04 UTF-16 검증본에서 **변경 0**(불변 증명) · **Windows 병합본 런타임 스모크** — 10명 ready·클라 RTT 313회 완주(평균 ~24ms, `S2C_SECTOR_UPDATES` 9B를 클라가 실제 파싱한 직접 증거)
+- 관측대기 1건: 리눅스 서버가 SIGTERM 뒤 2초 내 미종료(SIGKILL로 정리함). 재현·계측 전이라 결함 아님 — 5-B 재개 시 종료 경로 한 번 볼 것
 
 ## 방향 결정 (재론 금지)
 
