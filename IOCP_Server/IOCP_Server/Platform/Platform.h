@@ -162,12 +162,9 @@ namespace Platform
         WSADATA wsaData;
         return WSAStartup(MAKEWORD(2, 2), &wsaData) == 0;
 #else
-        // 상대가 끊은 소켓에 writev하면 SIGPIPE가 뜨고 기본 동작이 프로세스 종료다 —
-        // 세션 하나 때문에 서버 전체가 로그 없이 사라진다. 무시로 바꾸면 writev가 EPIPE를
-        // 반환하고, 그 처리는 이미 있다(Transport_Epoll.cpp의 writev 실패 경로 → 세션 종료).
-        //   Windows에는 이 신호가 없다. 끊긴 소켓 송신은 WSAECONNRESET 같은 오류 코드로 온다.
-        //   ⚠ 지금까지는 httplib(모니터 서버)의 Server 생성자가 같은 설정을 해줘서 우연히
-        //      막혀 있었다. MonitorEnabled=0이면 그 방어가 통째로 사라진다 — 그래서 여기로 옮긴다.
+        // 끊긴 소켓에 writev하면 SIGPIPE로 프로세스가 죽는다. 무시로 바꾸면 EPIPE가 반환되고
+        // 그 처리는 이미 있다(Transport_Epoll.cpp의 writev 실패 경로).
+        //   그동안은 httplib(모니터) 생성자가 대신 해줬다 — MonitorEnabled=0이면 무방비였다.
         ::signal(SIGPIPE, SIG_IGN);
         return true;
 #endif
