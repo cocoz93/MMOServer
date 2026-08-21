@@ -59,6 +59,19 @@ Windows IOCP 서버를 리눅스로 옮기는 작업의 남은 순서.
 - `mmo_thread_kernel_ratio` 메트릭 → `GetThreadCpuTimeNs` 3인자 오버로드 추가
 - `WorkerCounter.completionCount/dequeueCalls`는 **평문 유지** — 원자 증가는 완료수거 A/B를 편향시킨다
 
+**main 병합 완료 (2026-08-21, `33af014`)** — 브랜치를 main에 올려 하나로 합쳤다. 이제 main의 최적화가 리눅스 쪽에도 그대로 반영된다.
+
+- 병합한 것: 멤버십 digest · 좌표 양자화 14B→9B · 이벤트 큐 accept 차단 · DB 주기 60초 · 계측 2건
+- 충돌 **7곳**. 전부 "택일"이 아니라 **브랜치의 리눅스 중립화 위에 main의 기능을 다시 얹는** 자리였다
+  - `GameServer.cpp` — 9B 양자화 유지 + 캐스트만 중립화(`WORD`/`BYTE` → `uint16_t`/`uint8_t`). `QuantizePos`·`PackDirState`는 이미 고정폭 반환이라 헬퍼는 손댈 것이 없었다
+  - `MonitorManager.h`·`IOCPServer.cpp` — `_acceptRejectedByQueue`를 `Counter`로 이관(`InterlockedIncrement64` → `.Inc()`)
+  - `ServerConfig.h` — `EventQueueAcceptLimit`을 `CIniFile` 파서 호출로 이관
+  - `IOCPServer.cpp` — `closesocket` → `Platform::CloseSocket`
+  - `IOCPServer.cpp` — TCP_NODELAY 기각 근거 주석 복원. 브랜치가 지운 이유는 "근거 없는 죽은 코드"였는데 main이 실측 근거를 붙였으므로 삭제 사유가 해소됐다
+  - `.gitignore` — 양쪽 항목 병존
+- ⚠ **auto-merge를 통과하고도 빌드가 깨지는 자리가 있었다.** `closesocket`·`InterlockedIncrement64`가 그것으로, git은 조용히 합쳐 준다. **main이 새로 추가한 줄에서 Windows 심볼을 전수로 훑는 절차가 병합의 본체다** (이번 건은 총 7건)
+- 검증: Windows Release IOCP·RIO **경고0 오류0** / 리눅스 클린 빌드 **경고 2건**(기준선 `-Winvalid-offsetof`) / 10명 접속 왕복 `mmo_session_count=10`·패킷 에러 0·accept 거부 0
+
 ## 방향 결정 (재론 금지)
 
 커스텀 컴포넌트(SerialBuffer·LockFree)는 **유지하고 포팅**한다. 라이브러리로 교체하지 않는다.
@@ -567,6 +580,10 @@ Windows IOCP 서버를 리눅스로 옮기는 작업의 남은 순서.
 >
 > 재개할 때: 서버 물리코어 0-5 / 부하클라 6-9 격리(`ServerCores=0-5`)를 확인하고,
 > 다른 프로그램을 닫은 상태에서 5-B부터 순서대로.
+>
+> ⚠ **기준선이 바뀌었다 (2026-08-21 main 병합).** 5-0·5-A는 병합 전 코드에서 잰 값이다.
+> 지금 서버에는 **멤버십 digest**(천장 몫 +1,400)와 **좌표 양자화 9B**(송신 −21.8%)가 들어 있어
+> 5-B·5-C는 그것이 포함된 기준으로 판정한다. 병합 전 수치와 직접 비교하지 말 것.
 
 - [x] **5-0** 프로토콜 문자 폭 고정 — **완료 (2026-08-04)**
 
