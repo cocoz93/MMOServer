@@ -47,7 +47,6 @@
     #include <cerrno>                    // errno (소켓 오류 코드)
     #include <cstring>                   // memset / memcpy (ZeroMemory·memcpy_s 대체)
     #include <cwchar>                    // wcslen
-    #include <csignal>                   // SIGPIPE 무시 (SocketStartup)
 
     // ── Windows 스칼라 타입·매크로 ──
     //   서버 코드가 이 이름들로 쓰여 있어(volatile LONG _ioCount 등) 호출부를 고치는 대신 별칭을 준다.
@@ -130,7 +129,7 @@
     #endif
     #include <unistd.h>                  // readlink (/proc/self/exe)
     #include <sched.h>                   // sched_setaffinity / CPU_SET
-    #include <csignal>                   // sigaction (종료 시그널)
+    #include <csignal>                   // sigaction (종료 시그널) · signal (SIGPIPE 무시)
     #include <chrono>                    // 폴링 슬립
     #include <pthread.h>                 // pthread_getcpuclockid (스레드 CPU clock)
     #include <time.h>                    // clock_gettime / clockid_t
