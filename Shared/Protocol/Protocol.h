@@ -250,19 +250,54 @@ struct MSG_S2C_SYNC_POSITION
 // 섹터 묶음 업데이트 (USE_SECTOR_AGGREGATION)
 //==================================================
 
-// 묶음 1엔트리 — 한 플레이어의 이번 틱 최종 상태 (14B, pack(1))
+// 좌표 눈금 — 섹터 묶음 엔트리에서만 쓰는 전송 표현. 서버 내부 계산은 float 그대로다.
+//   맵이 120타일인데 좌표를 float(4B)으로 실어 보내던 것을 1/512타일 눈금의 uint16(2B)으로 바꾼다.
+//   오차는 최대 ±1/1024타일(0.00098) — 한 틱 이동량(속도30 × 40ms = 1.2타일)의 0.08%라 클라 보간에 묻힌다.
+constexpr float POS_QUANT_SCALE     = 512.0f;
+constexpr float POS_QUANT_INV_SCALE = 1.0f / 512.0f;   // 2의 거듭제곱이라 나눗셈 오차 없음
+
+// 눈금이 uint16에 담기는 맵 크기 상한. 좌표 최댓값은 (맵크기 - 1)이므로 (128-1) × 512 = 65,024 ≤ 65,535.
+// 129부터는 넘쳐서 좌표가 조용히 깨진다 — CZone::Init이 기동 시 막는다.
+constexpr int32_t POS_QUANT_MAX_MAP_SIZE = 128;
+
+// 좌표 → 눈금. 반올림(+0.5f)이어야 한다. 절삭이면 오차가 늘 음수 쪽으로만 생겨서,
+// 클라가 이 좌표를 받아 자기 위치로 삼고 다시 MOVE_START로 보고하는 왕복마다
+// 좌표가 한 방향으로 밀린다(수용 경로는 CGameServer::RecvMoveStart).
+inline uint16_t QuantizePos(float v)
+{
+    if (v < 0.0f) v = 0.0f;   // 음수의 uint16 캐스팅은 정의되지 않음. 상한은 POS_QUANT_MAX_MAP_SIZE가 담당
+    return static_cast<uint16_t>(v * POS_QUANT_SCALE + 0.5f);
+}
+
+// 눈금 → 좌표
+inline float DequantizePos(uint16_t q)
+{
+    return static_cast<float>(q) * POS_QUANT_INV_SCALE;
+}
+
+// 방향·이동상태 한 바이트에 담기 — 하위 니블 Direction(0~4), 상위 니블 MoveState(0~1).
+//   비트가 아니라 니블로 가른 건 패킷을 16진수로 덤프할 때 두 값이 자리로 구분돼서다.
+inline uint8_t PackDirState(uint8_t direction, uint8_t moveState)
+{
+    return static_cast<uint8_t>((direction & 0x0F) | (moveState << 4));
+}
+inline uint8_t UnpackDir(uint8_t packed)   { return static_cast<uint8_t>(packed & 0x0F); }
+inline uint8_t UnpackState(uint8_t packed) { return static_cast<uint8_t>(packed >> 4); }
+
+// 묶음 1엔트리 — 한 플레이어의 이번 틱 최종 상태 (9B, pack(1))
+//   필드명을 x/y가 아니라 qx/qy로 둔 건, 눈금 값을 좌표로 착각해 쓰는 코드를 컴파일 단계에서 걸러내려는 것이다.
 struct SectorUpdateEntry
 {
-    int32_t playerId;
-    uint8_t direction;    // Direction enum
-    uint8_t moveState;    // MoveState enum (0=IDLE, 1=MOVING)
-    float   x;
-    float   y;
+    int32_t  playerId;
+    uint16_t qx;          // QuantizePos(x) — 복원은 DequantizePos
+    uint16_t qy;          // QuantizePos(y)
+    uint8_t  dirState;    // PackDirState(Direction, MoveState)
 };
 
 // 한 섹터 최대 엔트리 수. 패킷이 MAX_PACKET_SIZE(1458B)를 넘지 않게:
 //   ※ 기준은 1460이 아니라 1458 — CSerialBuffer는 1460B를 잡지만 선두 2B가 길이 헤더 자리다.
-//   (1458 - 헤더4 - count2) / 엔트리14 = 최대 103개 → 여유 두고 100.
+//   엔트리가 9B로 줄어 (1458 - 헤더4 - count2) / 9 = 161개까지 들어가지만 100을 유지한다.
+//   배달 단위까지 같이 바꾸면 엔트리 축소 효과와 청크 분할 변화가 A/B에 섞인다(100개 × 9B = 906B로 한 패킷에 넉넉하다).
 // 균등 부하 평균 섹터 ~55명이라 평소엔 1패킷, 초과 시 청크 분할
 constexpr int SECTOR_UPDATE_MAX_ENTRIES = 100;
 

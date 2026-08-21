@@ -139,6 +139,8 @@ private:
                      "Total sessions destroyed", _monitor._sessionDestroyed);
         WriteCounter(ss, "mmo_accept_failed_total",
                      "Total accept failures", _monitor._acceptFailed);
+        WriteCounter(ss, "mmo_accept_rejected_queue_total",
+                     "Total accepts rejected by game event queue overload", _monitor._acceptRejectedByQueue);
         WriteCounter(ss, "mmo_session_timed_out_total",
                      "Total session timeouts", _monitor._sessionTimedOut);
         WriteCounter(ss, "mmo_cheat_detected_total",

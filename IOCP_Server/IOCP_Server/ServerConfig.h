@@ -50,6 +50,12 @@ struct ServerConfig
     int         completionBatch = 0;       // 완료 수거 방식 (0=GQCS 1건씩[기본], N>0=GQCSEx 최대 N건; IOCP 빌드 전용)
     int         sendDepth     = 1;         // 세션당 동시 송신 제출 상한 (1=기존 1-pending[기본], 2/4/8; 양팔 공통)
 
+    // 게임 이벤트 큐(Worker→Game)가 이 길이를 넘으면 신규 accept 거절 (0=끄기).
+    //   기본 60,000 = 한 틱 유입 추정 3,000의 20배 ≈ 게임 루프가 20틱(0.8초) 밀린 상태(메모리 약 88MB).
+    //   순간 버스트로 몇 틱 밀리는 건 정상이라 그 위로 잡았다.
+    //   ※ 기준 3,000은 추정 — 정상 큐 길이 미측정. mmo_event_queue_size 관측 후 재설정할 것.
+    int         eventQueueAcceptLimit = 60000;
+
     // 게임스레드 코어 격리 (실험용) — GameCore INI에서 도출. 빈값/부적합이면 gameCore=-1, 마스크 0(=off).
     int                gameCore     = -1;  // 게임루프 전용 물리코어 (-1=격리 off). ServerCores 안의 코어여야 함.
     unsigned long long gameCoreMask = 0;   // 게임코어 HT 논리쌍 마스크
@@ -130,6 +136,11 @@ struct ServerConfig
         // SendDepth: 세션당 동시 송신 제출 상한 A/B (양팔 공통, 재빌드 없이 깊이 전환)
         //   1=기존 1-pending. 2의 거듭제곱만 유효하고(1/2/4/8) 그 외 값은 서버가 아래쪽으로 내린다.
         sendDepth = ini.GetInt("Server", "SendDepth", 1);
+
+        // EventQueueAcceptLimit: 게임 이벤트 큐 과부하 시 신규 accept 차단 임계 (0=끄기)
+        eventQueueAcceptLimit = ini.GetInt("Server", "EventQueueAcceptLimit", 60000);
+        if (eventQueueAcceptLimit < 0)
+            eventQueueAcceptLimit = 0;
 
         // [DB] 섹션 — DB 저장 파이프라인 (값은 파서가 narrow std::string으로 반환)
         dbHost              = ini.GetString("DB", "Host", "127.0.0.1");
@@ -269,6 +280,7 @@ private:
         SLOG_INFO("  RioWkr      : {} (0=auto 2, RIO build only)", rioWorkers);
         SLOG_INFO("  ComplBatch  : {} (0=GQCS one-at-a-time, N=GQCSEx cap)", completionBatch);
         SLOG_INFO("  SendDepth   : {} (1=1-pending, pow2 only: 1/2/4/8)", sendDepth);
+        SLOG_INFO("  EvtQAccept  : {} (0=off, 넘으면 신규 accept 거절)", eventQueueAcceptLimit);
         if (gameCore >= 0)
             SLOG_INFO("  CoreIso     : ON GameCore={} game=0x{:X} io=0x{:X}", gameCore, gameCoreMask, ioCoreMask);
         else

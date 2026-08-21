@@ -11,9 +11,9 @@
     --red:#d7263d; --deep:#b3122a; --slate:#566072; --pill-gray:#e9edf3;
   }
   *{box-sizing:border-box}
-  html,body{margin:0;width:1200px;height:620px;overflow:hidden;background:var(--bg);
+  html,body{margin:0;width:1200px;height:736px;overflow:hidden;background:var(--bg);
     font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
-  .card{position:absolute;top:24px;left:24px;width:1152px;height:572px;background:var(--card);
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:688px;background:var(--card);
     border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
     padding:30px 56px 0}
   .title{font-size:38px;font-weight:800;color:var(--ink);letter-spacing:-.6px;line-height:1.08}
@@ -21,33 +21,35 @@
   .sub{margin-top:10px;font-size:20px;font-weight:500;color:var(--muted)}
   .sub b{color:#3a4254;font-weight:700}
 
-  .stage{margin-top:24px;display:grid;grid-template-columns:1fr 150px 1fr;align-items:start}
-  .col{display:flex;flex-direction:column;align-items:center}
-
-  .pill{font-size:18px;font-weight:800;padding:6px 18px;border-radius:999px;letter-spacing:-.3px}
-  .pill.before{background:var(--pill-gray);color:var(--slate)}
-  .pill.after{background:var(--red);color:#fff}
+  .stage{margin-top:18px;display:grid;grid-template-columns:400px 1fr;gap:40px;align-items:start}
+  .colhead{font-size:17px;font-weight:800;color:var(--slate);letter-spacing:-.3px;
+    background:var(--pill-gray);border-radius:999px;padding:6px 16px;display:inline-block}
+  .colhead.r{background:var(--red);color:#fff}
 
   svg{font-family:inherit}
-  .diagram{margin-top:14px}
-  .sv-cap{font-size:15.5px;font-weight:700;fill:#8089a0;letter-spacing:-.2px}
-  .sv-cap.b{fill:var(--slate)}
-  .sv-cap.r{fill:var(--red);font-weight:800}
-  .sv-white{font-size:17px;font-weight:800;fill:#fff;letter-spacing:-.3px}
+  .cap{margin-top:8px;font-size:16.5px;color:#8089a0;font-weight:500;text-align:center}
+  .cap b{color:#3a4254;font-weight:700}
+  .stagelabel{margin-top:8px;font-size:15.5px;font-weight:600;color:#8089a0;letter-spacing:-.2px;text-align:center}
 
-  .bignum{margin-top:10px;font-weight:800;letter-spacing:-1px;display:flex;align-items:baseline;gap:8px}
-  .bignum .n{font-size:40px}
+  .anchorline{margin-top:10px;font-size:20px;font-weight:600;color:#8089a0;letter-spacing:-.3px}
+  .anchorline b{color:var(--red);font-weight:800;font-size:23px}
+  .bignum{margin-top:2px;font-weight:800;letter-spacing:-1px;display:flex;align-items:baseline;gap:9px}
+  .bignum .g{font-size:30px;color:#aab4c4}
+  .bignum .n{font-size:44px;color:var(--red)}
   .bignum .u{font-size:20px;font-weight:700;color:#46627f}
-  .bignum.b .n{color:var(--slate)}
-  .bignum.r .n{color:var(--red)}
-  .delta{align-self:center;font-size:17px;font-weight:800;color:#fff;background:var(--red);
-    border-radius:999px;padding:4px 13px;margin-left:6px;letter-spacing:-.3px}
+  .bignum .pct{font-size:17px;font-weight:800;color:#fff;background:var(--red);
+    border-radius:999px;padding:4px 13px;margin-left:4px;letter-spacing:-.3px}
 
-  .botcap{margin-top:9px;font-size:17px;font-weight:500;color:#8089a0}
-  .botcap b{color:#3a4254;font-weight:700}
-
-  .arrowcol{display:flex;flex-direction:column;align-items:center;padding-top:158px}
-  .arrowcol .t{font-size:19px;font-weight:800;color:var(--red);text-align:center;line-height:1.16;margin-bottom:8px}
+  .pipe{position:absolute;left:56px;right:56px;bottom:74px;display:grid;
+    grid-template-columns:1fr 26px 1fr 26px 1fr 26px 1fr;align-items:center}
+  .pbox{height:56px;border-radius:12px;background:#f4f6fa;border:1.6px solid #dde3ec;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.15}
+  .pbox .t{font-size:17.5px;font-weight:800;color:#7c8597;letter-spacing:-.3px}
+  .pbox .s{font-size:14.5px;font-weight:600;color:#a6aebd;margin-top:2px}
+  .pbox.hit{background:var(--red);border-color:var(--red)}
+  .pbox.hit .t{color:#fff}
+  .pbox.hit .s{color:#ffd7de}
+  .parrow{text-align:center;font-size:20px;color:#c3cad6;font-weight:800}
 
   .foot{position:absolute;left:56px;right:56px;bottom:15px;padding-top:11px;border-top:1px solid #eef0f3;
     font-size:16px;color:#9aa3b2;font-weight:500}
@@ -56,78 +58,108 @@
 </head>
 <body>
   <div class="card">
-    <div class="title">enqueue <span class="r">27만 &rarr; 5천</span> &mdash; 패킷 기준을 수신자 기준으로 뒤집기</div>
-    <div class="sub">같은 섹터 주민이 받는 내용은 같다 &rarr; 이웃 9섹터 몫을 이어붙여 <b>세션당 1회</b>만 넣는다</div>
+    <div class="title">같은 칸이면 볼 것도 같다 &mdash; <span class="r">이어붙여 1번</span>에 준다</div>
+    <div class="sub">플레이어 A와 B가 같은 칸에 있으면 <b>보는 9칸이 완전히 같다</b> &rarr; 받을 내용도 같으니 한 덩어리를 돌려 쓴다</div>
 
     <div class="stage">
-      <!-- LEFT : before -->
-      <div class="col">
-        <div class="pill before">변경 전 &middot; 패킷 기준</div>
-        <svg class="diagram" width="430" height="222" viewBox="0 0 430 222">
-          <rect x="167" y="4" width="96" height="38" rx="10" fill="#6e7a90"/>
-          <text class="sv-white" x="215" y="29" text-anchor="middle">패킷 1개</text>
-          <g stroke="#a7b1c2" stroke-width="1.8">
-            <line x1="215" y1="42" x2="35"  y2="148"/>
-            <line x1="215" y1="42" x2="80"  y2="148"/>
-            <line x1="215" y1="42" x2="125" y2="148"/>
-            <line x1="215" y1="42" x2="170" y2="148"/>
-            <line x1="215" y1="42" x2="215" y2="148"/>
-            <line x1="215" y1="42" x2="260" y2="148"/>
-            <line x1="215" y1="42" x2="305" y2="148"/>
-            <line x1="215" y1="42" x2="350" y2="148"/>
-            <line x1="215" y1="42" x2="395" y2="148"/>
-          </g>
-          <g fill="#dfe5ec" stroke="#b9c2cf" stroke-width="2">
-            <circle cx="35"  cy="160" r="13"/><circle cx="80"  cy="160" r="13"/>
-            <circle cx="125" cy="160" r="13"/><circle cx="170" cy="160" r="13"/>
-            <circle cx="215" cy="160" r="13"/><circle cx="260" cy="160" r="13"/>
-            <circle cx="305" cy="160" r="13"/><circle cx="350" cy="160" r="13"/>
-            <circle cx="395" cy="160" r="13"/>
-          </g>
-          <text class="sv-cap b" x="215" y="203" text-anchor="middle">수신자 923명, 한 명씩 enqueue &mdash; 이걸 295콜 반복</text>
-        </svg>
-        <div class="bignum b"><span class="n">27만</span><span class="u">회 / tick</span></div>
-        <div class="botcap">매회 세션 찾기&middot;검증 고정비 지불</div>
+      <!-- LEFT : same cell, same view -->
+      <div>
+        <span class="colhead">근거 &mdash; 시야가 겹친다</span>
+        <div class="stagelabel">연한 회색 = 두 사람 모두 시야 밖</div>
+        <svg id="map" width="400" height="284" viewBox="0 0 400 284"></svg>
+        <div class="cap">A의 9칸 = B의 9칸 &mdash; <b>한 칸도 다르지 않다</b><br>그러니 <b>받을 내용도 똑같다</b></div>
       </div>
 
-      <!-- CENTER -->
-      <div class="arrowcol">
-        <div class="t">수신섹터<br>배칭</div>
-        <svg width="92" height="34" viewBox="0 0 92 34">
-          <defs><marker id="ah" markerWidth="9" markerHeight="9" refX="6.5" refY="4.5" orient="auto">
-            <path d="M0,0 L9,4.5 L0,9 Z" fill="#d7263d"/></marker></defs>
-          <line x1="4" y1="17" x2="74" y2="17" stroke="#d7263d" stroke-width="6" stroke-linecap="round" marker-end="url(#ah)"/>
-        </svg>
-      </div>
-
-      <!-- RIGHT : after -->
-      <div class="col">
-        <div class="pill after">변경 후 &middot; 수신자 기준</div>
-        <svg class="diagram" width="430" height="222" viewBox="0 0 430 222">
-          <g>
-            <rect x="177" y="2"  width="24" height="24" rx="6" fill="#f2b8c0"/><rect x="208" y="2"  width="24" height="24" rx="6" fill="#f2b8c0"/><rect x="239" y="2"  width="24" height="24" rx="6" fill="#f2b8c0"/>
-            <rect x="177" y="33" width="24" height="24" rx="6" fill="#f2b8c0"/><rect x="208" y="33" width="24" height="24" rx="6" fill="#e8455a"/><rect x="239" y="33" width="24" height="24" rx="6" fill="#f2b8c0"/>
-            <rect x="177" y="64" width="24" height="24" rx="6" fill="#f2b8c0"/><rect x="208" y="64" width="24" height="24" rx="6" fill="#f2b8c0"/><rect x="239" y="64" width="24" height="24" rx="6" fill="#f2b8c0"/>
-          </g>
-          <text class="sv-cap" x="290" y="50" text-anchor="start">&larr; 이웃 9섹터 보류물</text>
-          <g stroke="#d98b97" stroke-width="1.8">
-            <line x1="189" y1="92" x2="204" y2="118"/>
-            <line x1="220" y1="92" x2="220" y2="118"/>
-            <line x1="251" y1="92" x2="236" y2="118"/>
-          </g>
-          <rect x="130" y="120" width="180" height="34" rx="10" fill="#d7263d"/>
-          <text class="sv-white" x="220" y="142" text-anchor="middle">한 덩어리로 연결</text>
-          <line x1="220" y1="158" x2="220" y2="176" stroke="#d7263d" stroke-width="5" stroke-linecap="round"/>
-          <path d="M212,176 L228,176 L220,188 Z" fill="#d7263d"/>
-          <circle cx="220" cy="200" r="13" fill="#dfe5ec" stroke="#b9c2cf" stroke-width="2"/>
-          <text class="sv-cap r" x="245" y="206" text-anchor="start">세션당 딱 1회</text>
-        </svg>
-        <div class="bignum r"><span class="n">5천</span><span class="u">회 / tick</span><span class="delta">&minus;98%</span></div>
-        <div class="botcap">보내는 바이트&middot;클라 파싱은 <b>불변</b> &mdash; 고정비만 접힘</div>
+      <!-- RIGHT : concat + fan -->
+      <div>
+        <span class="colhead r">방법 &mdash; 이어붙여 돌려 쓰기</span>
+        <div class="stagelabel">9칸에서 온 조각 54개</div>
+        <svg id="fan" width="640" height="262" viewBox="0 0 640 262"></svg>
+        <div class="anchorline">한 명당 <b>54회 &rarr; 1회</b></div>
+        <div class="bignum"><span class="g">27만</span><span class="u">&rarr;</span><span class="n">5천</span><span class="u">회 / tick</span><span class="pct">&minus;98%</span></div>
       </div>
     </div>
 
-    <div class="foot">플래그 <b>USE_BROADCAST_BUNDLE</b> &middot; 서버만 변경(패킷 규격&middot;클라 무변경) &middot; 전제: 섹터 묶음 + coalescing ON</div>
+    <div class="pipe">
+      <div class="pbox"><div class="t">게임 로직</div><div class="s">그대로</div></div>
+      <div class="parrow">&rarr;</div>
+      <div class="pbox hit"><div class="t">큐에 넣기</div><div class="s">여기만 바꿨다</div></div>
+      <div class="parrow">&rarr;</div>
+      <div class="pbox"><div class="t">송신 워커</div><div class="s">그대로</div></div>
+      <div class="parrow">&rarr;</div>
+      <div class="pbox"><div class="t">커널 전송</div><div class="s">그대로</div></div>
+    </div>
+
+    <div class="foot">그래서 <b>나가는 바이트는 −2.6%</b>인데 <b>게임루프 CPU는 −64%</b> &mdash; 줄인 건 준비 절차지 짐이 아니다</div>
   </div>
+
+<script>
+var NS='http://www.w3.org/2000/svg';
+function el(t,a){var e=document.createElementNS(NS,t);for(var k in a)e.setAttribute(k,a[k]);return e;}
+
+/* ---------- LEFT : 5x5 map, two players in the same cell, one shared 3x3 view ---------- */
+var map=document.getElementById('map');
+var C=52, GX=(400-C*5)/2, GY=18;
+var gc=el('g',{});
+for(var r=0;r<5;r++)for(var c=0;c<5;c++){
+  var inView=(r>=1&&r<=3&&c>=1&&c<=3);
+  gc.appendChild(el('rect',{x:GX+c*C,y:GY+r*C,width:C,height:C,rx:6,
+    fill:inView?'#fdeaee':'#f4f6fa',stroke:'#dde3ec','stroke-width':1.4}));
+}
+map.appendChild(gc);
+// shared view border (drawn once — that is the point)
+map.appendChild(el('rect',{x:GX+C,y:GY+C,width:C*3,height:C*3,rx:8,fill:'none',
+  stroke:'#d7263d','stroke-width':3.4}));
+// two players in the center cell
+var mx=GX+C*2.5, my=GY+C*2.5;
+function player(cx,cy,name,fill){
+  map.appendChild(el('circle',{cx:cx,cy:cy,r:15,fill:fill}));
+  var t=el('text',{x:cx,y:cy+6,'text-anchor':'middle','font-size':17,'font-weight':800,fill:'#fff'});
+  t.textContent=name; map.appendChild(t);
+}
+player(mx-15,my,'A','#d7263d');
+player(mx+15,my,'B','#7c8597');
+
+/* ---------- RIGHT : 54 fragments -> one strip -> residents ---------- */
+var fan=document.getElementById('fan');
+var FN=18, FW=22, FH=14, FY=4, FGAP=25;             // 18 shown, stands for 54
+var FX0=(640-((FN-1)*FGAP+FW))/2;
+var STRIP={x:110,y:100,w:420,h:38,cx:320};
+var PN=12, PR=9, PCY=224, PGAP=44;
+var PX0=(640-(PN-1)*PGAP)/2;
+
+// fragments -> strip
+var gUp=el('g',{stroke:'#aab4c4','stroke-width':0.9,opacity:0.62});
+for(var i=0;i<FN;i++){
+  var fx=FX0+i*FGAP+FW/2;
+  gUp.appendChild(el('line',{x1:fx,y1:FY+FH,x2:STRIP.cx,y2:STRIP.y}));
+}
+fan.appendChild(gUp);
+// strip -> residents
+var gDown=el('g',{stroke:'#d7263d','stroke-width':1.9});
+for(var j=0;j<PN;j++)
+  gDown.appendChild(el('line',{x1:STRIP.cx,y1:STRIP.y+STRIP.h,x2:PX0+j*PGAP,y2:PCY-PR}));
+fan.appendChild(gDown);
+// fragments
+var gf=el('g',{fill:'#8e99ac'});
+for(var i=0;i<FN;i++) gf.appendChild(el('rect',{x:FX0+i*FGAP,y:FY,width:FW,height:FH,rx:3}));
+fan.appendChild(gf);
+// strip body with segment ticks (raw bytes glued together)
+fan.appendChild(el('rect',{x:STRIP.x,y:STRIP.y,width:STRIP.w,height:STRIP.h,rx:9,fill:'#d7263d'}));
+var gt=el('g',{stroke:'#fff','stroke-width':1.4,opacity:0.45});
+for(var s=1;s<9;s++){var sx=STRIP.x+STRIP.w*s/9;
+  gt.appendChild(el('line',{x1:sx,y1:STRIP.y+7,x2:sx,y2:STRIP.y+STRIP.h-7}));}
+fan.appendChild(gt);
+var st=el('text',{x:STRIP.cx,y:STRIP.y+25,'text-anchor':'middle','font-size':17,'font-weight':800,fill:'#fff'});
+st.textContent='한 덩어리로 이어붙인 바이트';
+fan.appendChild(st);
+// residents
+var gp=el('g',{fill:'#dfe5ec',stroke:'#b9c2cf','stroke-width':2});
+for(var j=0;j<PN;j++) gp.appendChild(el('circle',{cx:PX0+j*PGAP,cy:PCY,r:PR}));
+fan.appendChild(gp);
+var pt=el('text',{x:320,y:PCY+30,'text-anchor':'middle','font-size':15.5,'font-weight':700,fill:'#566072'});
+pt.textContent='그 칸 주민 — 한 사람당 선 하나';
+fan.appendChild(pt);
+</script>
 </body>
 </html>

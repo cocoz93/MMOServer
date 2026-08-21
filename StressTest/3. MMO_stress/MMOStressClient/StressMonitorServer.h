@@ -124,6 +124,15 @@ private:
         WriteCounter(ss, "mmo_dummy_packet_parse_fail_total",
                      "Total packet parse failure disconnects", _stats.packetParseFail);
 
+        // ── 수신 오버플로 진단 ──
+        // 아래 3개를 recv_buffer_overflow_total로 나누면 오버플로 사건만의 평균이 된다.
+        WriteCounter(ss, "mmo_dummy_ovf_gap_ms_sum",
+                     "Sum of gap since previous recv, at overflow moments (ms)", _stats.ovfGapMsSum);
+        WriteCounter(ss, "mmo_dummy_ovf_bytes_sum",
+                     "Sum of bytes drained from kernel in that OnRecv, at overflow moments", _stats.ovfBytesSum);
+        WriteCounter(ss, "mmo_dummy_ovf_recv_calls_sum",
+                     "Sum of recv() call counts in that OnRecv, at overflow moments", _stats.ovfRecvCalls);
+
         // ── RTT 게이지 ──
         ss << "# HELP mmo_dummy_rtt_max_seconds Worst RTT observed\n";
         ss << "# TYPE mmo_dummy_rtt_max_seconds gauge\n";
@@ -155,6 +164,19 @@ private:
         ss << std::defaultfloat;
 
         WriteLoopHistogram(ss);
+
+        // ── 수신 대조군 게이지 (정상 수신까지 전량 포함) ──
+        ss << "# HELP mmo_dummy_recv_gap_max_seconds Worst gap between consecutive OnRecv calls\n";
+        ss << "# TYPE mmo_dummy_recv_gap_max_seconds gauge\n";
+        ss << std::fixed << std::setprecision(6);
+        ss << "mmo_dummy_recv_gap_max_seconds "
+           << (static_cast<double>(_stats.recvGapMaxMs.load(std::memory_order_relaxed)) / 1000.0) << "\n\n";
+        ss << std::defaultfloat;
+
+        ss << "# HELP mmo_dummy_recv_chunk_max_bytes Most bytes drained from kernel in one OnRecv\n";
+        ss << "# TYPE mmo_dummy_recv_chunk_max_bytes gauge\n";
+        ss << "mmo_dummy_recv_chunk_max_bytes "
+           << _stats.recvChunkMaxBytes.load(std::memory_order_relaxed) << "\n\n";
 
         return ss.str();
     }

@@ -94,6 +94,21 @@
 	#error "USE_BROADCAST_BUNDLE requires USE_LOCKFREE_SENDQ=0 (RingBuffer 경로 전용)"
 #endif
 
+// 멤버십(시야 진입/이탈 CREATE/DELETE) 아웃바운드 digest 합류 실험 — Phase 4.
+// ProcessSectorChange 아웃바운드는 지금 diff 섹터 주민마다 개별 RequestSendMsg를 호출한다
+// (동접 5600 실측 ~17만회/틱 — 건당 세션 핀+링 뮤텍스+복사 고정비가 membership_ms의 지배분).
+// → 주민들이 어차피 틱마다 받는 digest에 "직송" 아이템으로 합류시켜 추가 송신 호출을 0으로.
+//   직송 = 방송(3×3)과 달리 정확히 그 섹터 주민에게만 전달. 연접 순서는 직송이 방송보다 앞
+//   (CREATE가 그 대상의 이동 번들보다 먼저 도착 보장 — 클라 파싱 순서 의미 불변).
+//   1: 아웃바운드 직송 digest 합류 [실험]
+//   0: 기존 — FanoutToSectors 개별 송신 (P1+P2+P3 채택 상태 = baseline)
+#define USE_MEMBERSHIP_DIGEST 1
+
+//   의존: 수신섹터 digest 파이프라인(연접·배포·해제) + 아웃바운드 1회 빌드(점프 폴백이 FanoutToSectors 사용).
+#if USE_MEMBERSHIP_DIGEST && (!USE_BROADCAST_BUNDLE || !USE_MEMBERSHIP_FANOUT_DEDUP)
+	#error "USE_MEMBERSHIP_DIGEST requires USE_BROADCAST_BUNDLE=1 && USE_MEMBERSHIP_FANOUT_DEDUP=1"
+#endif
+
 // DB 저장 파이프라인 실험 — dirty flag 기반 비동기 위치 저장 (존 서버 관점)
 //   서버 메모리 = 진실, DB = 저장소. 바뀐 플레이어만 주기적으로 전용 워커 스레드가 MySQL에 UPSERT.
 //   목적: 전량 저장 부담을 dirty flag로 줄이고, 저장 I/O를 게임 틱 임계경로에서 떼어낸다.

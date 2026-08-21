@@ -66,7 +66,7 @@
       <div class="gate g2">
         <div class="gtop"><span class="glab">2차 벽 · 게임루프(멤버십)</span><span class="gst no">✗ 천장</span></div>
         <div class="gname"><span class="big">~5000</span> 동접</div>
-        <div class="gdesc"><b>멤버십 팬아웃</b>이 40ms 틱벽을 침(6000서 56ms/틱). per-pair CREATE/DELETE라 연접 불가 — <b>K로는 못 넘는다</b></div>
+        <div class="gdesc"><b>멤버십 팬아웃</b>이 40ms 틱벽을 침(6000서 56ms/틱). 팬아웃 일 자체를 줄이지 않는 한 — <b>K로는 못 넘는다</b></div>
       </div>
     </div>
 
@@ -75,7 +75,7 @@
       <div class="chips">
         <div class="chip rp"><div class="cn">멤버십 경감</div><div class="cs">AOI 축소 · 섹터 hysteresis — 팬아웃 일 자체를 줄임</div></div>
         <div class="chip rp"><div class="cn">스케일아웃</div><div class="cs">맵=게임스레드 샤딩 — 맵당 ~5000 독립 처리</div></div>
-        <div class="chip bp"><div class="cn">RIO</div><div class="cs">송신 CPU 2.36→~0.5코어 <span class="w">· 멤버십 벽엔 무력</span></div></div>
+        <div class="chip bp"><div class="cn">RIO</div><div class="cs">송신 syscall 자체를 줄이는 레버 <span class="w">· 멤버십 벽엔 무력</span></div></div>
         <div class="chip bp"><div class="cn">코어 격리</div><div class="cs">캐시간섭 ~10% 회복 <span class="w">· 천장은 못 올림</span></div></div>
       </div>
     </div>

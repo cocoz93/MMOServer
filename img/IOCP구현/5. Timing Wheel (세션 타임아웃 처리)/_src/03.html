@@ -52,40 +52,40 @@
   <div class="card">
     <div class="title">Tick 해상도 선택 — <span class="r">1초</span>가 균형점</div>
     <div class="uline"></div>
-    <div class="sub">막대 = 최악 타임아웃(초) · 파란선 = 안전 마지노선(하트비트 20초)</div>
+    <div class="sub">막대 = 죽은 세션을 늦게 알아채는 시간 · 만료 자체는 어느 해상도든 타임아웃 이후다</div>
 
     <div class="chart">
       <div class="plot">
         <div class="col pick">
           <div class="badge">채택</div>
-          <div class="pct">59초</div>
-          <div class="bar" style="height:100%"><span class="in">61슬롯</span></div>
+          <div class="pct">+1초</div>
+          <div class="bar" style="height:7%"></div>
         </div>
         <div class="col">
-          <div class="pct">55초</div>
-          <div class="bar" style="height:93%"><span class="in">13슬롯</span></div>
+          <div class="pct">+5초</div>
+          <div class="bar" style="height:33%"></div>
         </div>
         <div class="col">
-          <div class="pct">50초</div>
-          <div class="bar" style="height:85%"><span class="in">7슬롯</span></div>
+          <div class="pct">+10초</div>
+          <div class="bar" style="height:67%"></div>
         </div>
         <div class="col">
-          <div class="pct">45초</div>
-          <div class="bar" style="height:76%"><span class="in">5슬롯</span></div>
+          <div class="pct">+15초</div>
+          <div class="bar" style="height:100%"></div>
         </div>
       </div>
 
-      <div class="axis"><span class="tag">기준 · 하트비트 간격 20초</span></div>
+      <div class="axis"><span class="tag">기준선 = 타임아웃 60초 · 아래 회/초 = 타이머 wake-up</span></div>
 
       <div class="labels">
-        <div class="lb"><div class="nm">1,000ms</div><div class="ds">wake-up 1.0/초 · 채택</div></div>
-        <div class="lb"><div class="nm">5,000ms</div><div class="ds">wake-up 0.2/초 · 대안</div></div>
-        <div class="lb"><div class="nm">10,000ms</div><div class="ds">wake-up 0.1/초 · 경계선</div></div>
-        <div class="lb"><div class="nm">15,000ms</div><div class="ds">wake-up 0.07/초 · 위험</div></div>
+        <div class="lb"><div class="nm">1,000ms</div><div class="ds">슬롯 61개 · 1.0회/초</div></div>
+        <div class="lb"><div class="nm">5,000ms</div><div class="ds">슬롯 13개 · 0.2회/초</div></div>
+        <div class="lb"><div class="nm">10,000ms</div><div class="ds">슬롯 7개 · 0.1회/초</div></div>
+        <div class="lb"><div class="nm">15,000ms</div><div class="ds">슬롯 5개 · 0.07회/초</div></div>
       </div>
     </div>
 
-    <div class="foot">하트비트 20초 · 타임아웃 60초 기준 · 최악 타임아웃(=타임아웃−해상도) &gt; 하트비트+네트워크지연이면 안전 | 1,000ms=슬롯61개로 정확도 우선</div>
+    <div class="foot">슬롯 +1 보정 덕분에 실제 만료는 <b>60초 ~ 60초+해상도</b> · 해상도를 낮춰 아끼는 건 초당 wake-up <b>0.93회</b>뿐이고, 대가는 죽은 세션을 <b>최대 15초</b> 늦게 알아채는 것</div>
   </div>
 </body>
 </html>

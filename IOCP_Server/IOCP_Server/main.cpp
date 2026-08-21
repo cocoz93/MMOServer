@@ -89,6 +89,9 @@ int main()
         return 1;
     }
 
+    // 이벤트 큐 과부하 시 신규 accept 차단 임계 (네트워크 객체는 Init에서 생성된다)
+    server.SetEventQueueAcceptLimit(config.eventQueueAcceptLimit);
+
     // DB 저장 파이프라인 초기화 (USE_DB_WORKER=0이면 no-op)
     {
         DBConfig dbConfig;

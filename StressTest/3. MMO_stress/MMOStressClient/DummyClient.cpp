@@ -46,6 +46,7 @@ void DummyClient::ResetState()
     _lastHeartbeatMs = 0;
     _chatSentMs      = 0;
     _lastRttMs       = -1;
+    _lastRecvMs      = 0;   // 재접속 세션의 첫 OnRecv가 "끊겨 있던 시간"을 gap으로 세지 않도록
     _recvBuf.Clear();
     _sendBuf.Clear();
 }
@@ -149,26 +150,41 @@ void DummyClient::OnConnectFailed(StatsLocal& stats, int reconnectDelayMs)
 // ─────────────────────────────────────────────────────────────────
 void DummyClient::OnRecv(StatsLocal& stats, int reconnectDelayMs)
 {
-    _lastRecvMs = NowMs();
+    // 오버플로 진단: 갱신 "전" 값이 직전 수신 시각이다(0 = 이 세션의 첫 수신 → 경과 0으로 둔다).
+    // _lastRecvMs 갱신 시점 자체는 옛 코드와 같아 RTT 계산(HandleChat)에 영향 없다.
+    const int64_t nowMs = NowMs();
+    const int64_t gapMs = (_lastRecvMs > 0) ? (nowMs - _lastRecvMs) : 0;
+    _lastRecvMs = nowMs;
+
     char buf[4096];
+    int64_t chunkBytes = 0;   // 이번 OnRecv가 커널에서 꺼낸 총 바이트
+    int64_t recvCalls  = 0;   // 이번 OnRecv의 recv 호출 횟수
 
     // WOULDBLOCK까지 반복 수신 — 커널 버퍼에 4096B 이상 쌓여 있을 때 대응
     while (true)
     {
         int bytes = recv(_sock, buf, static_cast<int>(sizeof(buf)), 0);
+        recvCalls += 1;
 
         if (bytes > 0)
         {
             stats.recvBytes += bytes;
+            chunkBytes += bytes;   // 링 적재 실패분도 "커널에서 꺼낸 양"이므로 포함
             if (_recvBuf.Enqueue(buf, static_cast<size_t>(bytes)) == 0)
             {
                 // 링버퍼 오버플로우
                 stats.recvBufferOverflow += 1;
+                stats.ovfGapMsSum  += gapMs;
+                stats.ovfBytesSum  += chunkBytes;
+                stats.ovfRecvCalls += recvCalls;
+                stats.RecordRecvChunk(gapMs, chunkBytes);
                 Disconnect(stats, reconnectDelayMs);
                 return;
             }
             continue;
         }
+
+        stats.RecordRecvChunk(gapMs, chunkBytes);
 
         if (bytes == 0)
         {
@@ -380,9 +396,9 @@ void DummyClient::HandleSectorUpdates(const char* packet)
         const SectorUpdateEntry& e = msg->entries[i];
         if (e.playerId == _playerId)
         {
-            _x      = e.x;
-            _y      = e.y;
-            _moving = (e.moveState != 0);
+            _x      = DequantizePos(e.qx);   // 눈금 → 좌표 (엔트리는 좌표를 uint16 눈금으로 싣는다)
+            _y      = DequantizePos(e.qy);
+            _moving = (UnpackState(e.dirState) != 0);
         }
     }
 }

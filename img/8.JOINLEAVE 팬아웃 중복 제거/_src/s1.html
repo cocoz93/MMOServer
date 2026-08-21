@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face{font-family:'Pretendard';
+    src:url('fonts/PretendardVariable.woff2') format('woff2');
+    font-weight:100 900;font-style:normal;font-display:block}
+  :root{
+    --bg:#eef1f5; --card:#ffffff; --ink:#1f2330; --muted:#7c8597;
+    --red:#d7263d; --deep:#b3122a; --blue:#3a78b8; --blue-ink:#2b6aa8; --slate:#566072;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:1200px;height:660px;overflow:hidden;background:var(--bg);
+    font-family:'Pretendard',"Malgun Gothic","Noto Sans KR",sans-serif;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;text-rendering:optimizeLegibility}
+  .card{position:absolute;top:24px;left:24px;width:1152px;height:612px;background:var(--card);
+    border:1px solid #eef0f3;border-radius:30px;box-shadow:0 1px 3px rgba(30,40,70,.05),0 14px 44px rgba(30,40,70,.075);
+    padding:34px 56px 0}
+
+  .title{font-size:37px;font-weight:800;color:var(--ink);letter-spacing:-.8px;line-height:1.08}
+  .title .r{color:var(--red)}
+  .uline{width:66px;height:6px;border-radius:3px;background:var(--red);margin-top:14px}
+  .sub{margin-top:13px;font-size:19px;font-weight:500;color:var(--muted);letter-spacing:-.2px}
+  .sub b{color:#3a4254;font-weight:700}
+
+  .body{margin-top:16px;display:grid;grid-template-columns:600px 1fr;column-gap:24px}
+  .stage{width:600px;height:400px}
+  .zoom{border-radius:22px;border:1.5px solid #e7ebf1;background:#f7f9fc;padding:12px 14px 10px;height:400px}
+  .zh{font-size:15.5px;font-weight:800;color:#6a7488;letter-spacing:-.2px;text-align:center}
+  .zh em{font-style:normal;color:var(--ink)}
+  .zviz{width:100%;height:352px;margin-top:2px}
+
+  .foot{position:absolute;left:56px;right:56px;bottom:16px;padding-top:12px;border-top:1px solid #eef0f3;
+    font-size:15.5px;color:#9aa3b2;font-weight:500;letter-spacing:-.2px}
+  .foot b{color:#6b7484;font-weight:700}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">섹터 이동 시 필요한 처리 — 새 객체 하나당 <span class="r">패킷 둘</span></div>
+    <div class="uline"></div>
+    <div class="sub">mover가 섹터 경계를 넘으면 <b>시야 9섹터가 통째로 밀린다</b> · 3섹터가 빠지고 3섹터가 새로 들어온다</div>
+
+    <div class="body">
+
+      <!-- 무대 : 섹터 격자 위에서 시야가 한 칸 밀린다 -->
+      <svg class="stage" viewBox="0 0 600 400">
+        <defs>
+          <marker id="mv" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14"
+                  refX="12" refY="7" orient="auto">
+            <path d="M0,0 L14,7 L0,14 Z" fill="#1f2330"></path>
+          </marker>
+          <!-- 칸 안 사람 배치 (칸 132x104 기준) -->
+          <g id="dots">
+            <circle cx="28"  cy="26" r="4.5"></circle><circle cx="64" cy="18" r="4.5"></circle>
+            <circle cx="100" cy="32" r="4.5"></circle><circle cx="20" cy="58" r="4.5"></circle>
+            <circle cx="52"  cy="50" r="4.5"></circle><circle cx="88" cy="66" r="4.5"></circle>
+            <circle cx="36"  cy="84" r="4.5"></circle><circle cx="78" cy="88" r="4.5"></circle>
+          </g>
+          <!-- mover가 서는 칸 : 가운데를 비운 배치 -->
+          <g id="dotsC">
+            <circle cx="24"  cy="22" r="4.5"></circle><circle cx="70"  cy="16" r="4.5"></circle>
+            <circle cx="108" cy="28" r="4.5"></circle><circle cx="18"  cy="84" r="4.5"></circle>
+            <circle cx="60"  cy="92" r="4.5"></circle><circle cx="106" cy="80" r="4.5"></circle>
+          </g>
+        </defs>
+
+        <!-- 칸 배경 -->
+        <g stroke="#e3e8ef" stroke-width="1.5">
+          <!-- 열0 : 빠지는 섹터 -->
+          <rect x="27"  y="52"  width="132" height="104" rx="9" fill="#f4f6f9"></rect>
+          <rect x="27"  y="162" width="132" height="104" rx="9" fill="#f4f6f9"></rect>
+          <rect x="27"  y="272" width="132" height="104" rx="9" fill="#f4f6f9"></rect>
+          <!-- 열1,2 : 계속 보이는 섹터 -->
+          <rect x="165" y="52"  width="132" height="104" rx="9" fill="#ffffff"></rect>
+          <rect x="165" y="162" width="132" height="104" rx="9" fill="#ffffff"></rect>
+          <rect x="165" y="272" width="132" height="104" rx="9" fill="#ffffff"></rect>
+          <rect x="303" y="52"  width="132" height="104" rx="9" fill="#ffffff"></rect>
+          <rect x="303" y="162" width="132" height="104" rx="9" fill="#ffffff"></rect>
+          <rect x="303" y="272" width="132" height="104" rx="9" fill="#ffffff"></rect>
+          <!-- 열3 : 새로 들어온 섹터 -->
+          <rect x="441" y="52"  width="132" height="104" rx="9" fill="#fdf0f3"></rect>
+          <rect x="441" y="162" width="132" height="104" rx="9" fill="#fdf0f3"></rect>
+          <rect x="441" y="272" width="132" height="104" rx="9" fill="#fdf0f3"></rect>
+        </g>
+
+        <!-- 사람 : 빠지는 열은 흐리게, 새로 들어온 열은 진하게 -->
+        <g fill="#c9d2de"><use href="#dots" x="27" y="52"/><use href="#dots" x="27" y="162"/><use href="#dots" x="27" y="272"/></g>
+        <g fill="#aab5c4">
+          <use href="#dots"  x="303" y="52"/><use href="#dots" x="303" y="272"/>
+          <use href="#dotsC" x="165" y="52"/><use href="#dotsC" x="165" y="272"/>
+          <use href="#dotsC" x="165" y="162"/><use href="#dotsC" x="303" y="162"/>
+        </g>
+        <g fill="#d7263d"><use href="#dots" x="441" y="52"/><use href="#dots" x="441" y="162"/><use href="#dots" x="441" y="272"/></g>
+
+        <!-- 이전 시야 (점선) / 지금 시야 (실선) -->
+        <rect x="21" y="46" width="420" height="336" rx="14" fill="none"
+              stroke="#aab5c4" stroke-width="3" stroke-dasharray="9 7"></rect>
+        <rect x="159" y="46" width="420" height="336" rx="14" fill="none"
+              stroke="#1f2330" stroke-width="3.5"></rect>
+
+        <!-- mover 이동 -->
+        <line x1="257" y1="214" x2="337" y2="214" stroke="#1f2330" stroke-width="3.5" marker-end="url(#mv)"></line>
+        <circle cx="231" cy="214" r="17" fill="#ffffff" stroke="#aab5c4" stroke-width="3" stroke-dasharray="5 4"></circle>
+        <circle cx="369" cy="214" r="21" fill="#1f2330"></circle>
+        <text x="369" y="214" text-anchor="middle" dominant-baseline="central"
+              font-family="Pretendard" font-size="15" font-weight="800" fill="#ffffff">나</text>
+
+        <!-- 라벨 -->
+        <text x="93" y="34" text-anchor="middle" font-family="Pretendard" font-size="16.5" font-weight="800" fill="#98a2b1">빠지는 3섹터</text>
+        <text x="507" y="34" text-anchor="middle" font-family="Pretendard" font-size="16.5" font-weight="800" fill="#d7263d">새로 들어온 3섹터</text>
+        <text x="300" y="398" text-anchor="middle" font-family="Pretendard" font-size="15.5" font-weight="700" fill="#98a2b1">
+          점선 = 넘기 전 시야 9섹터 · 실선 = 넘은 뒤 시야 9섹터
+        </text>
+      </svg>
+
+      <!-- 확대 : 새로 들어온 섹터 한 칸에서 벌어지는 일 -->
+      <div class="zoom">
+        <div class="zh">새로 들어온 섹터 <em>한 칸을 열어보면</em></div>
+        <svg class="zviz" viewBox="0 0 416 352">
+          <defs>
+            <marker id="aB" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+              <path d="M0,0 L12,6 L0,12 Z" fill="#3a78b8"></path>
+            </marker>
+            <marker id="aR" markerUnits="userSpaceOnUse" markerWidth="13" markerHeight="13" refX="11" refY="6.5" orient="auto">
+              <path d="M0,0 L13,6.5 L0,13 Z" fill="#d7263d"></path>
+            </marker>
+          </defs>
+
+          <!-- 나가는 것 -->
+          <text x="8" y="18" font-family="Pretendard" font-size="16" font-weight="800" fill="#2b6aa8">나가는 것</text>
+          <text x="92" y="18" font-family="Pretendard" font-size="15" font-weight="700" fill="#8a93a5">내 정보 — 전부 같은 내용</text>
+          <g fill="#ffffff" stroke="#c3cedb" stroke-width="2.5">
+            <circle cx="360" cy="51" r="15"></circle><circle cx="360" cy="87" r="15"></circle>
+            <circle cx="360" cy="123" r="15"></circle><circle cx="360" cy="159" r="15"></circle>
+          </g>
+          <g stroke="#3a78b8" stroke-width="2.6" opacity=".85" marker-end="url(#aB)">
+            <line x1="79.6" y1="100.5" x2="345.2" y2="53.6"></line>
+            <line x1="80.0" y1="103.5" x2="345.0" y2="87.9"></line>
+            <line x1="80.0" y1="106.5" x2="345.0" y2="122.1"></line>
+            <line x1="79.6" y1="109.5" x2="345.2" y2="156.4"></line>
+          </g>
+          <g fill="#3a78b8">
+            <rect x="-13" y="-9.5" width="26" height="19" rx="5" transform="translate(270.8,66.7) rotate(-10)"></rect>
+            <rect x="-13" y="-9.5" width="26" height="19" rx="5" transform="translate(270.8,92.3) rotate(-3.4)"></rect>
+            <rect x="-13" y="-9.5" width="26" height="19" rx="5" transform="translate(270.8,117.7) rotate(3.4)"></rect>
+            <rect x="-13" y="-9.5" width="26" height="19" rx="5" transform="translate(270.8,143.3) rotate(10)"></rect>
+          </g>
+          <circle cx="54" cy="105" r="26" fill="#3a78b8"></circle>
+          <text x="54" y="105" text-anchor="middle" dominant-baseline="central"
+                font-family="Pretendard" font-size="18" font-weight="800" fill="#ffffff">나</text>
+
+          <line x1="8" y1="190" x2="408" y2="190" stroke="#e3e8ef" stroke-width="1.5"></line>
+
+          <!-- 들어오는 것 -->
+          <text x="8" y="212" font-family="Pretendard" font-size="16" font-weight="800" fill="#d7263d">들어오는 것</text>
+          <text x="104" y="212" font-family="Pretendard" font-size="15" font-weight="700" fill="#8a93a5">상대 정보 — 전부 다른 내용</text>
+          <!-- 상대마다 고유색 : 그 사람의 원·선·봉투가 한 색이라 "각자 자기 정보"가 대응으로 읽힌다.
+               채도·명도는 맞추고 색상만 벌려 톤이 흐트러지지 않게 한다 -->
+          <g fill="#ffffff" stroke-width="3.5">
+            <circle cx="54" cy="241" r="15" stroke="#d7263d"></circle>
+            <circle cx="54" cy="277" r="15" stroke="#c0782c"></circle>
+            <circle cx="54" cy="313" r="15" stroke="#3d8a7c"></circle>
+            <circle cx="54" cy="349" r="15" stroke="#8a5091"></circle>
+          </g>
+          <!-- 선은 나에게 수렴 : 끝에 촉을 달면 4개가 한 점에서 겹쳐 뭉치므로
+               진행 방향 표시는 상자 바로 뒤(아직 벌어져 있는 자리)에 둔다 -->
+          <g stroke-width="2.8" opacity=".75">
+            <line x1="68.8" y1="243.6" x2="334.4" y2="290.5" stroke="#d7263d"></line>
+            <line x1="69.0" y1="277.9" x2="334.0" y2="293.5" stroke="#c0782c"></line>
+            <line x1="69.0" y1="312.1" x2="334.0" y2="296.5" stroke="#3d8a7c"></line>
+            <line x1="68.8" y1="346.4" x2="334.4" y2="299.5" stroke="#8a5091"></line>
+          </g>
+          <g opacity=".75">
+            <polygon points="-6.5,-6.5 6.5,0 -6.5,6.5" fill="#d7263d" transform="translate(200,266.8) rotate(10)"></polygon>
+            <polygon points="-6.5,-6.5 6.5,0 -6.5,6.5" fill="#c0782c" transform="translate(200,285.6) rotate(3.4)"></polygon>
+            <polygon points="-6.5,-6.5 6.5,0 -6.5,6.5" fill="#3d8a7c" transform="translate(200,304.4) rotate(-3.4)"></polygon>
+            <polygon points="-6.5,-6.5 6.5,0 -6.5,6.5" fill="#8a5091" transform="translate(200,323.2) rotate(-10)"></polygon>
+          </g>
+          <g>
+            <rect x="-15" y="-11" width="30" height="22" rx="6" fill="#d7263d" transform="translate(148.6,257.7) rotate(10)"></rect>
+            <rect x="-13" y="-9.5" width="26" height="19" rx="5" fill="#c0782c" transform="translate(148.5,282.6) rotate(3.4)"></rect>
+            <rect x="-16" y="-11.5" width="32" height="23" rx="6" fill="#3d8a7c" transform="translate(148.5,307.4) rotate(-3.4)"></rect>
+            <rect x="-12.5" y="-9" width="25" height="18" rx="5" fill="#8a5091" transform="translate(148.6,332.3) rotate(-10)"></rect>
+          </g>
+          <circle cx="360" cy="295" r="26" fill="#d7263d"></circle>
+          <text x="360" y="295" text-anchor="middle" dominant-baseline="central"
+                font-family="Pretendard" font-size="18" font-weight="800" fill="#ffffff">나</text>
+        </svg>
+      </div>
+
+    </div>
+
+    <div class="foot">섹터 안 객체가 많을수록 <b>주고받는 건수가 곱으로 는다</b> — 동접 4,000에서 팬아웃 <b>738 tgt/call</b> · 시야 9섹터 · 섹터 20칸(맵 120×120)</div>
+  </div>
+</body>
+</html>

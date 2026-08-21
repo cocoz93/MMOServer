@@ -147,3 +147,6 @@ Run/stress_client_ip.txt
 
 # 문서 감사용 노션 스냅샷 (임시)
 docs/_audit_snapshot/
+
+# 리눅스 CMake/ninja 빌드 산출물
+build-linux/

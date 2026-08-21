@@ -309,6 +309,12 @@ bool CIOCPServer::SetSocketOptions(SOCKET socket)
     lingerOpt.l_linger = 0;
     setsockopt(socket, SOL_SOCKET, SO_LINGER, reinterpret_cast<char*>(&lingerOpt), sizeof(lingerOpt));
 
+    // TCP_NODELAY 옵션: Nagle 알고리즘 비활성화 (지연 없이 송신)
+    // 2026-08-14 실측으로 ❌기각 — 켜면 끊김 35.6배(0.35→12.4/s)·RTT p99 +26%·송신워커 98.6% 포화.
+    // Nagle이 세그먼트를 묶어 커널 비용을 아껴주고 있었다. 되살리지 말 것.
+    //int flag = 1;
+    //setsockopt(socket, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(flag));
+
 #if USE_ZERO_SNDBUF
     // [실험] 커널 송신버퍼 0 → WSASend 시 커널 복사(③) 제거, 유저버퍼에서 직접 송신(zero-copy).
     //        ③가 미미하다는 가정의 실측 검증용 (BuildConfig.h 토글).
@@ -440,6 +446,17 @@ void CIOCPServer::AcceptThread()
 
 void CIOCPServer::ProcessAccept(SOCKET clientSocket)
 {
+    // 과부하 차단 — 게임 스레드가 유입을 못 따라가면 새 접속을 받지 않는다.
+    //   드롭(이동 패킷 유실)도 워커 정지(전 세션 수신 멎음)도 못 쓰니 남는 수단은 이것뿐이다.
+    //   값은 게임루프가 매 틱 갱신하는 스냅샷이라 락 없이 읽고, 로그 대신 카운터만 올린다.
+    if (_eventQueueAcceptLimit > 0 &&
+        _monitor._gameLoop._eventQueueSize >= _eventQueueAcceptLimit)
+    {
+        _monitor._acceptRejectedByQueue.Inc();
+        Platform::CloseSocket(clientSocket);
+        return;
+    }
+
     // 빈 인덱스 확인 (여유가 없다면 동접 max)
     uint16_t index = 0;
     if (!_availableIndices.Pop(&index))

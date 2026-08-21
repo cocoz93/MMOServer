@@ -3,9 +3,12 @@
 #
 # logical size x DSF4 = final resolution (high-res for PPT, Pretendard embedded):
 #   01 : 940x680   -> 3760x2720   (01_ceiling_sweep.png)
-#   02 : 920x580   -> 3680x2320   (02_bottleneck_65pct.png)
-#   03 : 1200x620  -> 4800x2480   (03_receiver_batching.png)
+#   02 : 1200x626  -> 4800x2504   (02_cause_54calls.png)
+#   03 : 1200x736  -> 4800x2944   (03_receiver_batching.png)
 #   04 : 1060x680  -> 4240x2720   (04_ab_result.png)
+# 02/03 were replaced 2026-08-08: the old pair showed only "how much" (donut + abstract fanout).
+# The new pair shows "what happens" — one player's 9 cells, then why one blob can be shared.
+# Retired sources kept as *_retired_*.html.
 $dir = $PSScriptRoot
 
 $chrome = "C:\Program Files\Google\Chrome\Application\chrome.exe"
@@ -41,8 +44,8 @@ function Render($name, $w, $h, $out) {
 
 Write-Host "[build] using: $chrome"
 Render "01" 940 680 "01_ceiling_sweep.png"
-Render "02" 920 580 "02_bottleneck_65pct.png"
-Render "03" 1200 620 "03_receiver_batching.png"
+Render "02" 1200 626 "02_cause_54calls.png"
+Render "03" 1200 736 "03_receiver_batching.png"
 Render "04" 1060 680 "04_ab_result.png"
 Remove-Item $render -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item $profileDir -Recurse -Force -ErrorAction SilentlyContinue

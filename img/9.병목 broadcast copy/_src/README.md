@@ -7,7 +7,7 @@
 |---|---|---|
 | 01.html → `01_ceiling_sweep.png` | 동접 스윕 — 게임루프 코어 포화, 천장 4500–5000 | 940x680 |
 | 02.html → `02_bottleneck_65pct.png` | tick의 65% = broadcast copy (실체는 27만 회/tick 호출 고정비) | 920x580 |
-| 03.html → `03_receiver_batching.png` | 패킷 기준 → 수신자 기준 뒤집기, enqueue 27만→5천 | 1200x620 |
+| 03.html → `03_receiver_batching.png` | 패킷 기준 → 수신자 기준 뒤집기, enqueue 27만→5천 (한 명당 54회→1회) | 1200x660 |
 | 04.html → `04_ab_result.png` | A/B 결과 — copy −88% · gameloop 0.57→0.21 · tick 반토막 | 1060x680 |
 
 재빌드:

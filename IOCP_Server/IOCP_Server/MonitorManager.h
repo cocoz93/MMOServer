@@ -77,6 +77,7 @@ public:
     alignas(64) Counter _sessionCreated;    // 세션 생성 누적
     Counter _sessionDestroyed;               // 세션 소멸 누적
     Counter _acceptFailed;                   // Accept 거부 (인덱스 부족)
+    Counter _acceptRejectedByQueue;          // Accept 거부 (게임 이벤트 큐 과부하)
     Counter _sessionTimedOut;                // 타이밍 휠 타임아웃 킥
     Counter _packetErrors;                   // 패킷 에러 (크기 검증 실패, 알 수 없는 타입)
     Counter _sendQueueOverflow;              // SendQ 오버플로 (Enqueue 실패)

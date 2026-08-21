@@ -35,6 +35,16 @@ struct MMOStats
     std::atomic<int64_t> sendError           {0};   // 송신 소켓 에러 횟수
     std::atomic<int64_t> packetParseFail     {0};   // 패킷 파싱 실패 횟수
 
+    // ── 수신 오버플로 진단 ──────────────────────────────────────
+    // 끊김 원인이 "서버가 한 번에 몰아 보냄"인지 "클라가 오래 안 읽음"인지 가른다.
+    // 앞 3개는 recvBufferOverflow로 나누면 오버플로 사건만의 평균이 된다(같은 사건 집합이라 짝이 맞음).
+    // 뒤 2개는 정상 수신까지 포함한 대조군 — 오버플로 때 값이 특별한지 보려면 비교 대상이 필요하다.
+    std::atomic<int64_t> ovfGapMsSum         {0};   // 오버플로 시점의 "직전 수신 후 경과(ms)" 합
+    std::atomic<int64_t> ovfBytesSum         {0};   // 오버플로 시점까지 이번 OnRecv가 커널에서 꺼낸 바이트 합
+    std::atomic<int64_t> ovfRecvCalls        {0};   // 오버플로 시점까지의 recv 호출 횟수 합
+    std::atomic<int64_t> recvGapMaxMs        {0};   // 전체 OnRecv의 "직전 수신 후 경과" 최댓값
+    std::atomic<int64_t> recvChunkMaxBytes   {0};   // 전체 OnRecv 한 번이 꺼낸 총 바이트 최댓값
+
     // ── RTT (누적 통계) ─────────────────────────────────────────
     std::atomic<int64_t> rttSumMs             {0};
     std::atomic<int64_t> rttSamples           {0};
@@ -91,6 +101,13 @@ struct StatsLocal
     int64_t sendError           = 0;
     int64_t packetParseFail     = 0;
 
+    // 수신 오버플로 진단
+    int64_t ovfGapMsSum         = 0;
+    int64_t ovfBytesSum         = 0;
+    int64_t ovfRecvCalls        = 0;
+    int64_t recvGapMaxMs        = 0;
+    int64_t recvChunkMaxBytes   = 0;
+
     // RTT
     int64_t rttSumMs    = 0;
     int64_t rttSamples  = 0;
@@ -120,6 +137,13 @@ struct StatsLocal
             }
         }
         loopBuckets[MMOStats::LOOP_BUCKET_COUNT - 1] += 1;
+    }
+
+    // OnRecv 한 번이 끝날 때마다 호출 — 정상 종료·오버플로 모두 포함(대조군이 되려면 전량이어야 한다)
+    void RecordRecvChunk(int64_t gapMs, int64_t bytes)
+    {
+        if (gapMs > recvGapMaxMs)      recvGapMaxMs = gapMs;
+        if (bytes > recvChunkMaxBytes) recvChunkMaxBytes = bytes;
     }
 
     void RecordRtt(int64_t ms)
@@ -199,6 +223,21 @@ struct StatsLocal
                 g.loopBuckets[i].fetch_add(loopBuckets[i], std::memory_order_relaxed);
         }
 
+        // 수신 오버플로 진단
+        if (ovfGapMsSum != 0)  g.ovfGapMsSum.fetch_add(ovfGapMsSum, std::memory_order_relaxed);
+        if (ovfBytesSum != 0)  g.ovfBytesSum.fetch_add(ovfBytesSum, std::memory_order_relaxed);
+        if (ovfRecvCalls != 0) g.ovfRecvCalls.fetch_add(ovfRecvCalls, std::memory_order_relaxed);
+        if (recvGapMaxMs > 0)
+        {
+            int64_t cur = g.recvGapMaxMs.load(std::memory_order_relaxed);
+            while (recvGapMaxMs > cur && !g.recvGapMaxMs.compare_exchange_weak(cur, recvGapMaxMs, std::memory_order_relaxed)) {}
+        }
+        if (recvChunkMaxBytes > 0)
+        {
+            int64_t cur = g.recvChunkMaxBytes.load(std::memory_order_relaxed);
+            while (recvChunkMaxBytes > cur && !g.recvChunkMaxBytes.compare_exchange_weak(cur, recvChunkMaxBytes, std::memory_order_relaxed)) {}
+        }
+
         Reset();
     }
 
@@ -232,5 +271,10 @@ struct StatsLocal
         loopSamples = 0;
         loopMaxMs = 0;
         std::memset(loopBuckets, 0, sizeof(loopBuckets));
+        ovfGapMsSum = 0;
+        ovfBytesSum = 0;
+        ovfRecvCalls = 0;
+        recvGapMaxMs = 0;
+        recvChunkMaxBytes = 0;
     }
 };

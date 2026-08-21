@@ -335,6 +335,9 @@ public:
     // 이벤트 큐 현재 크기 (모니터링용)
     size_t GetEventQueueSize() const { return _eventQueue.GetSize(); }
 
+    // 이벤트 큐 과부하 시 신규 accept를 거절할 임계 (0=끄기). Start 전에 설정할 것.
+    void SetEventQueueAcceptLimit(int limit) { _eventQueueAcceptLimit = (limit > 0) ? limit : 0; }
+
     // 서버 모드 가져오기
     ServerMode GetServerMode() const;
 
@@ -530,6 +533,9 @@ private:
 
     // 레이어 간 통신 큐 (QUEUE_BASED 모드용)
     ThreadSafeQueue<NetworkEvent> _eventQueue;    // 네트워크 -> 게임 로직
+
+    // 이 큐가 이 길이를 넘으면 신규 accept를 거절한다 (0=끄기). 설정은 기동 전 1회, 이후 읽기 전용.
+    int _eventQueueAcceptLimit = 0;
 
     // 세션 무활동 타임아웃 (타이밍 휠)
     static constexpr int SESSION_TIMEOUT_SEC = 60;

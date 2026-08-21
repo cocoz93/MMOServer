@@ -18,6 +18,7 @@
   const NAME = Object.fromEntries(Object.entries(MSG).map(([k,v])=>[v,k]));
   const DIR = { NONE:0, UP:1, DOWN:2, LEFT:3, RIGHT:4 };  // Player.h
   const MOVE = { IDLE:0, MOVING:1 };
+  const POS_QUANT_INV = 1 / 512;   // SectorUpdateEntry ships coords as uint16 ticks (Protocol.h POS_QUANT_SCALE)
   const U16LE = new TextDecoder('utf-16le');
 
   // ---- decode one packet body (dv positioned at packet start, total = header.size) ----
@@ -64,8 +65,10 @@
         const count = dv.getUint16(o, true); p.count = count; p.entries = [];
         let e = o + 2;
         for (let i=0;i<count;i++){
-          p.entries.push({ playerId:dv.getInt32(e,true), direction:dv.getUint8(e+4), moveState:dv.getUint8(e+5),
-            x:dv.getFloat32(e+6,true), y:dv.getFloat32(e+10,true) }); e += 14;
+          const ds = dv.getUint8(e+8);   // low nibble = Direction, high nibble = MoveState
+          p.entries.push({ playerId:dv.getInt32(e,true),
+            x:dv.getUint16(e+4,true)*POS_QUANT_INV, y:dv.getUint16(e+6,true)*POS_QUANT_INV,
+            direction:ds & 0x0F, moveState:ds >> 4 }); e += 9;
         }
         break;
       }
