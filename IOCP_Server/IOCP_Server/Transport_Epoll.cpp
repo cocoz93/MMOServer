@@ -396,14 +396,16 @@ void CIOCPServer::EpollWorkerThread(int workerIndex)
 
             const uint32_t flags = events[i].events;
 
-            // 끊김·오류 — 상대가 닫았거나 소켓이 망가졌다.
-            if (flags & (EPOLLHUP | EPOLLERR | EPOLLRDHUP))
+            // 소켓 파손(HUP·ERR)만 즉시 끊는다. RDHUP는 아님 — "보내고 닫은" 상대의
+            //   마지막 데이터가 FIN과 함께 와 있을 수 있다.
+            if (flags & (EPOLLHUP | EPOLLERR))
             {
                 RequestDisconnectSession(session);
                 continue;
             }
 
-            if (flags & EPOLLIN)
+            // RDHUP는 수신 경로로 — 잔여를 다 읽은 뒤 recv==0 자리가 끊는다(IOCP와 같은 의미론).
+            if (flags & (EPOLLIN | EPOLLRDHUP))
                 EpollHandleReadable(session);
 
             // 쓰기 준비 — 커널 송신 버퍼에 자리가 생겼다. 남은 구간을 이어서 보낸다.
