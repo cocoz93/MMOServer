@@ -194,80 +194,101 @@ void CIOCPServer::EpollSendSession(CSession* session)
         return;
     }
 
-    bool wantMore = false;      // 아직 남았다 → EPOLLOUT 유지/등록
     bool disconnect = false;
 
+    // 제출 라운드 — 해제 후 재확인이 남은 것을 찾으면 한 번 더 돈다.
     while (true)
     {
-        if (session->_disconnecting == TRUE)
-            break;
+        bool wantMore = false;      // 아직 남았다 → EPOLLOUT 유지/등록
+        bool sawEmpty = false;      // 링이 비어서 끝남 — 이때만 재확인
 
-        auto info = session->_sendQ.GetSubmitInfo();
-        if (info.size == 0)
-            break;                                  // 보낼 것 없음
-
-        const Platform::NetSocket sock = session->_socket;
-        if (sock == Platform::kInvalidSocket)
+        while (true)
         {
-            disconnect = true;
-            break;
-        }
+            if (session->_disconnecting == TRUE)
+                break;
 
-        // 링이 감긴 경우 두 조각을 한 번의 syscall로 보낸다 (IOCP가 WSABUF 2개를 쓰던 것과 같은 이유).
-        iovec iov[2];
-        int iovCount = 0;
-        iov[0].iov_base = info.submitPtr;
-        iov[0].iov_len  = info.directSize;
-        iovCount = 1;
-        if (info.size > info.directSize)
-        {
-            iov[1].iov_base = session->_sendQ._buffer;          // 링 시작으로 감긴 뒷부분
-            iov[1].iov_len  = info.size - info.directSize;
-            iovCount = 2;
-        }
-
-        const ssize_t n = ::writev(sock, iov, iovCount);
-
-        if (n > 0)
-        {
-            _monitor._wsaSendCalls.Inc();
-            _monitor._sendBytes.Add(static_cast<LONG64>(n));
-
-            // 제출 경계와 읽기 위치를 함께 전진 — 즉시 완료 모델이라 두 단계가 붙어 있다.
-            session->_sendQ.MarkSubmitted(static_cast<size_t>(n));
-            session->_sendQ.ConsumeSubmitted(static_cast<size_t>(n));
-
-            if (static_cast<size_t>(n) < info.size)
+            auto info = session->_sendQ.GetSubmitInfo();
+            if (info.size == 0)
             {
-                wantMore = true;                    // 커널 버퍼가 찼다 — 나머지는 EPOLLOUT 뒤에
+                sawEmpty = true;
+                break;                                  // 보낼 것 없음
+            }
+
+            const Platform::NetSocket sock = session->_socket;
+            if (sock == Platform::kInvalidSocket)
+            {
+                disconnect = true;
                 break;
             }
-            continue;                               // 다 보냈다 — 그 사이 더 쌓였을 수 있다
-        }
 
-        if (n < 0)
-        {
-            const int err = Platform::LastSocketError();
-            if (Platform::WouldBlock(err))
+            // 링이 감긴 경우 두 조각을 한 번의 syscall로 보낸다 (IOCP가 WSABUF 2개를 쓰던 것과 같은 이유).
+            iovec iov[2];
+            int iovCount = 0;
+            iov[0].iov_base = info.submitPtr;
+            iov[0].iov_len  = info.directSize;
+            iovCount = 1;
+            if (info.size > info.directSize)
             {
-                wantMore = true;                    // 지금은 못 보낸다 — 정상
+                iov[1].iov_base = session->_sendQ._buffer;          // 링 시작으로 감긴 뒷부분
+                iov[1].iov_len  = info.size - info.directSize;
+                iovCount = 2;
+            }
+
+            const ssize_t n = ::writev(sock, iov, iovCount);
+
+            if (n > 0)
+            {
+                _monitor._wsaSendCalls.Inc();
+                _monitor._sendBytes.Add(static_cast<LONG64>(n));
+
+                // 제출 경계와 읽기 위치를 함께 전진 — 즉시 완료 모델이라 두 단계가 붙어 있다.
+                session->_sendQ.MarkSubmitted(static_cast<size_t>(n));
+                session->_sendQ.ConsumeSubmitted(static_cast<size_t>(n));
+
+                if (static_cast<size_t>(n) < info.size)
+                {
+                    wantMore = true;                    // 커널 버퍼가 찼다 — 나머지는 EPOLLOUT 뒤에
+                    break;
+                }
+                continue;                               // 다 보냈다 — 그 사이 더 쌓였을 수 있다
+            }
+
+            if (n < 0)
+            {
+                const int err = Platform::LastSocketError();
+                if (Platform::WouldBlock(err))
+                {
+                    wantMore = true;                    // 지금은 못 보낸다 — 정상
+                    break;
+                }
+                if (err == EINTR)
+                    continue;
+
+                SLOG_ERROR("[Network] writev failed: {}", err);
+                disconnect = true;
                 break;
             }
-            if (err == EINTR)
-                continue;
 
-            SLOG_ERROR("[Network] writev failed: {}", err);
-            disconnect = true;
-            break;
+            break;                                      // n == 0 — 보낼 것이 없었다
         }
 
-        break;                                      // n == 0 — 보낼 것이 없었다
+        // 표식 반영은 잠금 안에서 — 밖이면 두 제출자의 계산·반영 순서가 뒤집혀
+        //   잔여가 남은 채 EPOLLOUT이 꺼질 수 있다(_epollWantWrite 불변식).
+        if (!disconnect)
+            EpollUpdateWriteInterest(session, wantMore);
+
+        InterlockedExchange(&session->_sendSubmitBusy, FALSE);
+
+        if (!sawEmpty)
+            break;      // 재확인은 빈 링 종료만 — 부분 전송 잔여는 EPOLLOUT이 잇는다
+
+        // [해제 후 재확인] 잠금 중 enqueue하고 튕긴 데이터는 아무도 안 보낸다(epoll엔 완료 통지의
+        //   이어보내기가 없다). 남았으면 다시 잡아 한 라운드 더 — 못 잡으면 새 보유자가 본다.
+        if (session->_sendQ.GetSubmitInfo().size == 0)
+            break;
+        if (InterlockedExchange(&session->_sendSubmitBusy, TRUE) == TRUE)
+            break;
     }
-
-    InterlockedExchange(&session->_sendSubmitBusy, FALSE);
-
-    if (!disconnect)
-        EpollUpdateWriteInterest(session, wantMore);
 
     IOCountDecrement(session);
 
