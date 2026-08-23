@@ -202,6 +202,7 @@ public:
 #ifndef _WIN32
         _epollWantWrite = false;
         _epollRegistered = FALSE;
+        _recvBusy = FALSE;
 #endif
     }
 #endif
@@ -216,6 +217,13 @@ public:
     //   ※ 선언부에서 초기화하는 이유 — 미접속 세션은 Initialize(=ResetTransportState)를 한 번도
     //     타지 않는다. 리셋에만 맡기면 그 세션의 값이 초기화되지 않은 채 판정에 쓰인다.
     volatile LONG _epollRegistered = FALSE;
+
+    // 수신 직렬화 게이트 — 이 세션을 지금 읽고 있는 워커가 있는가.
+    //   _recvQ는 CRingBufferST(잠금 없음)라 "한 스레드만 만진다"가 전제인데, epoll은 아직 다 비우지
+    //   않은 소켓을 여러 워커에게 거듭 알려(level-trigger) 그 전제를 깬다. IOCP는 recv를 세션당
+    //   하나만 걸어 두어 완료도 워커 하나에만 가므로 이 게이트가 필요 없었다.
+    //   [임시] 워커별 epoll(SO_REUSEPORT)로 세션 소유를 고정하면 이 게이트는 통째로 사라진다.
+    volatile LONG _recvBusy = FALSE;
 #endif
 };
 

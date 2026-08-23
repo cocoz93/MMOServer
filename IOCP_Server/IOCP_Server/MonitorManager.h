@@ -56,6 +56,11 @@ public:
     alignas(64) Counter _recvPackets;   // 수신 패킷 누적
     Counter _recvBytes;                 // 수신 바이트 누적
     Counter _wsaRecvCalls;              // WSARecv 시스템 콜 횟수
+    Counter _recvContention;            // [epoll 전용] 수신 게이트 경합 — 다른 워커가 그 세션을 읽는 중이라
+                                        //   물러난 횟수. level-trigger는 아직 안 비운 소켓을 여러 워커에게
+                                        //   거듭 알려서, 물러난 워커가 곧바로 같은 통지를 다시 받는다(헛돎).
+                                        //   이 값이 수신 syscall 수에 견줘 크면 그 헛돎이 CPU를 먹고 있다는 뜻.
+                                        //   (IOCP 팔은 완료가 워커 하나에만 가므로 항상 0)
 
     // ── Send 핫 카운터 (ProcessSend/PostSend/RequestSendMsg 경로, 모든 워커 스레드) ──
     alignas(64) Counter _sendPackets;    // 논리적 송신 패킷 누적 (RequestSendMsg에서 Enqueue 성공 시)

@@ -157,6 +157,9 @@ private:
                      "Total zone changes", _monitor._gameLoop._zoneChangeCount);
         WriteCounter(ss, "mmo_send_contention_total",
                      "Total PostSend contentions (backed off because another thread was submitting)", _monitor._sendContention);
+        WriteCounter(ss, "mmo_recv_contention_total",
+                     "Total recv-gate contentions (epoll only: another worker was already reading that session)",
+                     _monitor._recvContention);
         WriteCounter(ss, "mmo_send_followup_total",
                      "Total follow-up submits after waiting for a completion (lower = depth absorbed more per round)",
                      _monitor._sendFollowUp);

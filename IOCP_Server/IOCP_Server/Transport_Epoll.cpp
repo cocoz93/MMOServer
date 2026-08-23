@@ -444,6 +444,19 @@ void CIOCPServer::EpollHandleReadable(CSession* session)
     if (!AcquireSession(session))
         return;
 
+    // 수신 직렬화 — 한 세션의 _recvQ는 한 워커만 만진다.
+    //   level-trigger는 "커널 버퍼에 데이터가 남았는가"만 보고 알리므로, 앞선 워커가 아직 읽는
+    //   중에도 다른 워커에게 같은 소켓을 또 알린다. 게이트가 없으면 둘이 같은 링버퍼의 쓰기
+    //   위치를 겹쳐 밀어 수신 스트림이 깨진다(TSan 실측).
+    //   [물러나도 안전한 이유] 통지를 흘려도 데이터는 커널 버퍼에 그대로 남고, level-trigger가
+    //   다음 epoll_wait에서 다시 알려 준다 — 잡은 쪽이 마저 읽거나, 다음 라운드가 가져간다.
+    if (InterlockedExchange(&session->_recvBusy, TRUE) == TRUE)
+    {
+        _monitor._recvContention.Inc();
+        IOCountDecrement(session);
+        return;
+    }
+
     while (true)
     {
         char* writePtr = session->_recvQ.GetWritePtr();
@@ -482,6 +495,10 @@ void CIOCPServer::EpollHandleReadable(CSession* session)
         RequestDisconnectSession(session);
         break;
     }
+
+    // 게이트를 먼저 놓고 ref를 나중에 — 순서가 반대면 이 감소로 세션이 해제·재사용된 뒤
+    //   새 세션의 게이트를 열어 주게 된다(F2와 같은 종류의 순서 문제).
+    InterlockedExchange(&session->_recvBusy, FALSE);
 
     IOCountDecrement(session);
 }
