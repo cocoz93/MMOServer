@@ -290,10 +290,15 @@ void CIOCPServer::EpollSendSession(CSession* session)
             break;
     }
 
-    IOCountDecrement(session);
-
+    // 종료 유도를 ref 반환보다 "먼저" 한다 — 순서가 바뀌면 이 감소가 마지막 ref였을 때
+    //   여기서 세션이 해제·재사용되고(인덱스 반환 → 새 접속이 그 자리 차지), 뒤이은
+    //   RequestDisconnectSession이 방금 들어온 새 세션을 끊는다(무고한 접속 강제 종료).
+    //   내 pin이 살아 있는 동안 끊으면 IOCount≥1이라 해제가 일어날 수 없다. IOCP 팔의
+    //   PostSend(needDisconnect 먼저 → IOCountDecrement 나중)와 같은 순서로 통일한다.
     if (disconnect)
         RequestDisconnectSession(session);
+
+    IOCountDecrement(session);
 }
 
 // EPOLLOUT 관심 등록/해제 — 보낼 것이 남았을 때만 켠다.
