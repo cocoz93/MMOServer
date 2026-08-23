@@ -214,11 +214,13 @@ void CClientNetwork::SendChat(const wchar_t* message)
     size_t len = wcslen(message);
     if (len > CHAT_MSG_MAX_LEN - 1)
         len = CHAT_MSG_MAX_LEN - 1;
-    wmemcpy(msg.message, message, len);
-    msg.message[len] = L'\0';
+    // 클라 내부 표현(wchar_t) → 와이어 문자 타입(ChatChar). 폭이 같다고 가정하지 않고 원소별로 옮긴다.
+    for (size_t i = 0; i < len; ++i)
+        msg.message[i] = static_cast<ChatChar>(message[i]);
+    msg.message[len] = u'\0';
 
     uint16_t sendSize = static_cast<uint16_t>(
-        sizeof(MsgHeader) + (len + 1) * sizeof(wchar_t));
+        sizeof(MsgHeader) + (len + 1) * sizeof(ChatChar));
     msg.header.size = sendSize;
 
     SendPacket(reinterpret_cast<const char*>(&msg), sendSize);
@@ -299,7 +301,7 @@ void CClientNetwork::DispatchPacket(const char* data, uint16_t size)
         break;
 
     case MsgType::S2C_CHAT:
-        if (size >= offsetof(MSG_S2C_CHAT, message) + sizeof(wchar_t))
+        if (size >= offsetof(MSG_S2C_CHAT, message) + sizeof(ChatChar))
             _gameInstance->OnChat(reinterpret_cast<const MSG_S2C_CHAT*>(data));
         break;
 

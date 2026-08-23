@@ -604,10 +604,12 @@ void CGameInstance::OnChat(const MSG_S2C_CHAT* msg)
 
     // 가변 길이: header.size 기반으로 메시지 글자 수 역산
     uint16_t msgBytes = msg->header.size - static_cast<uint16_t>(offsetof(MSG_S2C_CHAT, message));
-    uint16_t msgLen = msgBytes / sizeof(wchar_t);
+    uint16_t msgLen = msgBytes / sizeof(ChatChar);   // 글자 수는 와이어 문자 폭으로 나눈다
     if (msgLen > CHAT_MSG_MAX_LEN - 1)
         msgLen = CHAT_MSG_MAX_LEN - 1;
-    wmemcpy(event.chatMessage, msg->message, msgLen);
+    // 와이어 문자 타입(ChatChar) → 클라 내부 표현(wchar_t). 폭이 같다고 가정하지 않고 원소별로 옮긴다.
+    for (uint16_t i = 0; i < msgLen; ++i)
+        event.chatMessage[i] = static_cast<wchar_t>(msg->message[i]);
     event.chatMessage[msgLen] = L'\0';
 
     _eventQueue.Push(std::move(event));

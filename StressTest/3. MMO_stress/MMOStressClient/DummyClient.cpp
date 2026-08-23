@@ -216,7 +216,7 @@ uint16_t DummyClient::GetPacketSize(MsgType type)
     case MsgType::S2C_DELETE_PLAYER:       return sizeof(MSG_S2C_DELETE_PLAYER);
     case MsgType::S2C_MOVE_START:          return sizeof(MSG_S2C_MOVE_START);
     case MsgType::S2C_MOVE_STOP:           return sizeof(MSG_S2C_MOVE_STOP);
-    case MsgType::S2C_CHAT:               return static_cast<uint16_t>(offsetof(MSG_S2C_CHAT, message) + sizeof(wchar_t)); // 가변 길이: 최소 크기
+    case MsgType::S2C_CHAT:               return static_cast<uint16_t>(offsetof(MSG_S2C_CHAT, message) + sizeof(ChatChar)); // 가변 길이: 최소 크기
     case MsgType::S2C_SECTOR_UPDATES:     return static_cast<uint16_t>(offsetof(MSG_S2C_SECTOR_UPDATES, entries));        // 가변 길이: 최소 = header+count
     case MsgType::S2C_CREATE_PLAYER_BATCH: return static_cast<uint16_t>(offsetof(MSG_S2C_CREATE_PLAYER_BATCH, entries));  // 가변 길이: 최소 = header+count
     case MsgType::S2C_DELETE_PLAYER_BATCH: return static_cast<uint16_t>(offsetof(MSG_S2C_DELETE_PLAYER_BATCH, entries));  // 가변 길이: 최소 = header+count
@@ -578,10 +578,17 @@ void DummyClient::SendChat(StatsLocal& stats, int64_t nowMs)
 
     MSG_C2S_CHAT msg{};
     msg.header.type = MsgType::C2S_CHAT;
-    wcscpy_s(msg.message, text);
+
+    // 와이어 문자 타입(ChatChar)으로 옮겨 담는다 — 문장 풀은 클라 내부 표현(wchar_t)이라
+    //   경계에서 변환한다. 폭이 같다고 가정하지 않으려고 원소별로 옮긴다.
+    if (len > CHAT_MSG_MAX_LEN - 1)
+        len = CHAT_MSG_MAX_LEN - 1;
+    for (int i = 0; i < len; ++i)
+        msg.message[i] = static_cast<ChatChar>(text[i]);
+    msg.message[len] = u'\0';
 
     uint16_t sendSize = static_cast<uint16_t>(
-        sizeof(MsgHeader) + (len + 1) * sizeof(wchar_t));
+        sizeof(MsgHeader) + (len + 1) * sizeof(ChatChar));
     msg.header.size = sendSize;
 
     if (_sendBuf.Enqueue(&msg, sendSize) == 0)
