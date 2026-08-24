@@ -18,7 +18,7 @@
 
 - 실질 변경은 2026-05-05(`98e881d`)가 마지막. 이후는 디렉터리 정리 커밋뿐
 - `Run/.IOCP_build.bat` 빌드 목록에 없음
-  (IOCP_Server / GameClient / EchoStressClient / MMOStressClient 4개만 빌드)
+  (MMOServer / GameClient / EchoStressClient / MMOStressClient 4개만 빌드)
 - `Run/bin/`에 산출물 없음. 빌드물은 프로젝트 로컬 `x64/{Debug,Release}/`에만
 - 어떤 `.bat` / `.ps1` / 문서도 이 이름을 참조하지 않음
 - 설정이 INI가 아니라 실행 시 콘솔 대화형 입력(IP / Port / ThreadCount / DelayMin / DelayMax)이라

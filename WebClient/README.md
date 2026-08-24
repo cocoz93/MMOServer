@@ -1,6 +1,6 @@
 # MMO 웹 클라이언트 데모 (실서버 접속)
 
-콘솔 `GameClient`를 대체하는 **브라우저 픽셀 클라이언트**. 실제 `IOCP_Server`에 접속해
+콘솔 `GameClient`를 대체하는 **브라우저 픽셀 클라이언트**. 실제 `MMOServer`에 접속해
 다른 플레이어(더미)들의 이동·시야(AOI) 진입/이탈·채팅을 실시간으로 그리고,
 화면 위에 **서버 내부 관측 패널**(내 좌표·섹터·시야 인원·초당 패킷·수신량)을 얹는다.
 
@@ -8,7 +8,7 @@
 WS↔TCP 릴레이(`relay.js`, Node)를 두어 서버의 TCP 프로토콜을 그대로 흘려보낸다.
 
 ```
-브라우저(live.html) ──WebSocket──▶ relay.js ──TCP──▶ IOCP_Server(무수정) ◀── MMOStressClient(더미들)
+브라우저(live.html) ──WebSocket──▶ relay.js ──TCP──▶ MMOServer(무수정) ◀── MMOStressClient(더미들)
 ```
 
 ## 실행 (더블클릭)
@@ -23,7 +23,7 @@ WS↔TCP 릴레이(`relay.js`, Node)를 두어 서버의 TCP 프로토콜을 그
 - **서버·더미·릴레이는 각각 보이는 창으로 뜬다**(백그라운드 아님) — 로그가 보이고, 창을 닫으면 그 프로세스가 꺼진다. 한꺼번에 끄려면 `stop.bat`.
 - 내부 로직은 `_launch.ps1`(기동) / `_stop.ps1`(종료) — .bat이 이걸 부름. 직접 안 건드려도 됨.
 - 서버가 시작하려면 **MySQL(3306)** 이 떠 있어야 한다(`USE_DB_WORKER=1` 빌드 기준, 인증용이 아니라 위치 저장용).
-  순수 무DB로 돌리려면 `IOCP_Server/IOCP_Server/BuildConfig.h`의 `USE_DB_WORKER 0` 후 서버만 재빌드.
+  순수 무DB로 돌리려면 `MMOServer/MMOServer/BuildConfig.h`의 `USE_DB_WORKER 0` 후 서버만 재빌드.
 - `_launch.ps1`은 `Run\bin\MMOStressConfig.ini`를 잠깐 낮췄다가 **원복**한다(스트레스 설정 보존).
 - 인코딩: `.ps1`=UTF-8 **BOM**(PS5.1 한글), `.bat`=**CP949 무BOM**(cmd 한글). 편집 시 유지할 것.
 
@@ -47,4 +47,4 @@ WS↔TCP 릴레이(`relay.js`, Node)를 두어 서버의 TCP 프로토콜을 그
   시야 진입/이탈: `CREATE/DELETE_PLAYER(_BATCH)`.
   채팅: `S2C_CHAT`(UTF-16LE, 널종단). 좌표 보정: `S2C_SYNC_POSITION`.
 - 살아있으려면 60초 세션 타임아웃 전에 아무 패킷(가장 간단히 `C2S_HEARTBEAT`)을 주기 송신 → 클라는 15초마다 보낸다.
-- 월드 120×120, 섹터 20 (`Run\bin\IOCP_ServerConfig.ini`).
+- 월드 120×120, 섹터 20 (`Run\bin\MMOServerConfig.ini`).

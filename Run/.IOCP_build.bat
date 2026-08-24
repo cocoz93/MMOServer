@@ -3,7 +3,7 @@ REM ============================================
 REM   MMO Build - Release x64 (vswhere 자동 탐색)
 REM   사용법: .build.bat [target]
 REM     (없음)     : 전체 (server + gameclient + echo + mmo)
-REM     server     : IOCP_Server
+REM     server     : MMOServer
 REM     gameclient : GameClient
 REM     echo       : EchoStressClient
 REM     mmo        : MMOStressClient
@@ -35,18 +35,18 @@ echo [MSBuild] %MSBUILD%
 echo.
 
 REM === 솔루션 경로 ===
-set "SLN_SERVER=%~dp0..\IOCP_Server\IOCP_Server.sln"
+set "SLN_SERVER=%~dp0..\MMOServer\MMOServer.sln"
 set "SLN_GAMECLIENT=%~dp0..\GameClient\GameClient.sln"
 set "SLN_ECHO=%~dp0..\StressTest\2. Custom_echo_stress\EchoStressClient.sln"
 set "SLN_MMO=%~dp0..\StressTest\3. MMO_stress\MMOStressClient.sln"
 
 if /I "%TARGET%"=="all" (
-    call :BUILD "IOCP_Server"      "%SLN_SERVER%"     || goto :ERROR
+    call :BUILD "MMOServer"      "%SLN_SERVER%"     || goto :ERROR
     call :BUILD "GameClient"       "%SLN_GAMECLIENT%" || goto :ERROR
     call :BUILD "EchoStressClient" "%SLN_ECHO%"       || goto :ERROR
     call :BUILD "MMOStressClient"  "%SLN_MMO%"        || goto :ERROR
 ) else if /I "%TARGET%"=="server" (
-    call :BUILD "IOCP_Server" "%SLN_SERVER%" || goto :ERROR
+    call :BUILD "MMOServer" "%SLN_SERVER%" || goto :ERROR
 ) else if /I "%TARGET%"=="gameclient" (
     call :BUILD "GameClient" "%SLN_GAMECLIENT%" || goto :ERROR
 ) else if /I "%TARGET%"=="echo" (

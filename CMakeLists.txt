@@ -14,14 +14,14 @@ endif()
 # MySQL 8.0 설치 경로 (필요 시 -DMYSQL_DIR=... 로 override)
 set(MYSQL_DIR "C:/Program Files/MySQL/MySQL Server 8.0" CACHE PATH "MySQL install dir")
 
-set(SRV_DIR ${CMAKE_CURRENT_SOURCE_DIR}/IOCP_Server/IOCP_Server)
+set(SRV_DIR ${CMAKE_CURRENT_SOURCE_DIR}/MMOServer/MMOServer)
 
 if(WIN32)
 
 # ─────────────────────────────────────────────────────────────
-#  IOCP 서버 (Windows) — 기존 IOCP_Server.vcxproj 재현
+#  IOCP 서버 (Windows) — 기존 MMOServer.vcxproj 재현
 # ─────────────────────────────────────────────────────────────
-add_executable(IOCP_Server
+add_executable(MMOServer
     ${SRV_DIR}/IOCPServer.cpp
     ${SRV_DIR}/Transport_Iocp.cpp   # 완료포트 팔 (RIO 빌드에서는 빈 번역단위)
     ${SRV_DIR}/Transport_Rio.cpp    # RIO 팔 (IOCP 빌드에서는 빈 번역단위)
@@ -38,13 +38,13 @@ add_executable(IOCP_Server
     ${CMAKE_CURRENT_SOURCE_DIR}/Shared/Common/Logger.cpp
 )
 
-target_include_directories(IOCP_Server PRIVATE
+target_include_directories(MMOServer PRIVATE
     ${SRV_DIR}                 # 프로젝트 헤더 (IOCPServer.h 등)
     ${SRV_DIR}/ThirdParty      # spdlog·fmt·httplib (헤더온리 번들)
     ${MYSQL_DIR}/include       # MySQL C API
 )
 
-target_compile_definitions(IOCP_Server PRIVATE
+target_compile_definitions(MMOServer PRIVATE
     _CONSOLE
     USE_SPDLOG_LOGGER
     UNICODE
@@ -53,17 +53,17 @@ target_compile_definitions(IOCP_Server PRIVATE
 
 if(MSVC)
     # 공통: UTF-8 소스, 표준 준수(/permissive-), SDL, 다중 컴파일
-    target_compile_options(IOCP_Server PRIVATE /utf-8 /permissive- /sdl /MP)
+    target_compile_options(MMOServer PRIVATE /utf-8 /permissive- /sdl /MP)
     # Release: 함수단위링크(/Gy)·인트린식(/Oi)·전체프로그램최적화(/GL)
-    target_compile_options(IOCP_Server PRIVATE $<$<CONFIG:Release>:/Gy /Oi /GL>)
-    target_link_options(IOCP_Server PRIVATE /SUBSYSTEM:CONSOLE /DEBUG
+    target_compile_options(MMOServer PRIVATE $<$<CONFIG:Release>:/Gy /Oi /GL>)
+    target_link_options(MMOServer PRIVATE /SUBSYSTEM:CONSOLE /DEBUG
                         $<$<CONFIG:Release>:/LTCG /OPT:REF /OPT:ICF>)
     # libmysql.lib 는 소스의 #pragma comment(lib)로 자동 링크 → lib 디렉토리만 링크경로에
-    target_link_directories(IOCP_Server PRIVATE ${MYSQL_DIR}/lib)
+    target_link_directories(MMOServer PRIVATE ${MYSQL_DIR}/lib)
 endif()
 
 # 출력물을 기존 .sln과 동일하게 Run/bin 에 (런타임 DLL·INI가 거기 있음)
-set_target_properties(IOCP_Server PROPERTIES
+set_target_properties(MMOServer PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY         ${CMAKE_CURRENT_SOURCE_DIR}/Run/bin
     RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_CURRENT_SOURCE_DIR}/Run/bin
     RUNTIME_OUTPUT_DIRECTORY_DEBUG   ${CMAKE_CURRENT_SOURCE_DIR}/Run/bin
@@ -95,7 +95,7 @@ if(UNIX)
 
     # ─────────────────────────────────────────────────────────────
     #  MMO 서버 (Linux) — 전송 계층은 Transport_Epoll.cpp
-    #    Windows 타겟(IOCP_Server)과 같은 소스를 쓰되 팔만 다르다.
+    #    Windows 타겟(MMOServer)과 같은 소스를 쓰되 팔만 다르다.
     # ─────────────────────────────────────────────────────────────
     add_executable(mmo_server
         ${SRV_DIR}/IOCPServer.cpp

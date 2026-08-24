@@ -8,7 +8,7 @@ echo.
 
 REM === 1. Kill running processes ===
 echo [1/5] Killing running processes...
-taskkill /F /IM IOCP_Server.exe >nul 2>nul
+taskkill /F /IM MMOServer.exe >nul 2>nul
 taskkill /F /IM EchoStressClient.exe >nul 2>nul
 taskkill /F /IM prometheus.exe >nul 2>nul
 taskkill /F /IM windows_exporter.exe >nul 2>nul
@@ -18,8 +18,8 @@ echo.
 
 REM === 2. bin ?∞Ï∂úÎ¨??ïÏù∏ (?ÜÏúºÎ©?.build.bat Î®ºÏ?) ===
 echo [2/5] Checking build output...
-if not exist "%~dp0bin\IOCP_Server.exe" (
-    echo [MISSING] bin\IOCP_Server.exe
+if not exist "%~dp0bin\MMOServer.exe" (
+    echo [MISSING] bin\MMOServer.exe
     goto :NEED_BUILD
 )
 if not exist "%~dp0bin\EchoStressClient.exe" (
@@ -31,12 +31,12 @@ echo.
 
 REM === 4. Configure ===
 echo [3/5] Configuring...
-powershell -Command "(Get-Content -Encoding Default '%~dp0bin\IOCP_ServerConfig.ini') -replace '^Mode=.*', 'Mode=NetWorkLib_EchoTest' -replace '^MonitorEnabled=.*', 'MonitorEnabled=1' | Set-Content -Encoding Default '%~dp0bin\IOCP_ServerConfig.ini'"
+powershell -Command "(Get-Content -Encoding Default '%~dp0bin\MMOServerConfig.ini') -replace '^Mode=.*', 'Mode=NetWorkLib_EchoTest' -replace '^MonitorEnabled=.*', 'MonitorEnabled=1' | Set-Content -Encoding Default '%~dp0bin\MMOServerConfig.ini'"
 if %ERRORLEVEL% NEQ 0 (
-    echo [ERROR] IOCP_ServerConfig.ini update failed!
+    echo [ERROR] MMOServerConfig.ini update failed!
     goto :ERROR
 )
-echo   - IOCP_ServerConfig.ini updated (Mode=NetWorkLib_EchoTest, MonitorEnabled=1)
+echo   - MMOServerConfig.ini updated (Mode=NetWorkLib_EchoTest, MonitorEnabled=1)
 
 set "PROM_YML=%~dp0..\Monitoring\prometheus-3.4.1.windows-amd64\prometheus.yml"
 set STRESS_TARGETS="localhost:9092"
@@ -87,7 +87,7 @@ echo.
 
 REM === 6. Run ===
 echo [5/5] Starting...
-start "" /D "%~dp0bin" IOCP_Server.exe
+start "" /D "%~dp0bin" MMOServer.exe
 echo   - Server started
 
 echo   - Waiting for server to listen on port 6000...

@@ -3,7 +3,7 @@
 ## 프로젝트 개요
 - IOCP 기반 MMO 게임의 Windows 콘솔 클라이언트
 - C++ / WinSock2 / MSVC (.sln/.vcxproj)
-- 서버: IOCP_Server (별도 프로젝트, 같은 리포지토리)
+- 서버: MMOServer (별도 프로젝트, 같은 리포지토리)
 - 프로토콜: TCP 스트림, 커스텀 바이너리 패킷 (Protocol.h 공유)
 
 ## 파일 구조
@@ -22,7 +22,7 @@ GameClient/
 
 ### 서버 (비교 기준, 수정 대상 아님)
 ```
-IOCP_Server/
+MMOServer/
 ├── Player.h                 — Direction/MoveState enum, MOVE_SPEED 정의
 ├── Zone.cpp                 — Tick() 이동 공식 (방향별 좌표 증감)
 ├── GameServer.cpp           — RecvMoveStart/Stop/Chat/ZoneChange 처리
@@ -117,8 +117,8 @@ Shared/Protocol/Protocol.h   — MsgHeader, C2S/S2C 패킷 구조체 전체
 
 ### 읽어야 할 파일
 - `Shared/Protocol/Protocol.h`
-- `IOCP_Server/Player.h` (비교 기준)
-- `IOCP_Server/Zone.cpp` (비교 기준 — Tick 함수의 이동 공식)
+- `MMOServer/Player.h` (비교 기준)
+- `MMOServer/Zone.cpp` (비교 기준 — Tick 함수의 이동 공식)
 - `GameClient/ClientPlayer.h`
 - `GameClient/PlayerManager.h`
 - `GameClient/NetworkEventQueue.h`
@@ -159,8 +159,8 @@ Shared/Protocol/Protocol.h   — MsgHeader, C2S/S2C 패킷 구조체 전체
 - `GameClient/GameInstance.cpp` (ProcessChatInput + HandleChatCommand)
 - `GameClient/ConsoleRenderer.h`
 - `GameClient/ConsoleRenderer.cpp`
-- `IOCP_Server/GameServer.cpp` (비교 기준 — RecvZoneChange)
-- `IOCP_Server/ZoneManager.h` (비교 기준 — GetRandomMapId)
+- `MMOServer/GameServer.cpp` (비교 기준 — RecvZoneChange)
+- `MMOServer/ZoneManager.h` (비교 기준 — GetRandomMapId)
 
 ### 체크리스트
 

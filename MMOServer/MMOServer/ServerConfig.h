@@ -5,7 +5,7 @@
 //
 // [사용법]
 //  ServerConfig config;
-//  config.Load();  // 실행 파일 옆의 IOCP_ServerConfig.ini 로드
+//  config.Load();  // 실행 파일 옆의 MMOServerConfig.ini 로드
 //
 // [INI 포맷]
 //  [Server]
@@ -75,16 +75,16 @@ struct ServerConfig
 
     std::vector<MapConfig> maps;
 
-    // 실행 파일 경로 기준으로 IOCP_ServerConfig.ini 로드
+    // 실행 파일 경로 기준으로 MMOServerConfig.ini 로드
     bool Load()
     {
         // 실행 파일 디렉토리 기준 INI 경로 (플랫폼 독립)
-        std::string iniPath = Platform::GetExecutableDir() + "IOCP_ServerConfig.ini";
+        std::string iniPath = Platform::GetExecutableDir() + "MMOServerConfig.ini";
 
         CIniFile ini;
         if (!ini.Load(iniPath))
         {
-            SLOG_INFO("[ServerConfig] IOCP_ServerConfig.ini not found. Using defaults.");
+            SLOG_INFO("[ServerConfig] MMOServerConfig.ini not found. Using defaults.");
             SetDefaultMaps();
             return false;
         }

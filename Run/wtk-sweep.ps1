@@ -46,7 +46,7 @@ foreach ($v in @($WTList) + @($KList)) {
 $RunDir = $PSScriptRoot
 $Bin    = Join-Path $RunDir "bin"
 $Mon    = Join-Path (Split-Path $RunDir -Parent) "Monitoring"
-$SrvIni = Join-Path $Bin "IOCP_ServerConfig.ini"
+$SrvIni = Join-Path $Bin "MMOServerConfig.ini"
 $OutDir = Join-Path $Mon "metrics_out"
 
 # INI 편집은 기존 배치(3. MMO_stress.bat)와 동일하게 ANSI(CP949)로 읽고 쓴다.
@@ -63,7 +63,7 @@ function Get-Ini([string]$file, [string]$key) {
 
 # 클라 먼저, 서버 나중 순서로 종료 (서버 먼저 죽이면 클라가 재접속 루프를 돌며 소음 발생)
 function Stop-Procs {
-    foreach ($n in "MMOStressClient", "GameClient", "IOCP_Server") {
+    foreach ($n in "MMOStressClient", "GameClient", "MMOServer") {
         try { Stop-Process -Name $n -Force -ErrorAction Stop } catch {}
     }
 }
@@ -116,7 +116,7 @@ try {
 
                 Stop-Procs
                 Start-Sleep 3
-                Start-Process -FilePath (Join-Path $Bin "IOCP_Server.exe") -WorkingDirectory $Bin
+                Start-Process -FilePath (Join-Path $Bin "MMOServer.exe") -WorkingDirectory $Bin
 
                 $ready = $false
                 for ($i = 0; $i -lt 30; $i++) {
@@ -133,7 +133,7 @@ try {
                     Write-Host ("    부하 {0}/{1}분" -f $m, $LoadMin)
                 }
 
-                if (Get-Process IOCP_Server -ErrorAction SilentlyContinue) {
+                if (Get-Process MMOServer -ErrorAction SilentlyContinue) {
                     # 수집기는 자체 exit를 쓰므로 반드시 자식 프로세스로 실행 (같은 세션이면 스윕 전체가 종료됨)
                     # -File 자식 실행에선 수집기 param 기본값의 $PSScriptRoot가 비므로 경로를 명시로 넘긴다
                     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Mon "metrics-collect.ps1") `

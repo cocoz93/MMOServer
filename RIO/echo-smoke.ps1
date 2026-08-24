@@ -21,10 +21,10 @@ param([ValidateSet('RIO', 'IOCP')] [string]$ExpectTransport = 'RIO',
       [int]$CompletionBatch = -1)
 $ErrorActionPreference = 'Stop'
 $bin     = 'C:\Users\USER\Desktop\MyGit\MMO\Run\bin'
-$srvExe  = Join-Path $bin 'IOCP_Server.exe'
-$srvIni  = Join-Path $bin 'IOCP_ServerConfig.ini'
+$srvExe  = Join-Path $bin 'MMOServer.exe'
+$srvIni  = Join-Path $bin 'MMOServerConfig.ini'
 $echoIni = Join-Path $bin 'EchoStressConfig.ini'
-$logFile = Join-Path $bin ('logs\' + (Get-Date -Format 'yyMMdd') + '_IOCP_Server.log')
+$logFile = Join-Path $bin ('logs\' + (Get-Date -Format 'yyMMdd') + '_MMOServer.log')
 $enc949  = [Text.Encoding]::GetEncoding(949)
 
 $script:failures = @()
@@ -115,7 +115,7 @@ function Test-GameCodiEcho([System.Net.Sockets.TcpClient]$c, [System.IO.Stream]$
 }
 
 # ── 사전 정리 + INI 백업 (taskkill stderr는 cmd 안에서 삼킴 — EAP=Stop 승격 방지) ──
-cmd /c "taskkill /F /IM IOCP_Server.exe >nul 2>nul"
+cmd /c "taskkill /F /IM MMOServer.exe >nul 2>nul"
 cmd /c "taskkill /F /IM EchoStressClient.exe >nul 2>nul"
 Start-Sleep -Milliseconds 500
 $srvIniBak  = [IO.File]::ReadAllBytes($srvIni)
@@ -279,7 +279,7 @@ try {
     else { Note-Fail ('server log errors: ' + ($errHits -join ', ')) }
 }
 finally {
-    cmd /c "taskkill /F /IM IOCP_Server.exe >nul 2>nul"
+    cmd /c "taskkill /F /IM MMOServer.exe >nul 2>nul"
     cmd /c "taskkill /F /IM EchoStressClient.exe >nul 2>nul"
     [IO.File]::WriteAllBytes($srvIni, $srvIniBak)
     [IO.File]::WriteAllBytes($echoIni, $echoIniBak)

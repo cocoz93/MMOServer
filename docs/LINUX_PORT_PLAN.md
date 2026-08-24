@@ -39,7 +39,7 @@ Windows IOCP 서버를 리눅스로 옮기는 작업의 남은 순서.
 - 코드를 건드리면 그 심볼을 참조하는 다른 파일도 검색해 영향 범위를 확인한다
 - **공유 헤더(`Shared/Protocol`·`Shared/Common`)를 고쳤으면 그 헤더를 쓰는 솔루션을 전부 빌드한다.**
   서버만 빌드하면 클라가 깨진 줄 모른다 — 실제로 5-0의 타입 교체가 클라 3곳을 2주 넘게 빌드 불가로 두었다
-  (`GameClient.sln`·`MMOStressClient.sln`·`EchoStressClient.sln`·`IOCP_Server.sln`)
+  (`GameClient.sln`·`MMOStressClient.sln`·`EchoStressClient.sln`·`MMOServer.sln`)
 - **`ThirdParty`(spdlog·httplib)는 git에 없다**(`.gitignore:134`). 클론·워크트리에는 딸려오지 않으니
   없으면 받아서 넣어야 한다. 현재 버전 = **spdlog v1.17.0 / cpp-httplib v0.53.1** (2026-08-23 재설치분).
   ⚠ **워크트리에 정션(junction)으로 연결하지 말 것** — `git worktree remove`가 정션을 따라가 원본을 지운다(실제로 겪음)

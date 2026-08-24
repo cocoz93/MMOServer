@@ -41,7 +41,7 @@ $RunDir = $PSScriptRoot
 $Bin    = Join-Path $RunDir "bin"
 $Root   = Split-Path $RunDir -Parent
 $Mon    = Join-Path $Root "Monitoring"
-$SrvIni = Join-Path $Bin "IOCP_ServerConfig.ini"
+$SrvIni = Join-Path $Bin "MMOServerConfig.ini"
 $OutDir = Join-Path $Mon "metrics_out"
 
 # INI 편집: CP949(ANSI). BOM이 생기면 GetPrivateProfile이 첫 섹션을 못 읽으므로 Default 유지(무BOM).
@@ -59,7 +59,7 @@ function ToNum([string]$s) {
 
 # 클라 먼저, 서버 나중 종료 (서버 먼저 죽이면 클라가 재접속 루프로 소음).
 function Stop-Procs {
-    foreach ($n in "MMOStressClient", "GameClient", "IOCP_Server") {
+    foreach ($n in "MMOStressClient", "GameClient", "MMOServer") {
         try { Stop-Process -Name $n -Force -ErrorAction Stop } catch {}
     }
 }
@@ -120,7 +120,7 @@ try {
 
             Stop-Procs
             Start-Sleep 3
-            Start-Process -FilePath (Join-Path $Bin "IOCP_Server.exe") -WorkingDirectory $Bin
+            Start-Process -FilePath (Join-Path $Bin "MMOServer.exe") -WorkingDirectory $Bin
 
             $ready = $false
             for ($i = 0; $i -lt 30; $i++) {
@@ -137,7 +137,7 @@ try {
                 Write-Host ("    부하 {0}/{1}분" -f $m, $LoadMin)
             }
 
-            if (Get-Process IOCP_Server -ErrorAction SilentlyContinue) {
+            if (Get-Process MMOServer -ErrorAction SilentlyContinue) {
                 # 수집기는 자체 exit를 쓰므로 반드시 자식 프로세스로 실행 (같은 세션이면 스윕 전체가 종료됨)
                 & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Mon "metrics-collect.ps1") `
                     -RunLabel $label -WindowMin $WindowMin `

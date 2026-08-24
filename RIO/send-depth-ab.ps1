@@ -12,11 +12,11 @@
     전송 팔   = IOCP / RIO  -> 재빌드 (build-A-iocp.bat / build-B-rio.bat, USE_RIO_TRANSPORT 토글)
     송신 깊이 = 1 / 2 / 4   -> INI [Server] SendDepth 한 줄 (같은 바이너리 = 빌드 차이가 변인으로 안 섞임)
   팔이 바깥 루프라 재빌드는 팔당 1회. 빌드 실패 또는 스테일 바이너리(과거 LNK1104 exe 잠김으로
-  exit!=0인데 옛 바이너리로 측정이 돈 사고 재발 방지 -- exit 0이어도 Run\bin\IOCP_Server.exe의
+  exit!=0인데 옛 바이너리로 측정이 돈 사고 재발 방지 -- exit 0이어도 Run\bin\MMOServer.exe의
   LastWriteTime이 빌드 시작 이후로 갱신 안 됐으면 실패 취급)면 그 팔 전체를 건너뛰고 기록만 남긴다.
 
   아암 실적용 assert (같은 바이너리로 깊이를 바꾸는 구조의 유일한 방어선):
-    (a) 서버 로그 Run\bin\logs\<yyMMdd>_IOCP_Server.log 의 "Send depth = N" 라인 + 팔 문구
+    (a) 서버 로그 Run\bin\logs\<yyMMdd>_MMOServer.log 의 "Send depth = N" 라인 + 팔 문구
         ("RIO workers=" 있으면 RIO / "worker threads=" 있으면 IOCP -- echo-smoke.ps1과 동일 판정).
         로거가 프로세스 종료 시 버퍼를 플러시하므로 CTRL_C 정상 종료 후에 읽는다 (실측 근거: echo-smoke).
     (b) 게이지 교차확인: mmo_send_depth / mmo_transport_rio (metrics CSV의 send_depth / transport_rio).
@@ -68,12 +68,12 @@ $RioDir = $PSScriptRoot
 $Root   = Split-Path $RioDir -Parent
 $Bin    = Join-Path $Root "Run\bin"
 $Mon    = Join-Path $Root "Monitoring"
-$SrvIni = Join-Path $Bin "IOCP_ServerConfig.ini"
+$SrvIni = Join-Path $Bin "MMOServerConfig.ini"
 $CliIni = Join-Path $Bin "MMOStressConfig.ini"
-$BCfg   = Join-Path $Root "IOCP_Server\IOCP_Server\BuildConfig.h"
+$BCfg   = Join-Path $Root "MMOServer\MMOServer\BuildConfig.h"
 $OutDir = Join-Path $Mon "metrics_out"
 $Csv    = Join-Path $OutDir "window_metrics.csv"
-$Exe    = Join-Path $Bin "IOCP_Server.exe"
+$Exe    = Join-Path $Bin "MMOServer.exe"
 $Enc949 = [Text.Encoding]::GetEncoding(949)   # 런타임 INI = CP949 무BOM. Set-Content/Out-File/UTF-8 저장 금지
 
 # ---------- INI 편집: CP949 라인 배열 + 적용 검증 ----------
@@ -93,7 +93,7 @@ function Set-Ini([string]$file,[string]$key,[string]$value){
 }
 
 function ToNum([string]$s){ $d=0.0; if([double]::TryParse($s,[Globalization.NumberStyles]::Float,[Globalization.CultureInfo]::InvariantCulture,[ref]$d)){$d}else{$null} }
-function Stop-Procs { foreach($n in "MMOStressClient","GameClient","IOCP_Server"){ try{ Stop-Process -Name $n -Force -ErrorAction Stop }catch{} } }
+function Stop-Procs { foreach($n in "MMOStressClient","GameClient","MMOServer"){ try{ Stop-Process -Name $n -Force -ErrorAction Stop }catch{} } }
 
 # 서버가 로그를 쓰기 오픈 중이어도 읽기 -- FileShare.ReadWrite (echo-smoke.ps1과 동일)
 function Read-LogText([string]$path){
@@ -248,7 +248,7 @@ try {
       Stop-Procs; Start-Sleep 3
 
       # 이번 런의 로그 구간 시작점 -- "문자" 길이 기준 (바이트 길이로 Substring하면 멀티바이트에서 어긋난다)
-      $logFile  = Join-Path $Bin ("logs\" + (Get-Date -Format "yyMMdd") + "_IOCP_Server.log")
+      $logFile  = Join-Path $Bin ("logs\" + (Get-Date -Format "yyMMdd") + "_MMOServer.log")
       $logStart = (Read-LogText $logFile).Length
 
       $srv = Start-Process -FilePath $Exe -WorkingDirectory $Bin -PassThru

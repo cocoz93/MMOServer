@@ -282,7 +282,7 @@
         "overrides": []
       },
       "targets": [
-        { "expr": "rate(windows_process_cpu_time_total{process=\"IOCP_Server\"}[30s]) * 100", "legendFormat": "IOCP_Server", "refId": "A" },
+        { "expr": "rate(windows_process_cpu_time_total{process=~\"IOCP_Server|MMOServer\"}[30s]) * 100", "legendFormat": "MMOServer", "refId": "A" },
         { "expr": "rate(windows_process_cpu_time_total{process=\"EchoStressClient\"}[30s]) * 100", "legendFormat": "EchoStressClient", "refId": "B" }
       ]
     },
@@ -322,7 +322,7 @@
         "overrides": []
       },
       "targets": [
-        { "expr": "windows_process_working_set_bytes{process=\"IOCP_Server\"}", "legendFormat": "IOCP_Server", "refId": "A" },
+        { "expr": "windows_process_working_set_bytes{process=~\"IOCP_Server|MMOServer\"}", "legendFormat": "MMOServer", "refId": "A" },
         { "expr": "windows_process_working_set_bytes{process=\"EchoStressClient\"}", "legendFormat": "EchoStressClient", "refId": "B" }
       ]
     },

@@ -54,7 +54,7 @@ $RioDir = $PSScriptRoot
 $Root   = Split-Path $RioDir -Parent
 $Bin    = Join-Path $Root "Run\bin"
 $Mon    = Join-Path $Root "Monitoring"
-$SrvIni = Join-Path $Bin "IOCP_ServerConfig.ini"
+$SrvIni = Join-Path $Bin "MMOServerConfig.ini"
 $CliIni = Join-Path $Bin "MMOStressConfig.ini"
 $OutDir = Join-Path $Mon "metrics_out"
 $Csv    = Join-Path $OutDir "window_metrics.csv"
@@ -65,7 +65,7 @@ function Set-Ini([string]$file,[string]$key,[string]$value){
   (Get-Content -Encoding Default $file) -replace "^$key=.*","$key=$value" | Set-Content -Encoding Default $file
 }
 function ToNum([string]$s){ $d=0.0; if([double]::TryParse($s,[Globalization.NumberStyles]::Float,[Globalization.CultureInfo]::InvariantCulture,[ref]$d)){$d}else{$null} }
-function Stop-Procs { foreach($n in "MMOStressClient","GameClient","IOCP_Server"){ try{ Stop-Process -Name $n -Force -ErrorAction Stop }catch{} } }
+function Stop-Procs { foreach($n in "MMOStressClient","GameClient","MMOServer"){ try{ Stop-Process -Name $n -Force -ErrorAction Stop }catch{} } }
 function ArmTag([int]$b){ if($b -eq 0){ "GQCS" } else { "EX$b" } }
 
 if(-not (Test-Path $OutDir)){ New-Item -ItemType Directory -Path $OutDir -Force | Out-Null }
@@ -92,7 +92,7 @@ try {
     & cmd /c "`"$(Join-Path $RioDir 'build-A-iocp.bat')`""
     if($LASTEXITCODE -ne 0){ throw "rebuild failed (exit=$LASTEXITCODE)" }
   }
-  $exe = Join-Path $Bin "IOCP_Server.exe"
+  $exe = Join-Path $Bin "MMOServer.exe"
   Write-Host ("    binary: {0}  {1:yyyy-MM-dd HH:mm:ss}  {2} bytes" -f (Split-Path $exe -Leaf), (Get-Item $exe).LastWriteTime, (Get-Item $exe).Length) -ForegroundColor DarkGray
 
   # ---- 2) fixed common INI (identical for every run -- only CC and CompletionBatch move) ----
@@ -136,7 +136,7 @@ try {
 
       for($m=1;$m -le $LoadMin;$m++){ Start-Sleep 60; Write-Host ("    load {0}/{1}m" -f $m,$LoadMin) }
 
-      if(Get-Process IOCP_Server -ErrorAction SilentlyContinue){
+      if(Get-Process MMOServer -ErrorAction SilentlyContinue){
         & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Mon "metrics-collect.ps1") `
             -RunLabel $label -WindowMin $WindowMin -QueriesFile (Join-Path $Mon "queries.json") -OutDir $OutDir
         if($LASTEXITCODE -ne 0){ Write-Warning "collect failed: $label (continue)" }

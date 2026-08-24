@@ -50,7 +50,7 @@ REM === 배치 파일 복사 ===
 copy /y "%RUN_DIR%*.bat" "%STAGE%\" >nul
 
 REM === exe 복사 (레거시/pdb 제외, 명시한 4개만) ===
-for %%E in (IOCP_Server.exe MMOStressClient.exe EchoStressClient.exe GameClient.exe) do (
+for %%E in (MMOServer.exe MMOStressClient.exe EchoStressClient.exe GameClient.exe) do (
     if exist "%RUN_DIR%bin\%%E" (
         copy /y "%RUN_DIR%bin\%%E" "%STAGE%\bin\" >nul
     ) else (

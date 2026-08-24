@@ -1,6 +1,6 @@
 ﻿<#
   MMO 웹 클라이언트 데모 원클릭 실행
-  서버(IOCP_Server) + 더미(MMOStressClient) + WS릴레이(node) 를 띄우고 브라우저 클라를 엽니다.
+  서버(MMOServer) + 더미(MMOStressClient) + WS릴레이(node) 를 띄우고 브라우저 클라를 엽니다.
   사용: 우클릭 → "PowerShell로 실행" 또는  run-all.bat(전체) 또는 run-webclient.bat(웹클라) 더블클릭
   옵션:  -Dummies 60   (더미 수, 기본 60)   -SkipServer   -SkipDummies
 #>
@@ -27,7 +27,7 @@ if(-not (Test-Path (Join-Path $here 'node_modules\ws'))){
 if(-not $SkipServer){
   if(Listening 6000){ Write-Host "[2/5] 서버 이미 실행 중 (포트 6000)" }
   else{
-    Write-Host "[2/5] 서버 기동..."; Start-Process -FilePath (Join-Path $bin 'IOCP_Server.exe') -WorkingDirectory $bin -WindowStyle Normal
+    Write-Host "[2/5] 서버 기동..."; Start-Process -FilePath (Join-Path $bin 'MMOServer.exe') -WorkingDirectory $bin -WindowStyle Normal
     for($i=0;$i -lt 15 -and -not (Listening 6000);$i++){ Start-Sleep -Milliseconds 500 }
     if(Listening 6000){ Write-Host "     서버 리슨 OK" } else { Write-Host "     서버가 6000을 안 엽니다. Run\bin\logs 확인 (MySQL 필요할 수 있음)"; }
   }

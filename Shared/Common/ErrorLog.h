@@ -35,7 +35,7 @@ inline void LogError(const std::wstring& message)
 }
 
 // ==========================================================================
-// USE_SPDLOG_LOGGER 분기 — IOCP_Server에만 정의됨
+// USE_SPDLOG_LOGGER 분기 — MMOServer에만 정의됨
 // ==========================================================================
 #ifdef USE_SPDLOG_LOGGER
 

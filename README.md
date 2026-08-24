@@ -20,7 +20,7 @@ C++17 · Windows IOCP · Registered I/O · WinSock · MySQL · Prometheus · Gra
 ## 📂 구조
 | 폴더 | 설명 |
 |------|------|
-| `IOCP_Server/` | 서버 본체 — 네트워크·게임 로직 |
+| `MMOServer/` | 서버 본체 — 네트워크·게임 로직 |
 | `StressTest/` | 부하 하네스 + **전송 무결성 오라클** |
 | `RIO/` | Registered I/O 전환 실험 — 게이트 스모크 · IOCP↔RIO A/B |
 | `GameClient/` | 콘솔 클라이언트 |
@@ -53,7 +53,7 @@ C++17 · Windows IOCP · Registered I/O · WinSock · MySQL · Prometheus · Gra
 └─ LockFree/    ← https://github.com/cocoz93/LockFree
 ```
 
-연결은 프로젝트 설정이 아니라 소스에 있습니다 — `IOCP_Server/IOCP_Server/LockFreeConfig.h` 한 파일이
+연결은 프로젝트 설정이 아니라 소스에 있습니다 — `MMOServer/MMOServer/LockFreeConfig.h` 한 파일이
 상대경로로 저장소 헤더를 직접 include 합니다. 폴더가 없으면 이렇게 실패합니다:
 
 ```
@@ -68,7 +68,7 @@ DB 없이 빌드하려면 그 값을 **0** 으로 바꾸세요.
 
 ### 솔루션으로 빌드
 
-**`IOCP_Server/IOCP_Server.sln`** 으로 빌드하세요. `.vcxproj` 만 빌드하면 실행 파일이 `Run/bin/` 이 아닌
+**`MMOServer/MMOServer.sln`** 으로 빌드하세요. `.vcxproj` 만 빌드하면 실행 파일이 `Run/bin/` 이 아닌
 곳에 생겨 실행 스크립트가 예전 바이너리를 씁니다. (x64 전용 — 128비트 CAS를 써서 Win32는 빌드되지 않습니다)
 
 </details>
@@ -90,7 +90,7 @@ Run\3. MMO_stress.bat         서버 · 부하 클라 · Prometheus · Grafana �
 | http://localhost:9091 | Prometheus UI |
 | http://localhost:9090 | 서버가 직접 노출하는 원본 지표 |
 
-동접·워커 수는 `Run/bin/IOCP_ServerConfig.ini` 와 `Run/bin/MMOStressConfig.ini` 에서 바꿉니다.
+동접·워커 수는 `Run/bin/MMOServerConfig.ini` 와 `Run/bin/MMOStressConfig.ini` 에서 바꿉니다.
 부하 클라를 **다른 PC**에서 돌리려면 `3-1.`(서버) / `3-2.`(클라) 를 나눠 실행하고
 서버 주소를 `Run/stress_client_ip.txt` 에 적으세요.
 

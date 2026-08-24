@@ -16,5 +16,5 @@ if(Test-Path $pidFile){
 Get-Process MMOStressClient -ErrorAction SilentlyContinue | Stop-Process -Force
 Write-Host "더미 종료"
 # 서버는 기본 유지(다른 작업 중일 수 있음). -StopServer 주면 종료
-if($StopServer){ Get-Process IOCP_Server -ErrorAction SilentlyContinue | Stop-Process -Force; Write-Host "서버 종료" }
+if($StopServer){ Get-Process MMOServer -ErrorAction SilentlyContinue | Stop-Process -Force; Write-Host "서버 종료" }
 else { Write-Host "서버는 유지 (종료하려면: stop.bat -StopServer)" }

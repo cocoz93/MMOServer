@@ -55,7 +55,7 @@ void Logger::Init(const std::string& logDir)
 {
     // 로그 파일 경로 생성: {logDir}/{날짜}_{프로세스명}.log
     std::string logFileName = logDir + "/" + GetDateString() + "_" + GetProcessName() + ".log";
-    // 예: logs/260522_IOCP_Server.log
+    // 예: logs/260522_MMOServer.log
 
     // 비동기 스레드풀: 큐 8192, 워커 1
     spdlog::init_thread_pool(8192, 1);

@@ -45,9 +45,9 @@ $RioDir = $PSScriptRoot
 $Root   = Split-Path $RioDir -Parent
 $Bin    = Join-Path $Root "Run\bin"
 $Mon    = Join-Path $Root "Monitoring"
-$SrvIni = Join-Path $Bin "IOCP_ServerConfig.ini"
+$SrvIni = Join-Path $Bin "MMOServerConfig.ini"
 $CliIni = Join-Path $Bin "MMOStressConfig.ini"
-$BCfg   = Join-Path $Root "IOCP_Server\IOCP_Server\BuildConfig.h"
+$BCfg   = Join-Path $Root "MMOServer\MMOServer\BuildConfig.h"
 $OutDir = Join-Path $Mon "metrics_out"
 $Csv    = Join-Path $OutDir "window_metrics.csv"
 
@@ -56,7 +56,7 @@ function Set-Ini([string]$file,[string]$key,[string]$value){
   (Get-Content -Encoding Default $file) -replace "^$key=.*","$key=$value" | Set-Content -Encoding Default $file
 }
 function ToNum([string]$s){ $d=0.0; if([double]::TryParse($s,[Globalization.NumberStyles]::Float,[Globalization.CultureInfo]::InvariantCulture,[ref]$d)){$d}else{$null} }
-function Stop-Procs { foreach($n in "MMOStressClient","GameClient","IOCP_Server"){ try{ Stop-Process -Name $n -Force -ErrorAction Stop }catch{} } }
+function Stop-Procs { foreach($n in "MMOStressClient","GameClient","MMOServer"){ try{ Stop-Process -Name $n -Force -ErrorAction Stop }catch{} } }
 function Reset-Toggle {  # source USE_RIO_TRANSPORT -> 0 (fast, no rebuild) for a clean resting tree
   $t=[IO.File]::ReadAllText($BCfg); $t=$t -replace '#define USE_RIO_TRANSPORT \d','#define USE_RIO_TRANSPORT 0'
   [IO.File]::WriteAllText($BCfg,$t,(New-Object Text.UTF8Encoding($true)))
@@ -122,7 +122,7 @@ try {
       Write-Host ""
       Write-Host "[$done/$total] $label  ($(Get-Date -Format 'HH:mm:ss'))" -ForegroundColor Yellow
       Stop-Procs; Start-Sleep 3
-      Start-Process -FilePath (Join-Path $Bin "IOCP_Server.exe") -WorkingDirectory $Bin
+      Start-Process -FilePath (Join-Path $Bin "MMOServer.exe") -WorkingDirectory $Bin
       $ready=$false
       for($i=0;$i -lt 30;$i++){ if(Get-NetTCPConnection -State Listen -LocalPort 6000 -ErrorAction SilentlyContinue){$ready=$true;break}; Start-Sleep 1 }
       if(-not $ready){ throw "server did not listen on :6000 in 30s ($label)" }
@@ -130,7 +130,7 @@ try {
 
       for($m=1;$m -le $LoadMin;$m++){ Start-Sleep 60; Write-Host ("    load {0}/{1}m" -f $m,$LoadMin) }
 
-      if(Get-Process IOCP_Server -ErrorAction SilentlyContinue){
+      if(Get-Process MMOServer -ErrorAction SilentlyContinue){
         & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Mon "metrics-collect.ps1") `
             -RunLabel $label -WindowMin $WindowMin -QueriesFile (Join-Path $Mon "queries.json") -OutDir $OutDir
         if($LASTEXITCODE -ne 0){ Write-Warning "collect failed: $label (continue)" }

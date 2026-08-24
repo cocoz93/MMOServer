@@ -10,12 +10,12 @@ Grafana / Prometheus / windows_exporter **바이너리(약 1.5GB)는 트래킹�
 
 ## 1. 서버/클라 exe 빌드
 
-`IOCP_Server` 와 `StressTest` 솔루션을 빌드합니다. (Release 권장)
+`MMOServer` 와 `StressTest` 솔루션을 빌드합니다. (Release 권장)
 빌드된 exe 에 `/metrics` 엔드포인트가 포함되어 Prometheus 가 자동 수집합니다.
 
 | 대상 | metrics 포트 |
 |---|---|
-| mmo_server (IOCP_Server) | 9090 |
+| mmo_server (MMOServer) | 9090 |
 | stress_client (StressTest) | 9101 |
 | windows_exporter | 9182 |
 
